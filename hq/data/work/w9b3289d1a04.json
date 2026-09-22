@@ -1,0 +1,28 @@
+{
+  "id": "w9b3289d1a04",
+  "completion_key": "9b3289d1a048cc1aaccf156b637e3a2611838c7143f70cbc0b1b2818b04773ab",
+  "parent": "w8fd8d88b290",
+  "title": "Commit the five recorded sessions waiting in the working tree",
+  "level": "task",
+  "owner": "kenji",
+  "tier": 1,
+  "tier_reason": "playtests/README.md states these are committed on purpose as exit-gate evidence; five sessions have sat uncommitted for over a week.",
+  "ask": "Landed without Daniel: “Judge whether the recorded playtest replays keep any value after the economy change”. playtests/README.md states these are committed on purpose as exit-gate evidence; five sessions have sat uncommitted for over a week.",
+  "first_action": "git add and commit playtests/2026-09-10_223425, 2026-09-16_093051_rescued_slot1, 2026-09-16_104307, 2026-09-16_111430, and 2026-09-16_112146 to main, matching the existing 33 committed sessions.",
+  "state": "waiting_session",
+  "thread": "elena",
+  "source": "chat",
+  "source_message": "Landed without Daniel: “Judge whether the recorded playtest replays keep any value after the economy change”.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-21T22:56",
+  "created_ts": 1790056608.1163497,
+  "_revision": 2,
+  "promised_by": "w8fd8d88b290",
+  "promised": {
+    "card": "Judge whether the recorded playtest replays keep any value after the economy change",
+    "title": "Commit the five recorded sessions waiting in the working tree",
+    "why": "playtests/README.md states these are committed on purpose as exit-gate evidence; five sessions have sat uncommitted for over a week."
+  }
+}

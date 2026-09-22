@@ -1,0 +1,28 @@
+{
+  "id": "wc8e41db0de5",
+  "completion_key": "c8e41db0de56e10dfcddb97d6389c1fbcdf720c9e7e1dea59bc0cee9675e218f",
+  "parent": "w8fd8d88b290",
+  "title": "Write down which replay verbs survive the pouch change",
+  "level": "task",
+  "owner": "kenji",
+  "tier": 1,
+  "tier_reason": "Without this, a future training pass that checks replay-verify status will read a build mismatch as 'corpus is dead' and quietly drop 38 sessions of real play.",
+  "ask": "Landed without Daniel: “Judge whether the recorded playtest replays keep any value after the economy change”. Without this, a future training pass that checks replay-verify status will read a build mismatch as 'corpus is dead' and quietly drop 38 sessions of real play.",
+  "first_action": "Add a short note to the replay-corpus record (or playtests/README.md) marking sessions before the harvest-as-seed build as a labeled vintage, and stating plainly that till/plant/water/harvest and all movement events stay valid training demonstrations across the change while buy_seed/sell entries do not.",
+  "state": "waiting_session",
+  "thread": "elena",
+  "source": "chat",
+  "source_message": "Landed without Daniel: “Judge whether the recorded playtest replays keep any value after the economy change”.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-21T22:56",
+  "created_ts": 1790056608.096561,
+  "_revision": 2,
+  "promised_by": "w8fd8d88b290",
+  "promised": {
+    "card": "Judge whether the recorded playtest replays keep any value after the economy change",
+    "title": "Write down which replay verbs survive the pouch change",
+    "why": "Without this, a future training pass that checks replay-verify status will read a build mismatch as 'corpus is dead' and quietly drop 38 sessions of real play."
+  }
+}
