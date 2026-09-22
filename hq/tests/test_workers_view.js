@@ -27,6 +27,8 @@ context.groupForTest = result[1];
 const groupMarkup = vm.runInContext("wkGroup(groupForTest, '', '')", context);
 assert.ok(groupMarkup.includes("1 work session") && groupMarkup.includes("1 review"), "group summary describes phases accurately");
 assert.strictEqual((groupMarkup.match(/Alpha/g) || []).length, 1, "the work title appears once per group");
+assert.ok(!groupMarkup.split("</summary>")[0].includes("<a "), "the disclosure contains no competing link");
+assert.ok(groupMarkup.split("</summary>")[1].includes("Open work card"), "the card link remains available in the expanded body");
 assert.ok(!source.includes("attempt"), "the Bullpen does not call phases attempts");
 for (const kind of ["warning", "command-failure", "recovered", "finding", "terminal-failure"]) {
   context.lineForTest = {kind, n: 1, text: kind};

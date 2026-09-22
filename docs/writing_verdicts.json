@@ -1124,6 +1124,9 @@
    "verdict": "second-look",
    "why": "The reader has to work out whether the check uses an old version label or is checking an old build."
   },
+  "4f2b553d74a794f2859c": {
+   "verdict": "ok"
+  },
   "4f36e636a56f72d766c0": {
    "verdict": "ok"
   },
@@ -1815,6 +1818,12 @@
   },
   "7c56f8c44df0c98818f1": {
    "verdict": "ok"
+  },
+  "7cb9b247ec51f1c223a5": {
+   "instead": "Rows in the work queue now expand without opening task cards.",
+   "quote": "Bullpen",
+   "verdict": "decode",
+   "why": "The reader is not told that Bullpen is the work queue, so the sentence leaves the main subject unexplained."
   },
   "7ccb03375da65eb23f99": {
    "verdict": "ok"

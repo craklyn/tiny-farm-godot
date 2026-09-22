@@ -84,9 +84,10 @@ function wkGroup(group, activeItem, wanted) {
   return `<details class="wk-group" data-item="${esc(group.item)}" ${isActive || wanted ? "open" : ""}>
     <summary class="wk-group-head">
       <span class="wk-state ${running ? "running" : "finished"}">${state}</span>
-      <span class="wk-group-title">${group.item ? `<a class="plain" href="#/work/${encodeURIComponent(group.item)}">${esc(group.title)}</a>` : esc(group.title)}</span>
+      <span class="wk-group-title">${esc(group.title)}</span>
       <span class="muted">${esc(group.updated)} · ${parts.join(" · ")}</span>
     </summary>
+    ${group.item ? `<div class="wk-group-card-link"><a class="plain" href="#/work/${encodeURIComponent(group.item)}">Open work card</a></div>` : ""}
     <div class="wk-group-sessions">${group.sessions.map(s => wkPanel(s, false)).join("")}</div>
   </details>`;
 }
