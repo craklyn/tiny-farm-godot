@@ -16,7 +16,7 @@ This pass covers the machinery of work: intake, task state, worker and reviewer 
 - Interactive behavior is verified by performing the user action and asserting the resulting persisted state. Rendered words and source-code searches are supporting checks, not behavioral proof.
 - A worker may call work complete; only the reviewer and landing checks may make it complete in HQ.
 - The exact candidate the reviewer checked is the candidate that may land.
-- A durable personal lesson is written only after Daniel accepts the work that produced it. Rejected work leaves no memory behind.
+- A durable personal lesson is written only after the exact work that produced it is accepted by Daniel or passes clean review and exact-candidate landing. Rejected or undone work leaves no memory behind.
 - Every HQ write preserves fields it does not own.
 - Worker logs distinguish environment warnings, corrected development failures, and findings that block acceptance.
 - Existing changes in the shared working tree are somebody's work. No implementation may overwrite, discard, or sweep them into an unrelated commit.
@@ -39,10 +39,11 @@ This pass covers the machinery of work: intake, task state, worker and reviewer 
 
 1. The queue is the authoritative decision state machine. Other pages may either invoke that same recorded transition or link to it; they may not display a successful-looking local verdict that records nothing.
 2. Behavioral acceptance for HQ controls means submitting the action through the same handler the browser uses and asserting the persisted response and next visible state. Keyboard and narrow-width acceptance require browser-observable behavior, not a source-string assertion.
-3. Worker and reviewer notes use the existing `<remember>...</remember>` contract. Tags are stripped from Daniel's result immediately, but proposed notes remain pending until the corresponding item is accepted. The accepted transition appends them through the single existing memory writer in the main tree. Rejection deletes the pending proposal.
-4. Intentional waiting carries both a concrete wake event and the ruling that authorized the wait. It is neither blocked nor actionable until that event occurs.
-5. HQ editors merge owned fields into stored records by stable identity. They never recreate a record from only the fields shown in the form.
-6. The shared visible names are “Unit tests” and “Integration tests.” Internal identifiers may remain stable where changing them would break stored data.
+3. Owner sessions continue to propose lessons with `<remember>...</remember>`. The checker may propose a lesson for the owner in a dedicated JSON field; it may not hide one in prose. Proposals are bound to an attempt id and stripped from Daniel's result. A later clean check decides which still apply.
+4. Accepted and cleanly auto-landed work commit applicable pending lessons idempotently through the single memory writer in the main tree. Drop, rejection, supersession, or Undo removes that work's attributed memory. A revision replaces proposals from the superseded attempt rather than accumulating contradictory notes.
+5. Intentional waiting carries both a concrete, machine-evaluable wake event and the ruling that authorized the wait. The evaluator records when the event becomes satisfied or invalid; satisfied waits return to the ordinary actionable state, and broken references surface as errors rather than hiding the project.
+6. HQ editors merge owned fields into stored records by stable identity and reject a stale revision. They never recreate a record from only the fields shown in the form. Addition and deletion are explicit operations, not side effects of omission.
+7. The shared visible names are “Unit tests” and “Integration tests.” Internal identifiers may remain stable where changing them would break stored data. The larger glossary card is split: this stabilization owns the two conflicting test names; its remaining prose sweep stays open with that narrower remainder recorded.
 
 ## Work items
 
@@ -61,23 +62,35 @@ Card: `wbbbcc2086a1f`.
 
 - Reuse the chat memory parser and memory writer rather than adding a second tag format.
 - Store proposed drain memories with the work result, stripped from Daniel's visible prose.
-- Append them in the main tree only when the item reaches accepted. Rejecting or superseding the result removes the proposal without changing personal memory.
-- Acceptance: tests cover parsing, visible-result stripping, acceptance, rejection, idempotence, and a worker-worktree/main-tree boundary.
+- Let the checker return an optional, explicit lesson for the owner when its review establishes a reusable rule.
+- Commit the applicable proposals in the main tree only when the exact attempt is accepted or cleanly auto-landed. Rejecting, superseding, dropping, or undoing that result removes its attributed proposal or committed note.
+- Acceptance: tests cover parsing, checker schema, visible-result stripping, revision replacement, manual acceptance, clean auto-landing, rejection/drop/Undo, idempotence, and the worker-worktree/main-tree boundary.
 
 ### C. Restore truthful state and write safety
 
 Cards in order: `w559bf20d689`, `wd2ac4cb762d`, `w41fdcfcaf59`.
 
-- Bind work items before running the broken-reference consistency check. Prove a valid reference stays quiet and an invalid reference is reported.
-- Add intentional waiting with a wake event and authorizing ruling; exclude it from unblock actions, overdue-blocked signals, and program gates until the event occurs. Migrate only the two records named by the card.
-- Make release-plan saves merge fields by story id. Prove an unknown field survives a read/edit/save/read round trip.
+- Bind work items before running the broken-reference consistency check. Prove a valid reference stays quiet, an invalid reference is reported, repeated checks replace rather than accumulate warnings, and a read failure reports unavailable rather than inventing missing references.
+- Add intentional waiting with an authorizing ruling and a typed wake event that the server can evaluate. Exclude it from unblock actions, overdue-blocked signals, and program gates only while the event is valid and unsatisfied. Surface invalid references; return satisfied waits to the ordinary actionable state. Migrate only the two records named by the card.
+- Make release-plan saves merge owned fields by story id and reject stale revisions. Preserve unknown story, release, and top-level fields. Define and test explicit add/delete behavior, duplicate or missing ids, and concurrent stale payloads.
 - Acceptance: focused regression tests pass and no unrelated record changes are included.
 
-### D. Align the visible vocabulary and close obsolete verification work
+### D. Make verification trustworthy under unattended execution
+
+Cards: `wd3ce6b6f4db`, `wa81b250c0180`, `we22d5b8c4a03`.
+
+- Give every Godot suite invocation an isolated `user://` location so concurrent or abandoned sessions cannot read another run's autosave. Prove two concurrent fixtures cannot see one another's files.
+- Make the integration runner exit deterministically after success and fail fast on its known timing fault. Prove a green result returns control to the drain rather than hanging until timeout.
+- Add focused tests around Animation Lab's work-launching and verdict path, including keep, drop, rework, missing work identity, persisted reason, and no silent success.
+- Acceptance: unattended commands finish with trustworthy exit codes, concurrent canaries remain isolated, and Animation Lab cannot spend work or claim a verdict without a tested record transition.
+
+### E. Tell the truth in logs and visible vocabulary
 
 Cards: `w9b453fb70c7`, `w8e71933a1a9`, `w37ca945abca2`.
 
 - Use “Unit tests” and “Integration tests” consistently in server output and visible pillar prose.
+- Classify a command by its exit result and structured event, not by a line beginning with “Failed.” Present sandbox/environment warnings separately from corrected development failures and findings that block acceptance. Add fixtures for the stream-fd warning, a real non-zero command, a later-passing retry, and a checker failure.
+- Narrow the remaining glossary card to its still-unfinished prose sweep instead of falsely closing the entire original ask.
 - Run the plain-writing check after all preceding text settles. Resolve new findings caused by this pass; do not fold the unrelated writing backlog into this stabilization build.
 - Reconcile the per-run-log card as obsolete: cite the current isolated subprocess evidence and record the shared rule that each run judges only its own output.
 - Acceptance: no newly introduced MUST FIX writing finding, the focused label tests pass, and the two non-build cards accurately record why no implementation session is needed.
@@ -85,14 +98,16 @@ Cards: `w9b453fb70c7`, `w8e71933a1a9`, `w37ca945abca2`.
 ## Final verification
 
 1. Run every focused HQ regression added by the work above.
-2. Run the full HQ Python and JavaScript test inventory, then the repository's static frontend check.
+2. Add one repository test runner that discovers every `hq/tests/test_*.py` and `test_*.js`, runs Python tests then Node tests in a documented order with isolated scratch paths, fails if a discovered test was skipped or unrecognized, and prints the count and result of every file. Run it, then the static frontend check.
 3. Run both Godot suites sequentially with isolated user-data paths so concurrent sessions cannot poison them.
 4. Run the offline writing verification, then the live writing judge only if its environment is available and authorized.
-5. Restart HQ and observe the real Queue, direct-card, Bullpen, waiting-state, and release-plan behaviors in the browser.
-6. Resume automatic task starts only after the current process cards are reconciled and the working tree contains no unowned overlap in their files.
+5. Run a controlled end-to-end canary against fixture records in a temporary data root: file work, run owner and checker, force one reviewer revision, confirm the next owner receives the finding, cleanly check and land the exact candidate, verify grouped sessions and the final card state, and verify that the accepted lesson appears only after landing. Restart/reload at each persisted boundary and clean up the fixture root.
+6. Restart HQ and observe the Queue and direct-card behavior at desktop and narrow viewports using reversible fixture records; verify persisted decisions and next-card selection after reload. Observe Bullpen classification and waiting-state presentation without mutating real work. Exercise release-plan save only against the temporary data root.
+7. Resume automatic task starts only after the current process cards are reconciled and the working tree contains no unowned overlap in their files.
 
 ## Execution status
 
 - 2026-09-22 10:35 PDT — Paused new automatic task starts. One already-running candidate check was allowed to continue.
-- 2026-09-22 — Surveyed 52 queued items: nine are in scope; seven require implementation; two require evidence reconciliation. Foundational landing, retry-context, attention-count, and hand-back cards are already solved and will not be rerun.
-- Next — Review this plan against the code, then implement clusters A through D in isolated worktrees.
+- 2026-09-22 — Initial survey found nine in-scope cards. Plan review added three verification-integrity cards and one unfiled Bullpen classification defect necessary for the stated outcome. Foundational landing, retry-context, attention-count, and hand-back cards are already solved and will not be rerun.
+- 2026-09-22 — Plan review corrected lifecycle gaps around auto-landing, reviewer lessons, Undo, wake events, stale writes, test discovery, and safe end-to-end verification.
+- Next — Implement clusters A through E in isolated worktrees.
