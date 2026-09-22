@@ -1,0 +1,110 @@
+{
+  "schema_version": 1,
+  "audit_attribution": "Chief of Staff operator audit of landed process commits; not a native checker pass or Daniel acceptance",
+  "scope": "The twelve work cards named by docs/hq/PROCESS_STABILIZATION_PLAN, reconciled against commits already on main",
+  "limitations": "This audit links bounded card asks to committed source and focused local test results. It does not recreate a drain checker verdict, claim Daniel accepted the work, or treat unfinished portions as complete.",
+  "cards": [
+    {
+      "id": "wecd05a982cc",
+      "classification": "hold_for_linkage",
+      "evidence_commits": ["63c875c666a8626fe1daac2bdea64339b9f25e68"],
+      "test_proof": ["node hq/tests/test_decision_actions.js: passed locally; browser-observed test could not start Chromium in the sandbox"],
+      "evidence_summary": "The shared decision behavior is on main, but this card's live record contains a rejected, stale candidate and an active revision that were not linked to that commit.",
+      "remaining_work": "Do not schedule another implementation attempt. An operator must explicitly link commit 63c875c666a8626fe1daac2bdea64339b9f25e68 to the card's rejected candidate and current revision, preserve the failed test evidence, and then decide whether the card can close.",
+      "expected_snapshots": [
+        {"state": "waiting_session", "revision": 0, "fingerprint": "78c82e8a7b920dd18ac7cfdf392ef8ea398d6e4f96cb434a64b9e197fa4e015c"},
+        {"state": "waiting_session", "revision": 15, "fingerprint": "cf71fe4b987349d142a30d4f29481ee1707c16934ad7843ea63c6b3605cb0ebd"}
+      ]
+    },
+    {
+      "id": "we11c4a7b3f92",
+      "classification": "safe_to_close",
+      "evidence_commits": ["63c875c666a8626fe1daac2bdea64339b9f25e68"],
+      "test_proof": ["python3 hq/test_anim.py: 11 tests passed", "node hq/tests/test_anim_verdicts.js: passed"],
+      "evidence_summary": "Animation Lab verdicts now persist keep, drop, and rework on the exact queue record, with no silent local-only success.",
+      "expected_snapshots": [{"state": "waiting_session", "revision": 0, "fingerprint": "e8deea598b9a0d2cc9d9ac8b944b499ea406aace048dcf899d712b0072c981c9"}]
+    },
+    {
+      "id": "wbbbcc2086a1f",
+      "classification": "safe_to_close",
+      "evidence_commits": ["64399ce820f730b7fa6a0b9d25510766abae07ea"],
+      "test_proof": ["python3 hq/tests/test_durable_memory.py: 6 tests passed"],
+      "evidence_summary": "Accepted and auto-landed work now commits attributed lessons idempotently; rejection, revision, supersession, drop, and undo remove or replace them.",
+      "expected_snapshots": [{"state": "waiting_session", "revision": 0, "fingerprint": "3d815be891b5cebb7ad2e7a939c8e8934d85d47d7c7a00ed766a2f2901e267e8"}]
+    },
+    {
+      "id": "w559bf20d689",
+      "classification": "safe_to_close",
+      "evidence_commits": ["ba68a694735e12a2ab639b14e04a9b14cfb7cf42"],
+      "test_proof": ["python3 hq/tests/test_process_truth.py: 11 tests passed, including valid, invalid, repeated, and unavailable references"],
+      "evidence_summary": "HQ binds work before checking references and distinguishes missing records from an unavailable record source.",
+      "expected_snapshots": [{"state": "waiting_session", "revision": 0, "fingerprint": "0662a9ae11c5499a872af4fb7e51045343e74c8b1acea135e317865f7e8aa360"}]
+    },
+    {
+      "id": "wd2ac4cb762d",
+      "classification": "safe_to_close",
+      "evidence_commits": ["ba68a694735e12a2ab639b14e04a9b14cfb7cf42"],
+      "test_proof": ["python3 hq/tests/test_process_truth.py: 11 tests passed, including waiting, satisfied, invalid, and release-gate cases", "node hq/tests/test_process_truth.js: passed"],
+      "evidence_summary": "Intentional waits carry a ruling and typed wake event, remain quiet only while valid and unsatisfied, and return to action when satisfied.",
+      "expected_snapshots": [{"state": "waiting_session", "revision": 0, "fingerprint": "0011945b8d330c725862121fdbd647cd84ae169e04cca1f7f279e73890762d09"}]
+    },
+    {
+      "id": "w41fdcfcaf59",
+      "classification": "safe_to_close",
+      "evidence_commits": ["ba68a694735e12a2ab639b14e04a9b14cfb7cf42"],
+      "test_proof": ["python3 hq/tests/test_process_truth.py: 11 tests passed, including unknown-field retention, explicit add/delete, invalid ids, and stale revisions"],
+      "evidence_summary": "Release-plan saves merge owned fields by stable id, preserve unknown data, and reject stale or ambiguous writes.",
+      "expected_snapshots": [{"state": "waiting_session", "revision": 0, "fingerprint": "6c37a2dae0db94377c6e6233355bd8d93631bd4acd3a208d43adb13fe134555c"}]
+    },
+    {
+      "id": "wd3ce6b6f4db",
+      "classification": "safe_to_close",
+      "evidence_commits": ["459e9c58cf66688e6f99cc366cb98e0f8b15860a"],
+      "test_proof": ["python3 tools/test_process_integrity.py: 3 tests passed, including concurrent private user data"],
+      "evidence_summary": "Every automated Godot check receives a private XDG data root, and the concurrency fixture cannot observe another run's files.",
+      "expected_snapshots": [{"state": "waiting_session", "revision": 0, "fingerprint": "3b72e9039073daca58f3327060d7899bc90f8e5eed135c27689c9b9dc4e4ca94"}]
+    },
+    {
+      "id": "wa81b250c0180",
+      "classification": "safe_to_close",
+      "evidence_commits": ["459e9c58cf66688e6f99cc366cb98e0f8b15860a"],
+      "test_proof": ["python3 tools/test_process_integrity.py: 3 tests passed, including bounded green shutdown and prompt non-zero timing failure"],
+      "evidence_summary": "The runner returns after a printed result, enforces a fixed deadline, and the known integration timing failure exits promptly with failure.",
+      "expected_snapshots": [{"state": "waiting_session", "revision": 0, "fingerprint": "a8c04c72704996bec3b0f189bf4674ab6f8e353cecff0d0ca9a03f046d21e0e6"}]
+    },
+    {
+      "id": "we22d5b8c4a03",
+      "classification": "safe_to_close",
+      "evidence_commits": ["459e9c58cf66688e6f99cc366cb98e0f8b15860a", "63c875c666a8626fe1daac2bdea64339b9f25e68"],
+      "test_proof": ["python3 hq/test_anim.py: 11 tests passed", "node hq/tests/test_anim_verdicts.js: passed"],
+      "evidence_summary": "Animation Lab launch, validation, work identity, and keep/drop/rework transitions have focused repeatable tests.",
+      "expected_snapshots": [{"state": "waiting_session", "revision": 0, "fingerprint": "147e099867f7c74d083c0edeadce21b6b5df8acfbfc04b357f51e294ad27ba9b"}]
+    },
+    {
+      "id": "w9b453fb70c7",
+      "classification": "leave_open",
+      "evidence_commits": ["ede635604c309e602a4ce3cb3ec997c771d1e5c0"],
+      "test_proof": ["python3 hq/tests/test_consumers.py: 13 tests passed, including the visible test-name assertion"],
+      "evidence_summary": "The two conflicting test labels are fixed, but the card also asks for a broader rendered-language sweep that has not been completed.",
+      "remaining_work": "Keep queued with the scope narrowed to the remaining rendered-language sweep; do not rerun the already-finished Unit tests and Integration tests rename.",
+      "expected_snapshots": [{"state": "waiting_session", "revision": 0, "fingerprint": "2a619b2f928bdd460b853953e2b530e0a1ee97841a3861bc810a514416fdd5f6"}]
+    },
+    {
+      "id": "w8e71933a1a9",
+      "classification": "leave_open",
+      "evidence_commits": ["ede635604c309e602a4ce3cb3ec997c771d1e5c0"],
+      "test_proof": ["python3 tools/check_writing.py: ran locally; reported one existing MUST FIX and ten current suggestions"],
+      "evidence_summary": "The current writing check runs, but its recorded findings mean this verification assignment cannot honestly close yet.",
+      "remaining_work": "Keep the existing revision queued; address or explicitly disposition the current writing findings, then record the actual checker result.",
+      "expected_snapshots": [{"state": "waiting_session", "revision": 1, "fingerprint": "9834687762d7aa0cf0e88fc7dca58c28844dc02f29c316517c85dfba96bf1bc1"}]
+    },
+    {
+      "id": "w37ca945abca2",
+      "classification": "safe_to_close",
+      "evidence_commits": ["459e9c58cf66688e6f99cc366cb98e0f8b15860a", "ede635604c309e602a4ce3cb3ec997c771d1e5c0"],
+      "test_proof": ["python3 hq/tests/test_hq_test_runner.py: 3 tests passed, including per-file scratch isolation, timeouts, skips, and non-zero exits"],
+      "evidence_summary": "Current runners judge each invocation's own process output and exit status in private scratch/data paths; the old shared-log implementation request is obsolete.",
+      "expected_snapshots": [{"state": "waiting_session", "revision": 0, "fingerprint": "4eb4e207a84a5c8e91578e342acfbe4f0051749c944893eed9f993ae9acde019"}]
+    }
+  ]
+}

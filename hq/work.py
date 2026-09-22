@@ -2122,6 +2122,8 @@ def _api_post(path, payload):
 
 LEGACY_COMPLETION_IDS = "w2d226ab695b,w72dee30012f,w8fd8d88b290,w59c6ab05678,w6ef64f2e6dd,wd191fa66a85,wabb24f97efa,w554baab1271,w56a634c94f6,w2d641a31a52,wae35fb20cb7,w8e71933a1a9,w6ff2240c1fb,wfce637ce465,w3169ae0d4da,wcd3806bc3a4,wc1886486f14,w5a4005536e1,wf1b3b951813".split(",")
 
+PROCESS_COMPLETION_IDS = "wecd05a982cc,we11c4a7b3f92,wbbbcc2086a1f,w559bf20d689,wd2ac4cb762d,w41fdcfcaf59,wd3ce6b6f4db,wa81b250c0180,we22d5b8c4a03,w9b453fb70c7,w8e71933a1a9,w37ca945abca2".split(",")
+
 
 def instruction_fingerprint(item):
     outcome_fields = {"_revision", "state", "result", "check", "prior_checks", "prior_results",
@@ -2240,3 +2242,110 @@ def _reconcile_legacy_completion(manifest=None, *, apply=False):
             if item.get("pending_followups"):
                 land_item(item, item["completion"]["by"], note=entry["evidence_summary"])
     return {"applicable": True, "applied": True, "errors": [], "totals": classifications, "cards": report}
+
+
+def reconcile_process_completion(manifest=None, *, apply=False):
+    """Reconcile the reviewed process build without inventing drain evidence.
+
+    The manifest distinguishes code already on main from the three assignments
+    that remain open.  Safe closures carry an attributed operator audit, never
+    a synthetic checker verdict or Daniel acceptance.  The decision-action card
+    is held, not closed: its rejected candidate must be explicitly linked to the
+    separately-landed implementation before anyone may call it complete.
+    """
+    with mutation_lock():
+        return _reconcile_process_completion(manifest, apply=apply)
+
+
+def _reconcile_process_completion(manifest=None, *, apply=False):
+    if manifest is None:
+        manifest = os.path.join(os.path.dirname(__file__), "data", "process_completion_reconciliation.json")
+    if isinstance(manifest, (str, os.PathLike)):
+        with open(manifest, encoding="utf-8") as source:
+            manifest = json.load(source)
+    manifest_id = evidence_id(manifest)
+    entries = manifest.get("cards", [])
+    classifications = {"safe_to_close": 9, "leave_open": 2, "hold_for_linkage": 1}
+    if (manifest.get("schema_version") != 1
+            or len(entries) != 12
+            or {entry.get("id") for entry in entries} != set(PROCESS_COMPLETION_IDS)
+            or any(sum(entry.get("classification") == name for entry in entries) != count
+                   for name, count in classifications.items())):
+        raise ValueError("The reviewed process manifest must contain the exact twelve classified cards.")
+
+    by_id = {item["id"]: item for item in items(strict=True)}
+    report, errors = [], []
+    for entry in entries:
+        item = by_id.get(entry["id"])
+        audit = (item or {}).get("process_completion_reconciliation") or {}
+        done = audit.get("manifest_id") == manifest_id
+        snapshots = entry.get("expected_snapshots") or []
+        matches = item and any(
+            item.get("state") == snapshot.get("state")
+            and item.get("_revision", 0) == snapshot.get("revision", 0)
+            and reconciliation_fingerprint(item) == snapshot.get("fingerprint")
+            for snapshot in snapshots)
+        if not item:
+            errors.append(entry["id"] + ": record missing")
+        elif not done and not matches:
+            errors.append(entry["id"] + ": state or reviewed evidence changed")
+        elif (not done and entry["classification"] in ("safe_to_close", "hold_for_linkage")
+              and pending_conversation(item, include_revision=False)):
+            errors.append(entry["id"] + ": a conversation or reply is still pending")
+        report.append({"id": entry["id"], "classification": entry["classification"],
+                       "already_applied": bool(done), "evidence_commits": entry.get("evidence_commits", []),
+                       "remaining_work": entry.get("remaining_work", "")})
+    if errors or not apply:
+        return {"applicable": not errors, "applied": False, "errors": errors,
+                "totals": classifications, "cards": report}
+
+    # Re-read all twelve under the process-wide write lock before mutating any
+    # one card.  Open-card progress invalidates the audit just as surely as a
+    # changed closure target does.
+    for entry in entries:
+        fresh = load_item(entry["id"])
+        original = by_id[entry["id"]]
+        if ((fresh.get("process_completion_reconciliation") or {}).get("manifest_id") != manifest_id
+                and reconciliation_fingerprint(fresh) != reconciliation_fingerprint(original)):
+            return {"applicable": False, "applied": False,
+                    "errors": [entry["id"] + ": changed during preflight"],
+                    "totals": classifications, "cards": report}
+
+    for entry in entries:
+        item = load_item(entry["id"])
+        existing = item.get("process_completion_reconciliation") or {}
+        if existing.get("manifest_id") == manifest_id:
+            if entry["classification"] == "safe_to_close" and item.get("state") != "landed":
+                land_item(item, item["completion"]["by"], note=entry["evidence_summary"])
+            continue
+        if reconciliation_fingerprint(item) != reconciliation_fingerprint(by_id[entry["id"]]):
+            raise RuntimeError("A work record was written outside the shared mutation lock")
+        attribution = entry.get("audit_attribution") or manifest["audit_attribution"]
+        audit = {"version": 1, "manifest_id": manifest_id, "at": _now_iso(),
+                 "classification": entry["classification"], "by": attribution,
+                 "evidence_commits": entry["evidence_commits"],
+                 "test_proof": entry["test_proof"],
+                 "evidence_summary": entry["evidence_summary"],
+                 "limitations": entry.get("limitations") or manifest.get("limitations", "")}
+        item["process_completion_reconciliation"] = audit
+        if entry["classification"] == "leave_open":
+            item["repair_brief"] = entry["remaining_work"]
+            save_item(item)
+            continue
+        if entry["classification"] == "hold_for_linkage":
+            item["repair_hold"] = entry["remaining_work"]
+            save_item(item)
+            continue
+        attempt_id = "process-audit-" + manifest_id + "-" + item["id"]
+        item["attempt_outcome"] = {"version": 1, "id": attempt_id, "status": "complete",
+                                   "reason": entry["evidence_summary"],
+                                   "result_id": evidence_id(item.get("result", "")),
+                                   "landing_verified": True,
+                                   "operator_audit": audit}
+        item["completion"] = {"version": 1, "attempt_id": attempt_id, "at": audit["at"],
+                              "by": attribution, "kind": "operator_audit", "evidence": audit}
+        item["pending_followups"] = {"version": 1, "attempt_id": attempt_id, "items": []}
+        save_item(item)
+        land_item(item, attribution, note=entry["evidence_summary"])
+    return {"applicable": True, "applied": True, "errors": [],
+            "totals": classifications, "cards": report}
