@@ -7,11 +7,11 @@
   "tier_reason": "This card let an agent's stray sentence stand in for the result he was promised.",
   "ask": "Accepted “Redraw the boot bloom so the player rises from behind the petals, with before-and-after animations to review”. This card let an agent's stray sentence stand in for the result he was promised.\n\nDaniel authorized the 2026-09-21 redesign. Implement HUMAN_INTERFACE_PLAN.md section2 after section1: extend the shared backend readiness projection. Keep unprepared work out of the default ready queue but discoverable with missing evidence named; preserve informed explicit verdicts on finished results. Do not use a frontend-only gate or fabricate recommendations.",
   "first_action": "Read docs/hq/HUMAN_INTERFACE_PLAN.md sections1–3 and the reviewed implementation contract; extend the shared backend readiness projection with inspectable deliverable and preparation requirements.",
-  "state": "for_review",
+  "state": "landed",
   "thread": "sam",
   "source": "chat",
   "source_message": "Accepted “Redraw the boot bloom so the player rises from behind the petals, with before-and-after animations to review”.",
-  "result": "The shared readiness projection now requires a named deliverable, inspectable evidence, a clear question, an honest recommendation or documented reason none fits, and recorded consequences before a work card enters Daniel’s default queue.\n\nIncomplete cards remain visible with machine-readable missing requirements. Finished results can still request an explicit verdict without a fabricated recommendation. Added fixtures cover each requirement and the no-recommendation verdict path. All HQ tests and the diff check pass.",
+  "result": "The shared readiness projection now requires a named deliverable, inspectable evidence, a clear question, an honest recommendation or documented reason none fits, and recorded consequences before a work card enters Daniel’s default queue.\n\nIncomplete cards remain visible with machine-readable missing requirements. Finished results can still request an explicit verdict without a fabricated recommendation. Terra’s original implementation was corrected against both preserved Sol findings without a second model review: consequences now require concrete follow-up work or the canonical empty list for no work, and focused fixtures cover every missing briefing field plus malformed consequences. All nine HQ scripts passed, followed by 2,853 unit checks and 968 integration checks with zero failures. Committed as 0c5951e after explicit operator verification.",
   "started": "",
   "attempts": 1,
   "created": "2026-09-21T15:02",
@@ -30,15 +30,15 @@
     "lane": "drain"
   },
   "diff": {
-    "stat": "docs/hq/HUMAN_INTERFACE_PLAN.md |  2 ++\n hq/server.py                    | 76 +++++++++++++++++++++++++++++++++++------\n hq/tests/test_waiting_on_you.py | 35 ++++++++++++++++---\n 3 files changed, 99 insertions(+), 14 deletions(-)",
+    "stat": "docs/hq/HUMAN_INTERFACE_PLAN.md |  2 +\n hq/server.py                    | 96 ++++++++++++++++++++++++++++++++++++-----\n hq/tests/test_waiting_on_you.py | 77 +++++++++++++++++++++++++++++++--\n 3 files changed, 160 insertions(+), 15 deletions(-)",
     "files": [
       "docs/hq/HUMAN_INTERFACE_PLAN.md",
       "hq/server.py",
       "hq/tests/test_waiting_on_you.py"
     ],
-    "applied": false,
-    "why_not": "the check said it should not land as it stands",
-    "why_not_landed": "the change it wrote could not be applied to the repository"
+    "applied": true,
+    "why_not": "",
+    "why_not_landed": ""
   },
   "check": {
     "read": true,
@@ -121,5 +121,161 @@
   },
   "follow_ups": [],
   "recommend": {},
-  "finished": "2026-09-21T18:02"
+  "finished": "2026-09-21T18:02",
+  "verification_history": [
+    {
+      "at": "2026-09-21T18:16",
+      "kind": "operator_correction_review",
+      "status": "landed",
+      "native_check_preserved": {
+        "read": true,
+        "verdict": "fail",
+        "summary": "The backend projection now exposes preparation gaps, but its consequences check can still admit a card without a recorded outcome, and the claimed per-requirement coverage is incomplete.",
+        "findings": [
+          {
+            "what": "A present but null or otherwise empty `follow_up` value satisfies the consequences requirement, so an unprepared card can enter the ready queue.",
+            "where": "hq/server.py:407",
+            "fix": "Validate that `follow_ups`/`follow_up` explicitly encodes either concrete next work or the supported no-work value; add null and malformed-value tests."
+          },
+          {
+            "what": "The reply says fixtures cover each requirement, but there are no focused assertions for missing question, missing recommendation, or missing no-recommendation explanation.",
+            "where": "hq/tests/test_waiting_on_you.py:57",
+            "fix": "Add separate fixtures and missing-code assertions for those three requirements, or narrow the completion claim."
+          }
+        ],
+        "escalates": null,
+        "escalation_reason": null
+      },
+      "source_sha256": {
+        "hq/server.py": "295c25314cf92d3a7c2a79f4734390642830c8316a9ec2597c3526708b412aec",
+        "hq/tests/test_waiting_on_you.py": "29dbdab69647779ab3c57c53888c26972cb76883f373dfe91f4d7107b5ece859",
+        "docs/hq/HUMAN_INTERFACE_PLAN.md": "45ad353059a8e43d8a74242afcb3906a043e95c3296c28e4421ac724ee60d553"
+      },
+      "fix_patch_sha256": "be324258833890af68c25177e8128fa328a90f8c3a865f10c39584ca68b4c342",
+      "paid_patch_sha256": "45315a1eb50e4a0e45c6e697533511016143c0bd01938b992b2e325c02479e44",
+      "previous_suites": null,
+      "checks": {
+        "test_consumers.py": {
+          "ok": true,
+          "exit_code": 0,
+          "log": "/home/daniel/dev/tiny-farm-godot/hq/data/runs/readiness-verification/20260921-181628/test_consumers.log",
+          "sha256": "5f0635b83af38a6c5d516fcb60dc3fa63c9c6ca4854e51a6a29ca33c92ccef16"
+        },
+        "test_decisions.py": {
+          "ok": true,
+          "exit_code": 0,
+          "log": "/home/daniel/dev/tiny-farm-godot/hq/data/runs/readiness-verification/20260921-181628/test_decisions.log",
+          "sha256": "8704ee7cee2d5e5e0d18d25c593c4409e40d829e72196af24cd61ff6eee24a53"
+        },
+        "test_drain.py": {
+          "ok": true,
+          "exit_code": 0,
+          "log": "/home/daniel/dev/tiny-farm-godot/hq/data/runs/readiness-verification/20260921-181628/test_drain.log",
+          "sha256": "a72f500e14541366b64abe9d2a3e939ed7d6f154e5ec21a9ae62d1e5416334b6"
+        },
+        "test_drain_resume.py": {
+          "ok": true,
+          "exit_code": 0,
+          "log": "/home/daniel/dev/tiny-farm-godot/hq/data/runs/readiness-verification/20260921-181628/test_drain_resume.log",
+          "sha256": "625ffc479b3840981da95d9bb22a0577363eb379d61de8c55d19be96ebf0c870"
+        },
+        "test_execution.py": {
+          "ok": true,
+          "exit_code": 0,
+          "log": "/home/daniel/dev/tiny-farm-godot/hq/data/runs/readiness-verification/20260921-181628/test_execution.log",
+          "sha256": "bf1bbce79836bf99eacbd1d756f46c214d640721ab0b203e5fe4284e7e1c75a6"
+        },
+        "test_landing_bar.py": {
+          "ok": true,
+          "exit_code": 0,
+          "log": "/home/daniel/dev/tiny-farm-godot/hq/data/runs/readiness-verification/20260921-181628/test_landing_bar.log",
+          "sha256": "8e019806a64059518ad8109edef80e5cd5a14548b79702d5783833bd67d139b7"
+        },
+        "test_queue_night.py": {
+          "ok": true,
+          "exit_code": 0,
+          "log": "/home/daniel/dev/tiny-farm-godot/hq/data/runs/readiness-verification/20260921-181628/test_queue_night.log",
+          "sha256": "eb8ee110786b72e8bd5d6f20c3f1e5c08a9bb6ed21dc662c38294018b88f47a6"
+        },
+        "test_waiting_on_you.py": {
+          "ok": true,
+          "exit_code": 0,
+          "log": "/home/daniel/dev/tiny-farm-godot/hq/data/runs/readiness-verification/20260921-181628/test_waiting_on_you.log",
+          "sha256": "73d49daaea9a7838adcfeef48d4f0fa77c6778890d581a21bb3daa994b547c9d"
+        },
+        "test_work.py": {
+          "ok": true,
+          "exit_code": 0,
+          "log": "/home/daniel/dev/tiny-farm-godot/hq/data/runs/readiness-verification/20260921-181628/test_work.log",
+          "sha256": "8302e94f07c2aa4b2d7a99fa8b63b0825cb4ca91ed4ced8f46d5e7ac29283db4"
+        },
+        "diff": {
+          "ok": true,
+          "exit_code": 0,
+          "log": "/home/daniel/dev/tiny-farm-godot/hq/data/runs/readiness-verification/20260921-181628/diff-check.log",
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "suites": {
+        "unit": {
+          "ok": true,
+          "exit_code": 0,
+          "log": "/home/daniel/dev/tiny-farm-godot/hq/data/runs/readiness-verification/20260921-181628/unit.log",
+          "sha256": "4e9331c5c7a3e10b1a51309dc8d5eabc1b57b85ce959f18948a7253dcf9d755b",
+          "tail": "Results: 2853 PASSED, 0 FAILED"
+        },
+        "integration": {
+          "ok": true,
+          "exit_code": 0,
+          "log": "/home/daniel/dev/tiny-farm-godot/hq/data/runs/readiness-verification/20260921-181628/integration.log",
+          "sha256": "443d29c492693c3d14ffbb5ff3096a10e2c79c8512ee5c11004d372329218778",
+          "tail": "Results: 968 PASSED, 0 FAILED"
+        }
+      },
+      "reviewer": "Root operator; correction reviewed against the two preserved Sol findings",
+      "findings": [
+        {
+          "original": {
+            "what": "A present but null or otherwise empty `follow_up` value satisfies the consequences requirement, so an unprepared card can enter the ready queue.",
+            "where": "hq/server.py:407",
+            "fix": "Validate that `follow_ups`/`follow_up` explicitly encodes either concrete next work or the supported no-work value; add null and malformed-value tests."
+          },
+          "disposition": "corrected_and_fixture_verified"
+        },
+        {
+          "original": {
+            "what": "The reply says fixtures cover each requirement, but there are no focused assertions for missing question, missing recommendation, or missing no-recommendation explanation.",
+            "where": "hq/tests/test_waiting_on_you.py:57",
+            "fix": "Add separate fixtures and missing-code assertions for those three requirements, or narrow the completion claim."
+          },
+          "disposition": "corrected_and_fixture_verified"
+        }
+      ],
+      "sha": "0c5951e28e65ed546e232a335f10ec71535b4944",
+      "finished": "2026-09-21T18:19"
+    }
+  ],
+  "suites": {
+    "unit": {
+      "ok": true,
+      "exit_code": 0,
+      "log": "/home/daniel/dev/tiny-farm-godot/hq/data/runs/readiness-verification/20260921-181628/unit.log",
+      "sha256": "4e9331c5c7a3e10b1a51309dc8d5eabc1b57b85ce959f18948a7253dcf9d755b",
+      "tail": "Results: 2853 PASSED, 0 FAILED"
+    },
+    "integration": {
+      "ok": true,
+      "exit_code": 0,
+      "log": "/home/daniel/dev/tiny-farm-godot/hq/data/runs/readiness-verification/20260921-181628/integration.log",
+      "sha256": "443d29c492693c3d14ffbb5ff3096a10e2c79c8512ee5c11004d372329218778",
+      "tail": "Results: 968 PASSED, 0 FAILED"
+    }
+  },
+  "closed": "2026-09-21T18:19",
+  "landed": {
+    "at": "2026-09-21T18:19",
+    "by": "operator",
+    "sha": "0c5951e28e65ed546e232a335f10ec71535b4944",
+    "note": "Operator corrected and verified both original Sol findings; paid implementation reused without a second model review."
+  }
 }
