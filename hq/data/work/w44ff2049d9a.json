@@ -5,16 +5,23 @@
   "owner": "rin",
   "tier": 1,
   "tier_reason": "This card let an agent's stray sentence stand in for the result he was promised.",
-  "ask": "Accepted “Redraw the boot bloom so the player rises from behind the petals, with before-and-after animations to review”. This card let an agent's stray sentence stand in for the result he was promised.\n\nDaniel authorized the 2026-09-21 redesign. Implement HUMAN_INTERFACE_PLAN.md section2 after section1: extend the shared backend readiness projection. Keep unprepared work out of the default ready queue but discoverable with missing evidence named; preserve informed explicit verdicts on finished results. Do not use a frontend-only gate or fabricate recommendations.",
-  "first_action": "Read docs/hq/HUMAN_INTERFACE_PLAN.md sections1–3 and the reviewed implementation contract; extend the shared backend readiness projection with inspectable deliverable and preparation requirements.",
+  "ask": "Accepted \u201cRedraw the boot bloom so the player rises from behind the petals, with before-and-after animations to review\u201d. This card let an agent's stray sentence stand in for the result he was promised.\n\nDaniel authorized the 2026-09-21 redesign. Implement HUMAN_INTERFACE_PLAN.md section2 after section1: extend the shared backend readiness projection. Keep unprepared work out of the default ready queue but discoverable with missing evidence named; preserve informed explicit verdicts on finished results. Do not use a frontend-only gate or fabricate recommendations.",
+  "first_action": "Read docs/hq/HUMAN_INTERFACE_PLAN.md sections1\u20133 and the reviewed implementation contract; extend the shared backend readiness projection with inspectable deliverable and preparation requirements.",
   "state": "waiting_session",
   "thread": "sam",
   "source": "chat",
-  "source_message": "Accepted “Redraw the boot bloom so the player rises from behind the petals, with before-and-after animations to review”.",
+  "source_message": "Accepted \u201cRedraw the boot bloom so the player rises from behind the petals, with before-and-after animations to review\u201d.",
   "result": "",
   "started": "",
   "attempts": 0,
   "created": "2026-09-21T15:02",
   "created_ts": 1790028142.332527,
-  "parent": "w449aff92129"
+  "parent": "w449aff92129",
+  "model_selection": {
+    "by": "daniel",
+    "at": "2026-09-21",
+    "policy": "Cost-conscious redesign: Terra build, Sol review once, escalate only when needed.",
+    "previous_override": null
+  },
+  "model": "sonnet"
 }

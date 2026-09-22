@@ -17,5 +17,12 @@
   "created": "2026-09-21T15:42",
   "created_ts": 1790030527.5054076,
   "plan": "docs/hq/HUMAN_INTERFACE_PLAN.md",
-  "plan_section": 6
+  "plan_section": 6,
+  "model_selection": {
+    "by": "daniel",
+    "at": "2026-09-21",
+    "policy": "Cost-conscious redesign: Terra build, Sol review once, escalate only when needed.",
+    "previous_override": null
+  },
+  "model": "sonnet"
 }
