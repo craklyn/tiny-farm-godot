@@ -3521,6 +3521,9 @@
    "verdict": "decode",
    "why": "'Provenance' is unexplained internal terminology, and 'entry' obscures that what's missing is a line in the credits."
   },
+  "f27580c9447f3618068b": {
+   "verdict": "ok"
+  },
   "f2eada8ca31276656c07": {
    "verdict": "ok"
   },

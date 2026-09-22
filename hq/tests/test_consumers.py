@@ -18,6 +18,10 @@ import anim
 
 
 class Consumers(unittest.TestCase):
+    def test_job_labels_use_the_visible_test_names(self):
+        self.assertEqual(server.JOBS['unit']['label'], 'Unit tests')
+        self.assertEqual(server.JOBS['integration']['label'], 'Integration tests')
+
     def test_hold_does_not_claim_or_mutate(self):
         item = {'id': 'held', 'owner': 'sam', 'attempts': 3, 'state': 'doing'}
         original = dict(item)
@@ -147,7 +151,70 @@ class Consumers(unittest.TestCase):
         self.assertEqual(claude, {'kind': 'done',
             'text': 'Session finished: success, 4 turns, 12 s, $1.25'})
         failed = server._compact_event({'type': 'result', 'is_error': True})[0]
-        self.assertEqual(failed, {'kind': 'error', 'text': 'Session failed'})
+        self.assertEqual(failed, {'kind': 'terminal-failure', 'text': 'Session failed'})
+
+    def test_worker_stream_distinguishes_warning_failure_retry_and_finding(self):
+        def tool_start(tool_id, command):
+            return {'type': 'assistant', 'message': {'content': [{
+                'type': 'tool_use', 'id': tool_id, 'name': 'command_execution',
+                'input': {'command': command}}]}}
+        def tool_end(tool_id, command, output, status, exit_code):
+            return {'type': 'user', 'message': {'content': [{
+                'type': 'tool_result', 'tool_use_id': tool_id, 'command': command,
+                'content': output, 'status': status, 'exit_code': exit_code,
+                'is_error': status == 'failed'}]}}
+
+        with tempfile.TemporaryDirectory() as tmp, patch.object(server, 'WORKERS_DIR', tmp):
+            run = Path(tmp) / 'run'
+            run.mkdir()
+            (run / 'work.json').write_text(json.dumps({'phase': 'drain-work'}))
+            events = [
+                tool_start('warning', 'git status'),
+                tool_end('warning', 'git status',
+                         'Failed to create stream fd: Operation not permitted', 'completed', 0),
+                tool_start('first', 'python3 test_example.py'),
+                tool_end('first', 'python3 test_example.py', 'one assertion failed', 'failed', 1),
+                tool_start('retry', 'python3 test_example.py'),
+                tool_end('retry', 'python3 test_example.py', 'all checks passed', 'completed', 0),
+            ]
+            (run / 'work.jsonl').write_text(''.join(json.dumps(event) + '\n' for event in events))
+            lines = server.worker_events('run', 'work')['lines']
+            kinds = [line['kind'] for line in lines]
+            self.assertIn('warning', kinds)
+            self.assertIn('command-failure', kinds)
+            self.assertIn('recovered', kinds)
+            self.assertNotIn('terminal-failure', kinds)
+
+            finding = {'verdict': 'fail', 'summary': 'not ready', 'findings': [{
+                'what': 'The saved value is lost', 'where': 'hq/server.py:1',
+                'fix': 'Preserve the stored field'}]}
+            (run / 'review.json').write_text(json.dumps({'phase': 'drain-check'}))
+            (run / 'review.jsonl').write_text(json.dumps({
+                'type': 'assistant', 'message': {'content': [{
+                    'type': 'text', 'text': json.dumps(finding)}]}}) + '\n')
+            review = server.worker_events('run', 'review')['lines']
+            self.assertEqual(review[0]['kind'], 'finding')
+            self.assertIn('The saved value is lost', review[0]['text'])
+
+    def test_worker_header_uses_terminal_metadata_not_command_output(self):
+        now = __import__('time').time()
+        with tempfile.TemporaryDirectory() as tmp, \
+             patch.object(server, 'WORKERS_DIR', tmp), \
+             patch.object(work, 'items', return_value=[]):
+            run = Path(tmp) / 'run'
+            run.mkdir()
+            base = {'started_ts': now, 'started': 'now', 'finished': 'now',
+                    'phase': 'drain-work', 'seat': 'sam'}
+            (run / 'clean.json').write_text(json.dumps({**base, 'error': ''}))
+            (run / 'clean.jsonl').write_text(json.dumps({
+                'type': 'user', 'message': {'content': [{
+                    'type': 'tool_result', 'is_error': True, 'status': 'failed',
+                    'exit_code': 1, 'content': 'test failed'}]}}) + '\n')
+            (run / 'broken.json').write_text(json.dumps({**base, 'error': 'CLI exited with code 1'}))
+            (run / 'broken.jsonl').write_text('')
+            states = {row['name']: row['state'] for row in server.worker_sessions()}
+            self.assertEqual(states['clean'], 'finished')
+            self.assertEqual(states['broken'], 'failed')
 
 
 if __name__ == '__main__':

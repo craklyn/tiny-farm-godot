@@ -28,4 +28,9 @@ const groupMarkup = vm.runInContext("wkGroup(groupForTest, '', '')", context);
 assert.ok(groupMarkup.includes("1 work session") && groupMarkup.includes("1 review"), "group summary describes phases accurately");
 assert.strictEqual((groupMarkup.match(/Alpha/g) || []).length, 1, "the work title appears once per group");
 assert.ok(!source.includes("attempt"), "the Bullpen does not call phases attempts");
+for (const kind of ["warning", "command-failure", "recovered", "finding", "terminal-failure"]) {
+  context.lineForTest = {kind, n: 1, text: kind};
+  const line = vm.runInContext("wkLine(lineForTest)", context);
+  assert.ok(line.includes(`l ${kind}`), `${kind} keeps its distinct visual class`);
+}
 console.log("workers view tests passed");

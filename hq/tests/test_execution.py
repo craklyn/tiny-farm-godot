@@ -146,7 +146,9 @@ class ExecutionTests(unittest.TestCase):
         result, events, _ = self.run_fake([
             {'type': 'thread.started', 'thread_id': 't'},
             {'type': 'item.started', 'item': {'id': 'c', 'type': 'command_execution', 'command': 'pwd'}},
-            {'type': 'item.completed', 'item': {'id': 'c', 'type': 'command_execution', 'aggregated_output': '/tmp'}},
+            {'type': 'item.completed', 'item': {'id': 'c', 'type': 'command_execution',
+                                                'command': 'pwd', 'aggregated_output': '/tmp',
+                                                'status': 'completed', 'exit_code': 0}},
             {'type': 'rate_limit_event'},
             {'type': 'item.completed', 'item': {'type': 'agent_message', 'text': 'done'}},
             {'type': 'turn.completed', 'usage': {'input_tokens': 100, 'cached_input_tokens': 40, 'output_tokens': 5}}])
@@ -160,6 +162,10 @@ class ExecutionTests(unittest.TestCase):
         self.assertEqual(result['usage']['fresh'], 65)
         self.assertEqual(events[1]['message']['content'][0]['type'], 'tool_use')
         self.assertEqual(events[2]['message']['content'][0]['type'], 'tool_result')
+        self.assertEqual(events[2]['message']['content'][0]['status'], 'completed')
+        self.assertEqual(events[2]['message']['content'][0]['exit_code'], 0)
+        self.assertEqual(events[2]['message']['content'][0]['command'], 'pwd')
+        self.assertFalse(events[2]['message']['content'][0]['is_error'])
         self.assertEqual(events[-1]['type'], 'result')
 
     def test_errors_and_timeout(self):

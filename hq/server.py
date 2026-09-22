@@ -1094,12 +1094,12 @@ def api_doc(rel):
 
 JOBS = {
     "unit": {
-        "label": "Unit suite",
+        "label": "Unit tests",
         "cmd": ["godot", "--headless", "--path", ".", "--script", "res://tests/test_runner.gd"],
         "verdict": re.compile(r"Results:\s*(\d+) PASSED, (\d+) FAILED"),
     },
     "integration": {
-        "label": "Integration suite",
+        "label": "Integration tests",
         "cmd": ["godot", "--headless", "--path", ".", "res://tools/test_runner.tscn"],
         "verdict": re.compile(r"Results:\s*(\d+) PASSED, (\d+) FAILED"),
     },
@@ -2148,7 +2148,9 @@ def read_history(name, limit=500):
 TOKEN_WINDOW_HOURS = 5.0     # the subscription window; what runs dry is this
 
 
-WORKERS_DIR = os.path.join(DATA, "runs", "workers")
+WORKERS_DIR = (os.path.join(os.environ["HQ_TEST_SCRATCH"], "workers")
+               if os.environ.get("HQ_TEST_SCRATCH")
+               else os.path.join(DATA, "runs", "workers"))
 _EXECUTION_QUEUE_CACHE = {"work_stamp": None, "data": None}
 
 
@@ -2246,7 +2248,39 @@ def _tool_line(name, inp):
     return f"Used {name}"
 
 
-def _compact_event(ev):
+def _environment_warning(text):
+    """Known host/sandbox warnings which do not make a successful command fail."""
+    low = str(text or "").lower()
+    return ("failed to create stream fd" in low
+            or ("operation not permitted" in low and "stream" in low)
+            or "sandbox warning" in low)
+
+
+def _checker_findings(text):
+    """Turn a checker's structured verdict into the lines that block landing."""
+    try:
+        doc = json.loads(str(text or "").strip())
+    except (TypeError, ValueError):
+        return []
+    if not isinstance(doc, dict) or doc.get("verdict") not in ("concerns", "fail"):
+        return []
+    findings = []
+    for finding in doc.get("findings") or []:
+        if not isinstance(finding, dict) or not str(finding.get("what") or "").strip():
+            continue
+        line = str(finding["what"]).strip()
+        if finding.get("where"):
+            line += " — " + str(finding["where"]).strip()
+        if finding.get("fix"):
+            line += ". " + str(finding["fix"]).strip()
+        findings.append({"kind": "finding", "text": "Review finding: " + line[:500]})
+    if not findings:
+        summary = str(doc.get("summary") or "The review did not pass.").strip()
+        findings.append({"kind": "finding", "text": "Review finding: " + summary[:500]})
+    return findings
+
+
+def _compact_event(ev, phase=""):
     """A CLI stream event -> zero or more plain lines {kind, text}."""
     out = []
     t = ev.get("type")
@@ -2257,9 +2291,12 @@ def _compact_event(ev):
             if not isinstance(block, dict):
                 continue
             if block.get("type") == "text" and (block.get("text") or "").strip():
-                out.append({"kind": "said", "text": block["text"].strip()})
+                findings = _checker_findings(block["text"]) if phase in ("checker", "drain-check") else []
+                out.extend(findings or [{"kind": "said", "text": block["text"].strip()}])
             elif block.get("type") == "tool_use":
-                out.append({"kind": "tool", "text": _tool_line(block.get("name", ""), block.get("input"))})
+                inp = block.get("input") if isinstance(block.get("input"), dict) else {}
+                out.append({"kind": "tool", "text": _tool_line(block.get("name", ""), inp),
+                            "tool_id": block.get("id"), "command": inp.get("command", "")})
     elif t == "user":
         for block in ((ev.get("message") or {}).get("content") or []):
             if isinstance(block, dict) and block.get("type") == "tool_result":
@@ -2267,10 +2304,19 @@ def _compact_event(ev):
                 if isinstance(body, list):
                     body = " ".join(str(b.get("text", "")) for b in body if isinstance(b, dict))
                 body = " ".join(str(body or "").split())
-                if block.get("is_error"):
-                    out.append({"kind": "error", "text": "Failed: " + body[:240]})
+                status = str(block.get("status") or "").lower()
+                exit_code = block.get("exit_code")
+                failed = (block.get("is_error") is True or status in ("failed", "error")
+                          or (isinstance(exit_code, int) and exit_code != 0))
+                common = {"tool_id": block.get("tool_use_id"),
+                          "command": block.get("command") or "", "exit_code": exit_code}
+                if failed:
+                    detail = body[:240] or (f"exit code {exit_code}" if exit_code is not None else status or "failed")
+                    out.append({"kind": "command-failure", "text": "Command failed: " + detail, **common})
+                elif body and _environment_warning(body):
+                    out.append({"kind": "warning", "text": "Environment warning: " + body[:240], **common})
                 elif body:
-                    out.append({"kind": "result", "text": body[:160]})
+                    out.append({"kind": "result", "text": body[:160], **common})
     elif t == "rate_limit_event":
         info = ev.get("rate_limit_info") or {}
         if info.get("status") and info.get("status") != "allowed":
@@ -2288,7 +2334,7 @@ def _compact_event(ev):
             text += ": " + details.lstrip(", ")
         if isinstance(cost, (int, float)):
             text += f", ${cost:.2f}"
-        out.append({"kind": "error" if ev.get("is_error") else "done", "text": text})
+        out.append({"kind": "terminal-failure" if ev.get("is_error") else "done", "text": text})
     return out
 
 
@@ -2393,18 +2439,31 @@ def worker_events(run, name, after=0):
     path = os.path.join(WORKERS_DIR, run, name + ".jsonl")
     lines = []
     total = 0
+    commands = {}
+    failed_commands = set()
+    meta = load_json(os.path.join(WORKERS_DIR, run, name + ".json")) or {}
+    phase = {"drain-check": "checker"}.get(meta.get("phase"), meta.get("phase") or "")
     try:
         with open(path, encoding="utf-8") as f:
             for n, line in enumerate(f, 1):
                 total = n
-                if n <= after:
-                    continue
                 try:
                     ev = json.loads(line)
                 except ValueError:
                     continue
-                for c in _compact_event(ev):
-                    lines.append(dict(c, n=n))
+                for c in _compact_event(ev, phase=phase):
+                    tool_id = c.get("tool_id")
+                    command = " ".join(str(c.get("command") or "").split())
+                    if c["kind"] == "tool" and tool_id and command:
+                        commands[tool_id] = command
+                    command = command or commands.get(tool_id, "")
+                    if c["kind"] == "command-failure" and command:
+                        failed_commands.add(command)
+                    elif c["kind"] == "result" and command in failed_commands:
+                        c = {**c, "kind": "recovered", "text": "Passed on retry: " + c["text"]}
+                        failed_commands.discard(command)
+                    if n > after:
+                        lines.append(dict(c, n=n))
     except OSError:
         return {"lines": [], "total": 0, "missing": True}
     return {"lines": lines, "total": total}

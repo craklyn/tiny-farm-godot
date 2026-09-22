@@ -24,7 +24,9 @@ const waiting = { available: true, count: 0, ready: [], items: [
 const context = vm.createContext({
   routes: {}, location: { hash: '#/' }, cache: {}, noteVersion() {},
   api: async url => url === '/api/waiting-on-you' ? waiting : url === '/api/org' ? {} : { curated: [], decided: [], rulings: {} },
-  fetch: async () => ({ json: async () => ({ items }) }),
+  fetch: async url => ({ json: async () => url === '/api/execution/queue'
+    ? { eligible: [{ id: 'queued' }, { id: 'accepted' }], held: [] }
+    : { items } }),
   ownerOf: () => ({ name: 'Rin' }), esc: String, mdi: String,
   h: value => value, updateQueueBadge() {},
   document: { getElementById: () => ({ addEventListener() {} }), addEventListener() {} },

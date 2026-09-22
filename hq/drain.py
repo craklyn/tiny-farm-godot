@@ -73,14 +73,19 @@ sys.path.insert(0, HERE)
 import server                      # noqa: E402  (path set above)
 import work                        # noqa: E402
 
-WORKTREES = os.path.expanduser("~/.cache/tiny-farm-drain")
-PATCHES = os.path.join(REPO, "hq", "data", "patches")
+TEST_SCRATCH = os.environ.get("HQ_TEST_SCRATCH", "")
+WORKTREES = (os.path.join(TEST_SCRATCH, "worktrees") if TEST_SCRATCH
+             else os.path.expanduser("~/.cache/tiny-farm-drain"))
+PATCHES = (os.path.join(TEST_SCRATCH, "patches") if TEST_SCRATCH
+           else os.path.join(REPO, "hq", "data", "patches"))
 # Every model session the drain runs is written here as it happens — one event
 # per line, the CLI's own stream — with a small record beside it. That is what
 # HQ's bullpen page (#/chat/bullpen) reads while a worker runs, and what a card's
 # "How it was done" fold reads afterwards. Gitignored with the rest of runs/.
-WORKERS = os.path.join(REPO, "hq", "data", "runs", "workers")
-DRAIN_STATE = os.path.join(REPO, "hq", "data", "runs", "drain.json")
+WORKERS = (os.path.join(TEST_SCRATCH, "workers") if TEST_SCRATCH
+           else os.path.join(REPO, "hq", "data", "runs", "workers"))
+DRAIN_STATE = (os.path.join(TEST_SCRATCH, "drain.json") if TEST_SCRATCH
+               else os.path.join(REPO, "hq", "data", "runs", "drain.json"))
 RUN_ID = ""
 
 
@@ -350,7 +355,8 @@ def prior_session(item):
     newest session that actually did something wins."""
     for path in _session_streams(item["id"])[:12]:
         rows = _stream_lines(path)
-        doing = [r for r in rows if r["kind"] in ("said", "tool", "error")]
+        doing = [r for r in rows if r["kind"] in
+                 ("said", "tool", "command-failure", "terminal-failure", "finding")]
         if len(doing) < 3:
             continue
         said = ""

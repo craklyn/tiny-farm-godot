@@ -211,7 +211,14 @@ class Normalizer:
                         'input': {'command': item.get('command', '')}} if kind == 'item.started' else
                        {'type': 'tool_result', 'tool_use_id': item.get('id'),
                         'content': item.get('aggregated_output', ''),
-                        'is_error': item.get('status') == 'failed'})
+                        # Keep the provider's structured result. Consumers must not
+                        # guess whether a command failed from words in its output.
+                        'status': item.get('status'),
+                        'exit_code': item.get('exit_code'),
+                        'command': item.get('command', ''),
+                        'is_error': (item.get('status') == 'failed'
+                                     or (isinstance(item.get('exit_code'), int)
+                                         and item.get('exit_code') != 0))})
             return [{**base, 'type': 'assistant' if kind == 'item.started' else 'user',
                      'message': {'content': [content]}}]
         return [{**base, 'type': 'system', 'subtype': kind}]
