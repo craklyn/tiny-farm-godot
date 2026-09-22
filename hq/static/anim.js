@@ -499,14 +499,17 @@ async function renderAnimLoop(slug) {
       <div class="card"><h2>Palette</h2><div id="an-palette"><div class="small muted">checking…</div></div></div>
       <div class="card"><h2>What it cost</h2>${anCostCard(L)}</div>
       <div class="card an-call"><h2>Your call</h2>
-        <div class="an-verdicts">
+        ${L.work_item ? `<div class="an-verdicts">
           <button class="ghost" data-v="keep">Keep it</button>
           <button class="ghost" data-v="rework">Send it back</button>
           <button class="ghost" data-v="drop">Drop it</button>
         </div>
         <textarea id="an-why" rows="3" placeholder="Why — this goes to whoever picks it up next"></textarea>
-        <div class="small muted" id="an-callnote">A verdict without a reason is not recorded: the reason
-          is the only part of this that helps the next person.</div>
+        <div class="small muted" id="an-callnote">This records the answer on
+          <a class="plain" href="#/work/${encodeURIComponent(L.work_item)}">the same review card shown in your queue</a>.
+          A reason is required because it is what reaches the next person.</div>`
+        : `<div class="small an-need" id="an-callnote">This loop has no review card, so the Lab cannot record
+          a verdict safely. <a class="plain" href="#/work">Open your queue</a> to review work that has a recorded identity.</div>`}
       </div>
     </div>
 
@@ -758,15 +761,26 @@ function anWireVerdict(L) {
       buttons.forEach(x => { x.disabled = true; });
       note.className = "small an-busy";
       note.textContent = b.dataset.v === "rework" ? "Sending it back…" : "Recording…";
+      let recorded = false;
       try {
-        const r = await fetch("/api/loop/verdict", {
+        const response = await fetch("/api/loop/verdict", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ slug: L.slug, verdict: b.dataset.v, why: text }),
-        }).then(x => x.json());
-        if (r.error) {
-          note.className = "small an-need";
-          note.textContent = r.error;
-        } else if (r.run) {
+          body: JSON.stringify({ work_id: L.work_item, slug: L.slug,
+            verdict: b.dataset.v, why: text }),
+        });
+        let r;
+        try { r = await response.json(); }
+        catch (_) { throw new Error(`The review did not return a recorded result (${response.status}).`); }
+        if (!response.ok || r.error) throw new Error(r.error || `The review failed (${response.status}).`);
+        const expectedState = b.dataset.v === "keep" ? "accepted"
+          : b.dataset.v === "drop" ? "dropped" : "doing";
+        if (!r.ok || r.work_id !== L.work_item || r.verdict !== b.dataset.v
+            || r.state !== expectedState) {
+          throw new Error("The review did not confirm the recorded card transition.");
+        }
+        recorded = true;
+        why.disabled = true;
+        if (r.run) {
           why.value = "";
           note.className = "small muted";
           note.textContent = "Sent back. It is being reworked now — the Lab's front page shows it "
@@ -778,9 +792,9 @@ function anWireVerdict(L) {
         }
       } catch (e) {
         note.className = "small an-need";
-        note.textContent = "Could not reach the server.";
+        note.textContent = e.message || "Could not reach the server.";
       } finally {
-        buttons.forEach(x => { x.disabled = false; });
+        if (!recorded) buttons.forEach(x => { x.disabled = false; });
       }
     };
   });

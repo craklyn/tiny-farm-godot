@@ -750,6 +750,14 @@ function workFocusId() {
   return "";
 }
 
+function advanceDirectDecision(finishedId, readyDecisions, focusId) {
+  if (focusId !== finishedId) { renderWork(); return; }
+  const next = readyDecisions.find(card => card.id !== finishedId);
+  const destination = next ? `/inbox/${encodeURIComponent(next.id)}` : "/work";
+  if ((location.hash.slice(1) || "/") === destination) renderWork();
+  else location.hash = "#" + destination;
+}
+
 async function renderWork(focusId = workFocusId()) {
   const org = await api("/api/org");
   // The decision queue is kept in different files from work items, but for him
@@ -844,7 +852,8 @@ async function renderWork(focusId = workFocusId()) {
     // card is in front of him again, and the card shows it rather than looking
     // like it was never touched.
     decisions.forEach(c => qo.appendChild(
-      decisionCard(c, rulings[c.id] || null, entData, () => renderWork(), looks)));
+      decisionCard(c, rulings[c.id] || null, entData,
+        () => advanceDirectDecision(c.id, decisions, focusId), looks)));
   }
 
   // Cards he has answered that are waiting on somebody here. Not folded away:

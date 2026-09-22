@@ -94,15 +94,14 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/queue.js'), 'utf
     { seats: [{ id: 'vp-engineering', held_by: 'elena' }] });
   assert.equal(seated.owner.name, 'Elena Volkov');
   assert.match(app, /data-intent="revise"/);
-  assert.match(app, /intent: sel\.dataset\.intent/);
   const control = { dataset: {} };
   const firstSubmit = ctx.decisionSubmissionId(control, 'revise', '', 'Show the rooms side by side.');
   const lostResponseRetry = ctx.decisionSubmissionId(control, 'revise', '', 'Show the rooms side by side.');
   const editedRetry = ctx.decisionSubmissionId(control, 'revise', '', 'Show the coop beside it too.');
   assert.equal(lostResponseRetry, firstSubmit);
   assert.notEqual(editedRetry, firstSubmit);
-  assert.match(app, /submission_id: decisionSubmissionId\(btn, sel\.dataset\.intent, sel\.value, judgment\)/);
+  assert.match(app, /recordDecision\(btn, c\.id, sel, judgment\)/);
   const queueSource = fs.readFileSync(path.join(__dirname, '../static/queue.js'), 'utf8');
-  assert.match(queueSource, /submission_id: decisionSubmissionId\(decisionSubmit, selected\.dataset\.intent, selected\.value, feedback\)/);
+  assert.match(queueSource, /qSubmitDecision\(decisionSubmit, r, selected, feedback, status, qRefresh\)/);
   console.log('Queue refresh, deliberate review links and unavailable status pass.');
 })().catch(error => { console.error(error); process.exitCode = 1; });

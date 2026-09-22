@@ -308,6 +308,28 @@ function qTimeAgo(tsSeconds) {
 
 let qSelected = null;   // id of the row filling the pane, once any exists
 
+async function qSubmitDecision(control, row, selected, feedback, status, refresh) {
+  control.disabled = true;
+  if (status) status.textContent = "Recording…";
+  try {
+    await recordDecision(control, row.cardId, selected, feedback);
+  } catch (error) {
+    control.disabled = false;
+    if (status) status.textContent = error.message;
+    return false;
+  }
+  if (status) status.textContent = "Recorded. Loading the next question…";
+  await refresh(status);
+  return true;
+}
+
+function qSelectNext(rows) {
+  if (!qSelected || !rows.some(row => row.id === qSelected)) {
+    qSelected = rows[0] ? rows[0].id : null;
+  }
+  return qSelected;
+}
+
 /* The side pane (§7): the fixed anatomy, in the order the section numbers it,
    so his eyes learn where each thing lives. A decision card and a work card
    render through this one function from their two field shapes (§6 rule:
@@ -411,7 +433,7 @@ function qRender(state) {
   // Whatever verdict just fired took its row out of `rows`; picking up the
   // new first row is what makes the pane "advance by itself" (§7) without any
   // extra bookkeeping across the reload.
-  if (!qSelected || !rows.some(r => r.id === qSelected)) qSelected = rows[0] ? rows[0].id : null;
+  qSelectNext(rows);
 
   const unavailable = state.waiting.available === false;
   const autoStatus = execution.paused ? "Paused" : (execution.timer.active === false ? "Scheduler stopped" : "Running");
@@ -593,16 +615,7 @@ function qRender(state) {
         if (status) status.textContent = "Tell the studio what to revise before submitting.";
         return;
       }
-      decisionSubmit.disabled = true;
-      if (status) status.textContent = "Recording…";
-      fetch("/api/ruling", { method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: r.cardId, submission_id: decisionSubmissionId(decisionSubmit, selected.dataset.intent, selected.value, feedback), intent: selected.dataset.intent, option: selected.value,
-          option_label: selected.dataset.label, judgment: feedback.trim() })
-      }).then(async response => {
-        const body = await response.json();
-        if (!response.ok || body.error) throw new Error(body.error || `Could not record this (${response.status}).`);
-        qRefresh();
-      }).catch(error => { decisionSubmit.disabled = false; if (status) status.textContent = error.message; });
+      qSubmitDecision(decisionSubmit, r, selected, feedback, status, qRefresh);
       return;
     }
     if (yes) { const r = findRow(yes.dataset.id); if (r) { yes.disabled = true; qDoYes(r, reason()).catch(error => { yes.disabled = false; alert(error.message); }); } return; }
@@ -651,8 +664,10 @@ function qRender(state) {
     if (row) { qSelect(row.dataset.id); return; }
   });
 
-  function qRefresh() {
-    qLoadData().then(qRender).catch(() => {});
+  function qRefresh(status) {
+    return qLoadData().then(qRender).catch(error => {
+      if (status) status.textContent = `Recorded, but the next question could not be loaded: ${error.message}`;
+    });
   }
 
   updateQueueBadge(state.waiting);

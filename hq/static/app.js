@@ -1149,6 +1149,33 @@ function decisionSubmissionId(control, intent, option, feedback) {
   return control.dataset.submissionId;
 }
 
+async function recordDecision(control, id, selected, feedback) {
+  const judgment = String(feedback || "").trim();
+  const payload = {
+    id,
+    submission_id: decisionSubmissionId(
+      control, selected.dataset.intent, selected.value, judgment),
+    intent: selected.dataset.intent,
+    option: selected.value,
+    option_label: selected.dataset.label,
+    judgment,
+  };
+  const response = await fetch("/api/ruling", {
+    method: "POST", headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(payload),
+  });
+  let body;
+  try { body = await response.json(); }
+  catch (_) { throw new Error(`The studio could not record your response (${response.status}).`); }
+  if (!response.ok || body.error) {
+    throw new Error(body.error || `The studio could not record your response (${response.status}).`);
+  }
+  if (!body.ok || !body.ruling || body.ruling.id !== id) {
+    throw new Error("The studio did not confirm which decision it recorded.");
+  }
+  return body;
+}
+
 function decisionCard(c, ruling, entData, onRuled, looks) {
   // Only a ruling that picked an option settles a card. One with no option is
   // him sending it back, which is a turn in the conversation, not a verdict.
@@ -1319,14 +1346,7 @@ function decisionCard(c, ruling, entData, onRuled, looks) {
     const was = btn.textContent;
     btn.disabled = true; btn.textContent = "Recording…";
     try {
-      const r = await fetch("/api/ruling", {
-        method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ id: c.id, submission_id: decisionSubmissionId(btn, sel.dataset.intent, sel.value, judgment), intent: sel.dataset.intent, option: sel.value,
-          option_label: sel.dataset.label, judgment }),
-      });
-      if (!r.ok) throw new Error(`The studio could not record your response (${r.status}).`);
-      const j = await r.json();
-      if (j.error) { alert(j.error); btn.disabled = false; btn.textContent = was; return; }
+      const j = await recordDecision(btn, c.id, sel, judgment);
       onRuled(j.ruling);
     } catch (e) { alert("Failed: " + e.message); btn.disabled = false; btn.textContent = was; }
   });

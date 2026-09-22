@@ -444,6 +444,9 @@
   "1cfb5e4ce696aba499ae": {
    "verdict": "ok"
   },
+  "1e12eeddbc603de9944d": {
+   "verdict": "ok"
+  },
   "1e1cb80feac0429d9550": {
    "verdict": "ok"
   },
@@ -1175,6 +1178,9 @@
   "530f891857daf4eccee1": {
    "verdict": "ok"
   },
+  "5311b955c1dbe2fe8163": {
+   "verdict": "ok"
+  },
   "5340ca3d39e0215d63fa": {
    "instead": "Your written confirmation that you checked it yourself stops counting when the rule it confirmed changes",
    "quote": "The attestation lapses when the invariant changes",
@@ -1211,6 +1217,9 @@
    "quote": "would we even find out they had?",
    "verdict": "decode",
    "why": "The sentence is grammatically incomplete; \"they had\" needs an object, and the reader must infer what is meant."
+  },
+  "54c6c32d37d5df61cf0c": {
+   "verdict": "ok"
   },
   "54ea7be720971a816022": {
    "verdict": "ok"
@@ -1272,6 +1281,12 @@
   },
   "591cbebef07b7b63eea0": {
    "verdict": "ok"
+  },
+  "599186a63fade8aaa3d2": {
+   "instead": "Record the decision made in each review",
+   "quote": "Record decision answers from every review surface",
+   "verdict": "decode",
+   "why": "“Decision answers” and “review surface” are internal shorthand, so the reader must work out what decisions and places this refers to."
   },
   "59a881673f4d1e3383d2": {
    "verdict": "ok"
@@ -1494,6 +1509,9 @@
    "why": "Multiple faults: 'widest first' is unexplained; 'the the' is a typo; 'of them are' is incomplete at the start of a clause."
   },
   "6907e94ed59cd235f224": {
+   "verdict": "ok"
+  },
+  "6919b03703de06d5bb43": {
    "verdict": "ok"
   },
   "6931e764bf1a79915d37": {
@@ -1996,6 +2014,9 @@
    "verdict": "ok"
   },
   "8b87fad8dac778e5d1f2": {
+   "verdict": "ok"
+  },
+  "8c2bf178750c8689b83e": {
    "verdict": "ok"
   },
   "8c2ee42643b8b5a2efce": {
@@ -2555,6 +2576,9 @@
   "b031e78bfedee8b975ec": {
    "verdict": "ok"
   },
+  "b04765556a84b9ad989d": {
+   "verdict": "ok"
+  },
   "b05bf97ea407d723c466": {
    "verdict": "ok"
   },
@@ -2814,6 +2838,9 @@
    "verdict": "ok"
   },
   "c436e32f165b63e0e422": {
+   "verdict": "ok"
+  },
+  "c45427c9aa6b32b983d2": {
    "verdict": "ok"
   },
   "c4b8e4f6ce0e29c0d7d8": {
@@ -3672,21 +3699,6 @@
    "why": "Observation language about what the visual communicates, not what the player actually sees."
   },
   "ff530cf8a1918fb03393": {
-   "verdict": "ok"
-  },
-  "54c6c32d37d5df61cf0c": {
-   "verdict": "ok"
-  },
-  "5311b955c1dbe2fe8163": {
-   "verdict": "ok"
-  },
-  "6919b03703de06d5bb43": {
-   "verdict": "ok"
-  },
-  "b04765556a84b9ad989d": {
-   "verdict": "ok"
-  },
-  "8c2bf178750c8689b83e": {
    "verdict": "ok"
   }
  }
