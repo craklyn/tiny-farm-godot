@@ -84,9 +84,12 @@ class ProcessReconciliation(unittest.TestCase):
 
     def test_decision_card_is_held_out_of_the_scheduler_without_erasing_revision_state(self):
         original = work.load_item("wecd05a982cc")
+        original["waiting_for"] = {"reason": "a live scheduler refresh", "at": "later"}
+        work.save_item(original)
+        original = work.load_item("wecd05a982cc")
         work.reconcile_process_completion(apply=True)
         held = work.load_item("wecd05a982cc")
-        for field in ("ask", "result", "attempts", "revising", "prior_checks", "prior_results"):
+        for field in ("ask", "result", "attempts", "revising", "prior_checks", "prior_results", "waiting_for"):
             self.assertEqual(held.get(field), original.get(field))
         self.assertEqual(held["state"], "waiting_session")
         self.assertIn("Do not schedule another implementation attempt", held["repair_hold"])

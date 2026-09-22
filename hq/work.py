@@ -2270,7 +2270,9 @@ def _reconcile_process_completion(manifest=None, *, apply=False):
             or len(entries) != 12
             or {entry.get("id") for entry in entries} != set(PROCESS_COMPLETION_IDS)
             or any(sum(entry.get("classification") == name for entry in entries) != count
-                   for name, count in classifications.items())):
+                   for name, count in classifications.items())
+            or any(any("stable_fingerprint" in snapshot for snapshot in entry.get("expected_snapshots", []))
+                   and entry.get("classification") != "hold_for_linkage" for entry in entries)):
         raise ValueError("The reviewed process manifest must contain the exact twelve classified cards.")
 
     by_id = {item["id"]: item for item in items(strict=True)}
@@ -2280,10 +2282,15 @@ def _reconcile_process_completion(manifest=None, *, apply=False):
         audit = (item or {}).get("process_completion_reconciliation") or {}
         done = audit.get("manifest_id") == manifest_id
         snapshots = entry.get("expected_snapshots") or []
+        stable = dict(item or {})
+        stable.pop("_revision", None)
+        stable.pop("waiting_for", None)
         matches = item and any(
             item.get("state") == snapshot.get("state")
-            and item.get("_revision", 0) == snapshot.get("revision", 0)
-            and reconciliation_fingerprint(item) == snapshot.get("fingerprint")
+            and (("stable_fingerprint" in snapshot
+                  and evidence_id(stable) == snapshot["stable_fingerprint"])
+                 or (item.get("_revision", 0) == snapshot.get("revision", 0)
+                     and reconciliation_fingerprint(item) == snapshot.get("fingerprint")))
             for snapshot in snapshots)
         if not item:
             errors.append(entry["id"] + ": record missing")

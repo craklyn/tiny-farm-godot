@@ -8,12 +8,12 @@
       "id": "wecd05a982cc",
       "classification": "hold_for_linkage",
       "evidence_commits": ["63c875c666a8626fe1daac2bdea64339b9f25e68"],
-      "test_proof": ["node hq/tests/test_decision_actions.js: passed locally; browser-observed test could not start Chromium in the sandbox"],
+      "test_proof": ["node hq/tests/test_decision_actions.js: passed locally", "node hq/tests/test_decision_browser.js: passed in the full HQ run on main with browser access"],
       "evidence_summary": "The shared decision behavior is on main, but this card's live record contains a rejected, stale candidate and an active revision that were not linked to that commit.",
       "remaining_work": "Do not schedule another implementation attempt. An operator must explicitly link commit 63c875c666a8626fe1daac2bdea64339b9f25e68 to the card's rejected candidate and current revision, preserve the failed test evidence, and then decide whether the card can close.",
       "expected_snapshots": [
-        {"state": "waiting_session", "revision": 0, "fingerprint": "78c82e8a7b920dd18ac7cfdf392ef8ea398d6e4f96cb434a64b9e197fa4e015c"},
-        {"state": "waiting_session", "revision": 15, "fingerprint": "cf71fe4b987349d142a30d4f29481ee1707c16934ad7843ea63c6b3605cb0ebd"}
+        {"state": "waiting_session", "stable_fingerprint": "699953d98a274f5b011da4269590bd0e7345e9e27fb7da0dc73a82e92ac80697"},
+        {"state": "waiting_session", "stable_fingerprint": "f63734f33eb68ec9b0fa82efc3cce1273a8218cb64bd599f18e516f0e6e3f2c7"}
       ]
     },
     {
@@ -93,7 +93,7 @@
       "id": "w8e71933a1a9",
       "classification": "leave_open",
       "evidence_commits": ["ede635604c309e602a4ce3cb3ec997c771d1e5c0"],
-      "test_proof": ["python3 tools/check_writing.py: ran locally; reported one existing MUST FIX and ten current suggestions"],
+      "test_proof": ["python3 tools/check_writing.py: ran locally and reported unresolved existing findings; the exact count is intentionally not frozen because current work-card text changes it"],
       "evidence_summary": "The current writing check runs, but its recorded findings mean this verification assignment cannot honestly close yet.",
       "remaining_work": "Keep the existing revision queued; address or explicitly disposition the current writing findings, then record the actual checker result.",
       "expected_snapshots": [{"state": "waiting_session", "revision": 1, "fingerprint": "9834687762d7aa0cf0e88fc7dca58c28844dc02f29c316517c85dfba96bf1bc1"}]
