@@ -2056,11 +2056,18 @@ def _compact_event(ev):
             out.append({"kind": "note", "text": f"Rate limit: {info.get('status')}"})
     elif t == "result":
         n = ev.get("num_turns")
-        secs = round((ev.get("duration_ms") or 0) / 1000)
+        duration = ev.get("duration_ms")
+        secs = round(duration / 1000) if isinstance(duration, (int, float)) else None
         cost = ev.get("total_cost_usd")
-        out.append({"kind": "done", "text": f"Finished: {ev.get('subtype', '')}"
+        details = ((str(ev.get("subtype") or "").replace("_", " ").strip())
                     + (f", {n} turns" if n is not None else "") + f", {secs} s"
-                    + (f", ${cost:.2f}" if isinstance(cost, (int, float)) else "")})
+                    if secs is not None else "")
+        text = "Session failed" if ev.get("is_error") else "Session finished"
+        if details:
+            text += ": " + details.lstrip(", ")
+        if isinstance(cost, (int, float)):
+            text += f", ${cost:.2f}"
+        out.append({"kind": "error" if ev.get("is_error") else "done", "text": text})
     return out
 
 

@@ -138,6 +138,16 @@ class Consumers(unittest.TestCase):
             self.assertEqual(progress['tokens'], 12)
             self.assertIsNone(progress['cost'])
             self.assertEqual(server._compact_event(events[0])[0]['text'], 'A real answer')
+            self.assertEqual(server._compact_event(events[1])[0]['text'], 'Session finished')
+
+    def test_stream_completion_uses_only_fields_the_provider_supplied(self):
+        claude = server._compact_event({'type': 'result', 'subtype': 'success',
+                                        'num_turns': 4, 'duration_ms': 12500,
+                                        'total_cost_usd': 1.25})[0]
+        self.assertEqual(claude, {'kind': 'done',
+            'text': 'Session finished: success, 4 turns, 12 s, $1.25'})
+        failed = server._compact_event({'type': 'result', 'is_error': True})[0]
+        self.assertEqual(failed, {'kind': 'error', 'text': 'Session failed'})
 
 
 if __name__ == '__main__':

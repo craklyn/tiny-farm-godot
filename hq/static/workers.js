@@ -26,9 +26,10 @@ function wkHeader(s) {
   const title = s.title ? `<a class="plain" href="#/work/${esc(s.item)}">${esc(s.title)}</a>` : esc(s.item || "");
   const turns = s.provider !== "codex" && s.turns_allowed ? `${s.turns} of ${s.turns_allowed} turns` : `${s.turns} turns`;
   const cost = s.cost != null ? ` · $${Number(s.cost).toFixed(2)}` : (s.tokens ? ` · ${s.tokens.toLocaleString()} tokens through the model so far` : "");
-  const when = s.state === "running" ? `running ${wkElapsed(s.elapsed)}` : `${s.state} · started ${esc(s.started || "")}`;
+  const stateLabel = {running: "session running", finished: "session finished", failed: "session failed", stopped: "session stopped"}[s.state] || s.state;
+  const when = s.state === "running" ? `running ${wkElapsed(s.elapsed)}` : `started ${esc(s.started || "")}`;
   return `<div class="wk-head">
-    <span class="wk-state ${esc(s.state)}">${esc(s.state)}</span>
+    <span class="wk-state ${esc(s.state)}">${esc(stateLabel)}</span>
     <b>${who}</b> <span class="muted">as ${esc(s.phase || "worker")} on ${esc(s.provider || "claude")} / ${esc(s.model || "the default model")}${s.requested_model && s.requested_model !== s.model ? ` (assigned ${esc(s.requested_model)})` : ""}</span>
     <span>${title}</span>
     <span class="muted">${esc(when)} · ${turns}${cost}</span>
