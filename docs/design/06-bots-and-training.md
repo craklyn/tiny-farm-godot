@@ -368,9 +368,10 @@ options (P-8) → learned everything. Nothing about the mark-1 has to be thrown 
 next rung; it becomes the thing a bot can be *shown*.
 
 Two things this knowingly leaves open. Q-87 ruled for paired sprites: the three
-job rows now pair the Mark II with a crow or farmer, with an arrow for follow
-and a ring for circle. The off switch and other controls still use words, so
-the panel still asks a player to read (S-7, T-12/Q-35). Nothing yet **teaches**
+job rows now pair the Mark II with a crow or farmer, with a broad arrow for
+follow and two curved arrows moving around the farmer for circle. The off
+switch and other controls still use words, so the panel still asks a player
+to read (S-7, T-12/Q-35). Nothing yet **teaches**
 that a robot is tappable: it is discoverable by poking at it, which is fine for
 a placeholder and is `design/13`'s problem when the debut becomes real content.
 

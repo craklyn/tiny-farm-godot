@@ -48,6 +48,7 @@ const CONFIG_LABELS := {
 }
 const ROBOT_JOB_SHEET := preload("res://assets/sprites/generated/robot_job_icons.png")
 const ROBOT_JOB_COLS := {"shoo": 0, "follow": 1, "circle": 2}
+const ROBOT_JOB_SIZE := Vector2(104, 32)
 
 var active_menu: String = ""  # "", "pause", "shop", "inventory", "machine", "workbench", "window"
 var selected_option: int = 0
@@ -711,7 +712,8 @@ static func robot_job_icon(config: String) -> AtlasTexture:
 		return null
 	var atlas := AtlasTexture.new()
 	atlas.atlas = ROBOT_JOB_SHEET
-	atlas.region = Rect2(int(ROBOT_JOB_COLS[config]) * 48, 0, 48, 32)
+	atlas.region = Rect2(int(ROBOT_JOB_COLS[config]) * ROBOT_JOB_SIZE.x,
+		0, ROBOT_JOB_SIZE.x, ROBOT_JOB_SIZE.y)
 	return atlas
 
 
@@ -810,7 +812,7 @@ func _add_option(text: String, enabled: bool, font_size: int = 0,
 	hbox.add_child(lbl)
 	if picture != null:
 		var icon := TextureRect.new()
-		icon.custom_minimum_size = Vector2(48, 32)
+		icon.custom_minimum_size = ROBOT_JOB_SIZE
 		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 		icon.texture = picture
