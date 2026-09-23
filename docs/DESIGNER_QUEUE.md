@@ -624,20 +624,15 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   `design/09-art-direction.md` §"The look session". A warmer, cosier grade was dropped
   for being too close to today's look to be a direction. Rendering the four is the
   remaining work before the re-ask.
-- **Q-113 (Ruling)** How much a player can carry before she has to sell. Spawned by
-  your harvest-as-seed proposal (buying starter seed goes away; a harvested crop
-  replants itself, and only what's over a keep line can be sold). That keep line is
-  the one number the sim work needs before it can start. You suggested 5 or 10 on her
-  person for early game, growing at each storage building. **Strawman: 10 on her person, 40 at a
-  later grain silo** — 5 runs out before she can replant the nine-tile plot she starts
-  the game owning, which would repeat the unexplained-refusal problem a real session
-  already surfaced (17 of 27 actions); 10 covers that whole starter plot in one pass.
-  The silo number clears a fully worked wheat farm several times over. Both
-  `[Playtest]`. Full reasoning and options in `hq/data/decisions/Q-113.json`.
-  **Flagged, not part of this ruling:** one planted seed still makes exactly one
-  harvested crop today, so an ordinary replanted farm produces nothing extra for this
-  cap to ever apply to — that's a separate open question (filed to me to bring back as
-  its own card) about whether a planting should give back more than it cost.
+- **Q-113** ~~How much a player can carry before she has to sell~~ — ✅ ruled
+  2026-09-21: **10 crops on her person; 40 when she has a grain silo.** Both numbers
+  are `[Playtest]`. Ten covers the nine-tile starting plot in one harvest-and-replant
+  pass; five would interrupt that first pass. The silo raises storage for a larger
+  farm. Recorded in `hq/data/rulings/Q-113.json` and S-18. This is a design ruling,
+  **not a claim that the one-pouch change has reached the build**. The amount kept back
+  when selling, whether capacity is shared across crop kinds, and the number of crops
+  returned by one planted seed were not settled by this choice. Make those details
+  explicit before the economy change lands.
 
 - **Q-43** ~~M1's exit gate depends on an unavailable playtester~~ — ✅ ruled 2026-08-28
   by the designer: **user-acceptance test satisfied at this stage.** The 4-year-old is

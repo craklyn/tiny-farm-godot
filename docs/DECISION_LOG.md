@@ -418,6 +418,16 @@ follow-up is still under the original yes. Why: measured the same day, each verd
 filed 1.6 new verdicts on him (97 follow-ups on 61 cards, every one returning), so the queue
 could not converge on effort alone.
 
+### S-18. The player carries ten crops before storage, then forty with a grain silo
+**Ruled 2026-09-21 (Q-113, option b).** The planned crop-and-seed stock holds
+ten crop items on her person. A grain silo raises the capacity to forty. Both limits are
+`[Playtest]`: ten lets her replant the nine-tile starting plot without a capacity
+refusal on the first pass, while forty gives a larger farm room to stockpile.
+This ruling does **not** set the quantity the shipping bin keeps back, nor how many
+crops one planted seed produces. It also does not say whether the capacity counts
+across all crop kinds or separately for each kind. The one-pouch code has not shipped;
+those details must be reconciled before it does.
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported
