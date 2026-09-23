@@ -3,6 +3,8 @@ const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const vm = require('node:vm');
 const path = require('node:path');
+const blockedView = JSON.parse(fs.readFileSync(path.join(__dirname,
+  'fixtures/blocked_reconciliation_view.json'), 'utf8'));
 const items = [
   { id: 'recorded', title: 'Recorded result', state: 'landed', owner: 'rin', landed: { at: '2026-09-21', sha: 'abc' } },
   { id: 'prospective', title: 'Prospective result', state: 'for_review', tier: 1, owner: 'rin', suites: { unit: { ok: true } }, follow_ups: [{ tier: 1 }] },
@@ -10,6 +12,8 @@ const items = [
   { id: 'queued', title: 'Queued work', state: 'waiting_session', owner: 'rin', started: '' },
   { id: 'accepted', title: 'Accepted thinking', state: 'doing', owner: 'rin', started: '' },
   { id: 'running', title: 'Running build', state: 'waiting_session', owner: 'rin', started: '2026-09-21T21:00' },
+  { id: 'weather', title: 'Weather reconciliation', state: 'waiting_session', tier: 1,
+    owner: 'rin', workflow_view: blockedView },
 ];
 let rendered = '';
 const waiting = { available: true, count: 0, ready: [], items: [
@@ -20,6 +24,7 @@ const waiting = { available: true, count: 0, ready: [], items: [
   { source: 'work', source_id: 'queued', status: 'ready_to_apply', reason: 'Completion is not recorded.' },
   { source: 'work', source_id: 'accepted', status: 'preparing', reason: 'The work is still running.' },
   { source: 'work', source_id: 'running', status: 'preparing', reason: 'The work is running now.' },
+  { source: 'work', source_id: 'weather', status: 'verification_pending', reason: 'The code must be reconciled.' },
 ] };
 const context = vm.createContext({
   routes: {}, location: { hash: '#/' }, cache: {}, noteVersion() {},
@@ -41,6 +46,8 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/queue.js'), 'utf
   assert.deepEqual(Array.from(data.pendingCompletion, x => x.card.id), ['prospective']);
   assert.deepEqual(Array.from(data.waitingToStart, x => x.card.id), ['queued', 'accepted']);
   assert.deepEqual(Array.from(data.studioWork, x => x.card.id), ['failed', 'running']);
+  assert.deepEqual(Array.from(data.heldToStart, x => x.card.id), ['weather']);
+  assert.equal(context.workflowStatus(items[6]).startsWith('Blocked — Save-lineage edits'), true);
   context.qRender(data);
   const landed = rendered.split('Landed without you')[1].split('Reviewed, waiting to be merged')[0];
   assert.match(landed, /q-count">1</);
@@ -50,10 +57,15 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/queue.js'), 'utf
   assert.match(pending, /Prospective result/);
   assert.doesNotMatch(pending, /Queued work/);
   assert.doesNotMatch(pending, /started 1 more/);
-  const notStarted = rendered.split('Waiting to start')[1].split('Back with the studio')[0];
+  const notStarted = rendered.split('Waiting to start')[1].split('Blocked studio work')[0];
   assert.match(notStarted, /Queued work/);
   assert.match(notStarted, /Accepted thinking/);
   assert.match(rendered, /the checker found it not done/);
+  const blocked = rendered.split('Blocked studio work')[1].split('Back with the studio')[0];
+  assert.match(blocked, /Weather reconciliation/);
+  assert.match(blocked, /Save-lineage edits overlap the old patch/);
+  assert.match(blocked, /Open next action and evidence/);
+  assert.doesNotMatch(notStarted, /Weather reconciliation/);
   // Raw tier/check fields cannot override the shared status.
   items[1].tier = 2;
   items[1].check = { verdict: 'fail' };

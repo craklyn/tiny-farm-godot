@@ -68,11 +68,20 @@ function workflowView(item) {
   };
 }
 
+// A runnable recovery step does not make the original outcome ready. The
+// projection describes both: availability belongs to next_action, while the
+// blocker describes the work that action must repair.
+function workflowOutcomeBlocked(item) {
+  const view = workflowView(item);
+  if (view.availability === "terminal" || (view.shipped_evidence || {}).landed_sha) return false;
+  return view.availability === "blocked" || !!view.blocker;
+}
+
 function workflowStatus(item) {
   const view = workflowView(item);
   const action = view.next_action || {};
   const reason = (view.blocker || {}).reason || "";
-  if (view.availability === "blocked") {
+  if (workflowOutcomeBlocked(item)) {
     const recovery = action.availability === "running" ? "recovery is running"
       : action.availability === "runnable" ? "recovery is ready" : "";
     return `Blocked${reason ? ` — ${reason}` : ""}${recovery ? `; ${recovery}` : ""}`;
@@ -752,10 +761,11 @@ async function renderPerson(id) {
   const candidateNeedsLanding = item => Number(item.tier) > 0
     && ["unverified", "reviewed", "held", "stale"].includes(workflowView(item).candidate_status);
   const waiting = mine.filter(i => readyForDaniel.has(i.id)
-    && workflowView(i).availability !== "blocked" && !candidateNeedsLanding(i));
-  const moving = mine.filter(i => workflowView(i).availability === "running");
-  const ready = mine.filter(i => workflowView(i).availability === "runnable");
-  const blocked = mine.filter(i => ["blocked", "waiting_event"].includes(workflowView(i).availability)
+    && !workflowOutcomeBlocked(i) && !candidateNeedsLanding(i));
+  const moving = mine.filter(i => workflowView(i).availability === "running" && !workflowOutcomeBlocked(i));
+  const ready = mine.filter(i => workflowView(i).availability === "runnable" && !workflowOutcomeBlocked(i));
+  const blocked = mine.filter(i => (workflowOutcomeBlocked(i)
+    || workflowView(i).availability === "waiting_event")
     && (!readyForDaniel.has(i.id) || candidateNeedsLanding(i)));
   const live = p => p.status !== "done";
   const owns = projects.filter(p => p.owner === id && live(p));

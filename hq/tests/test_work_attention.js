@@ -98,22 +98,32 @@ ctx.ownerOf = () => ({ name: 'Rin' });
   assert.match(timelineCard, /data-time="2026-09-22T16:37:36-07:00"/);
   assert.match(timelineCard, /HQ recovered its latest record/);
   ctx.ownerOf = (org, id) => (org.employees || []).find(person => person.id === id) || { name: id || 'someone' };
+  const projectedWeather = JSON.parse(fs.readFileSync(
+    path.join(__dirname, 'fixtures/blocked_reconciliation_view.json'), 'utf8'));
+  assert.equal(projectedWeather.availability, 'runnable');
+  assert.equal(projectedWeather.next_action.type, 'reconcile');
+  assert.equal(projectedWeather.blocker.type, 'code_conflict');
   const canonicalWeather = { id: 'weather', title: 'Weather fix', level: 'task', tier: 1,
     state: 'waiting_session', owner: 'rin', started: '2026-09-22T10:00:00Z',
     result: 'The old candidate passed ten repeat runs.', suites: { integration: { ok: true } },
-    workflow_view: { version: 1, phase: 'reconciliation', availability: 'blocked',
-      blocker: { type: 'code_conflict', reason: 'Save-lineage edits overlap the old patch' },
-      next_action: { id: 'reconcile-weather', owner: 'claude', type: 'reconcile',
-        summary: 'Rebuild on current main and rerun both suites', age_seconds: 3600 },
-      last_moved: '2026-09-22T18:00:00Z', candidate_status: 'stale', shipped_evidence: null } };
+    workflow_view: projectedWeather };
   const weatherHtml = actualWorkCard(canonicalWeather,
     { employees: [{ id: 'rin', name: 'Rin' }, { id: 'claude', name: 'Adam' }] },
     { tiers: { '1': { name: 'Do it, show the diff' } } }).html;
   assert.match(weatherHtml, /Blocked — Save-lineage edits/);
-  assert.match(weatherHtml, /Adam/);
-  assert.match(weatherHtml, /Rebuild on current main/);
+  assert.match(weatherHtml, /Rin/);
+  assert.match(weatherHtml, /Reconcile the candidate with current main/);
   assert.match(weatherHtml, /earlier proposed version, not the version now intended for the main code branch/);
   assert.doesNotMatch(weatherHtml, /data-act=|data-send=|An automated task is running now/);
+  items.push(canonicalWeather);
+  sections.length = 0;
+  body.children.length = 0;
+  await ctx.renderWork();
+  const blocked = sections.find(el => el.html.includes('Blocked studio work'));
+  assert.deepEqual(blocked.children.map(el => el.html), ['repair-held', 'weather']);
+  const readyToStart = sections.find(el => el.html.includes('Ready to start'));
+  assert.ok(!readyToStart || !readyToStart.children.some(el => el.html === 'weather'));
+  items.pop();
   const studio = sections.find(el => el.html.includes('You answered — waiting on the studio'));
   assert.deepEqual(studio.children.map(el => el.html), ['q-pending']);
   assert.match(studio.html, /studio's move now/);

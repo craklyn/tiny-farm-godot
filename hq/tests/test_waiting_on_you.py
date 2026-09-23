@@ -122,8 +122,9 @@ def main():
         check(states["q-done"] == "pending_integration",
               "a chosen ruling remains visibly with the studio until integration")
         check(states["w-held"] == "verification_pending", "held patches await verification")
-        check(states["w-preparing"] == states["w-doing"] == states["w-build-running"] == "preparing",
-              "only work with a recorded start is running")
+        check(states["w-preparing"] == "preparing" and
+              states["w-doing"] == states["w-build-running"] == "verification_pending",
+              "a recorded start without a live session needs studio recovery, not Daniel")
         check(states["w-waiting"] == states["w-scheduled"] == "scheduled"
               and states["w-accepted"] == "closed",
               "unstarted work is scheduled; acceptance is recorded separately")
@@ -271,6 +272,49 @@ console.log("Rendered review cards keep question, artifact, recommendation, and 
               "an unavailable work reading is not reported as zero")
     finally:
         server.api_queue, server.work.items, server.work._held_back = old_queue, old_items, old_held
+
+    code_result = card("w-code-result", "for_review", tier=1,
+                       diff={"applied": True, "files": ["systems/weather.gd"]},
+                       suites={"unit": {"ok": True}}, check={"verdict": "pass"})
+    blocked_code = card("w-code-held", "for_review", tier=1,
+                        diff={"applied": True, "files": ["systems/weather.gd"]},
+                        repair_hold="The candidate needs reconciliation.")
+    actual_choice = card("w-tier-two-choice", "needs_approval", tier=2)
+    projected_fixture = Path(HERE) / "fixtures" / "blocked_reconciliation_view.json"
+    projected_item = {"id": "weather", "state": "waiting_session", "owner": "rin",
+                      "created": "2026-09-22T10:00:00Z", "tier": 1}
+    check(json.loads(projected_fixture.read_text()) == server.work.work_view(
+        projected_item, {"blocked_files": ["systems/weather.gd"],
+                         "tree_reason": "Save-lineage edits overlap the old patch"}, now=1790100000),
+        "browser fixture is exactly the backend's blocked-outcome/runnable-action projection")
+    with patch.object(server, "api_queue", return_value={"items": [], "curated": [], "decided": [], "rulings": {}}), \
+         patch.object(server.work, "items", return_value=[code_result, blocked_code, actual_choice]):
+        held_view = server.work.work_view(blocked_code, now=1000)
+        check(held_view["availability"] == "runnable" and held_view["blocker"]
+              and held_view["next_action"]["type"] == "reconcile",
+              "real projection has a runnable reconciliation step beside a blocked code result")
+        projection = server.waiting_on_you()
+        check({row["source_id"] for row in projection["ready"]} == {"w-tier-two-choice"},
+              "applied but unlanded code is not Daniel's work; a tier-two approval still is")
+        check(projection["counts"] == {"total": 1, "work": 1, "decisions": 0}
+              and server.waiting_reading()["count"] == 1
+              and server.waiting_block()["count"] == 1,
+              "dashboard and navigation counts exclude both studio-owned code results")
+        statuses = {row["source_id"]: row for row in projection["items"]}
+        check(all(statuses[ident]["status"] == "verification_pending" for ident in
+                  ("w-code-result", "w-code-held")),
+              "the studio's missing landing evidence stays visible without a CEO verdict")
+        signals = server._compute_signals_now()
+        check(signals["work"]["waiting_on_you"] == signals["waiting"]["count"] == 1
+              and any("Give your verdict on 1 piece" in row.get("headline", "")
+                      for row in signals["eye"]),
+              "dashboard count and verdict hero include only the genuine tier-two approval")
+        with patch.object(server.work, "items", return_value=[code_result, blocked_code]):
+            signals = server._compute_signals_now()
+        check(signals["work"]["waiting_on_you"] == signals["waiting"]["count"] == 0
+              and not any("Give your verdict" in row.get("headline", "")
+                          for row in signals["eye"]),
+              "dashboard has no verdict hero when only studio-owned code is held")
 
     concrete = {"title": "Fix the preview", "owner": "rin",
                 "first_action": "Render the revised animation at game size", "tier": 1}

@@ -218,7 +218,7 @@ function attemptsBehind(it) {
 
 function repairHoldReason(it) {
   const view = workflowView(it);
-  return view.canonical && view.availability === "blocked"
+  return view.canonical && workflowOutcomeBlocked(it)
     ? String((view.blocker || {}).reason || "This work has a recorded problem that prevents it from proceeding.").trim()
     : String(it.repair_hold || "").trim();
 }
@@ -915,8 +915,8 @@ async function renderWork(focusId = workFocusId()) {
     const set = openSet(); set.add(focusId); saveOpen(set);
   }
   const pol = snap.policy;
-  const repairHeld = snap.items.filter(i => workflowView(i).availability === "blocked");
-  const by = st => snap.items.filter(i => i.state === st && workflowView(i).availability !== "blocked");
+  const repairHeld = snap.items.filter(i => workflowOutcomeBlocked(i));
+  const by = st => snap.items.filter(i => i.state === st && !workflowOutcomeBlocked(i));
   const focusedItem = focusId ? snap.items.find(i => i.id === focusId) : null;
   const doingNow = by("doing").filter(i => workflowView(i).availability === "running");
   const waitingToStart = by("doing").filter(i => workflowView(i).availability !== "running");

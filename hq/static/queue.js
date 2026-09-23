@@ -264,7 +264,7 @@ async function qLoadData() {
       // a code blocker cannot be promoted to a CEO decision by an old status.
       const candidateNeedsLanding = Number(card.tier) > 0
         && ["unverified", "reviewed", "held", "stale"].includes(view.candidate_status);
-      if (view.availability === "blocked") heldStart.push(entry);
+      if (workflowOutcomeBlocked(card)) heldStart.push(entry);
       else if (row.status === "ready" && view.availability !== "running" && !candidateNeedsLanding) his.push(entry);
       else if ((view.phase === "landed" || view.candidate_status === "landed")
           && (view.shipped_evidence || {}).landed_sha) wentIn.push(card);

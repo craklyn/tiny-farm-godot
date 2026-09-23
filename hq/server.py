@@ -617,16 +617,29 @@ def _waiting_on_you_complete():
         "dropped": ("closed", "The work was closed without approval."),
     }
     for item in items:
+        # A recorded attempt can leave a card in for_review with diff.applied,
+        # even though no verified commit reached main. That is studio work,
+        # not a verdict Daniel can use to make code ship. A tier-2 approval
+        # before work starts is a different, genuine decision.
+        view = work.work_view(item)
+        unlanded_code = (item.get("state") == "for_review" and item.get("tier") in (1, 2)
+                         and not (view.get("shipped_evidence") or {}).get("landed_sha"))
+        studio_hold = bool(view.get("blocker"))
         held = item.get("state") == "for_review" and work._held_back(item)
         preparation = work_preparation(item)
         ready = (work._in_his_list(item) and preparation["ready"]
                  and not item.get("awaiting_reply") and not item.get("repair_hold")
-                 and not item.get("pending_landing") and not item.get("pending_followups"))
+                 and not item.get("pending_landing") and not item.get("pending_followups")
+                 and not studio_hold and not unlanded_code)
         if ready:
             status, reason = "ready", "A prepared result is ready for your verdict."
             finished.append(item)
         elif item.get("pending_landing"):
             status, reason = "verification_pending", "The recorded commit attempt is being recovered."
+        elif unlanded_code:
+            status, reason = "verification_pending", "The code result still needs verification and a commit on main."
+        elif studio_hold:
+            status, reason = "verification_pending", view["blocker"]["reason"]
         elif item.get("repair_hold"):
             status, reason = work.completion_assessment(item)
         elif held:
@@ -4975,14 +4988,31 @@ def _newest(path_glob_dir, exts=None):
 
 def compute_signals():
     import time as _t
+
+    # Work cards are written atomically (replace), including drain write_back.
+    # A 60-second signals cache must not leave an old "Needs you" hero or count
+    # on screen after the work changed. Include every work-record revision in
+    # the cache key; failed reads never license reuse of a previous answer.
+    def work_records_key():
+        try:
+            with os.scandir(work.WORK) as entries:
+                return tuple(sorted((entry.name, entry.stat().st_mtime_ns, entry.stat().st_size)
+                                    for entry in entries if entry.name.endswith(".json")))
+        except OSError:
+            return None
+
     with _SIG_LOCK:
-        if _SIG_CACHE["data"] and _t.time() - _SIG_CACHE["at"] < SIG_TTL:
+        records = work_records_key()
+        if (_SIG_CACHE["data"] and records is not None
+                and _SIG_CACHE.get("work_records") == records
+                and _t.time() - _SIG_CACHE["at"] < SIG_TTL):
             return _SIG_CACHE["data"]
         ver = _SIG_VER[0]
         data = _compute_signals_now()
-        if ver == _SIG_VER[0]:
+        if ver == _SIG_VER[0] and records is not None and records == work_records_key():
             _SIG_CACHE["data"] = data
             _SIG_CACHE["at"] = _t.time()
+            _SIG_CACHE["work_records"] = records
         return data
 
 

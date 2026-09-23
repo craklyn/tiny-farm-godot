@@ -1,0 +1,42 @@
+{
+  "version": 1,
+  "phase": "reconciliation",
+  "availability": "runnable",
+  "next_action": {
+    "id": "act_0078e07b027c5cabeda0",
+    "type": "reconcile",
+    "input_id": "legacy",
+    "owner": "rin",
+    "summary": "Reconcile the candidate with current main and obtain fresh review and tests.",
+    "priority": "reconciliation",
+    "created_at": "2026-09-22T10:00:00Z",
+    "state": "open",
+    "virtual": true,
+    "availability": "runnable",
+    "age_seconds": 28800,
+    "priority_reason": "Finishes reviewed work before new starts."
+  },
+  "actions": [{
+    "id": "act_0078e07b027c5cabeda0",
+    "type": "reconcile",
+    "input_id": "legacy",
+    "owner": "rin",
+    "summary": "Reconcile the candidate with current main and obtain fresh review and tests.",
+    "priority": "reconciliation",
+    "created_at": "2026-09-22T10:00:00Z",
+    "state": "open",
+    "virtual": true,
+    "availability": "runnable",
+    "age_seconds": 28800,
+    "priority_reason": "Finishes reviewed work before new starts."
+  }],
+  "blocker": {
+    "type": "code_conflict",
+    "reason": "Save-lineage edits overlap the old patch",
+    "files": ["systems/weather.gd"],
+    "owner": "rin"
+  },
+  "last_moved": "2026-09-22T10:00:00Z",
+  "candidate_status": "held",
+  "shipped_evidence": {"landed_sha": "", "ci_confirmed": false}
+}
