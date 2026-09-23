@@ -1,7 +1,7 @@
 # Activate the convergence queue without splitting HQ's records
 
 Date: 2026-09-22  
-Status: LIVING — cutover not yet performed  
+Status: LIVING — cutover performed; unattended work remains paused
 Owner: Chief of Staff  
 Design: `docs/hq/CONVERGENCE_BUILD_PLAN.md`, Work Item E
 
@@ -81,10 +81,11 @@ HQ_MAIN_ROOT=/home/daniel/dev/tiny-farm-godot-main
 ```
 
 Do not set `HQ_CANARY_MODE` or `HQ_TEST_SCRATCH` in either live unit. The
-following commands are the installation sequence, **not actions already
-performed**. Run them only after the gates above and the recorded preflight.
-The backup directory must not already exist; stop if it does. Do not stop an
-active drain midway through a worker session—wait for it to finish first.
+following commands are the **historical installation sequence, performed once
+on 2026-09-22**. Do not rerun them: the backup directory now exists and the
+new units are installed. They remain here to document the exact cutover and
+rollback boundary. Do not stop an active drain midway through a worker
+session—wait for it to finish first.
 
 ```bash
 (
@@ -117,8 +118,17 @@ Only then consider starting the drain timer; the execution-policy pause
 remains the final brake until the weather canary is deliberately dispatched.
 Do not start the old and new HQ commands at the same time.
 
-Write the actual pre/post values and the unit revision in the build-plan
-closeout. An offline green is not evidence that this live cutover happened.
+The live cutover happened at 20:00:38 PDT on 2026-09-22. The post-cutover
+`/api/health` named the durable main checkout, original data store, original
+user workspace and durable main as their respective roots. The weather card
+was read-stable under the new server. Three supervised worker/checker attempts,
+one evidence-only review, and one zero-model landing retry all left the weather
+game-code candidate unlanded. The last prospective full integration suite
+failed outside Scenario W; five unmodified-main baseline repetitions passed.
+None of these attempts altered Daniel's dirty game files. The measured values,
+verification incidents and raw evidence are in
+`docs/hq/CONVERGENCE_ACTIVATION_REPORT.md`. The timer remains stopped and the
+policy remains paused until the canary's remaining verification is resolved.
 
 ## Rollback
 
