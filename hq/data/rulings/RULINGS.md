@@ -122,3 +122,18 @@ For chime under the bloom, I'm good with the recommendation. Please add a bit mo
 ## Q-92 — ruled 2026-09-19T23:14:16
 - Picked: **(a) Give her fence its own look — a lighter post-and-rail (Recommended)**
 - Status: pending integration into docs/DESIGNER_QUEUE.md
+
+## Q-113 — ruled 2026-09-21T11:28:59; clarified 2026-09-23T09:51:43
+- Picked: **(b) 10 on her person, 40 at the grain silo (Recommended)**
+- In his words: The carrying limits are per species: up to 10 of each species on her person, or 40 of each with the grain silo. These are prototype numbers for basic functionality, to tune later.
+- Status: integrated 2026-09-23 — S-18 and the landed pouch enforce the 10-per-species rule; the 40-per-species silo contract is tested but the silo is not yet playable.
+
+## Q-115 — ruled 2026-09-23T09:20:51
+- Picked: **(b) Three crops per seed**
+- In his words: B. Three
+- Status: integrated 2026-09-23 — S-19, the designer queue, and the landed three-unit harvest agree; main CI passed.
+
+## Q-116 — ruled 2026-09-23T09:31:14
+- Picked: **(a) Keep ten per species at the bin, separate from what she carries (Recommended)**
+- In his words: Keep up to 10 seeds of each species before any sell. The reserve lives at the bin, separate from carrying capacity. These are prototype numbers to tune later.
+- Status: integrated 2026-09-23 — S-20, the designer queue, and the landed bin reserve agree; main CI passed.

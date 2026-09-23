@@ -1,0 +1,26 @@
+{
+  "id": "Q-116",
+  "title": "Where should crops saved for replanting live?",
+  "question": "One planted crop will return three crops. The player can carry ten before getting a silo, but you want to save up to ten of each species before selling any surplus. If those saved crops occupy her pouch, a full pouch can stop her harvesting the surplus she is meant to sell. Where should the saved stock live?",
+  "why_now": "The seed-and-crop change is held until the shipping bin's keep-back rule works alongside the carrying limit.",
+  "options": [
+    {
+      "key": "a",
+      "label": "Keep ten per species at the bin, separate from what she carries (Recommended)",
+      "detail": "Deliveries first fill a persistent, plantable reserve of up to ten for each species; later deliveries of that species are sold. The player's carrying limit stays separate. Ten is a prototype number to tune during loop playtests.",
+      "recommended": true
+    },
+    {
+      "key": "b",
+      "label": "Keep ten per species in her pouch",
+      "detail": "The carrying limit and surplus-sale flow would also need redesign so a full reserve does not block harvesting crops to sell."
+    }
+  ],
+  "links": [
+    {
+      "label": "Earlier carrying-limit and crop-yield decisions",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+    }
+  ],
+  "subject": "What a harvest is worth"
+}

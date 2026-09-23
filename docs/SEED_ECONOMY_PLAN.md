@@ -1,6 +1,6 @@
 # Harvest-as-seed prototype implementation
 
-Date: 2026-09-23. Owner: Adam, Chief of Staff. Status: plan under review; no game code landed.
+Date: 2026-09-23. Owner: Adam, Chief of Staff. Status: landed on main and verified by GitHub CI.
 
 ## 1. Ground rules
 
@@ -68,3 +68,5 @@ Verification before landing: Godot import if assets changed; headless unit suite
 - 2026-09-23: Read-only survey completed against main `68a8a0f`. Independent review found seven gaps; all folded into sections 3–4 before implementation.
 - 2026-09-23: First worker commit `2e12e52` passed its suites. Independent diff review found shop-cap and “last deposit” truth defects plus three coverage gaps. These are required before landing.
 - 2026-09-23: Correction `144d8bf` resolved those findings, but a second review found the shop's English-only “Pouch full” label violates its existing pre-reader UI pattern. Require a visual cue and a test of the live failed-press state.
+- 2026-09-23: The independently reviewed feature landed on main as `cc440b6`. Local main passed 2,919 unit assertions, 1,005 integration assertions, robot replay, benchmark, gateway, and writing checks. GitHub CI failed before the suites because the demo replay generator still assumed the old crop yield and can/wetness timing; the HQ cards remained open.
+- 2026-09-23: The independently reviewed generator repair landed on main as `1cb5f01`. It refills the can, checks wet tiles before sleeping, re-tills where needed, and sells surplus before pouch overflow without weakening the gate. Local main passed deterministic fixture regeneration, 2,919 unit assertions, 1,005 integration assertions, robot replay, benchmark (121 µs/tick), gateway, and writing checks. Final GitHub run passed: https://github.com/craklyn/tiny-farm-godot/actions/runs/35902919514.

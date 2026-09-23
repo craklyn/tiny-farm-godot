@@ -6,12 +6,12 @@
   "tier": 1,
   "tier_reason": "The whole first-session simplification depends on this sim change; nothing today lets a harvested crop go back in the ground.",
   "ask": "Accepted “What the first session becomes if the shop is delayed”. The whole first-session simplification depends on this sim change; nothing today lets a harvested crop go back in the ground.\n\nDaniel attached this when he accepted the card that filed this work, and it changes the constraint you are working under: \"I'd like to loosen the belief that everything is wordless. Instead, the game should be generally understandable with minimal literacy. We can show text too, but let's try every time to see how far we can get communicating without the words, since that'll always make the game more accessible to players.\" So wordless is the target to push for, not an absolute to obey — and where words genuinely serve the player better, they are allowed and should be as few as possible.",
-  "first_action": "Replace the two separate seed/crop dictionaries with one plantable/sellable stock per crop type, capped at the on-person excess threshold, and re-check the existing no-soft-lock proof against the new model since it no longer depends on a coin step",
-  "state": "waiting_session",
+  "first_action": "Delivered through the primary seed-economy card. If reopened, investigate a concrete plantability regression rather than starting a second implementation.",
+  "state": "landed",
   "thread": "sam",
   "source": "chat",
   "source_message": "Accepted “What the first session becomes if the shop is delayed”. The whole first-session simplification depends on this sim change; nothing today lets a harvested crop go back in the ground.",
-  "result": "",
+  "result": "Delivered by the same seed-economy implementation as “Make harvested crops plantable and cap what the player can carry”; no duplicate rewrite was needed. Harvested crops are plantable from one carried stock, with three per harvest. Main commits cc440b6 and 1cb5f01 passed local unit, integration, robot, benchmark, gateway, writing, and demo-replay checks; GitHub Actions passed: https://github.com/craklyn/tiny-farm-godot/actions/runs/35902919514.",
   "started": "",
   "attempts": 0,
   "created": "2026-09-04T13:59",
@@ -24,5 +24,56 @@
       "at": "2026-09-04T14:01",
       "with": "accept"
     }
-  ]
+  ],
+  "_revision": 6,
+  "amendments": [
+    {
+      "at": "2026-09-23T09:24:41.423018+00:00",
+      "by": "Codex dependency audit",
+      "reason": "A second open card has already produced a held implementation of the same change."
+    },
+    {
+      "at": "2026-09-23T16:22:43.372344+00:00",
+      "by": "Codex recording Daniel’s Q-115 ruling",
+      "changed": {
+        "repair_hold": "This duplicates the later one-pouch candidate, whose 26-file patch is stale. Reconcile that candidate and the unresolved crop-yield, sell-keep, and capacity-scope details before starting a second implementation.",
+        "first_action": "Do not start a parallel one-pouch rewrite. First compare the held candidate on the other seed-economy card with current main, then decide which card owns one verified landing after the remaining economy rulings."
+      },
+      "why": "The crop-yield choice is no longer unruled; two other economy questions and patch verification still block landing."
+    }
+  ],
+  "verification_history": [
+    {
+      "version": 1,
+      "at": "2026-09-23T18:11:30.719040+00:00",
+      "by": "Codex interactive main verification",
+      "kind": "operator_progress_audit",
+      "code_commit": "cc440b6",
+      "ci_run": "https://github.com/craklyn/tiny-farm-godot/actions/runs/35900459684",
+      "github_actions": "failure before tests: demo replay generator"
+    },
+    {
+      "version": 1,
+      "at": "2026-09-23T18:34:47.152369+00:00",
+      "by": "Codex interactive independent verification",
+      "kind": "operator_audit",
+      "code_commits": [
+        "cc440b6",
+        "1cb5f01"
+      ],
+      "ci_run": "https://github.com/craklyn/tiny-farm-godot/actions/runs/35902919514",
+      "checks": {
+        "demo_replay": "regenerated fixture matched; no refused action or dry crop",
+        "unit": "2919 passed, 0 failed",
+        "integration": "1005 passed, 0 failed",
+        "robot": "passed; replay matches",
+        "benchmark": "passed; 121 us/tick on local main",
+        "gateway": "passed",
+        "writing": "passed",
+        "github_actions": "success"
+      },
+      "prior_failed_ci_preserved": true
+    }
+  ],
+  "closed": "2026-09-23T18:34:47.152369+00:00"
 }
