@@ -114,6 +114,17 @@ class HeldEvidenceRecheckTests(unittest.TestCase):
              patch.object(drain.verification_evidence, "validate", return_value=self.old["external_verification"]):
             self.assertIsNone(drain.verified_landing_source(self.item))
 
+    def test_red_prospective_gate_keeps_patch_held_and_names_failure(self):
+        item = {"diff": {"applied": True}, "attempt_outcome": {"landing_verified": False}}
+        rec = {"files": ["systems/game_state.gd"], "check": {"verdict": "pass"}}
+        suites = {"unit": {"ok": True}, "integration": {"ok": False,
+                    "tail": "Results: 968 PASSED, 1 FAILED\nFAIL: Mark III placement"}}
+        why = drain.record_landing_verdict(item, rec, False, "old vague reason", suites)
+        self.assertIn("Mark III placement", why)
+        self.assertFalse(item["diff"]["applied"])
+        self.assertFalse(item["attempt_outcome"]["landing_verified"])
+        self.assertIn("owner must diagnose", item["repair_hold"])
+
 
 if __name__ == "__main__":
     unittest.main()

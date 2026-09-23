@@ -2015,6 +2015,37 @@ def write_back(item, rec, applied, why_not, suites, org):
         return _write_back(item, rec, applied, why_not, suites, org)
 
 
+def record_landing_verdict(item, rec, landed_ok, why_not_landed, suites):
+    """Make a failed prospective gate a held candidate, never an applied patch."""
+    if not landed_ok and suites:
+        failing = [name for name in ("unit", "integration")
+                   if not (suites.get(name) or {}).get("ok")]
+        if failing:
+            detail = ""
+            for name in failing:
+                tail = str((suites.get(name) or {}).get("tail") or "")
+                match = re.search(r"FAIL:\s*([^\n]+)", tail)
+                if match:
+                    detail = f"{name}: {match.group(1).strip()}"
+                    break
+                if "Parse Error:" in tail:
+                    detail = f"{name}: script parse error"
+                    break
+            why_not_landed = ("The prospective " + ", ".join(failing) +
+                              " suite failed" + (f" at {detail}" if detail else "") + ".")
+    item["attempt_outcome"]["landing_verified"] = landed_ok
+    # Preparing a detached prospective tree is not applying the patch to main.
+    # A held candidate must remain resumable from its recorded patch.
+    item["diff"]["applied"] = bool(landed_ok and rec.get("files"))
+    item["diff"]["why_not_landed"] = why_not_landed
+    if (not landed_ok and suites and (rec.get("check") or {}).get("verdict") == "pass" and
+            any(not (suites.get(name) or {}).get("ok")
+                for name in ("unit", "integration"))):
+        item["repair_hold"] = (why_not_landed + " The owner must diagnose the failure "
+                               "against current main before this candidate can land.")
+    return why_not_landed
+
+
 def _write_back(item, rec, applied, why_not, suites, org):
     """The attempt onto the card. Almost always that means `for_review`, with
     whatever came back. The exception is a worker that ran out of turns with
@@ -2137,8 +2168,7 @@ def _write_back(item, rec, applied, why_not, suites, org):
         sha, trouble = land(item, rec, repo=integration_repo)
         if not sha:
             landed_ok, why_not_landed = False, trouble
-    item["attempt_outcome"]["landing_verified"] = landed_ok
-    item["diff"]["why_not_landed"] = why_not_landed
+    why_not_landed = record_landing_verdict(item, rec, landed_ok, why_not_landed, suites)
     if landed_ok:
         if sha and item.get("pending_landing", {}).get("version") == 2:
             record_landed_integration(item, item["pending_landing"], sha)

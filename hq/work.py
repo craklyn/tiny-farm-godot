@@ -813,7 +813,10 @@ def work_view(item, repo_facts=None, now=None):
                    "The candidate overlaps uncommitted repository files.",
                    "files": blocked_files, "owner": item.get("owner") or "claude"}
     elif not terminal and candidate_base and facts.get("head") and candidate_base != facts["head"]:
-        blocker = {"type": "stale_base", "reason": "Local main changed since this candidate was checked; it needs fresh review and tests.",
+        reason = "Local main changed since this candidate was checked; it needs fresh review and tests."
+        if repair:
+            reason += " Earlier gate: " + repair
+        blocker = {"type": "stale_base", "reason": reason,
                    "files": [], "owner": item.get("owner") or "claude"}
     elif repair:
         blocker = {"type": "missing_evidence", "reason": repair, "files": [],
