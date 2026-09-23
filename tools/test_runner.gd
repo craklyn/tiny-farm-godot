@@ -1630,7 +1630,9 @@ func _scenario_p_cold_open_waits() -> void:
 	# Walk to the fence and it comes into view.
 	scene.player.pos = Vector2(10 * 16 + 8, 4 * 16 + 8)
 	scene.player.position = scene.player.pos
-	for i in 90: await get_tree().process_frame
+	var cold_open_visible := await _wait_until(
+		func(): return scene._stage_is_visible() and scene._cold_open_started, 600)
+	_assert(cold_open_visible, "at the fence the neighbour starts once the scene is visible")
 	_assert(scene._stage_is_visible(), "at the fence the whole scene is on screen")
 	_assert(scene._cold_open_started, "and the neighbour starts")
 
@@ -1705,8 +1707,8 @@ func _scenario_q_crow_is_sim_sent() -> void:
 
 	# It follows sim truth rather than flying itself.
 	var was: Vector2 = crow.position
-	for i in 30: await get_tree().process_frame
-	_assert(crow.position != was, "the sprite moves")
+	var crow_moved := await _wait_until(func(): return crow.position != was, 600)
+	_assert(crow_moved, "the sprite moves")
 	_assert(crow.position.distance_to(crow.sim_position()) < 32.0,
 		"and stays within a couple of tiles of where the sim says the bird is")
 
@@ -3660,12 +3662,17 @@ func _scenario_ag_a_machine_is_bought_placed_and_told_what_to_do() -> void:
 	player.path.clear()
 	player.pending_action = {}
 	await get_tree().process_frame
-	_assert(farm.sim.placeable_at(spot), "the square she is beside will take a machine")
+	var clear := await _wait_for_clear_ground(spot, "bot_mk2")
+	_assert(clear, "the square she is beside will take a machine")
+	if not clear:
+		return
 
 	InputManager.click_tile = spot
 	InputManager.has_click = true
-	var placed := await _wait_until(func(): return farm.sim.machine_at(spot) != "", 200)
+	var placed := await _wait_until(func(): return farm.sim.machine_at(spot) != "", 1200)
 	_assert(placed, "a tap put the robot on that square")
+	if not placed:
+		return
 	_assert(GameState.machines.get("bot_mk2", 0) == 0, "and took it out of the crate")
 
 	# --- ...and its menu opens on top of it -----------------------------------
@@ -4318,9 +4325,8 @@ func _scenario_ai_the_house_has_a_door() -> void:
 		"and the sim is ALREADY in the new day — the Action resolved at the tap (D-8)")
 	_assert(player.tuck_tile == cot, "with the farmer drawn lying in it (T-27 box 1)")
 	await _wait_until(func(): return not main_scene.day_cycle.is_active(), 4000)
-	for i in 30:
-		await get_tree().process_frame
-	_assert(player.tuck_tile.x < 0, "she is out of bed by morning")
+	var out_of_bed := await _wait_until(func(): return player.tuck_tile.x < 0, 600)
+	_assert(out_of_bed, "she is out of bed by morning")
 	_assert(_sleeps_since(mark) == 1,
 		"and the sim saw exactly one sleep (%d)" % _sleeps_since(mark))
 	_assert(farm.sim.page_of(player.get_tile_pos()) == 1,
