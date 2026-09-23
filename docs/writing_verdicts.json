@@ -678,6 +678,9 @@
   "29047620ae67c383e692": {
    "verdict": "ok"
   },
+  "290acc1efd1762d8a545": {
+   "verdict": "ok"
+  },
   "2979ff1f9186833b2028": {
    "verdict": "ok"
   },
@@ -1544,6 +1547,9 @@
   "607cf7ea61a61889f613": {
    "verdict": "ok"
   },
+  "607d821ef498d95c3c74": {
+   "verdict": "ok"
+  },
   "6096edbda94e92034ecb": {
    "verdict": "ok"
   },
@@ -1637,6 +1643,12 @@
    "quote": "An itch.io API key would give us views and plays.",
    "verdict": "decode",
    "why": "The actor is unclear—who would use the key? To do what? The sentence reads passive and the reader cannot act on it without knowing who owns the key and who calls the API."
+  },
+  "6692ecb32d4dae5593b9": {
+   "instead": "Record the shared animation change in the project's main code branch",
+   "quote": "on main",
+   "verdict": "decode",
+   "why": "“Main” is engineering shorthand for the project's main code branch, which a cold reader may not know."
   },
   "669bf936db720a9840fc": {
    "instead": "HQ automatically runs this, and you don't need to do anything",
@@ -2664,6 +2676,9 @@
    "why": "\"Seed,\" \"ammunition,\" and \"surplus\" are not defined; the reader doesn't know what each term represents."
   },
   "a34996db638740f0b929": {
+   "verdict": "ok"
+  },
+  "a3785a300aacdbafcbc5": {
    "verdict": "ok"
   },
   "a4935454f57ebd8038fa": {
