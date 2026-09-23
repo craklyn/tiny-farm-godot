@@ -786,8 +786,8 @@ def work_view(item, repo_facts=None, now=None):
     blocked_files = sorted(set(facts.get("blocked_files") or []))
     repair = str(item.get("repair_hold") or "")
     cost_reason = str(facts.get("cost_reason") or "")
-    # A saved rebrief is a capacity hold, not a coding job. Once the cap or
-    # brief changes, let the normal build action be projected again.
+    # A saved rebrief is a capacity hold, not a coding job. Once a reviewed
+    # cap increase clears recorded spend, project the normal build again.
     if not cost_reason:
         active_actions = [a for a in active_actions if a.get("type") != "rebrief"]
     waiting = item.get("waiting_for") or {}
@@ -813,7 +813,7 @@ def work_view(item, repo_facts=None, now=None):
                    "owner": item.get("owner") or "claude"}
     elif cost_reason:
         blocker = {"type": "capacity", "reason": cost_reason, "files": [],
-                   "owner": "claude", "wake": "A smaller brief or a reviewed cost-cap increase."}
+                   "owner": "claude", "wake": "A reviewed, bounded cost cap above the amount already spent."}
     elif pending:
         blocker = {"type": "recovery", "reason": "An interrupted transaction needs recovery.",
                    "files": [], "owner": "claude"}
@@ -838,7 +838,7 @@ def work_view(item, repo_facts=None, now=None):
         elif blocker and blocker["type"] == "recovery":
             kind, summary, priority = "recover", "Recover the interrupted transaction.", "reconciliation"
         elif blocker and blocker["type"] == "capacity":
-            kind, summary, priority = "rebrief", "Narrow the brief or request a reviewed cost-cap increase.", "reconciliation"
+            kind, summary, priority = "rebrief", "Review a bounded cost-cap increase before more work starts.", "reconciliation"
         elif item.get("state") in ("for_review", "needs_approval"):
             kind, summary, priority = "decide", "Review the prepared result or decision.", "decision"
         elif item.get("state") == "prepping":
@@ -886,7 +886,7 @@ def work_view(item, repo_facts=None, now=None):
     if not terminal and blocker and blocker["type"] == "capacity" and not any(a.get("type") == "rebrief" for a in active_actions):
         active_actions.append({"id": action_key(item["id"], "rebrief", input_id),
                                "type": "rebrief", "input_id": input_id, "owner": "claude",
-                               "summary": "Narrow the brief or request a reviewed cost-cap increase.",
+                               "summary": "Review a bounded cost-cap increase before more work starts.",
                                "wake": blocker["wake"], "priority": "reconciliation",
                                "created_at": item.get("finished") or item.get("created") or "",
                                "state": "open", "virtual": True})
@@ -903,7 +903,7 @@ def work_view(item, repo_facts=None, now=None):
     for action in active_actions:
         if action.get("type") == "rebrief":
             action["owner"] = "claude"
-            action["wake"] = "A smaller brief or a reviewed cost-cap increase."
+            action["wake"] = "A reviewed, bounded cost cap above the amount already spent."
         claim = action.get("claim") or {}
         lease_live = claim.get("expires_at", 0) > instant
         running = lease_live and bool(facts.get("active_session")) and action.get("state") == "running"

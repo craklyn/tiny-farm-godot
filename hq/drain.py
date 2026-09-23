@@ -1090,8 +1090,8 @@ def _item_spend(item_id):
 
 def _parked_by_cost(item):
     spent, _attempts = _item_spend(item["id"])
-    # A card whose brief was rewritten after it was parked carries its own cap,
-    # set by whoever rewrote it, so the rewrite is tried once more.
+    # A rewritten brief alone does not refund recorded spend. A reviewed cap
+    # increase must be explicit on this card before another attempt starts.
     cap = float(item.get("cost_cap_usd") or ITEM_COST_CAP_USD)
     return spent > cap
 
@@ -1716,7 +1716,7 @@ def project_work(item, *, head=None, active=None, now=None):
     spent, attempts = _item_spend(item["id"]) if item.get("state") in ("waiting_session", "for_review") else (0, 0)
     cap = float(item.get("cost_cap_usd") or ITEM_COST_CAP_USD)
     cost_reason = (f"this has already cost ${spent:.0f} across {attempts} attempts without a result, "
-                   f"more than the ${cap:.0f} it may spend on its own; it needs a smaller brief"
+                   f"more than its ${cap:.0f} cap; a reviewed, bounded cap above recorded spend is required"
                    if spent > cap else "")
     waiting = item.get("waiting_for") or {}
     waiting_valid = not ((waiting.get("files") and not blocked) or
