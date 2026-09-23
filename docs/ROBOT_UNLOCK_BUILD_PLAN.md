@@ -47,3 +47,4 @@ Presentation follow-up from code review: consume `result.unlocked` at the existi
 - 2026-09-23: first worker committed `baabd9b` in an isolated checkout. Reported unit 2,871/0, integration 977/0, gateway passed. Read-only code review found two presentation gaps; the second worker took them.
 - 2026-09-23: second worker committed `5f341bf`; both patches are in the shared checkout. Verified there: unit 2,877/0, integration 980/0, gateway passed, end-to-end robot session replay matched its autosave. The shared checkout also contains unrelated uncommitted work, preserved during the merge.
 - 2026-09-23: implementation committed on the shared branch as `df5fc46`, with only the nine worker-touched code files staged. The earlier plan and design commit is `d930dce`.
+- 2026-09-23: cherry-picked onto GitHub main at `f2e821a`, `35714f2`, `b82fb20`; mainline verification passed unit 2,937/0, integration 1,008/0, gateway, and end-to-end replay. Pushed as a fast-forward update.
