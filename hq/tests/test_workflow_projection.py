@@ -101,18 +101,29 @@ class WorkflowProjection(unittest.TestCase):
         self.assertEqual(view["next_action"]["availability"], "runnable")
         self.assertIn(item["id"], [row["work_id"] for row in drain.queue_view()["eligible"]])
 
-    def test_cost_cap_holds_build_but_offers_owned_rebrief(self):
+    def test_cost_cap_holds_build_until_its_rebrief_wake(self):
         item = self.card()
         view = work.work_view(item, repo_facts={"cost_reason": "The attempt exceeded its cost cap."})
         self.assertEqual(view["blocker"]["type"], "capacity")
         self.assertEqual(view["blocker"]["owner"], "claude")
         self.assertIn("smaller brief", view["blocker"]["wake"])
         self.assertEqual(view["next_action"]["type"], "rebrief")
-        self.assertEqual(view["next_action"]["availability"], "runnable")
+        self.assertEqual(view["next_action"]["owner"], "claude")
+        self.assertEqual(view["next_action"]["availability"], "waiting_event")
         with patch.object(drain, "_item_spend", return_value=(1000, 3)):
             queue = drain.queue_view()
-        self.assertEqual(queue["eligible"][0]["action_type"], "rebrief")
-        self.assertEqual(queue["held"][0]["action_type"], "build")
+            self.assertNotIn(item["id"], [row["work_id"] for row in queue["eligible"]])
+            self.assertNotIn(item["id"], [card["id"] for card in drain.classified_queue()[0]])
+            self.assertNotIn(item["id"], [card["id"] for card, _ in drain.classified_actions()])
+        self.assertEqual(queue["held"][0]["action_type"], "rebrief")
+        self.assertIn("smaller brief", queue["held"][0]["workflow_view"]["next_action"]["wake"])
+        work.ensure_action(item, "rebrief", input_id="legacy", owner="grace", summary="Review cap")
+        held_saved = work.work_view(item, repo_facts={"cost_reason": "The attempt exceeded its cost cap."})
+        self.assertEqual(held_saved["next_action"]["owner"], "claude")
+        self.assertEqual(held_saved["next_action"]["availability"], "waiting_event")
+        after_wake = work.work_view(item, repo_facts={"cost_reason": ""})
+        self.assertEqual(after_wake["next_action"]["type"], "build")
+        self.assertEqual(after_wake["next_action"]["availability"], "runnable")
 
     def test_dirty_user_branch_after_handoff_does_not_block_clean_main(self):
         item = self.card()

@@ -786,6 +786,10 @@ def work_view(item, repo_facts=None, now=None):
     blocked_files = sorted(set(facts.get("blocked_files") or []))
     repair = str(item.get("repair_hold") or "")
     cost_reason = str(facts.get("cost_reason") or "")
+    # A saved rebrief is a capacity hold, not a coding job. Once the cap or
+    # brief changes, let the normal build action be projected again.
+    if not cost_reason:
+        active_actions = [a for a in active_actions if a.get("type") != "rebrief"]
     waiting = item.get("waiting_for") or {}
     pending = item.get("pending_landing") or item.get("pending_followups")
     patch = (item.get("attempt_outcome") or {}).get("patch_id") or ""
@@ -897,11 +901,14 @@ def work_view(item, repo_facts=None, now=None):
         active_actions[0]["claim"] = {"id": str(facts["active_session"]),
                                       "expires_at": instant + 1}
     for action in active_actions:
+        if action.get("type") == "rebrief":
+            action["owner"] = "claude"
+            action["wake"] = "A smaller brief or a reviewed cost-cap increase."
         claim = action.get("claim") or {}
         lease_live = claim.get("expires_at", 0) > instant
         running = lease_live and bool(facts.get("active_session")) and action.get("state") == "running"
         action["availability"] = ("running" if running else "waiting_event" if lease_live else "waiting_event" if
-                                  action.get("type") == "decide" else "blocked" if
+                                  action.get("type") in ("decide", "rebrief") else "blocked" if
                                   action.get("state") == "blocked" or
                                   (blocker and action.get("type") == "build") or
                                   (blocker and blocker["type"] == "capacity" and action.get("type") != "rebrief") else "runnable")
