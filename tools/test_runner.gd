@@ -1158,7 +1158,9 @@ func _scenario_n_pick_up_the_axe() -> void:
 
 	InputManager.click_tile = at
 	InputManager.has_click = true
-	for i in 30: await get_tree().process_frame
+	var locked_tap_settled := await _wait_until(
+		func(): return not InputManager.has_click and player.path.is_empty() and player.pending_action.is_empty(), 600)
+	_assert(locked_tap_settled, "the locked-axe tap finishes as a walk")
 	_assert(farm.get_object(at.x, at.y) == String(entry.get("object", "")),
 		"an unearned axe stays on the ground")
 	_assert(not GameState.owns_tool("axe"), "and she does not have it")
@@ -3651,6 +3653,9 @@ func _scenario_ag_a_machine_is_bought_placed_and_told_what_to_do() -> void:
 	var spot := Vector2i(12, 9)
 	_stage_tile(spot.x, spot.y, "cleared")
 	_stage_tile(spot.x - 1, spot.y, "cleared")
+	# Keep the roaming hen away from the placement square while the tap is
+	# dispatched. A clear-ground check alone can turn false on the next sim tick.
+	farm.sim.set_actor_pos(SimWorld.ACTOR_CHICKEN, Vector2i(5, 5))
 	player.pos = Vector2((spot.x - 1) * 16.0 + 8.0, spot.y * 16.0 + 8.0)
 	player.path.clear()
 	player.pending_action = {}
