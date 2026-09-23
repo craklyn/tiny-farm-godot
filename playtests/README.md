@@ -23,6 +23,17 @@ can disagree: a resumed session inherits the device's un-cleared tap trace while
 replay records almost nothing. Two folders were mistaken for real play sessions on
 exactly that confusion.
 
+## Replay-corpus vintage: before harvest-as-seed
+
+Sessions recorded before the harvest-as-seed build use the old separate seed pouch and
+sell-all economy. A replay from this vintage may not verify against the current build;
+that is a build mismatch, not a reason to discard the session as training data.
+
+Keep `till`, `plant`, `water`, and `harvest` entries, and every recorded movement event,
+as valid training demonstrations across this change. Do not use `buy_seed` or `sell`
+entries from this vintage: the pouch and sale rules those actions demonstrate no longer
+apply.
+
 Each directory holds up to three files, and they answer different questions:
 
 | File | Question it answers | Read it with |
