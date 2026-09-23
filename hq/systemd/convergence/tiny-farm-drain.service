@@ -1,0 +1,20 @@
+# Replacement for the linked tiny-farm-drain.service at the convergence
+# cutover. The existing tiny-farm-drain.timer retains its schedule and name.
+# Keep the execution-policy pause in place until the live weather canary is
+# deliberately dispatched; installing this unit does not authorize starts.
+[Unit]
+Description=Tiny Farm HQ — finish queued work on clean local main
+After=network-online.target
+
+[Service]
+Type=oneshot
+WorkingDirectory=/home/daniel/dev/tiny-farm-godot-main
+Environment=PATH=/home/daniel/.local/bin:/usr/local/bin:/usr/bin:/bin:/snap/bin
+Environment=CLAUDE_CODE_DISABLE_AUTOUPDATE=1
+Environment=HQ_REQUIRE_EXPLICIT_ROOTS=1
+Environment=HQ_DATA_ROOT=/home/daniel/dev/tiny-farm-godot/hq/data
+Environment=HQ_USER_WORKSPACE_ROOT=/home/daniel/dev/tiny-farm-godot
+Environment=HQ_MAIN_ROOT=/home/daniel/dev/tiny-farm-godot-main
+ExecStart=/usr/bin/python3 /home/daniel/dev/tiny-farm-godot-main/hq/drain.py --unattended
+TimeoutStartSec=4h
+Nice=10

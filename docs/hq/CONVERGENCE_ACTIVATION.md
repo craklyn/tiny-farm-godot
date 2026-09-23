@@ -33,16 +33,19 @@ logs, transactions, rulings, and reconciliation manifests use `HQ_DATA_ROOT`.
 
 ## Gate before touching the live service
 
-1. The integration-lane contract must match the checkout arrangement.
-   `integration.handoff_status()` currently refuses any worktree with `main`
-   checked out. A clean main-owning service checkout therefore cannot both
-   serve current `HEAD`-based signals and pass the integration gate. Resolve
-   this with a tested lane change; do **not** choose a detached stale service
-   checkout and call its `HEAD` the current main.
-2. Create an explicitly named durable clean checkout outside the dirty game
-   project. Confirm its `HEAD`, local `main`, and the intended authoritative
-   branch agree. Confirm the current user checkout is idle before the
-   exact-HEAD branch handoff. Do not stash, reset, or edit its files.
+1. The clean-main integration lane must already be in the code being
+   installed. It now permits a **clean linked worktree** to own `main` and
+   synchronizes that checkout after an exact-parent commit. It still refuses
+   the dirty primary checkout or a stale/dirty main owner. Do not choose a
+   detached service checkout and call its `HEAD` current main.
+2. Use the durable path `/home/daniel/dev/tiny-farm-godot-main`, outside the
+   dirty game project. The primary checkout must have completed its
+   confirmed-idle, exact-HEAD branch handoff first. If the durable path does
+   not yet exist, confirm no other worktree owns `main`, then create it with
+   `git -C /home/daniel/dev/tiny-farm-godot worktree add
+   /home/daniel/dev/tiny-farm-godot-main main`. Never stash, reset, or edit
+   Daniel's files. Verify the new checkout is clean and that `HEAD` equals
+   `refs/heads/main` before proceeding.
 3. Run `python3 hq/tests/test_activation_roots.py` and the full HQ suite.
    The test's data, repositories, and ephemeral HTTP port are disposable; it
    does not bind 8642 or read/write live cards. Repeat an offline canary with
@@ -53,8 +56,12 @@ logs, transactions, rulings, and reconciliation manifests use `HQ_DATA_ROOT`.
 The installed HQ service is currently
 `/home/daniel/.config/systemd/user/tiny-farm-hq.service`; the installed drain
 service is linked to `hq/systemd/tiny-farm-drain.service` in the original
-checkout. Both must point at the same new code and environment. A live server
-and a second server must never share the live data root concurrently.
+checkout. The checked-in replacement templates are
+`hq/systemd/convergence/tiny-farm-hq.service` and
+`hq/systemd/convergence/tiny-farm-drain.service`. The old drain unit and the
+existing timer remain unchanged in the repository. Both installed service
+units must point at the same new code and environment. A live server and a
+second server must never share the live data root concurrently.
 
 Record before cutover: UTC time; card count in the live `work/` directory;
 the weather card's `_revision` and SHA-256; the execution policy's
@@ -63,24 +70,52 @@ the weather card's `_revision` and SHA-256; the execution policy's
 contents. Keep automatic starts paused. Wait for a live drain to finish rather
 than interrupting it; stop the timer, then stop the HQ service.
 
-Configure **both** service commands to run `hq/server.py` and `hq/drain.py`
-from the durable clean code checkout. Set, in both units:
+The replacement units set these same three roots, use the durable clean
+checkout for code and working directory, and require explicit roots:
 
 ```text
 HQ_REQUIRE_EXPLICIT_ROOTS=1
 HQ_DATA_ROOT=/home/daniel/dev/tiny-farm-godot/hq/data
 HQ_USER_WORKSPACE_ROOT=/home/daniel/dev/tiny-farm-godot
-HQ_MAIN_ROOT=<verified durable clean main checkout>
+HQ_MAIN_ROOT=/home/daniel/dev/tiny-farm-godot-main
 ```
 
-Do not set `HQ_CANARY_MODE` or `HQ_TEST_SCRATCH` in either live unit. Reload
-systemd and start **one** HQ service. Read `/api/health`: its four root paths
+Do not set `HQ_CANARY_MODE` or `HQ_TEST_SCRATCH` in either live unit. The
+following commands are the installation sequence, **not actions already
+performed**. Run them only after the gates above and the recorded preflight.
+The backup directory must not already exist; stop if it does. Do not stop an
+active drain midway through a worker session—wait for it to finish first.
+
+```bash
+(
+set -e
+python3 -c 'import json; p="/home/daniel/dev/tiny-farm-godot/hq/data/execution_policy.json"; assert json.load(open(p))["background_paused"], "Pause automatic starts before cutover"'
+test "$(git -C /home/daniel/dev/tiny-farm-godot-main symbolic-ref --short HEAD)" = main
+test "$(git -C /home/daniel/dev/tiny-farm-godot-main rev-parse HEAD)" = "$(git -C /home/daniel/dev/tiny-farm-godot-main rev-parse refs/heads/main)"
+test -z "$(git -C /home/daniel/dev/tiny-farm-godot-main status --porcelain)"
+systemctl --user stop tiny-farm-drain.timer
+if systemctl --user is-active --quiet tiny-farm-drain.service; then echo 'Drain still active; wait for it to finish.' >&2; exit 1; fi
+test ! -e /home/daniel/.config/systemd/user/tiny-farm-convergence-backup-20260922
+mkdir /home/daniel/.config/systemd/user/tiny-farm-convergence-backup-20260922
+systemctl --user stop tiny-farm-hq.service
+mv /home/daniel/.config/systemd/user/tiny-farm-hq.service /home/daniel/.config/systemd/user/tiny-farm-convergence-backup-20260922/tiny-farm-hq.service
+mv /home/daniel/.config/systemd/user/tiny-farm-drain.service /home/daniel/.config/systemd/user/tiny-farm-convergence-backup-20260922/tiny-farm-drain.service
+install -m 0644 /home/daniel/dev/tiny-farm-godot-main/hq/systemd/convergence/tiny-farm-hq.service /home/daniel/.config/systemd/user/tiny-farm-hq.service
+install -m 0644 /home/daniel/dev/tiny-farm-godot-main/hq/systemd/convergence/tiny-farm-drain.service /home/daniel/.config/systemd/user/tiny-farm-drain.service
+systemctl --user daemon-reload
+systemctl --user start tiny-farm-hq.service
+)
+```
+
+The existing `tiny-farm-drain.timer` stays stopped during validation. Read
+`/api/health`: its four root paths
 must match the intended values. Recheck card count, the weather card's
 revision/hash, and the paused queue from the live endpoint. Confirm that the
-server's main SHA and the verified local-main SHA agree before treating an
-Engineering signal or Run-button result as current. Only then consider
-re-enabling the drain timer; the execution-policy pause remains the final
-brake until the weather canary is deliberately dispatched.
+clean checkout's `HEAD` equals `refs/heads/main` and the server's root is that
+checkout before treating an Engineering signal or Run-button result as current.
+Only then consider starting the drain timer; the execution-policy pause
+remains the final brake until the weather canary is deliberately dispatched.
+Do not start the old and new HQ commands at the same time.
 
 Write the actual pre/post values and the unit revision in the build-plan
 closeout. An offline green is not evidence that this live cutover happened.
@@ -88,11 +123,26 @@ closeout. An offline green is not evidence that this live cutover happened.
 ## Rollback
 
 If startup, root identity, card count/hash, or main identity differs from the
-recorded preflight, leave automatic starts paused. Stop the new HQ service;
-restore the saved original HQ and drain unit contents/links; reload systemd;
-start only the original HQ service and recheck the same card count, weather
-revision/hash, and health. Do not move or copy data: the store never migrated.
-Do not resume unattended draining until the integration/main-root mismatch is
-resolved. The original service may again describe the dirty user branch in
+recorded preflight, leave automatic starts paused. Stop the new HQ service,
+move the two new installed unit copies into the same backup directory, and
+restore the saved originals:
+
+```bash
+(
+set -e
+systemctl --user stop tiny-farm-drain.timer
+systemctl --user stop tiny-farm-hq.service
+if test -e /home/daniel/.config/systemd/user/tiny-farm-hq.service; then mv /home/daniel/.config/systemd/user/tiny-farm-hq.service /home/daniel/.config/systemd/user/tiny-farm-convergence-backup-20260922/new-tiny-farm-hq.service; fi
+if test -e /home/daniel/.config/systemd/user/tiny-farm-drain.service; then mv /home/daniel/.config/systemd/user/tiny-farm-drain.service /home/daniel/.config/systemd/user/tiny-farm-convergence-backup-20260922/new-tiny-farm-drain.service; fi
+mv /home/daniel/.config/systemd/user/tiny-farm-convergence-backup-20260922/tiny-farm-hq.service /home/daniel/.config/systemd/user/tiny-farm-hq.service
+mv /home/daniel/.config/systemd/user/tiny-farm-convergence-backup-20260922/tiny-farm-drain.service /home/daniel/.config/systemd/user/tiny-farm-drain.service
+systemctl --user daemon-reload
+systemctl --user start tiny-farm-hq.service
+)
+```
+
+Recheck the same card count, weather revision/hash, and health. Do not move or
+copy data: the store never migrated. Do not resume unattended draining on
+rollback. The original service may again describe the dirty user branch in
 Engineering signals; treat that as a known rollback limitation, not a green
 main verdict.
