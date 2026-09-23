@@ -38,7 +38,7 @@ const SPECIAL_OBJECTS := {
 	"cot":          "sleep",
 	"well":         "refill",
 	"seed_box":     "open_shop",
-	"shipping_bin": "sell",
+	"shipping_bin": "open_bin",
 	"egg":          "collect",
 	"scarecrow":    "collect",
 	# T-30 (Q-48). Resolved here, in the object table, which settles the ordering
@@ -345,14 +345,14 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 	# 5. Tilled → plant active seed
 	if state == "tilled":
 		var seed_type: String = gs.selected_seed_type
-		if gs.seeds.get(seed_type, 0) > 0:
+		if gs.held_count(seed_type) > 0:
 			return check_result.call({ "action": "plant", "tool_idx": 5, "target_t": tap_t, "walk_to": true, "seed_type": seed_type })
 		return {}
 
 	# 6. Cleared → till OR plant object
 	if state == "cleared":
 		var seed_type: String = gs.selected_seed_type
-		if gs.seeds.get(seed_type, 0) > 0 and CropDefs.TYPES.get(seed_type, {}).get("is_object", false):
+		if gs.held_count(seed_type) > 0 and CropDefs.TYPES.get(seed_type, {}).get("is_object", false):
 			return check_result.call({ "action": "plant", "tool_idx": 5, "target_t": tap_t, "walk_to": true, "seed_type": seed_type })
 		if gs.energy >= Tools.get_energy_cost("till"):
 			return check_result.call({ "action": "till", "tool_idx": 3, "target_t": tap_t, "walk_to": true, "seed_type": "" })
@@ -470,7 +470,7 @@ func blocked_reason(farm: Node2D, gs: Node, tap_t: Vector2i) -> String:
 	if state == "tilled":
 		if MachineDefs.has(seed_type):
 			return ""   # she is holding a machine, not a seed; the clause above spoke
-		if gs.seeds.get(seed_type, 0) <= 0:
+		if gs.held_count(seed_type) <= 0:
 			return "no_seeds"
 		return ""
 	if state == "cleared":
@@ -511,10 +511,7 @@ func satisfied_reason(farm: Node2D, gs: Node, tap_t: Vector2i) -> String:
 			return "can_full"
 		return ""
 	if obj == "shipping_bin":
-		for count in gs.crops.values():
-			if int(count) > 0:
-				return ""
-		return "basket_empty"
+		return ""  # The menu can open even when she carries nothing.
 	var tile: Dictionary = farm.get_tile(tap_t.x, tap_t.y)
 	if tile.is_empty():
 		return ""

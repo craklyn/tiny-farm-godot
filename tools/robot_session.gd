@@ -631,7 +631,7 @@ func _tap_and_wait(tile: Vector2i) -> void:
 		print("  [diag] player_t=%s path=%d pending=%s approach=%s tile=%s seeds=%s sel=%s energy=%d" % [
 			player.get_tile_pos(), player.path.size(), player.pending_action,
 			player.approach_target, main_scene.farm.get_tile(tile.x, tile.y),
-			GameState.seeds, GameState.selected_seed_type, GameState.energy])
+			GameState.pouch, GameState.selected_seed_type, GameState.energy])
 		print("  [diag] resolve=", ActionRouter.resolve(
 			main_scene.farm, GameState, tile, player.get_tile_pos(), false))
 		return

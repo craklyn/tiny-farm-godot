@@ -21,7 +21,11 @@ extends RefCounted
 # excused past it. Same reasoning as v2: the schema did not gain a key, an
 # existing one changed shape, and no value heuristic can tell "a 20-row save" from
 # "a corrupt 40-row one".
-const VERSION := 4
+#
+# v5 (2026-09-23, S-18/S-19/S-20): her seed pouch and crop basket merge, with noncrop
+# inventory and a persistent bin reserve beside them. Missing `pouch` cannot
+# distinguish an older save from a new empty one, so v4 needs a real migration.
+const VERSION := 5
 
 # 600 / 20. The one place the old scale is written down.
 const LEGACY_ENERGY_SCALE := 30
@@ -105,8 +109,13 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 			"max_energy": gs.max_energy,
 			"gold": gs.gold,
 			"selected_tool": gs.selected_tool,
-			"seeds": gs.seeds.duplicate(),
-			"crops": gs.crops.duplicate(),
+			# One pouch since v5 (S-18/S-19/S-20), holding what the old `seeds` and `crops`
+			# keys held between them. A save written before the merge is summed
+			# into this one by `_migrate_4_to_5`.
+			"pouch": gs.pouch.duplicate(),
+			"items": gs.items.duplicate(),
+			"bin_reserve": gs.bin_reserve.duplicate(),
+			"last_bin_delivery": gs.last_bin_delivery.duplicate(true),
 			"harvest_counts": gs.harvest_counts.duplicate(),
 			"shipping_bin": gs.shipping_bin.duplicate(),
 			"watering_can_charges": gs.watering_can_charges,
@@ -151,6 +160,7 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 			# to know its visit was already this day's, for the crow's reason.
 			"visitor_schedules": _copy_schedules(gs.visitor_schedules),
 			"total_shipped": gs.total_shipped,
+			"bin_deposits": gs.bin_deposits,
 			"seeds_bought": gs.seeds_bought,
 			"cans_refilled": gs.cans_refilled,
 			"phase1_complete": gs.phase1_complete,
@@ -347,8 +357,10 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 	gs.max_energy = int(s.get("max_energy", Tools.DAY_UNITS))
 	gs.gold = int(s.get("gold", 0))
 	gs.selected_tool = int(s.get("selected_tool", 0))
-	gs.seeds = _int_values(s.get("seeds", {}))
-	gs.crops = _int_values(s.get("crops", {}))
+	gs.pouch = _int_values(s.get("pouch", {}))
+	gs.items = _int_values(s.get("items", {}))
+	gs.bin_reserve = _int_values(s.get("bin_reserve", {}))
+	gs.last_bin_delivery = s.get("last_bin_delivery", {}).duplicate(true)
 	gs.harvest_counts = _int_values(s.get("harvest_counts", {}))
 	gs.shipping_bin = _int_values(s.get("shipping_bin", {}))
 	gs.watering_can_charges = int(s.get("watering_can_charges", 8))
@@ -410,6 +422,7 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 	# after it says anyway.
 	gs.visitor_schedules = _restore_schedules(s.get("visitor_schedules", {}))
 	gs.total_shipped = int(s.get("total_shipped", 0))
+	gs.bin_deposits = int(s.get("bin_deposits", 0))
 	# T-11, additive: a save from before these existed reads as "never done it",
 	# so an old farm gets the teaching beat once rather than never.
 	gs.seeds_bought = int(s.get("seeds_bought", 0))
@@ -445,6 +458,9 @@ static func migrate(data: Dictionary) -> Dictionary:
 	if v == 3:
 		out = _migrate_3_to_4(out)
 		v = 4
+	if v == 4:
+		out = _migrate_4_to_5(out)
+		v = 5
 	if v != VERSION:
 		return {}
 	return out
@@ -612,6 +628,54 @@ static func _pad_void_rows(grid, filler, from_height: int, to_height: int) -> vo
 		for tx in SimWorld.MAP_WIDTH:
 			row.append(filler.duplicate(true) if filler is Dictionary else filler)
 		grid.append(row)
+
+
+# v4 -> v5 (S-18/S-19/S-20, 2026-09-23): her seed pouch and her crop basket become one
+# pouch. Two keys of the same substance are added together, key by key — five
+# wheat seeds and two cut wheat make seven wheat, because after this change
+# those were never two things.
+#
+# **Nothing is clamped.** A farm saved with fourteen wheat in the basket loads
+# with fourteen wheat, over the carry cap and staying there until she spends or
+# sells down past it — she simply cannot pick up a fifteenth. Trimming the stack
+# to the new limit on load would be the update deleting a player's things, which
+# is the one thing a migration may never do, and an over-full pouch drains on
+# its own within a day of ordinary play.
+#
+# The old keys are removed rather than left beside the new one, so a file cannot
+# carry two answers to "how much wheat does she have".
+static func _migrate_4_to_5(data: Dictionary) -> Dictionary:
+	var out: Dictionary = data.duplicate(true)
+	out["version"] = 5
+	var s = out.get("state", {})
+	if typeof(s) != TYPE_DICTIONARY:
+		return out
+	var pouch: Dictionary = {}
+	var items: Dictionary = {}
+	for key in ["seeds", "crops"]:
+		var old = s.get(key, {})
+		if typeof(old) != TYPE_DICTIONARY:
+			continue
+		for item in old:
+			var name := String(item)
+			if CropDefs.is_plantable(name):
+				pouch[name] = int(pouch.get(name, 0)) + int(old[item])
+			else:
+				items[name] = int(items.get(name, 0)) + int(old[item])
+		s.erase(key)
+	s["pouch"] = pouch
+	s["items"] = items
+	s["bin_reserve"] = {}
+	s["last_bin_delivery"] = {}
+	# A machine already holding a crop in v4 holds one unit, not the new
+	# three-unit harvest. Its next sale must deliver that one intact.
+	var actors = out.get("world", {}).get("actors", {})
+	if typeof(actors) == TYPE_DICTIONARY:
+		for id in actors:
+			var extra = actors[id].get("extra", {})
+			if typeof(extra) == TYPE_DICTIONARY and String(extra.get("carrying", "")) != "":
+				extra["carrying_count"] = int(extra.get("carrying_count", 1))
+	return out
 
 
 static func _migrate_2_to_3(data: Dictionary) -> Dictionary:

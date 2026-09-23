@@ -625,37 +625,18 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   for being too close to today's look to be a direction. Rendering the four is the
   remaining work before the re-ask.
 - **Q-113** ~~How much a player can carry before she has to sell~~ — ✅ ruled
-  2026-09-21: **10 crops on her person; 40 when she has a grain silo.** Both numbers
-  are `[Playtest]`. Ten covers the nine-tile starting plot in one harvest-and-replant
-  pass; five would interrupt that first pass. The silo raises storage for a larger
-  farm. Recorded in `hq/data/rulings/Q-113.json` and S-18. This is a design ruling,
-  **not a claim that the one-pouch change has reached the build**. The amount kept back
-  when selling, whether capacity is shared across crop kinds, and the number of crops
-  returned by one planted seed were not settled by this choice. Make those details
-  explicit before the economy change lands.
+  2026-09-21 and clarified 2026-09-23: **10 plantable units of each crop species
+  on her person; 40 of each with a future grain silo.** Both limits are
+  `[Playtest]`. The silo is not available in the prototype. See S-18.
 
-- **Q-115 (Ruling)** How many crops one planted seed returns. The proposed change lets
-  a harvested crop be planted again instead of requiring a new seed purchase. Today
-  one planted seed returns one crop. Keeping that crop to replant leaves none to sell,
-  so the crop loop makes no gold. The hen then supplies the continuing income: an egg
-  arrives about half the mornings and sells for 10 gold, or 5 gold per day on average.
-  At that rate the 50-gold scarecrow takes 10 days on average, the 120-gold sprinkler
-  takes 24, and buying both from zero takes 34, before any other income.
+- **Q-115** ~~How many crops one planted seed returns~~ — ✅ ruled 2026-09-23:
+  **one harvested crop yields three plantable units of its species.** This
+  includes machine harvests. Three is `[Playtest]`. See S-19.
 
-  **Recommendation: two crops per planted seed.** Keep one to plant again and sell
-  one. At current prices a single wheat plot then earns 15 gold every three growing
-  days, and a single tomato plot earns 30 gold every five. On one plot, buying the
-  scarecrow and then the sprinkler requires 170 gold: 12 wheat harvests or six tomato
-  harvests before egg income. More plots shorten that wait. Three crops per seed
-  would leave two to sell and speed purchases further. One crop per seed leaves eggs
-  as the only repeating income on a farm that replants every crop.
-
-  Options: **(a) two crops per seed** — one replanted, one sold; **(b) three crops
-  per seed** — one replanted, two sold; **(c) one crop per seed** — no repeating crop
-  income if the farm is fully replanted. **Recommendation: (a).** This ruling chooses
-  yield only. Q-113 settled carrying capacity, not how much the shipping bin keeps
-  back. The one-pouch implementation is still held and does not ship merely because
-  this question is prepared. The plain-language card is `hq/data/decisions/Q-115.json`.
+- **Q-116** ~~How much planting stock the shipping bin keeps before selling~~ —
+  ✅ ruled 2026-09-23: **the bin reserves ten plantable units per crop species,
+  separate from what she carries; only excess sells.** The player can take stock
+  from the bin to plant again. Ten is `[Playtest]`. See S-20.
 
 - **Q-43** ~~M1's exit gate depends on an unavailable playtester~~ — ✅ ruled 2026-08-28
   by the designer: **user-acceptance test satisfied at this stage.** The 4-year-old is

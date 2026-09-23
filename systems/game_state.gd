@@ -18,8 +18,23 @@ var energy: int
 var max_energy: int
 var gold: int
 var selected_tool: int  # Index into Tools.LIST
-var seeds: Dictionary
-var crops: Dictionary
+# **One pouch** (S-18/S-19/S-20, 2026-09-23). What she has harvested and what she can sow
+# used to be two dictionaries of the same substance — `seeds`, which `plant` drew
+# from, and `crops`, which the bin emptied — and keeping them apart is what made
+# a wheat plant something you could sell but never sow. Merged, a harvested plant
+# *is* the seed for the next one, which is the whole of the change: she can farm
+# without money, and the bin becomes the place she gets rid of a surplus rather
+# than the only thing a crop is for.
+#
+# `pouch` holds plantable crop species only. `items` holds eggs and scarecrows;
+# the crop row decides whether a key is plantable or sellable, and neither item
+# counts against a crop's carrying limit or enters the reserve.
+#
+# Still not the home of acorns or machines; see their own notes below.
+var pouch: Dictionary  # Plantable carried crop units only.
+var items: Dictionary  # Eggs and scarecrows: carried, but never plantable crops.
+var bin_reserve: Dictionary  # Plantable units kept at the shipping bin, per species.
+var last_bin_delivery: Dictionary
 var harvest_counts: Dictionary
 var shipping_bin: Dictionary
 var watering_can_charges: int
@@ -38,11 +53,10 @@ var crop_crows_seen: int
 # indistinguishable from another acorn — the egg's and the scarecrow's shape,
 # minus their dictionary, since there is exactly one kind of thing in here.
 #
-# Deliberately **not** a key in `crops` or `seeds`, which are not neutral
-# cupboards: everything in `crops` is emptied into the bin by `sell_crops_to_bin`
-# and counted into `total_shipped` (so an acorn would quietly pay off Q-12's
-# proof), and everything in `seeds` is a thing the seed pill can select and
-# `plant` can put in the ground. An acorn is neither, yet.
+# Deliberately **not** a key in `pouch`, which is not a neutral cupboard: what is
+# deposited past the bin reserve is counted into `total_shipped` (so an acorn
+# would quietly pay off Q-12's proof), and a plantable entry is one `plant` can
+# put in the ground. An acorn is neither, yet.
 #
 # It has no use today — collecting one takes it out of the crow's stock (Q-48's
 # whole point) and that is all it does. Phase 2's decoy and feed designs are
@@ -52,11 +66,11 @@ var acorns: int
 # **The crate** — machines she has bought and not yet put down (2026-09-03, the
 # designer's placeholder acquisition rule; see `systems/machine_defs.gd`).
 #
-# Deliberately not a corner of `seeds`, for the reason the acorn is not one: a
-# thing in `seeds` is planted into soil by the `plant` verb, and a machine is
-# **placed** on the ground by the `place` verb and then starts acting on its own.
-# Keeping them apart is what lets the seed pouch stay a seed pouch while a tower,
-# a fence or a hopper joins this dictionary with no new field.
+# Deliberately not a corner of `pouch`, for the reason the acorn is not one: a
+# plantable thing in the pouch is put into soil by the `plant` verb, and a machine
+# is **placed** on the ground by the `place` verb and then starts acting on its
+# own. Keeping them apart is what lets the pouch stay a pouch while a tower, a
+# fence or a hopper joins this dictionary with no new field.
 var machines: Dictionary
 
 # T-11's shape, for the machines: "has she ever bought one?" — accrued in the sim
@@ -122,6 +136,7 @@ var ant_schedule: Array[int]
 # every `per_day` in that table is 0.
 var visitor_schedules: Dictionary
 var total_shipped: int  # Q-12 proof counter (crops sold, any route)
+var bin_deposits: int  # Successful player bin errands, including reserve-only deposits.
 
 # T-11 (Q-35): "has she ever done this?" for the three economy verbs, so each
 # teaching beat can fire exactly once by construction rather than by a flag.
@@ -193,8 +208,12 @@ func reset() -> void:
 	max_energy = Tools.DAY_UNITS
 	gold = 0
 	selected_tool = 0
-	seeds = { "wheat": 5, "tomato": 0 }
-	crops = { "wheat": 0, "tomato": 0 }
+	# Five wheat and nothing else: the same handful she has always started with,
+	# and now the only stock she ever needs, since cutting one gives it back.
+	pouch = { "wheat": 5, "tomato": 0 }
+	items = { "egg": 0, "scarecrow": 0 }
+	bin_reserve = {}
+	last_bin_delivery = {}
 	harvest_counts = { "wheat": 0, "tomato": 0 }
 	shipping_bin = { "wheat": 0, "tomato": 0 }
 	watering_can_charges = 8
@@ -220,6 +239,7 @@ func reset() -> void:
 	ant_schedule = []
 	visitor_schedules = {}
 	total_shipped = 0
+	bin_deposits = 0
 	seeds_bought = 0
 	cans_refilled = 0
 	phase1_complete = false
@@ -297,10 +317,10 @@ func cycle_seed_type() -> void:
 			# reaching one here means it is holdable; no stock test to fail.
 			selected_seed_type = seed_type
 			return
-		var def: Dictionary = CropDefs.TYPES.get(seed_type, {})
-		if not def.has("seed_price") or not CropDefs.is_seed_unlocked(seed_type, harvest_counts):
+		if not CropDefs.is_plantable(seed_type) \
+				or not CropDefs.is_seed_unlocked(seed_type, harvest_counts):
 			continue
-		if seeds.get(seed_type, 0) > 0:
+		if held_count(seed_type) > 0:
 			selected_seed_type = seed_type
 			return
 		if first_unlocked == "":
@@ -334,7 +354,20 @@ func held_order() -> Array:
 func held_count(key: String) -> int:
 	if MachineDefs.has(key):
 		return int(machines.get(key, 0))
-	return int(seeds.get(key, 0))
+	if not CropDefs.is_plantable(key):
+		return int(items.get(key, 0))
+	return int(pouch.get(key, 0))
+
+
+# How many sowable things she is carrying, of every kind together. The question
+# "is there anything to plant" — which is not "is the pouch empty" now that a
+# pouch can hold nothing but eggs.
+func sowable_total() -> int:
+	var n := 0
+	for key in pouch:
+		if CropDefs.is_plantable(String(key)):
+			n += int(pouch[key])
+	return n
 
 
 func holding_machine() -> bool:
@@ -372,8 +405,18 @@ func buy_seed(seed_type: String) -> bool:
 		return false
 	if not CropDefs.is_seed_unlocked(seed_type, harvest_counts):
 		return false
+	# A starter crop is not on the shelf (S-18/S-19/S-20) and so cannot be bought here
+	# either — the shop and the till answer the same question, which is what stops
+	# a bot buying a packet the player cannot see (S-3, ground rule 1). The
+	# `buy_seed` verb itself is untouched: it is written into replay logs on disk
+	# and every one of them still parses.
+	if not CropDefs.is_on_shelf(seed_type):
+		return false
 	gold -= def.seed_price
-	seeds[seed_type] = seeds.get(seed_type, 0) + 1
+	if CropDefs.is_plantable(seed_type):
+		pouch[seed_type] = pouch.get(seed_type, 0) + 1
+	else:
+		items[seed_type] = items.get(seed_type, 0) + 1
 	seeds_bought += 1
 	# Hold what you just bought, if you were holding nothing. Without this the
 	# selection can point at an item with no stock while the pouch has seeds in
@@ -381,7 +424,7 @@ func buy_seed(seed_type: String) -> bool:
 	# the trap underneath the 2026-08-28 scarecrow report. Deliberately does not
 	# override a selection she still has stock of: buying a scarecrow should not
 	# silently stop her planting the wheat she was mid-row on.
-	if seeds.get(selected_seed_type, 0) <= 0:
+	if held_count(selected_seed_type) <= 0:
 		selected_seed_type = seed_type
 	gold_changed.emit(gold)
 	return true
@@ -422,7 +465,7 @@ func buy_machine(key: String) -> bool:
 
 
 # What one crop fetches at the bin. **One price, two sellers** (v0.2.1 WI-9a): she
-# empties a whole basket into the bin, a machine brings one crop in its hands, and
+# empties her carried crops into the bin, a machine brings its counted harvest, and
 # a farm where those two paid differently would be a farm where it mattered whose
 # hands the wheat arrived in. A crop nobody has priced is worth nothing rather
 # than an error, which is what an unknown type has always been worth here.
@@ -433,35 +476,77 @@ static func crop_price(crop_type: String) -> int:
 	return int(def.sell_price)
 
 
-func sell_crops_to_bin() -> bool:
-	var sold_anything := false
-	for crop_type in crops.keys():
-		var count: int = crops[crop_type]
-		if count > 0:
-			gold += count * crop_price(crop_type)
-			crops[crop_type] = 0
-			total_shipped += count
-			sold_anything = true
-	if sold_anything:
-		gold_changed.emit(gold)
-		if Engine.get_main_loop() and Engine.get_main_loop().root.has_node("AudioManager"):
-			Engine.get_main_loop().root.get_node("AudioManager").play_sfx("click")
-	return sold_anything
+# The bin keeps the first ten plantable units of each species. The reserve is
+# separate from what she carries and survives sleep. [Playtest] Q-116.
+const BIN_RESERVE_CAP := 10
 
 
-# One crop, out of a machine's hands and into the bin (v0.2.1 WI-9a, Q-100). The
-# gold and the shipped count move exactly as they do when she sells a basket —
-# the same price, the same running total — because a crop is a crop whoever
-# carried it to the bin. No sound: a machine's cue is presentation's to play off
-# the Action, the way its watering already gets her splash (`world/farm.gd`).
-#
-# Returns what it paid, so the caller can report the gold in the Action's result.
-func sell_one_crop(crop_type: String) -> int:
-	var paid := crop_price(crop_type)
+func sellable_total() -> int:
+	var n := int(items.get("egg", 0))
+	for crop_type in pouch:
+		n += int(pouch[crop_type])
+	return n
+
+
+# Shared allocator for player deposits and machine deliveries. Only the excess
+# pays gold and counts as shipped. An egg keeps its old immediate-sale behavior.
+func allocate_bin_delivery(crop_type: String, count: int) -> Dictionary:
+	if count <= 0 or not CropDefs.is_sellable(crop_type):
+		return { "ok": false, "reserved": 0, "sold": 0, "gold": 0 }
+	var reserved := 0
+	if CropDefs.is_plantable(crop_type):
+		reserved = mini(count, maxi(0, BIN_RESERVE_CAP - int(bin_reserve.get(crop_type, 0))))
+		bin_reserve[crop_type] = int(bin_reserve.get(crop_type, 0)) + reserved
+	var sold := count - reserved
+	var paid := sold * crop_price(crop_type)
 	gold += paid
-	total_shipped += 1
-	gold_changed.emit(gold)
-	return paid
+	total_shipped += sold
+	if paid > 0:
+		gold_changed.emit(gold)
+	return { "ok": true, "reserved": reserved, "sold": sold, "gold": paid }
+
+
+func sell_crops_to_bin() -> Dictionary:
+	var result := { "ok": false, "reserved": {}, "sold": {}, "gold": 0 }
+	for crop_type in pouch.keys():
+		var count := int(pouch[crop_type])
+		if count <= 0:
+			continue
+		var delivery := allocate_bin_delivery(String(crop_type), count)
+		pouch[crop_type] = 0
+		result.ok = true
+		result.reserved[crop_type] = int(delivery.reserved)
+		result.sold[crop_type] = int(delivery.sold)
+		result.gold += int(delivery.gold)
+	var eggs := int(items.get("egg", 0))
+	if eggs > 0:
+		var egg_delivery := allocate_bin_delivery("egg", eggs)
+		items["egg"] = 0
+		result.ok = true
+		result.reserved["egg"] = 0
+		result.sold["egg"] = eggs
+		result.gold += int(egg_delivery.gold)
+	if result.ok:
+		bin_deposits += 1
+		last_bin_delivery = result.duplicate(true)
+	return result
+
+
+func sell_one_crop(crop_type: String, count: int = 1) -> Dictionary:
+	# The bin menu reports the last *player* deposit. A machine may deliver after
+	# she leaves; it must not rewrite that sentence as if she had deposited it.
+	return allocate_bin_delivery(crop_type, count)
+
+
+func withdraw_reserved_crop(crop_type: String, cap: int = 10) -> int:
+	if not CropDefs.is_plantable(crop_type):
+		return 0
+	var moved := mini(int(bin_reserve.get(crop_type, 0)),
+		maxi(0, cap - int(pouch.get(crop_type, 0))))
+	if moved > 0:
+		bin_reserve[crop_type] = int(bin_reserve[crop_type]) - moved
+		pouch[crop_type] = int(pouch.get(crop_type, 0)) + moved
+	return moved
 
 
 func process_shipping_bin() -> void:

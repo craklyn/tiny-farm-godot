@@ -229,7 +229,7 @@ func _stage_ripe_plot() -> void:
 	GameState.day = GameState.takeover_day + 6
 	GameState.clear_counts["clear_weed"] = 1
 	GameState.gold = 0
-	GameState.crops = { "wheat": 0, "tomato": 0 }
+	GameState.pouch = { "wheat": 0, "tomato": 0 }
 	for row in RIPE_PLOT.size():
 		var line: String = RIPE_PLOT[row]
 		for col in line.length():

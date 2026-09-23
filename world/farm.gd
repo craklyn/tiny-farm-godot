@@ -1121,6 +1121,7 @@ func _refuse_dx(tx: int, ty: int) -> float:
 # either side can emit has an icon and the mismatch cannot come back.
 const REFUSE_ICONS := {
 	"no_seeds":  { "sheet": "tools",   "rect": [5 * 16, 0, 16, 16] },
+	"pouch_full": { "sheet": "tools", "rect": [5 * 16, 0, 16, 16] },
 	"no_water":  { "sheet": "tools",   "rect": [4 * 16, 0, 16, 16] },
 	"no_energy": { "sheet": "cot", "rect": [0, 0, 16, 32] },
 }
