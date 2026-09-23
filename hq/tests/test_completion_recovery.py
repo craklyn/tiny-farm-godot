@@ -35,6 +35,7 @@ class Recovery(unittest.TestCase):
         work.bind(host)
         self.repo_patch=patch.object(server,'REPO',str(self.repo));self.repo_patch.start()
         self.worktrees_patch=patch.object(drain,'WORKTREES',str(Path(self.tmp.name)/'worktrees'));self.worktrees_patch.start()
+        self.transactions_patch=patch.object(drain,'TRANSACTIONS',str(Path(self.tmp.name)/'transactions'));self.transactions_patch.start()
         self.card={'id':'wtest','title':'Finish the file','owner':'sam','tier':1,'state':'waiting_session',
                    'ask':'Finish','first_action':'Edit','attempts':0}
         self.suites={'unit':{'ok':True},'integration':{'ok':True}}
@@ -52,13 +53,87 @@ class Recovery(unittest.TestCase):
         self.r['integration_checkout'] = checkout
         self.r['tree_evidence']=drain.tree_evidence(['sample.txt'], repo=checkout)
     def tearDown(self):
-        self.repo_patch.stop();self.worktrees_patch.stop();self.tmp.cleanup()
+        self.repo_patch.stop();self.worktrees_patch.stop();self.transactions_patch.stop();self.tmp.cleanup()
     def git(self,*args):
         return subprocess.run(['git',*args],cwd=self.repo,capture_output=True,text=True,check=True).stdout.strip()
     def saved(self):
         return json.loads(Path(work._item_path('wtest')).read_text())
     def write(self):
         return drain.write_back(self.card,self.r,True,'',self.suites,ORG)
+
+    def interrupted_checkpoint(self):
+        card=work.save_item(self.card)
+        self.r['applied']=True
+        self.r['suites']=self.suites
+        drain.checkpoint(card,self.r,'verified')
+        path=Path(drain.TRANSACTIONS)/'byhand'/'wtest.json'
+        tx=json.loads(path.read_text());tx['pid']=99999999
+        path.write_text(json.dumps(tx))
+        return path
+
+    def test_verified_checkpoint_rechecks_entire_tree_before_writeback(self):
+        path=self.interrupted_checkpoint()
+        (Path(self.r['integration_checkout'])/'surprise.txt').write_text('test pollution\n')
+        self.assertEqual(drain.recover_interrupted_transactions(ORG),1)
+        got=self.saved()
+        self.assertNotIn('completion',got)
+        self.assertEqual(got['workflow']['blockers'][-1]['type'],'missing_evidence')
+        self.assertEqual(json.loads(path.read_text())['phase'],'written_back')
+
+    def test_verified_checkpoint_rejects_unlisted_tracked_change(self):
+        checkout=Path(self.r['integration_checkout'])
+        (checkout/'unlisted.txt').write_text('before\n')
+        subprocess.run(['git','add','unlisted.txt'],cwd=checkout,check=True)
+        self.r['candidate']['tree']=subprocess.run(['git','write-tree'],cwd=checkout,
+            capture_output=True,text=True,check=True).stdout.strip()
+        path=self.interrupted_checkpoint()
+        (checkout/'unlisted.txt').write_text('changed by tests\n')
+        self.assertEqual(drain.recover_interrupted_transactions(ORG),1)
+        self.assertNotIn('completion',self.saved())
+        self.assertEqual(self.saved()['workflow']['blockers'][-1]['type'],'missing_evidence')
+        self.assertEqual(json.loads(path.read_text())['phase'],'written_back')
+
+    def test_changed_card_abandons_checkpoint_durably(self):
+        path=self.interrupted_checkpoint()
+        edited=work.load_item('wtest');edited['ask']='Different instruction';work.save_item(edited)
+        self.assertEqual(drain.recover_interrupted_transactions(ORG),0)
+        self.assertEqual(json.loads(path.read_text())['phase'],'abandoned')
+        self.assertEqual(drain.recover_interrupted_transactions(ORG),0)
+        self.assertNotIn('last_recorded_attempt',self.saved())
+        self.assertEqual(self.saved()['ask'],'Different instruction')
+
+    def test_scope_edit_after_commit_inspects_exact_commit_without_landing_new_ask(self):
+        original=drain.sh
+        def interrupted(args,**kwargs):
+            got=original(args,**kwargs)
+            if args[:2]==['git','commit']:raise Crash()
+            return got
+        with patch.object(drain,'sh',side_effect=interrupted):
+            with self.assertRaises(Crash):self.write()
+        edited=work.load_item('wtest');edited['ask']='New instruction';work.save_item(edited)
+        self.assertEqual(work.recover_completion_work(),['wtest'])
+        got=self.saved()
+        self.assertEqual(got['ask'],'New instruction')
+        self.assertNotIn('completion',got)
+        self.assertTrue(got['landing_recovery']['exact_commit'])
+        self.assertFalse(got['landing_recovery']['on_main'])
+
+    def test_scope_edit_after_main_cas_preserves_landed_commit_without_closing_new_ask(self):
+        original=integration.advance_main
+        def interrupted(*args):
+            self.assertTrue(original(*args))
+            raise Crash()
+        with patch.object(integration,'advance_main',side_effect=interrupted):
+            with self.assertRaises(Crash):self.write()
+        sha=self.git('rev-parse','main')
+        edited=work.load_item('wtest');edited['ask']='New instruction';work.save_item(edited)
+        self.assertEqual(work.recover_completion_work(),['wtest'])
+        got=self.saved()
+        self.assertEqual(got['ask'],'New instruction')
+        self.assertNotIn('completion',got)
+        self.assertTrue(got['landing_recovery']['exact_commit'])
+        self.assertTrue(got['landing_recovery']['on_main'])
+        self.assertEqual(got['workflow']['integrations'][-1]['commit'],sha)
 
     def test_crash_before_commit_is_held_without_relaunch(self):
         original=drain.sh
@@ -231,6 +306,10 @@ class Recovery(unittest.TestCase):
         self.assertEqual(self.git('show','main:sample.txt'),'intervening overlap')
         self.assertEqual((self.repo/'sample.txt').read_text(),'checked\n')
         self.assertEqual(len(work.load_item('wtest')['workflow']['actions']),1)
+        view=work.work_view(work.load_item('wtest'))
+        self.assertEqual(view['blocker']['type'],'stale_base')
+        self.assertEqual(view['next_action']['type'],'reconcile')
+        self.assertEqual(view['next_action']['availability'],'runnable')
 
     def test_selector_resumes_followups_on_a_landed_card(self):
         fu={'title':'Finish another file','owner':'sam','tier':1,'level':'task','first_action':'Edit','why':'Next'}

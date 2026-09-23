@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import integration
@@ -69,6 +70,51 @@ class IntegrationHandoff(unittest.TestCase):
         with self.assertRaises(RuntimeError):
             integration.candidate_checkout(str(self.repo), self.tmp.name, "a1", self.base)
         self.assertEqual(integration.main_head(str(self.repo)), self.base)
+
+    def test_clean_dedicated_main_owner_advances_with_exact_candidate(self):
+        self.assertEqual(integration.handoff_main(str(self.repo), "codex/user",
+                                                  confirmed_idle=True), (True, ""))
+        owner = Path(self.tmp.name, "main-owner")
+        git(self.repo, "worktree", "add", "--", str(owner), "main")
+        self.assertEqual(integration.handoff_status(str(self.repo)), (True, ""))
+        tree = integration.candidate_checkout(str(self.repo), self.tmp.name, "a1", self.base)
+        (Path(tree) / "candidate.txt").write_text("checked\n")
+        git(tree, "add", "candidate.txt")
+        git(tree, "commit", "-qm", "Candidate")
+        commit = git(tree, "rev-parse", "HEAD")
+        self.assertTrue(integration.advance_main(str(self.repo), commit, self.base))
+        self.assertEqual(git(owner, "rev-parse", "HEAD"), commit)
+        self.assertEqual((owner / "candidate.txt").read_text(), "checked\n")
+        self.assertEqual(git(owner, "status", "--porcelain"), "")
+
+    def test_dirty_dedicated_main_owner_blocks_cas_without_overwrite(self):
+        self.assertEqual(integration.handoff_main(str(self.repo), "codex/user",
+                                                  confirmed_idle=True), (True, ""))
+        owner = Path(self.tmp.name, "main-owner")
+        git(self.repo, "worktree", "add", "--", str(owner), "main")
+        (owner / "kept.txt").write_text("user edit\n")
+        self.assertFalse(integration.handoff_status(str(self.repo))[0])
+        self.assertFalse(integration.advance_main(str(self.repo), self.base, self.base))
+        self.assertEqual((owner / "kept.txt").read_text(), "user edit\n")
+
+    def test_checkout_sync_can_resume_after_ref_cas_interruption(self):
+        self.assertEqual(integration.handoff_main(str(self.repo), "codex/user",
+                                                  confirmed_idle=True), (True, ""))
+        owner = Path(self.tmp.name, "main-owner")
+        git(self.repo, "worktree", "add", "--", str(owner), "main")
+        tree = integration.candidate_checkout(str(self.repo), self.tmp.name, "a1", self.base)
+        (Path(tree) / "candidate.txt").write_text("checked\n")
+        git(tree, "add", "candidate.txt")
+        git(tree, "commit", "-qm", "Candidate")
+        commit = git(tree, "rev-parse", "HEAD")
+        with patch.object(integration, "synchronize_main", return_value=False):
+            with self.assertRaisesRegex(RuntimeError, "needs safe synchronization"):
+                integration.advance_main(str(self.repo), commit, self.base)
+        self.assertEqual(integration.main_head(str(self.repo)), commit)
+        self.assertFalse((owner / "candidate.txt").exists())
+        self.assertTrue(integration.synchronize_main(str(self.repo), commit, self.base))
+        self.assertTrue(integration.synchronize_main(str(self.repo), commit, self.base))
+        self.assertEqual((owner / "candidate.txt").read_text(), "checked\n")
 
     def test_legacy_apply_is_refused_before_store_or_git_mutation(self):
         command = [sys.executable, str(Path(__file__).resolve().parents[1] / "drain.py"),

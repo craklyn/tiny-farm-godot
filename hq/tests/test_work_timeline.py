@@ -10,6 +10,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import server
 import drain
+import work
 
 
 class WorkTimeline(unittest.TestCase):
@@ -69,8 +70,10 @@ class WorkTimeline(unittest.TestCase):
         directory.mkdir(parents=True)
         transaction = directory / "we6190884f9a.json"
         transaction.write_text(json.dumps({
-            "version": 1, "run": "dead-run", "item": "we6190884f9a", "pid": 99999999,
+            "version": 2, "run": "dead-run", "item": "we6190884f9a", "pid": 99999999,
             "phase": "review_finished", "at": "2026-09-22T16:37:36-07:00",
+            "scope_id": work.instruction_fingerprint(self.item),
+            "item_revision": self.item.get("_revision", 0),
             "record": {"attempt_id": "attempt-1", "check": {"verdict": "concerns", "findings": [{"what": "Verify it."}]},
                        "seat": "yuki", "model": "test", "usage": [], "result": "Done", "patch": "", "stat": "", "files": [],
                        "error": "", "limited": False, "resume": ""}},

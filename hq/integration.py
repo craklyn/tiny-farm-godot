@@ -35,11 +35,35 @@ def main_checkout(repo):
     return None
 
 
+def _primary_checkout(repo):
+    for line in git(repo, "worktree", "list", "--porcelain").stdout.splitlines():
+        if line.startswith("worktree "):
+            return os.path.realpath(line[9:])
+    return ""
+
+
+def _owner_state(holder, parent):
+    """A clean dedicated main checkout at the expected old commit."""
+    if git(holder, "rev-parse", "HEAD").stdout.strip() != parent:
+        return False
+    if git(holder, "diff", "--quiet", check=False).returncode or \
+            git(holder, "diff", "--cached", "--quiet", check=False).returncode or \
+            git(holder, "ls-files", "--others", "--exclude-standard").stdout.strip():
+        return False
+    return True
+
+
 def handoff_status(repo):
     holder = main_checkout(repo)
     if holder:
+        # The primary checkout can carry Daniel's unfinished files. A linked
+        # worktree deliberately assigned main may own it, but only while clean
+        # and synchronized with the ref it claims to represent.
+        if os.path.realpath(holder) != _primary_checkout(repo) and \
+                _owner_state(holder, main_head(repo)):
+            return True, ""
         return False, ("Local main is still checked out at " + holder + "; a confirmed-idle "
-                       "branch handoff is required before clean integration.")
+                       "branch handoff or clean main-worktree synchronization is required before integration.")
     return True, ""
 
 
@@ -126,9 +150,44 @@ def remove_candidate(repo, path, scratch):
 
 
 def advance_main(repo, commit, parent):
-    """Atomic expected-parent update; never auto-pushes origin/main."""
+    """CAS local main and synchronize its clean dedicated owner, if present."""
+    holder = main_checkout(repo)
+    if holder:
+        if os.path.realpath(holder) == _primary_checkout(repo) or not _owner_state(holder, parent):
+            return False
     updated = git(repo, "update-ref", "refs/heads/main", commit, parent, check=False)
-    return updated.returncode == 0
+    if updated.returncode:
+        return False
+    if holder and not synchronize_main(repo, commit, parent, holder):
+        raise RuntimeError("Local main advanced, but its dedicated checkout needs safe synchronization.")
+    return True
+
+
+def synchronize_main(repo, commit, parent, holder=None):
+    """Repair only the known-stale index/worktree of a dedicated main owner.
+
+    This may run again after a crash between the ref CAS and checkout update.
+    It never overwrites a user edit: index must still be the old tree, worktree
+    must equal that index, and no untracked file may be present.
+    """
+    holder = holder or main_checkout(repo)
+    if not holder or os.path.realpath(holder) == _primary_checkout(repo):
+        return False
+    if main_head(repo) != commit or git(holder, "rev-parse", "HEAD").stdout.strip() != commit:
+        return False
+    target_tree = git(repo, "rev-parse", commit + "^{tree}").stdout.strip()
+    indexed_tree = git(holder, "write-tree").stdout.strip()
+    if indexed_tree == target_tree and _owner_state(holder, commit):
+        return True
+    old_tree = git(repo, "rev-parse", parent + "^{tree}").stdout.strip()
+    if indexed_tree != old_tree or \
+            git(holder, "diff", "--quiet", check=False).returncode or \
+            git(holder, "ls-files", "--others", "--exclude-standard").stdout.strip():
+        return False
+    # Merge the known old and new trees into the clean dedicated checkout.
+    # read-tree refuses an unexpected worktree change rather than forcing it.
+    git(holder, "read-tree", "-m", "-u", parent, commit)
+    return _owner_state(holder, commit)
 
 
 def origin_tracking(repo):

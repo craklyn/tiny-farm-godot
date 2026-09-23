@@ -790,6 +790,7 @@ def work_view(item, repo_facts=None, now=None):
     pending = item.get("pending_landing") or item.get("pending_followups")
     patch = (item.get("attempt_outcome") or {}).get("patch_id") or ""
     candidate = (item.get("attempt_outcome") or {}).get("candidate") or {}
+    candidate_base = candidate.get("base") or ((workflow.get("candidates") or [{}])[-1].get("base"))
     input_id = (patch or candidate.get("tree") or
                 ((workflow.get("candidates") or [{}])[-1].get("id")) or
                 ((actions or [{}])[-1].get("input_id")) or
@@ -800,12 +801,15 @@ def work_view(item, repo_facts=None, now=None):
         blocker = {"type": "code_conflict", "reason": facts.get("tree_reason") or
                    "The candidate overlaps uncommitted repository files.",
                    "files": blocked_files, "owner": item.get("owner") or "claude"}
+    elif not terminal and candidate_base and facts.get("head") and candidate_base != facts["head"]:
+        blocker = {"type": "stale_base", "reason": "Local main changed since this candidate was checked; it needs fresh review and tests.",
+                   "files": [], "owner": item.get("owner") or "claude"}
     elif repair:
         blocker = {"type": "missing_evidence", "reason": repair, "files": [],
                    "owner": item.get("owner") or "claude"}
     elif cost_reason:
         blocker = {"type": "capacity", "reason": cost_reason, "files": [],
-                   "owner": item.get("owner") or "claude"}
+                   "owner": "claude", "wake": "A smaller brief or a reviewed cost-cap increase."}
     elif pending:
         blocker = {"type": "recovery", "reason": "An interrupted transaction needs recovery.",
                    "files": [], "owner": "claude"}
@@ -829,6 +833,8 @@ def work_view(item, repo_facts=None, now=None):
             priority = "reconciliation"
         elif blocker and blocker["type"] == "recovery":
             kind, summary, priority = "recover", "Recover the interrupted transaction.", "reconciliation"
+        elif blocker and blocker["type"] == "capacity":
+            kind, summary, priority = "rebrief", "Narrow the brief or request a reviewed cost-cap increase.", "reconciliation"
         elif item.get("state") in ("for_review", "needs_approval"):
             kind, summary, priority = "decide", "Review the prepared result or decision.", "decision"
         elif item.get("state") == "prepping":
@@ -854,7 +860,7 @@ def work_view(item, repo_facts=None, now=None):
                            "owner": "claude", "files": [], "wake": "operator review"}
         if not stalled_transition:
             active_actions = [{"id": proposed_id, "type": kind,
-                           "input_id": input_id, "owner": ("daniel" if kind == "decide" else item.get("owner") or "claude"),
+                           "input_id": input_id, "owner": ("daniel" if kind == "decide" else "claude" if kind == "rebrief" else item.get("owner") or "claude"),
                            "summary": summary, "priority": priority,
                            "created_at": item.get("finished") or item.get("created") or "",
                            "state": "open", "virtual": True}]
@@ -872,6 +878,13 @@ def work_view(item, repo_facts=None, now=None):
                                "type": "recover", "input_id": input_id, "owner": "claude",
                                "summary": "Recover the interrupted transaction before another build.",
                                "priority": "reconciliation", "created_at": item.get("started") or item.get("created") or "",
+                               "state": "open", "virtual": True})
+    if not terminal and blocker and blocker["type"] == "capacity" and not any(a.get("type") == "rebrief" for a in active_actions):
+        active_actions.append({"id": action_key(item["id"], "rebrief", input_id),
+                               "type": "rebrief", "input_id": input_id, "owner": "claude",
+                               "summary": "Narrow the brief or request a reviewed cost-cap increase.",
+                               "wake": blocker["wake"], "priority": "reconciliation",
+                               "created_at": item.get("finished") or item.get("created") or "",
                                "state": "open", "virtual": True})
     if facts.get("active_session") and not terminal:
         if not active_actions:
@@ -891,7 +904,7 @@ def work_view(item, repo_facts=None, now=None):
                                   action.get("type") == "decide" else "blocked" if
                                   action.get("state") == "blocked" or
                                   (blocker and action.get("type") == "build") or
-                                  (blocker and blocker["type"] == "capacity") else "runnable")
+                                  (blocker and blocker["type"] == "capacity" and action.get("type") != "rebrief") else "runnable")
         if claim and not running:
             action["lease_expired"] = not lease_live
         action["age_seconds"] = max(0, int(instant - _iso_seconds(action.get("created_at")))) if _iso_seconds(action.get("created_at")) else 0
@@ -918,7 +931,7 @@ def work_view(item, repo_facts=None, now=None):
         phase = item.get("state")
     elif next_action and next_action["availability"] == "running":
         phase = "working"
-    elif next_action and next_action["type"] in ("reconcile", "recover"):
+    elif next_action and next_action["type"] in ("reconcile", "recover", "rebrief"):
         phase = "reconciliation"
     elif item.get("state") == "for_review":
         phase = "review"
@@ -939,7 +952,7 @@ def work_view(item, repo_facts=None, now=None):
     shipped = {"landed_sha": landed_sha,
                "ci_confirmed": bool(landed_sha and ci.get("confirmed") and ci.get("commit_sha") == landed_sha)}
     candidate_status = ("landed" if shipped["landed_sha"] else
-                        "stale" if candidate.get("base") and facts.get("head") and candidate["base"] != facts["head"] else
+                        "stale" if candidate_base and facts.get("head") and candidate_base != facts["head"] else
                         "held" if blocker else "reviewed" if (item.get("check") or {}).get("verdict") == "pass" else
                         "unverified" if candidate else "none")
     return {"version": WORKFLOW_VERSION, "phase": phase, "availability": availability,

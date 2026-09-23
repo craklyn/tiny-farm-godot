@@ -88,6 +88,32 @@ class WorkflowProjection(unittest.TestCase):
         self.assertEqual(view["blocker"]["type"], "missing_evidence")
         self.assertIn(item["id"], [row["work_id"] for row in drain.queue_view()["eligible"]])
 
+    def test_newly_stale_candidate_has_runnable_reconciliation(self):
+        old_head = self.git("rev-parse", "HEAD")
+        item = self.card(attempt_outcome={"candidate": {"base": old_head, "tree": "candidate-tree"}})
+        (self.repo / "second.txt").write_text("main moved\n")
+        self.git("add", "second.txt")
+        self.git("commit", "-qm", "move main")
+        view = drain.project_work(item)
+        self.assertEqual(view["candidate_status"], "stale")
+        self.assertEqual(view["blocker"]["type"], "stale_base")
+        self.assertEqual(view["next_action"]["type"], "reconcile")
+        self.assertEqual(view["next_action"]["availability"], "runnable")
+        self.assertIn(item["id"], [row["work_id"] for row in drain.queue_view()["eligible"]])
+
+    def test_cost_cap_holds_build_but_offers_owned_rebrief(self):
+        item = self.card()
+        view = work.work_view(item, repo_facts={"cost_reason": "The attempt exceeded its cost cap."})
+        self.assertEqual(view["blocker"]["type"], "capacity")
+        self.assertEqual(view["blocker"]["owner"], "claude")
+        self.assertIn("smaller brief", view["blocker"]["wake"])
+        self.assertEqual(view["next_action"]["type"], "rebrief")
+        self.assertEqual(view["next_action"]["availability"], "runnable")
+        with patch.object(drain, "_item_spend", return_value=(1000, 3)):
+            queue = drain.queue_view()
+        self.assertEqual(queue["eligible"][0]["action_type"], "rebrief")
+        self.assertEqual(queue["held"][0]["action_type"], "build")
+
     def test_dirty_user_branch_after_handoff_does_not_block_clean_main(self):
         item = self.card()
         drain.save_patch(item["id"], "diff --git a/sample.txt b/sample.txt\n--- a/sample.txt\n+++ b/sample.txt\n@@ -1 +1 @@\n-base\n+new\n")

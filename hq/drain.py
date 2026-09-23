@@ -112,8 +112,10 @@ def checkpoint(item, rec, phase):
     directory = os.path.join(TRANSACTIONS, run)
     os.makedirs(directory, exist_ok=True)
     path = os.path.join(directory, item["id"] + ".json")
-    doc = {"version": 1, "run": run, "item": item["id"], "pid": os.getpid(),
-           "phase": phase, "at": work._now_iso(), "record": rec}
+    doc = {"version": 2, "run": run, "item": item["id"], "pid": os.getpid(),
+           "phase": phase, "at": work._now_iso(), "record": rec,
+           "scope_id": work.instruction_fingerprint(item),
+           "item_revision": item.get("_revision", 0)}
     tmp = path + ".tmp"
     with open(tmp, "w", encoding="utf-8") as target:
         json.dump(doc, target)
@@ -1215,14 +1217,6 @@ def recover_pending_landing(item):
     tx = item.get("pending_landing")
     if not tx:
         return False
-    if tx.get("scope_id") != work.instruction_fingerprint(item):
-        item["repair_hold"] = "The instructions changed during the commit attempt; the owner must reassess it."
-        item["landing_recovery"] = {**tx, "reason": item["repair_hold"]}
-        item.pop("pending_landing", None)
-        work.save_item(item)
-        if tx.get("version") == 2:
-            record_integration_blocker(item, tx, "missing_evidence", item["repair_hold"])
-        return False
     found = sh(["git", "log", "--all", "--format=%H", "--fixed-strings", "--grep=HQ-Attempt: " + tx["attempt_id"]],
                cwd=server.REPO, check=True).stdout.splitlines()
     # A crash after detached commit but before the main ref update leaves the
@@ -1235,7 +1229,29 @@ def recover_pending_landing(item):
     found = list(dict.fromkeys(found))
     matches = [sha for sha in found if ("HQ-Attempt: " + tx["attempt_id"]) in
                sh(["git", "show", "-s", "--format=%B", sha], cwd=server.REPO, check=True).stdout.splitlines()]
-    if len(matches) == 1 and committed_candidate(server.REPO, matches[0], tx):
+    exact_commit = len(matches) == 1 and committed_candidate(server.REPO, matches[0], tx)
+    if tx.get("scope_id") != work.instruction_fingerprint(item):
+        on_main = bool(exact_commit and sh(["git", "merge-base", "--is-ancestor", matches[0],
+                                            "refs/heads/main"], cwd=server.REPO).returncode == 0)
+        if on_main and tx.get("version") == 2 and integration.main_head(server.REPO) == matches[0] \
+                and integration.main_checkout(server.REPO):
+            if not integration.synchronize_main(server.REPO, matches[0], tx["parent"]):
+                item["repair_hold"] = "Local main advanced, but its owner checkout needs safe synchronization."
+                work.save_item(item)
+                return False
+        reason = "The instructions changed during the commit attempt; the owner must reassess it."
+        item["repair_hold"] = reason
+        item["landing_recovery"] = {**tx, "matches": matches,
+                                    "exact_commit": bool(exact_commit), "on_main": on_main,
+                                    "reason": reason}
+        if on_main and tx.get("version") == 2:
+            record_landed_integration(item, tx, matches[0])
+        item.pop("pending_landing", None)
+        work.save_item(item)
+        if tx.get("version") == 2:
+            record_integration_blocker(item, tx, "missing_evidence", reason)
+        return False
+    if exact_commit:
         head = integration.main_head(server.REPO)
         if tx.get("version") == 1 and sh(["git", "merge-base", "--is-ancestor",
                                            matches[0], "refs/heads/main"], cwd=server.REPO).returncode != 0:
@@ -1249,6 +1265,12 @@ def recover_pending_landing(item):
                 head = integration.main_head(server.REPO)
             else:
                 head = matches[0]
+        if tx.get("version") == 2 and head == matches[0] and integration.main_checkout(server.REPO):
+            if not integration.synchronize_main(server.REPO, matches[0], tx["parent"]):
+                item["repair_hold"] = "Local main advanced, but its clean owner checkout needs safe synchronization."
+                item["landing_recovery"] = {**tx, "reason": item["repair_hold"]}
+                work.save_item(item)
+                return False
         if tx.get("version") == 2 and head != matches[0]:
             item["repair_hold"] = "Local main moved before the checked commit could be recovered."
             item["landing_recovery"] = {**tx, "reason": item["repair_hold"]}
@@ -1294,6 +1316,25 @@ def tree_evidence(files, repo=None):
         except FileNotFoundError:
             values.append([name, None])
     return work.evidence_id(values)
+
+
+def prospective_tree_intact(rec):
+    """Recheck the whole tested tree, not just paths named by the patch."""
+    checkout = rec.get("integration_checkout")
+    candidate = rec.get("candidate") or {}
+    files = list(rec.get("files") or [])
+    if not checkout or not os.path.isdir(checkout) or not candidate.get("tree"):
+        return False
+    try:
+        return (integration.main_head(server.REPO) == candidate.get("base") and
+                sh(["git", "rev-parse", "HEAD"], cwd=checkout, check=True).stdout.strip() == candidate.get("base") and
+                sh(["git", "diff", "--quiet"], cwd=checkout).returncode == 0 and
+                sh(["git", "ls-files", "--others", "--exclude-standard"], cwd=checkout).stdout.strip() == "" and
+                sh(["git", "write-tree"], cwd=checkout, check=True).stdout.strip() == candidate["tree"] and
+                git_blobs(checkout, "", files) == candidate.get("files") and
+                tree_evidence(files, repo=checkout) == rec.get("tree_evidence"))
+    except (OSError, RuntimeError):
+        return False
 
 
 def meets_landing_bar(item, rec, applied, suites, *, repo=None):
@@ -1751,7 +1792,7 @@ def queue_view():
                          "reason": (view["blocker"] or {}).get("reason") or action.get("summary") or "held"})
         # A blocked implementation and its runnable reconciliation are two
         # distinct actions. Show both without offering the old build again.
-        if view["blocker"] and action["type"] in ("reconcile", "recover") and action["availability"] == "runnable":
+        if view["blocker"] and action["type"] in ("reconcile", "recover", "rebrief") and action["availability"] == "runnable":
             held.append({**base, "id": item["id"], "action_id": work.action_key(item["id"], "build", action.get("input_id", "")),
                          "action_type": "build", "position": None,
                          "reason": view["blocker"]["reason"]})
@@ -1929,15 +1970,13 @@ def run_verified_batch(pool, org, run_id, log, *, no_suites=False):
             record_phase(run_id, item, "verifying", "The exact prospective main tree is running both game test suites.")
             suites = run_suites(cwd=integration_repo)
             rec["suites"] = suites
-            checkpoint(item, rec, "verified")
             # A test or hook that changed tracked files invalidates the tested
             # tree, even if the named candidate files still happen to match.
-            if sh(["git", "diff", "--quiet"], cwd=integration_repo).returncode != 0 or \
-                    sh(["git", "ls-files", "--others", "--exclude-standard"], cwd=integration_repo).stdout.strip() or \
-                    sh(["git", "write-tree"], cwd=integration_repo).stdout.strip() != candidate.get("tree"):
+            if not prospective_tree_intact(rec):
                 ok, blocker_kind = False, "missing_evidence"
                 why = "The prospective tree changed while its tests ran."
                 rec["applied"], rec["why_not"] = False, why
+            checkpoint(item, rec, "verified")
         rec["test_evidence"] = work.evidence_id([rec.get("patch", ""), suites])
         fresh = work.load_item(item["id"])
         if fresh.get("_revision", 0) != item.get("_revision", 0):
@@ -1988,11 +2027,13 @@ def recover_interrupted_transactions(org):
                     tx = json.load(source)
             except (OSError, ValueError):
                 continue
-            if tx.get("phase") == "written_back":
+            if tx.get("phase") in ("written_back", "abandoned"):
                 continue
             try:
-                os.kill(int(tx.get("pid") or 0), 0)
-                continue
+                pid = int(tx.get("pid") or 0)
+                if pid > 0:
+                    os.kill(pid, 0)
+                    continue
             except (OSError, TypeError, ValueError):
                 pass
             rec = tx.get("record") or {}
@@ -2003,9 +2044,17 @@ def recover_interrupted_transactions(org):
                 continue
             if item.get("last_recorded_attempt") == rec.get("attempt_id"):
                 tx["phase"] = "written_back"
+            elif (tx.get("version", 0) < 2 or
+                  tx.get("scope_id") != work.instruction_fingerprint(item) or
+                  tx.get("item_revision") != item.get("_revision", 0)):
+                tx["phase"] = "abandoned"
+                tx["abandon_reason"] = "The work card changed since this transaction's checkpoint."
             elif rec.get("check"):
                 rec.setdefault("applied", False)
                 rec.setdefault("why_not", "the build session stopped before recording its review")
+                if rec["applied"] and not prospective_tree_intact(rec):
+                    rec["applied"] = False
+                    rec["why_not"] = "The prospective tree changed after verification; new evidence is required."
                 try:
                     finished = write_back(item, rec, bool(rec["applied"]), rec["why_not"],
                                           rec.get("suites"), org)
