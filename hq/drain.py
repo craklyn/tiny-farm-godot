@@ -748,6 +748,7 @@ def run_cli(prompt, system, tools, model, cwd, timeout, turns, phase, seat, item
 
 SUPERVISED_IDS = set()
 RETRY_ONCE_IDS = set()
+FINISH_VERIFIED_IDS = set()
 
 
 def _launch_context(item_id):
@@ -2470,8 +2471,12 @@ def run_verified_batch(pool, org, run_id, log, *, no_suites=False, actions=None)
                   else None)
         if source:
             rec = recheck_held_candidate(item, org, run_id, source)
-        elif action and action.get("type") == "reconcile" and (previous := verified_landing_source(item)):
+        elif (item["id"] in FINISH_VERIFIED_IDS or action and action.get("type") == "reconcile") \
+                and (previous := verified_landing_source(item)):
             rec = resume_verified_landing(item, run_id, previous)
+        elif item["id"] in FINISH_VERIFIED_IDS:
+            rec = {"id": item["id"], "held": True, "error": "The verified landing source changed before retry.",
+                   "usage": [], "check": None, "applied": False}
         else:
             rec = do_item(item, org, run_id, log, action=action) if action else \
                 do_item(item, org, run_id, log)
@@ -2671,6 +2676,8 @@ def main():
                          "is dry or mostly spent")
     ap.add_argument("--retry-once", metavar="ID",
                     help="run one supervised retry of the nominated trial card's exhausted repair")
+    ap.add_argument("--finish-verified", metavar="ID",
+                    help="retry only the already reviewed local-main test gate; no model sessions")
     args = ap.parse_args()
 
     if args.apply:
@@ -2687,6 +2694,14 @@ def main():
             return 2
         args.ids = [args.retry_once]
         RETRY_ONCE_IDS.add(args.retry_once)
+    if args.finish_verified:
+        policy = execution.load_policy()
+        if (args.retry_once or args.unattended or args.all or args.ids or args.repair or
+                args.recover_only or args.brief or args.no_suites or args.thinking or
+                args.limit not in (0, 1) or not policy["background_paused"] or
+                args.finish_verified != policy["trial_item"]):
+            print("--finish-verified requires the nominated paused trial card and both suites.")
+            return 2
 
     work.bind(server, sanitize=not (args.list or args.list_json or args.dry_run or args.brief))
     if args.retry_once:
@@ -2742,9 +2757,17 @@ def main():
         print(json.dumps(queue_view()))
         return 0
 
-    selected_actions = action_dispatch.choose(
-        sys.modules[__name__], include_thinking=args.thinking,
-        ids=args.ids, limit=args.limit)
+    if args.finish_verified:
+        trial = work.load_item(args.finish_verified)
+        if not verified_landing_source(trial):
+            print("No unchanged, reviewed patch with an import-only failed landing gate remains.")
+            return 2
+        FINISH_VERIFIED_IDS.add(trial["id"])
+        selected_actions = [(trial, None)]
+    else:
+        selected_actions = action_dispatch.choose(
+            sys.modules[__name__], include_thinking=args.thinking,
+            ids=args.ids, limit=args.limit)
     RETRY_ONCE_IDS.clear()
     if args.retry_once and (len(selected_actions) != 1 or selected_actions[0][1]["type"] != "reconcile"):
         print("The nominated trial card has no runnable reconciliation action.")
@@ -2776,7 +2799,8 @@ def main():
         return 0
 
     SUPERVISED_IDS.update(args.ids)
-    pool = [i for i in pool if execution.launch_allowed(launch_context=_launch_context(i["id"]), item=i["id"], phase="build-worker")]
+    if not args.finish_verified:
+        pool = [i for i in pool if execution.launch_allowed(launch_context=_launch_context(i["id"]), item=i["id"], phase="build-worker")]
     if not pool:
         print("Automatic work is paused; no permitted items selected.")
         return 0
