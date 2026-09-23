@@ -136,6 +136,7 @@ WORKER_TURNS = int(os.environ.get("DRAIN_TURNS") or 60)
 AUTO_RESUMES = 2
 WORKER_TIMEOUT = 3600
 CHECK_TIMEOUT = 900
+GODOT_IMPORT_TIMEOUT = 180
 # The checker's turns. Eight read a small diff; a 650-line sim change with four
 # new tests ran the checker out of turns before it answered, and a check that
 # does not come back is a diff nobody read.
@@ -1083,6 +1084,52 @@ def touches_game(files):
     return any(f.startswith(g) or f == g for f in files for g in GAME_PATHS)
 
 
+class GodotImportHold(RuntimeError):
+    """The owner cannot safely test this checkout until Godot has indexed it."""
+
+
+def needs_godot_import(item):
+    """Only build cards that point at game code need the engine's class cache."""
+    if int(item.get("tier") or 0) < 1:
+        return False
+    brief = "\n".join(str(item.get(key) or "") for key in
+                      ("ask", "first_action", "title"))
+    return bool(re.search(r"\.(?:gd|tscn|tres)\b|\bproject\.godot\b|"
+                          r"\b(?:world|player|entities|systems|ui|effects|crops|tests)/|"
+                          r"\b(?:Godot|GDScript|gameplay|simulation)\b", brief, re.I))
+
+
+def preflight_godot_import(tree):
+    """Index a private checkout, then remove only known generated sidecars.
+
+    This runs after a held patch has been applied, so Godot sees the classes
+    the owner will test. The reviewed candidate remains the exact authored tree.
+    """
+    staged = sh(["git", "add", "-A"], cwd=tree, timeout=120)
+    if staged.returncode:
+        raise GodotImportHold("Godot import tooling hold: could not snapshot the worktree index.")
+    snapshot = sh(["git", "write-tree"], cwd=tree, timeout=120)
+    if snapshot.returncode or not snapshot.stdout.strip():
+        raise GodotImportHold("Godot import tooling hold: could not snapshot the worktree tree.")
+    expected = snapshot.stdout.strip()
+    try:
+        result = sh(["godot", "--headless", "--path", ".", "--import"],
+                    cwd=tree, timeout=GODOT_IMPORT_TIMEOUT)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise GodotImportHold(f"Godot import tooling hold: {type(exc).__name__} after at most "
+                              f"{GODOT_IMPORT_TIMEOUT} seconds.") from exc
+    restored = restore_test_generated(tree, expected)
+    clean = restored and candidate_unchanged(tree, expected)
+    output = (result.stdout or "") + "\n" + (result.stderr or "")
+    parse_error = re.search(r"(?m)^(?:SCRIPT ERROR:|ERROR:|Parse Error:)", output)
+    if result.returncode or parse_error or not clean:
+        detail = ("Godot reported a parse/import error" if parse_error else
+                  f"Godot exited {result.returncode}" if result.returncode else
+                  "import changed files outside known generated sidecars")
+        tail = " ".join(output.strip().split())[-240:]
+        raise GodotImportHold(f"Godot import tooling hold: {detail}. {tail}"[:400])
+
+
 # ---------------------------------------------------------------------------
 # the phases
 # ---------------------------------------------------------------------------
@@ -1126,6 +1173,9 @@ def do_item(item, org, run_id, log, action=None):
         if item.get("resume"):
             log(f"{item['id']} · tries again with {turns} turns"
                 + ("" if resumed else " — the held patch no longer applies, so from main"))
+        if needs_godot_import(item):
+            record_phase(run_id, item, "importing", "Godot is indexing the isolated game checkout.")
+            preflight_godot_import(tree)
         record_phase(run_id, item, "worker", "The owner is repairing it.")
         text, usage, err = run_cli(task_prompt(item, org, resumed=committed_prior,
                                                continuing=bool(resumed), turns=turns,
@@ -1216,6 +1266,13 @@ def do_item(item, org, run_id, log, action=None):
                             # "found nothing" and "looked at nothing" have to be
                             # different facts on the record, not a turn of phrase.
                             "escalation_reason": None, "read": False}
+    except GodotImportHold as e:
+        rec["held"] = True
+        rec["tooling_hold"] = True
+        rec["error"] = str(e)
+        item["started"] = ""
+        work.save_item(item)
+        checkpoint(item, rec, "tooling_hold")
     except Exception as e:
         rec["error"] = f"{type(e).__name__}: {e}"[:400]
         checkpoint(item, rec, "interrupted")
@@ -2252,6 +2309,10 @@ def run_verified_batch(pool, org, run_id, log, *, no_suites=False, actions=None)
                 action_dispatch.finish(work, item, action, claim_id,
                                        progressed=False,
                                        reason=rec.get("error") or "The owner session did not finish.")
+            elif rec.get("tooling_hold"):
+                work.ensure_blocker(item, "tooling", input_id=rec["attempt_id"],
+                                    owner="claude", reason=rec["error"],
+                                    wake="Inspect the failed Godot import before retrying this build.")
             continue
         ok, why = False, "the check said it should not land as it stands"
         blocker_kind = ""
