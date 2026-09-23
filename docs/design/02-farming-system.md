@@ -7,8 +7,21 @@ breadth and seasons rulings (Q-20).*
 32×20 grid, 16px tiles (`world/farm.gd`); tile states (obstacle → cleared → tilled →
 seeded → growing → ready); tools: hands, axe, pickaxe, hoe, watering can, seeds
 (`systems/tools.gd`); crops: wheat, tomato (`crops/crop_defs.gd`); energy 20/day,
-watering-can charges, well refill; shipping bin → gold overnight; day/weather scaffold
-(`systems/game_state.gd`, `systems/day_cycle.gd`).
+watering-can charges, well refill; day/weather scaffold (`systems/game_state.gd`,
+`systems/day_cycle.gd`).
+
+The player starts with five wheat units. Planting spends one carried unit and
+harvesting returns three of the same crop, including when a machine harvests
+(Q-115, `[Playtest]`). She can carry ten of each crop species; a future grain
+silo raises that limit to forty of each (Q-113, `[Playtest]`). Eggs and
+scarecrows remain separate items and do not use crop capacity.
+
+The shipping bin keeps the first ten units of each crop species in a separate,
+persistent reserve and sells only the excess (Q-116, `[Playtest]`). Its menu
+lets the player deposit what she carries or take stored stock back; planting
+cannot draw directly from the bin. Eggs still sell immediately. A full crop
+stack refuses a harvest before the crop or energy changes. Legacy sales already
+pending in a save continue to pay at sleep.
 
 ## Sections to fill
 1. **Crop roster & growth math** — growth stages/days, water sensitivity, price curves.

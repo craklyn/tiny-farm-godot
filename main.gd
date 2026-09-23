@@ -989,21 +989,7 @@ func _process(delta: float) -> void:
 	var adj_obj: String = farm.get_object(ft.x, ft.y)
 	
 	if obj == "shipping_bin" or adj_obj == "shipping_bin":
-		var has_crops := false
-		for count in GameState.crops.values():
-			if count > 0:
-				has_crops = true
-				break
-		if has_crops:
-			hint_text = "Press SPACE to deposit crops"
-		else:
-			var bin_has_crops := false
-			for count in GameState.shipping_bin.values():
-				if count > 0:
-					bin_has_crops = true
-					break
-			if bin_has_crops:
-				hint_text = "Sleep in cot to sell deposited crops"
+		hint_text = "Press SPACE to open the shipping bin"
 				
 	hud.set_hint(hint_text)
 
@@ -1156,6 +1142,8 @@ func _handle_action_result(action: String) -> void:
 		get_tree().change_scene_to_file("res://ui/title_screen.tscn")
 	elif action == "open_shop":
 		menus.open_menu("shop")
+	elif action == "open_bin":
+		menus.open_menu("bin")
 	elif action == "done_teaching":
 		end_teaching()
 	elif action == "clear_teaching":

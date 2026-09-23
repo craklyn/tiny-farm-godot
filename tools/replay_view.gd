@@ -205,7 +205,7 @@ func _live_gamestate_fingerprint() -> String:
 	if not root.has_node("GameState"):
 		return "no-autoload"
 	var g = root.get_node("GameState")
-	return "%d|%d|%d|%s" % [g.day, g.gold, g.energy, JSON.stringify(g.seeds)]
+	return "%d|%d|%d|%s" % [g.day, g.gold, g.energy, JSON.stringify(g.pouch)]
 
 
 func _check_isolation(before: String) -> void:

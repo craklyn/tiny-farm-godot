@@ -440,6 +440,7 @@ static func deploy(world: SimWorld, actor_id: String, config: String, at: Vector
 			# should be able to see it doing. A String, because `extra` is
 			# JSON-plain all the way down (ground rule 4).
 			extra["carrying"] = ""
+			extra["carrying_count"] = 0
 			# **What each outcome is worth to *this* robot** (v0.2.2, Q-101).
 			# The factory table to begin with, and the workbench's `tune` verb
 			# moves one rung of `Rewards.LADDER` at a time. Per robot rather than
@@ -1534,12 +1535,16 @@ func _beside(world: SimWorld, actor_id: String, at: Vector2i) -> Vector2i:
 # design gives it one number for the box ("is there anything to sow"), and which
 # kind is the brain's business, exactly as which square is.
 static func _best_seed(gs) -> String:
-	if gs == null or not ("seeds" in gs):
+	if gs == null or not ("pouch" in gs):
 		return ""
 	var best := ""
 	var most := 0
-	for key in gs.seeds.keys():
-		var n := int(gs.seeds[key])
+	for key in gs.pouch.keys():
+		# Only what goes in the ground: noncrop inventory holds her eggs, and a
+		# robot that picked an egg would walk to a square and be refused.
+		if not CropDefs.is_plantable(String(key)):
+			continue
+		var n := int(gs.pouch[key])
 		if n > most:
 			most = n
 			best = String(key)
