@@ -2531,7 +2531,7 @@ def work_detail(item_id):
             effective.update({"state": "interrupted", "label": "The session stopped before this card finished updating",
                               "at": transaction.get("at") or "", "source": "transaction",
                               "record_is_behind": True})
-    elif item.get("started") and not drain_state() and sessions:
+    elif item.get("state") in ("doing", "waiting_session") and item.get("started") and not drain_state() and sessions:
         effective.update({"state": "interrupted", "label": "The session stopped before this card finished updating",
                           "at": (sessions[-1].get("finished") or sessions[-1].get("started") or ""),
                           "source": "session", "record_is_behind": True})

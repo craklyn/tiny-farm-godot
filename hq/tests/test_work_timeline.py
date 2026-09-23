@@ -65,6 +65,18 @@ class WorkTimeline(unittest.TestCase):
             detail = server.work_detail("we6190884f9a")
         self.assertTrue(any(row["kind"] == "work_finished" for row in detail["timeline"]))
 
+    def test_held_card_is_not_called_interrupted_by_historical_started_time(self):
+        held = {**self.item, "state": "for_review", "repair_hold": "Prospective suite failed.",
+                "check": {"verdict": "pass"}}
+        with patch.object(server, "WORKERS_DIR", str(self.workers)), \
+             patch.object(server, "TRANSACTIONS_DIR", str(self.transactions)), \
+             patch.object(server.work, "load_item", return_value=held), \
+             patch.object(server, "drain_state", return_value=None):
+            detail = server.work_detail("we6190884f9a")
+        self.assertEqual(detail["effective"]["state"], "for_review")
+        self.assertFalse(detail["effective"]["record_is_behind"])
+        self.assertNotIn("run_interrupted", [row["kind"] for row in detail["timeline"]])
+
     def test_dead_transaction_records_review_without_another_model(self):
         directory = self.transactions / "dead-run"
         directory.mkdir(parents=True)
