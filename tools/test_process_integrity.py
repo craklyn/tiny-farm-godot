@@ -67,6 +67,19 @@ class ProcessIntegrityTests(unittest.TestCase):
         self.assertLess(time.monotonic() - started, 3)
         self.assertIn("did not exit", result.stdout + result.stderr)
 
+    def test_status_result_returns_even_if_godot_does_not(self) -> None:
+        result = subprocess.run(
+            command("status_green_hang"), cwd=ROOT, capture_output=True, text=True, timeout=5
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("did not exit", result.stdout + result.stderr)
+
+    def test_failed_status_is_nonzero(self) -> None:
+        result = subprocess.run(
+            command("status_failure"), cwd=ROOT, capture_output=True, text=True, timeout=5
+        )
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+
     def test_known_timing_failure_is_nonzero_and_prompt(self) -> None:
         started = time.monotonic()
         result = subprocess.run(

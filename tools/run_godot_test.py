@@ -18,7 +18,19 @@ import tempfile
 import time
 
 
-RESULT = re.compile(r"Results:\s*(\d+) PASSED,\s*(\d+) FAILED")
+COUNT_RESULT = re.compile(r"Results:\s*(\d+) PASSED,\s*(\d+) FAILED")
+STATUS_RESULT = re.compile(r"Results:\s*(PASSED|FAILED)\b")
+
+
+def _result_from_line(line: str) -> tuple[int, int] | None:
+    """Accept both suite counts and the robot/benchmark's final verdict."""
+    counts = COUNT_RESULT.search(line)
+    if counts:
+        return int(counts.group(1)), int(counts.group(2))
+    status = STATUS_RESULT.search(line)
+    if status:
+        return (1, 0) if status.group(1) == "PASSED" else (0, 1)
+    return None
 
 
 def _stop(proc: subprocess.Popen[str]) -> None:
@@ -76,16 +88,16 @@ def run(command: list[str], timeout: float, result_grace: float) -> int:
                 if not line:
                     continue
                 print(line, end="", flush=True)
-                match = RESULT.search(line)
-                if match:
-                    result = (int(match.group(1)), int(match.group(2)))
+                parsed = _result_from_line(line)
+                if parsed is not None:
+                    result = parsed
                     result_deadline = time.monotonic() + result_grace
 
         for line in proc.stdout:
             print(line, end="", flush=True)
-            match = RESULT.search(line)
-            if match:
-                result = (int(match.group(1)), int(match.group(2)))
+            parsed = _result_from_line(line)
+            if parsed is not None:
+                result = parsed
 
         code = proc.returncode or 0
         if result is None:

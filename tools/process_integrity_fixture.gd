@@ -12,8 +12,14 @@ func _init() -> void:
 		"green_hang":
 			print("Results: 1 PASSED, 0 FAILED")
 			hang()
+		"status_green_hang":
+			print("Results: PASSED")
+			hang()
 		"timing_failure":
 			print("Results: 0 PASSED, 1 FAILED")
+			hang()
+		"status_failure":
+			print("Results: FAILED")
 			hang()
 		_:
 			finish(2, "unknown fixture mode")
@@ -45,6 +51,7 @@ func isolation(args: PackedStringArray) -> void:
 	if saved != token:
 		finish(1, "user data leaked between concurrent Godot processes")
 		return
+	print("Results: PASSED")
 	finish(0, "isolated " + token)
 
 

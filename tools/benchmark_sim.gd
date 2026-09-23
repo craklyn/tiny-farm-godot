@@ -459,4 +459,5 @@ func _report(work: Dictionary, idle: Dictionary, one: Dictionary, many: Dictiona
 	# which runs this on the desktop and shows the verdict.
 	for f in failures:
 		printerr("BENCHMARK FAILED: %s" % f)
+	print("Results: %s" % ("FAILED" if not failures.is_empty() else "PASSED"))
 	return 1 if not failures.is_empty() else 0
