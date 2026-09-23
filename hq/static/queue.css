@@ -21,6 +21,16 @@
 
 .q-strip { margin: 10px 0; padding: 10px 14px; border-radius: 8px;
   background: var(--panel2); font-size: 13.5px; }
+.q-strip-title { font-weight: 700; margin-bottom: 3px; }
+.q-strip-list { list-style: none; margin: 0; padding: 0; }
+.q-strip-list li { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 12px;
+  align-items: baseline; padding: 5px 0; border-top: 1px solid var(--line); }
+.q-strip-item { min-width: 0; }
+.q-strip-meta { color: var(--muted); font-size: 12px; white-space: nowrap;
+  font-variant-numeric: tabular-nums; }
+@media (max-width: 520px) {
+  .q-strip-list li { grid-template-columns: 1fr; gap: 1px; }
+}
 
 .q-group-h { font-size: 14px; color: var(--accent); margin: 24px 0 8px;
   display: flex; align-items: center; gap: 8px; }

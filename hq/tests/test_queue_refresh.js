@@ -84,6 +84,10 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/queue.js'), 'utf
   assert.match(rendered, /Back with the studio/);
   assert.match(rendered, /Publish the store page/);
   assert.match(rendered, /waiting for the studio to integrate/);
+  assert.match(rendered, /q-strip-title">Coming back to you/);
+  assert.match(rendered, /q-strip-item">Publish the store page/);
+  assert.match(rendered, /q-strip-meta">Studio/);
+  assert.doesNotMatch(rendered, /the on/);
   const noRecommendation = ctx.qDecisionItem({ id: 'Q-empty', title: 'Open question', options: [
     { key: 'a', label: 'First option', detail: '' },
   ] }, { employees: [] }, {});
