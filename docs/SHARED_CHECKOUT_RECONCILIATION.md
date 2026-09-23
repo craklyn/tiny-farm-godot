@@ -55,7 +55,8 @@ merge or reset is part of this method. [^cherry]
 | `58aae22`, `224c715` | Work-card text wrapping and stylesheet reference | Already present: the final `index.html` and `work.css` on the shared branch are byte-identical to `main`. |
 | `2d699fe` | Integration waits for movement and placement | Reconciled as `9529228`; 1,010 integration assertions passed with fresh save data. |
 | `b1887f5` | Shared animation-file reader for watering and night | Reconciled as `9b9c299`; 2,943 unit and 1,009 integration assertions passed, plus gateway |
-| `dbe3529`, `9a9b4ad`, `2d0a4ea`, `13f13bd` | Sprite editor and obstacle-image changes, including a restore after concurrent edits | TK — review the final net behavior and images together |
+| `9a9b4ad`, `13f13bd` | Remove the retired obstacle atlas from the HQ map and playtest view | Reconciled as `e93714a`; every old atlas cell matches its individual replacement, the chip generator reproduces its sheets, and game and HQ suites pass. |
+| `dbe3529`, `2d0a4ea` | Ground-sheet sprite editor changes, including a restore after concurrent edits | TK — isolate the editor behavior and rerun its failed candidate. |
 | `df5fc46` | Earned robot unlocks | Already represented by `35714f2` and later mainline code; the shared branch uses the older seed/crop save schema and cannot supply this patch directly. |
 
 The card for the shared animation reader was copied to the isolated checkout
@@ -75,6 +76,17 @@ is valid evidence for the patch. [^waits]
 [^waits]: `git show 2d699fe`, `git show 9529228`,
     `/tmp/tiny-farm-reconcile-integration-waits.log` (invalid fixture), and
     `/tmp/tiny-farm-reconcile-integration-waits-fresh.log` (valid run).
+
+The retired atlas's thirteen 16×16 cells match the corresponding cells in
+`obstacle_rock.png`, `obstacle_log.png`, `obstacle_weed.png`,
+`obstacle_tree.png`, `fence.png`, `hedge.png`, and `gate.png`. The revised
+generator left all three chip sheets byte-identical. Current tests passed:
+2,943 unit, 1,010 integration, and 44 of 44 HQ test files. [^obstacles]
+
+[^obstacles]: `/tmp/tiny-farm-old-obstacles.png`, `git show e93714a`,
+    `/tmp/tiny-farm-reconcile-unit-obstacles.log`,
+    `/tmp/tiny-farm-reconcile-integration-obstacles.log`, and
+    `/tmp/tiny-farm-reconcile-hq-obstacles.log`.
 
 ### Uncommitted work — RUNNING
 

@@ -2005,6 +2005,9 @@
   "7a159f22ee91c10ec026": {
    "verdict": "ok"
   },
+  "7a1682938cd1d42bdb16": {
+   "verdict": "ok"
+  },
   "7a1fad480b6bc3e5c4b7": {
    "verdict": "ok"
   },
@@ -2696,6 +2699,12 @@
   "a3785a300aacdbafcbc5": {
    "verdict": "ok"
   },
+  "a45a1700c8a37d636c06": {
+   "instead": "Record that the obstacle image was cleaned up and verified",
+   "quote": "Record the verified obstacle picture cleanup",
+   "verdict": "decode",
+   "why": "The reader cannot tell whether the obstacle picture was cleaned up, verified, or both."
+  },
   "a4935454f57ebd8038fa": {
    "verdict": "ok"
   },
@@ -3085,6 +3094,9 @@
   "be6ae3460f1c37e38b99": {
    "verdict": "ok"
   },
+  "be9154e956dd46206ad3": {
+   "verdict": "ok"
+  },
   "beb192d2238ac4254198": {
    "instead": "The metric that signals this pillar needs attention",
    "quote": "The number that wakes this pillar up",
@@ -3364,6 +3376,12 @@
   },
   "cdf49db80682a1c70333": {
    "verdict": "ok"
+  },
+  "cdf8bd2aef8e7d28d0af": {
+   "instead": "Remove the obstacle data used by both the farm map and playtest view",
+   "quote": "shared obstacle sheet",
+   "verdict": "decode",
+   "why": "A stranger cannot tell whether this is a visible sheet, a list, or internal data shared by the two views."
   },
   "ce193dfa5597d0264261": {
    "verdict": "ok"
@@ -3730,6 +3748,9 @@
    "verdict": "ok"
   },
   "e0f6fddadab6328c0b9c": {
+   "verdict": "ok"
+  },
+  "e1568494f52e3efe34d5": {
    "verdict": "ok"
   },
   "e17e7055c441d4572de0": {

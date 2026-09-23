@@ -1,15 +1,63 @@
 {
   "id": "w8a9b147387c6",
-  "title": "Retire obstacles.png now that nothing draws from it",
+  "title": "Give each obstacle its own picture in the farm map and playtest view",
   "level": "task",
   "owner": "ravi",
   "tier": 1,
-  "tier_reason": "deleting a file nothing renders from, once its one remaining generator is repointed",
-  "ask": "`assets/sprites/generated/obstacles.png` was cut into seven per-thing sheets on 2026-09-07 (obstacle_rock/log/weed/tree, fence, hedge, gate) and the renderer and the catalogue both moved. The file itself is still there because `tools/gen_obstacle_chips.py` writes into it — it derives the chip stages a multi-beat clear shrinks an obstacle through and appends them as cells 8-12. Those stages now live beside the obstacle they came off, so the generator needs to write into `obstacle_rock.png`, `obstacle_log.png` and `obstacle_tree.png` instead. Once it does, delete obstacles.png and its .import, the way the four shared atlases were deleted on 6 September.\n\n`tools/gen_interior.py` is already repointed at fence.png and needs nothing.",
-  "first_action": "Read tools/gen_obstacle_chips.py and world/farm.gd's `_chip_regions`, which is where the new layout is written down.",
+  "tier_reason": "A reversible asset and consumer migration, but the old sheet still serves two HQ views and the chip-stage generator.",
+  "ask": "The game renderer and sprite catalogue moved from the shared assets/sprites/generated/obstacles.png to per-thing sheets, but the old sheet is not yet unused. tools/gen_obstacle_chips.py still writes chip stages into it, and HQ's farm map (hq/static/map.js) and playtest view (hq/static/playtests.js) still draw from it. Move the generator's stages to the matching obstacle_rock.png, obstacle_log.png, and obstacle_tree.png sheets; repoint both HQ views to the individual rock, log, weed, tree, fence, hedge, and gate sheets. Verify the views and game still render the right cells before removing obstacles.png and its .import sidecar. Preserve CREDITS.md's historical provenance while making any current-use description accurate.",
+  "first_action": "Read tools/gen_obstacle_chips.py, world/farm.gd's _chip_regions, hq/static/map.js, and hq/static/playtests.js. List the remaining sprite cells each reader uses, then move them one consumer at a time and test the HQ map and playtest rendering before deleting the shared sheet.",
   "why": "A sheet nothing renders from is a trap: somebody edits it, sees no change, and loses an afternoon. That happened this week with a fence edit for a different reason, and the lesson is the same — a file that looks live and is not costs more than the disk it uses.",
-  "state": "waiting_session",
+  "state": "landed",
   "source": "chat",
   "created": "2026-09-07T23:12",
-  "created_ts": 1788847939.8343365
+  "created_ts": 1788847939.8343365,
+  "_revision": 2,
+  "amendments": [
+    {
+      "at": "2026-09-23T08:08:43.327828+00:00",
+      "by": "Codex source audit on 2026-09-23",
+      "reason": "The old title said nothing draws the sheet, but two live HQ views do.",
+      "changed": {
+        "title": "Retire obstacles.png now that nothing draws from it",
+        "ask": "`assets/sprites/generated/obstacles.png` was cut into seven per-thing sheets on 2026-09-07 (obstacle_rock/log/weed/tree, fence, hedge, gate) and the renderer and the catalogue both moved. The file itself is still there because `tools/gen_obstacle_chips.py` writes into it — it derives the chip stages a multi-beat clear shrinks an obstacle through and appends them as cells 8-12. Those stages now live beside the obstacle they came off, so the generator needs to write into `obstacle_rock.png`, `obstacle_log.png` and `obstacle_tree.png` instead. Once it does, delete obstacles.png and its .import, the way the four shared atlases were deleted on 6 September.\n\n`tools/gen_interior.py` is already repointed at fence.png and needs nothing.",
+        "first_action": "Read tools/gen_obstacle_chips.py and world/farm.gd's `_chip_regions`, which is where the new layout is written down.",
+        "tier_reason": "deleting a file nothing renders from, once its one remaining generator is repointed"
+      }
+    }
+  ],
+  "result": "Moved the chip-stage generator to the rock, log, and tree sheets; moved the HQ map and playtest scrubber to the seven individual sheets; removed obstacles.png and its import sidecar. Every cell in the individual sheets matched the retired atlas pixel for pixel, and regenerating the chip stages preserved those pixels. Both dashboard renderers drew the default layout in local Chrome fixtures using this checkout’s JavaScript and sprite files. Godot unit (2,859), integration (977), robot replay, and the gateway check passed in isolated writable test data directories. The display-based visual regression differed by 90 pixels in the chicken and neighbour regions, away from obstacle cells.",
+  "closed": "2026-09-23T15:25:07-07:00",
+  "landed": {
+    "at": "2026-09-23T15:25:07-07:00",
+    "by": "Adam, shared-checkout reconciliation",
+    "sha": "e93714ac75910efa2a6f66a4ae35f18b75227a19",
+    "note": "Removed the old shared image after matching all cells to individual sheets and validating current main."
+  },
+  "reconciliation": {
+    "from_branch_commit": "9a9b4ad",
+    "onto_main_commit": "e93714ac75910efa2a6f66a4ae35f18b75227a19",
+    "checks": [
+      "all 13 image cells pixel-identical",
+      "chip generator reproduced committed sheets",
+      "unit 2943 passed",
+      "integration 1010 passed",
+      "HQ 44/44 passed"
+    ]
+  },
+  "diff": {
+    "files": [
+      "CREDITS.md",
+      "assets/sprites/generated/obstacles.png",
+      "assets/sprites/generated/obstacles.png.import",
+      "hq/static/map.js",
+      "hq/static/playtests.js",
+      "tools/gen_interior.py",
+      "tools/gen_obstacle_chips.py",
+      "world/farm.gd"
+    ],
+    "applied": true,
+    "why_not": "",
+    "why_not_landed": ""
+  }
 }
