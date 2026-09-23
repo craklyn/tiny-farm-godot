@@ -28,6 +28,10 @@ celebration moment and the measured proof are the same event
 
 ## Unlock ladders (consolidated index; details in system chapters)
 - Tools & land rings (02) → machines (03) → towers (05) →
+- Robot marks: 11 successful player watering actions in one day → mark-1; its first
+  completed watering or hoeing action → mark-2; the mark-2's first chased bird →
+  training desk; placing the desk → Mark III (06, Q-88/S-12). Each proof opens a
+  priced shop card; it does not grant the item.
 - Bot sensors: vision / audio / speaker / smell (06, P-7/P-10)
 - Bot minds: model sizes → base tiers + adapter ranks (06, P-5)
 - Bot bodies: gardening tools → weapons (06, D-7)

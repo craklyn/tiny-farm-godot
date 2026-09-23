@@ -28,6 +28,46 @@ every farming action and learns which to use. The night the Mark III becomes ava
 plays the seeder-robot loop inside the sleep (P-15): its weights update by night (P-14),
 so the story night shows the machine at work.
 
+### Earning the first two robots (Q-88; design for implementation)
+
+**Mark-1: feel the watering round.** Count successful `water` Actions by the player
+within one day. Each costs 30 of the day's 600 energy units, so the first 11 actions
+represent 330 units: more than half a day spent watering. The counter resets at sleep;
+watering spread over several days does not add up. Count the action's normal cost,
+not the change in the visible energy meter: phase 1's soft floor can leave that meter
+at zero while a valid action still happens. Failed taps, rain, sprinklers, and robots
+do not count. Refilling the can lets a player finish the round but adds no watering
+credit. Latch the unlock at the eleventh successful action, before the player next
+opens the shop. This is a proof of effort, not a grant of a robot.
+
+**Mark-2: see the first robot do its work.** Latch the unlock when a placed mark-1
+successfully completes its first `water` or `till` Action on a tile the player taught
+it. Buying it, placing it, teaching tiles, and pressing *Send out* are preparations,
+not proof that it worked. A refused action or a round with nothing to do earns
+nothing. One completed action suffices; the player does not have to repeat the same
+round for several days. This follows the later desk trigger, which waits for a
+mark-2 to chase a bird rather than merely be placed (S-12).
+
+**What the player sees.** Both robots have dark shop cards from the first morning,
+using the shop's existing locked-card language. When a trigger succeeds, its card
+becomes bright the next time the shelf is shown; a small unlock cue at the moment of
+work can draw attention to the seed box without interrupting the action. The card's
+picture should show the relevant work (watering for mark-1, a working mark-1 for
+mark-2), so the cue does not depend on reading. After unlock, the existing 150g and
+400g prices remain `[Playtest]`; the player buys each robot with `buy_machine` and
+places it from the crate as today. If she lacks the gold, the earned card remains
+available but unaffordable. Neither robot is awarded for free or removed from the
+catalogue. The sprinkler and other shop entries keep their current rules.
+
+**Sim contract.** Keep the daily watering tally and both permanent unlock flags in
+simulation state, written only when the gateway accepts an Action. Save and replay
+must produce the same shelf; sleeping clears only the daily tally. Once earned, a
+robot stays available even if the player later picks one up. The shop view and
+`buy_machine` must ask the same `offers` rule, as they already do for the desk and
+Mark III. On load, an old save with a mark-1 in its crate or yard earns the mark-1
+rung; one with a mark-2 earns both earlier rungs. Ownership must not become a
+locked shop card after an update.
+
 ## Sections to fill
 1. **Fleet UX** — assigning work: per-bot orders, painted zones, or schedules `[Joint]`;
    must stay tap-command (P-1) and phone-legible.
@@ -103,9 +143,8 @@ exactly when she is thinking about what the thing should do, so asking then cost
 second trip. Tapping a placed robot later opens the same menu. Picking it up is `collect`,
 the verb an egg already has.
 
-**Prices** [Playtest]: sprinkler 120g, robot mark-1 150g, robot mark-2 400g. The gap
-between the marks is the ladder's only gate today, and it is a deliberately soft one —
-whether autonomy should be *earned* rather than bought is Q-88.
+**Prices** [Playtest]: sprinkler 120g, robot mark-1 150g, robot mark-2 400g. Both robot
+prices apply after their Q-88 proofs above; gold alone cannot open either rung.
 
 ## The ladder: a mark-1 obeys, a mark-2 decides (designer, 2026-09-03)
 
