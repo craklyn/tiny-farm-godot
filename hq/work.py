@@ -2212,7 +2212,14 @@ def recover_completion_work():
     try:
         recovered = []
         for item in items():
-            if item.get("pending_landing"):
+            if item.get("pending_undo"):
+                try:
+                    ok, _ = recover_pending_undo(item)
+                    if ok:
+                        recovered.append(item["id"])
+                except RecordConflict:
+                    continue
+            elif item.get("pending_landing"):
                 try:
                     drain.recover_pending_landing(item)
                     recovered.append(item["id"])
@@ -2238,29 +2245,121 @@ def undo_landing(item):
     The commit is reverted rather than reset: other work has landed on top of
     it since, and rewriting history under a shared tree is how a second
     person's work disappears."""
-    item.pop("completion", None)
-    if item.get("attempt_outcome"):
-        item["attempt_outcome"]["landing_verified"] = False
+    import drain
+    import integration
+
+    if item.get("pending_undo"):
+        return recover_pending_undo(item)
+    if item.get("state") != "landed":
+        return False, "Only a landed card can be undone."
     sha = (item.get("landed") or {}).get("sha") or ""
     if not sha:
+        item.pop("completion", None)
+        if item.get("attempt_outcome"):
+            item["attempt_outcome"]["landing_verified"] = False
         forget_owner_memory(item)
         item["state"] = "for_review"
         item.pop("landed", None)
         save_item(item)
         return True, "there was no commit to undo, so the card is back with you"
-    got = subprocess.run(["git", "revert", "--no-edit", sha], cwd=HOST.REPO,
-                         capture_output=True, text=True, timeout=180)
-    if got.returncode != 0:
-        subprocess.run(["git", "revert", "--abort"], cwd=HOST.REPO,
-                       capture_output=True, text=True, timeout=60)
-        return False, ((got.stderr or got.stdout or "the revert did not apply").strip()[:200])
+    ready, reason = integration.handoff_status(HOST.REPO)
+    if not ready:
+        return False, reason
+    parent = integration.main_head(HOST.REPO)
+    if integration.git(HOST.REPO, "merge-base", "--is-ancestor", sha, parent,
+                       check=False).returncode:
+        return False, "The landing commit is not on local main."
+    marker = "HQ-Undo: " + item["id"] + ":" + sha
+    checkout = os.path.join(drain.WORKTREES, "integration-undo-" + item["id"])
+    item["pending_undo"] = {"version": 1, "reverted": sha, "parent": parent,
+                            "checkout": checkout, "marker": marker,
+                            "at": _now_iso()}
+    # The obligation is durable before any Git side effect. The drain lock
+    # held by the API or startup recovery serializes this with normal landings.
+    save_item(item)
+    return recover_pending_undo(item)
+
+
+def recover_pending_undo(item):
+    """Finish one exact-parent revert after a process interruption.
+
+    Caller holds the drain lock before the work-record lock. Only the named
+    detached scratch checkout may be discarded after an interrupted revert.
+    """
+    import drain
+    import integration
+
+    tx = item.get("pending_undo")
+    if not tx:
+        return False, "There is no undo transaction to recover."
+    repo, parent, checkout = HOST.REPO, tx["parent"], tx["checkout"]
+    head = integration.main_head(repo)
+    commit = ""
+    if os.path.isdir(checkout):
+        commit = integration.git(checkout, "rev-parse", "HEAD").stdout.strip()
+        if commit == parent:
+            # A crash may leave a half-applied revert in this private checkout.
+            # Recreate only this transaction's named worktree from the exact base.
+            integration.remove_candidate(repo, checkout, drain.WORKTREES)
+            commit = ""
+    if commit:
+        message = integration.git(repo, "show", "-s", "--format=%B", commit).stdout
+        actual_parent = integration.git(repo, "rev-parse", commit + "^").stdout.strip()
+        if tx["marker"] not in message.splitlines() or actual_parent != parent:
+            return False, "The undo checkout contains a different commit; inspect it before retrying."
+    elif head == parent:
+        try:
+            checkout = integration.candidate_checkout(repo, drain.WORKTREES,
+                                                      "undo-" + item["id"], parent)
+            reverted = integration.git(checkout, "revert", "--no-commit", tx["reverted"],
+                                       check=False)
+            if reverted.returncode:
+                reason = (reverted.stderr or reverted.stdout or "The revert did not apply.").strip()[:200]
+                integration.remove_candidate(repo, checkout, drain.WORKTREES)
+                item.pop("pending_undo", None)
+                save_item(item)
+                return False, reason
+            if integration.git(checkout, "diff", "--cached", "--quiet",
+                               check=False).returncode == 0:
+                integration.remove_candidate(repo, checkout, drain.WORKTREES)
+                item.pop("pending_undo", None)
+                save_item(item)
+                return False, "The landing has no changes left to revert on local main."
+            integration.git(checkout, "-c", "user.name=Tiny Farm HQ",
+                            "-c", "user.email=hq@tiny-farm.local", "commit",
+                            "-m", "Revert landed work " + item["id"],
+                            "-m", tx["marker"])
+            commit = integration.git(checkout, "rev-parse", "HEAD").stdout.strip()
+        except RuntimeError as exc:
+            # Leave the durable transaction for recovery. An exception can
+            # occur after commit or ref update; never guess that nothing ran.
+            return False, str(exc)[:200]
+    else:
+        return False, "Local main moved before the undo could be prepared; the landing remains in review."
+
+    if head == parent:
+        if not integration.advance_main(repo, commit, parent):
+            return False, "Local main moved before the undo commit could land."
+    elif head == commit:
+        if integration.main_checkout(repo) and not integration.synchronize_main(repo, commit, parent):
+            return False, "The undo commit landed, but its main checkout needs synchronization."
+    else:
+        return False, "Local main moved before the undo commit could land."
+
+    item.pop("completion", None)
+    if item.get("attempt_outcome"):
+        item["attempt_outcome"]["landing_verified"] = False
     forget_owner_memory(item)
     item["state"] = "for_review"
-    item["landing_undone"] = {"at": _now_iso(), "reverted": sha}
+    item["landing_undone"] = {"at": _now_iso(), "reverted": tx["reverted"],
+                              "commit": commit}
     item.setdefault("conversation", []).append(
         {"role": "daniel", "text": "Undid this landing.", "at": _now_iso(), "with": "undo"})
     item.pop("landed", None)
+    item.pop("pending_undo", None)
     save_item(item)
+    if os.path.isdir(checkout):
+        integration.remove_candidate(repo, checkout, drain.WORKTREES)
     return True, "reverted"
 
 
@@ -2319,6 +2418,17 @@ def api_get(path):
 
 
 def api_post(path, payload):
+    if path == "/api/work/undo":
+        import drain
+        lock = drain.take_lock()
+        if lock is None:
+            return {"ok": False, "why": "The integration lane is busy; retry after it finishes.",
+                    "id": payload.get("id") or ""}
+        try:
+            with mutation_lock():
+                return _api_post(path, payload)
+        finally:
+            lock.close()
     with mutation_lock():
         return _api_post(path, payload)
 
@@ -2453,7 +2563,8 @@ def instruction_fingerprint(item):
         "attempts", "done_by", "diff", "suites", "usage", "spent", "resume", "attempt_outcome",
         "completion", "pending_landing", "pending_followups", "closed", "landed", "finished",
         "revising", "revisions", "spawned", "last_recorded_attempt", "repair_hold", "landing_recovery",
-        "owner_memory", "workflow", "workflow_view", "waiting_for"}
+        "owner_memory", "workflow", "workflow_view", "waiting_for", "pending_undo",
+        "landing_undone"}
     return evidence_id({key: value for key, value in item.items() if key not in outcome_fields})
 
 

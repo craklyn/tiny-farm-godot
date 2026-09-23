@@ -48,13 +48,16 @@ class DurableMemory(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
         self.old_data, self.old_repo, self.old_load_org = server.DATA, server.REPO, server.load_org
+        self.old_worktrees = drain.WORKTREES
         server.DATA = self.tmp.name
         server.REPO = self.tmp.name
+        drain.WORKTREES = str(Path(self.tmp.name, "worktrees"))
         server.load_org = lambda: ORG
         work.bind(server)
 
     def tearDown(self):
         server.DATA, server.REPO, server.load_org = self.old_data, self.old_repo, self.old_load_org
+        drain.WORKTREES = self.old_worktrees
         self.tmp.cleanup()
 
     def card(self, *, tier=1):
