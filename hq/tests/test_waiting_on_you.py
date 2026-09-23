@@ -192,6 +192,11 @@ const incomplete = queue.qPaneHtml({ id: "incomplete", question: "Does this resu
 assert.ok(index(incomplete, "Does this result stand despite the missing recommendation?") < index(incomplete, "Open the crop icon"));
 assert.ok(index(incomplete, "Open the crop icon") < index(incomplete, "No recommendation on this one."));
 const work = vm.createContext({ ...shared });
+// work.js is loaded after app.js in the browser. Supply its one shared
+// workflow adapter here too; an isolated VM must not silently replace that
+// public projection with a second, different status calculation.
+const workflowHelper = appSource.slice(appSource.indexOf("function workflowView("), appSource.indexOf("// A work title"));
+vm.runInContext(workflowHelper, work);
 vm.runInContext(fs.readFileSync(root + "/hq/static/work.js", "utf8"), work);
 const card = work.workCard({ id: "work-animation", title: "Internal animation task", state: "for_review", owner: "rin", level: "task", deliverable: { name: "Watering animation", evidence: [{ label: "Play the watering animation", href: "/review/watering" }] }, recommend: { question: "Does the motion read clearly?", answer: "Keep this timing", why: "The pause reads at game size.", instead: "Slow it down" }, result: "The frames are ready." }, {}, {}).html;
 assert.ok(index(card, "Does the motion read clearly?") < index(card, "Play the watering animation"));
