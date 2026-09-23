@@ -80,11 +80,12 @@ is valid evidence for the patch. [^waits]
 
 | Area | Evidence | Disposition |
 | --- | --- | --- |
-| Save build history | The focused change is on `main` as `4357f42`, with a green GitHub Actions rerun. | Do not reapply code; sync its later HQ card record. |
+| Save build history | The focused change is on `main` as `4357f42`, with a green GitHub Actions rerun. | Code already present; the later HQ card record is reconciled as `9a9ce71`. |
 | Store-page rewrite [^store] | `ITCH_PAGE.md` is claimed by an accepted card, but the draft says the unreleased v0.2.2 text is live. | TK — compare copy with actual release state before landing. |
 | White-edge sprite processing [^white] | The helper and four synthetic checks exist in `tools/asset_pipeline/`, but the two builders import only `key_background`; neither invokes the new removal or final check. | Incomplete; wire and verify before landing. |
 | Ground-sheet sprite editor [^ground] | A checked card is in `for_review`; its original candidate failed a suite. | TK — isolate the ground-sheet change from unrelated sound and obstacle edits, then rerun. |
-| Rulings, HQ ledger, art, experiments, playtests | 71 modified work cards, 23 new work cards, plus untracked assets and five playtest sessions. | TK — reconcile decisions and records by owner; preserve raw evidence. |
+| Five playtest sessions [^playtests] | Each replay is distinct; all fifteen files parse as JSON lines and match the shared checkout by SHA-256. | Preserved as `9dc003b`, with the older-version note in `playtests/README.md`; the blocked card now records the successful recovery. |
+| Rulings, HQ ledger, art, experiments | 71 modified work cards, 23 new work cards, plus untracked assets. | TK — reconcile decisions and records by owner; preserve raw evidence. |
 
 [^store]: `hq/data/work/wadf051cd6c7.json`, `ITCH_PAGE.md`, and
     `docs/RELEASE_NOTES.md` in the shared checkout.
@@ -93,6 +94,9 @@ is valid evidence for the patch. [^waits]
     `tools/asset_pipeline/check_postprocess.py`, and the two
     `assets/raw/*/build_*.py` scripts in the shared checkout.
 [^ground]: `hq/data/work/wf6c0837f914.json` and `git show dbe3529`.
+[^playtests]: `git show 9dc003b`, `playtests/README.md`, and
+    `hq/data/work/w9b3289d1a04.json` in the isolated checkout. The five
+    session folders are named in that card.
 
 ## Conclusion and next steps
 
