@@ -44,6 +44,8 @@ const ctx = vm.createContext({
   $view: { replaceChildren() {} },
   h: html => { const el = element(html); if (html.includes('<section')) sections.push(el); return { firstElementChild: el }; },
 });
+const app = fs.readFileSync(path.join(__dirname, '../static/app.js'), 'utf8');
+vm.runInContext(app.slice(app.indexOf('function workflowView('), app.indexOf('// A work title')), ctx);
 vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/work.js'), 'utf8'), ctx);
 // Card composition is unchanged; replace its unrelated artifact/DOM dependencies.
 const actualWorkCard = ctx.workCard;
@@ -62,13 +64,13 @@ ctx.ownerOf = () => ({ name: 'Rin' });
   assert.match(preparing.children[0].children[0].html, /patch has not reached/);
   assert.match(preparing.children[1].children[0].html, /missing a recommended answer/);
   const happening = sections.find(el => el.html.includes('Happening now'));
-  const waitingStart = sections.find(el => el.html.includes('Waiting to start'));
-  assert.deepEqual(happening.children.map(el => el.html), ['running']);
-  assert.deepEqual(waitingStart.children.map(el => el.html), ['not-started']);
-  const repairHeld = sections.find(el => el.html.includes('Held from automatic work'));
+  const waitingStart = sections.find(el => el.html.includes('Not confirmed running'));
+  assert.ok(!happening, 'a legacy started timestamp cannot prove a live session');
+  assert.deepEqual(waitingStart.children.map(el => el.html), ['running', 'not-started']);
+  const repairHeld = sections.find(el => el.html.includes('Blocked studio work'));
   assert.deepEqual(repairHeld.children.map(el => el.html), ['repair-held']);
-  assert.match(repairHeld.html, /Nothing here starts automatically/);
-  assert.equal(ctx.wantsLine(items[3], {}), 'Rin is working on it');
+  assert.match(repairHeld.html, /next action/);
+  assert.equal(ctx.wantsLine(items[3], {}), "Rin's work was started — live session not confirmed");
   assert.equal(ctx.wantsLine(items[4], {}), 'Rin is waiting to start');
   assert.match(ctx.wantsLine(items[5], {}), /^held from automatic work — Do not schedule/);
   assert.equal(ctx.resuming(items[5]), false, 'a repair hold outranks retry-shaped attempt data');
@@ -95,6 +97,23 @@ ctx.ownerOf = () => ({ name: 'Rin' });
   assert.match(timelineCard, /Open review/);
   assert.match(timelineCard, /data-time="2026-09-22T16:37:36-07:00"/);
   assert.match(timelineCard, /HQ recovered its latest record/);
+  ctx.ownerOf = (org, id) => (org.employees || []).find(person => person.id === id) || { name: id || 'someone' };
+  const canonicalWeather = { id: 'weather', title: 'Weather fix', level: 'task', tier: 1,
+    state: 'waiting_session', owner: 'rin', started: '2026-09-22T10:00:00Z',
+    result: 'The old candidate passed ten repeat runs.', suites: { integration: { ok: true } },
+    workflow_view: { version: 1, phase: 'reconciliation', availability: 'blocked',
+      blocker: { type: 'code_conflict', reason: 'Save-lineage edits overlap the old patch' },
+      next_action: { id: 'reconcile-weather', owner: 'claude', type: 'reconcile',
+        summary: 'Rebuild on current main and rerun both suites', age_seconds: 3600 },
+      last_moved: '2026-09-22T18:00:00Z', candidate_status: 'stale', shipped_evidence: null } };
+  const weatherHtml = actualWorkCard(canonicalWeather,
+    { employees: [{ id: 'rin', name: 'Rin' }, { id: 'claude', name: 'Adam' }] },
+    { tiers: { '1': { name: 'Do it, show the diff' } } }).html;
+  assert.match(weatherHtml, /Blocked — Save-lineage edits/);
+  assert.match(weatherHtml, /Adam/);
+  assert.match(weatherHtml, /Rebuild on current main/);
+  assert.match(weatherHtml, /earlier proposed version, not the version now intended for the main code branch/);
+  assert.doesNotMatch(weatherHtml, /data-act=|data-send=|An automated task is running now/);
   const studio = sections.find(el => el.html.includes('You answered — waiting on the studio'));
   assert.deepEqual(studio.children.map(el => el.html), ['q-pending']);
   assert.match(studio.html, /studio's move now/);

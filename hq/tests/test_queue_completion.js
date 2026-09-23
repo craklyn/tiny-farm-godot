@@ -32,6 +32,8 @@ const context = vm.createContext({
   document: { getElementById: () => ({ addEventListener() {} }), addEventListener() {} },
   $view: { replaceChildren: value => { rendered = value; }, addEventListener() {} },
 });
+const app = fs.readFileSync(path.join(__dirname, '../static/app.js'), 'utf8');
+vm.runInContext(app.slice(app.indexOf('function workflowView('), app.indexOf('// A work title')), context);
 vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/queue.js'), 'utf8'), context);
 (async () => {
   const data = await context.qLoadData();
@@ -40,11 +42,11 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/queue.js'), 'utf
   assert.deepEqual(Array.from(data.waitingToStart, x => x.card.id), ['queued', 'accepted']);
   assert.deepEqual(Array.from(data.studioWork, x => x.card.id), ['failed', 'running']);
   context.qRender(data);
-  const landed = rendered.split('Landed without you')[1].split('Awaiting completion')[0];
+  const landed = rendered.split('Landed without you')[1].split('Reviewed, waiting to be merged')[0];
   assert.match(landed, /q-count">1</);
   assert.match(landed, /Recorded result/);
   assert.doesNotMatch(landed, /Prospective result/);
-  const pending = rendered.split('Awaiting completion')[1].split('Waiting to start')[0];
+  const pending = rendered.split('Reviewed, waiting to be merged')[1].split('Waiting to start')[0];
   assert.match(pending, /Prospective result/);
   assert.doesNotMatch(pending, /Queued work/);
   assert.doesNotMatch(pending, /started 1 more/);

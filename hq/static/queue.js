@@ -257,6 +257,26 @@ async function qLoadData() {
   work.forEach(card => {
     const row = statuses.get(card.id) || { status: "unknown", reason: "Current work status is unavailable." };
     const entry = { card, reason: row.reason };
+    const view = workflowView(card);
+    if (view.canonical) {
+      // This is the same projection the scheduler puts on its queue rows.
+      // Waiting-on-you still decides which genuine CEO questions are ready;
+      // a code blocker cannot be promoted to a CEO decision by an old status.
+      const candidateNeedsLanding = Number(card.tier) > 0
+        && ["unverified", "reviewed", "held", "stale"].includes(view.candidate_status);
+      if (view.availability === "blocked") heldStart.push(entry);
+      else if (row.status === "ready" && view.availability !== "running" && !candidateNeedsLanding) his.push(entry);
+      else if ((view.phase === "landed" || view.candidate_status === "landed")
+          && (view.shipped_evidence || {}).landed_sha) wentIn.push(card);
+      else if (["accepted", "dropped", "done"].includes(view.phase)) closed.push(entry);
+      else if (view.candidate_status === "reviewed") pending.push(entry);
+      else if (view.availability === "runnable") waitingStart.push(entry);
+      else {
+        studio.push(entry);
+        if (row.status === "awaiting_owner_reply") awaitingStudio.push(card);
+      }
+      return;
+    }
     // /api/work and /api/waiting-on-you are live reads made together. A card
     // can be requeued between them, leaving the projection describing the
     // result from the attempt before the card's current one. Execution state
@@ -275,9 +295,10 @@ async function qLoadData() {
       if (row.status === "awaiting_owner_reply") awaitingStudio.push(card);
     }
   });
-  wentIn.sort((a, b) => String((b.landed || {}).at || "").localeCompare(String((a.landed || {}).at || "")));
+  wentIn.sort((a, b) => String(workflowView(b).last_moved || (b.landed || {}).at || "")
+    .localeCompare(String(workflowView(a).last_moved || (a.landed || {}).at || "")));
   return { org, rulings, hisWork: his, pendingCompletion: pending, waitingToStart: waitingStart, studioWork: studio,
-    wentIn, closedWork: closed, hisDecisions, studioDecisions, awaitingStudio, waiting, seats, execution,
+    wentIn, closedWork: closed, hisDecisions, studioDecisions, awaitingStudio, waiting, seats, execution, executionQueue,
     heldToStart: heldStart };
 
 }
@@ -436,10 +457,11 @@ function qRender(state) {
   qSelectNext(rows);
 
   const unavailable = state.waiting.available === false;
-  const autoStatus = execution.paused ? "Paused" : (execution.timer.active === false ? "Scheduler stopped" : "Running");
+  const autoStatus = execution.paused ? "Paused" : (execution.timer.active === false ? "Scheduler stopped" : "Scheduler enabled");
+  const eligibleActions = state.executionQueue ? (state.executionQueue.eligible || []).length : execution.queued;
   const statusTip = execution.paused
-    ? `${execution.queued} accepted pieces are held${execution.pause.reason ? `: ${execution.pause.reason}` : "."}`
-    : `${execution.queued} accepted pieces are eligible. The scheduler is ${execution.timer.active === false ? "stopped" : "active"}; up to ${execution.batch_limit} start every ${execution.interval_minutes} minutes.`;
+    ? `${eligibleActions} actions are not starting while the scheduler is paused${execution.pause.reason ? `: ${execution.pause.reason}` : "."}`
+    : `${eligibleActions} actions are eligible. The scheduler is ${execution.timer.active === false ? "stopped" : "enabled"}; up to ${execution.batch_limit} start every ${execution.interval_minutes} minutes.`;
   const executionHtml = `<section class="exec-control ${execution.paused ? "paused" : "running"}">
     <span class="exec-name">Task queue</span>
     <span class="exec-status tip" tabindex="0" data-tip="${esc(statusTip)}"><i></i>${esc(autoStatus)}</span>
@@ -454,7 +476,7 @@ function qRender(state) {
        <p>${picks} ${picks === 1 ? "is a pick" : "are picks"} between prepared options, about 30 seconds each.
        ${reads} need${reads === 1 ? "s" : ""} you to read what came back, about two minutes each.${
          reads ? ` Of those ${reads}, nobody has written a recommendation yet; each says who owes you one, and you can still answer.` : ""}</p>`
-    : `<b>Nothing is waiting on you.</b><p>The rest of the studio is working.</p>`;
+    : `<b>Nothing is waiting on you.</b><p>Studio work, including blocked work, is listed below.</p>`;
 
   const owed = [
     ...awaitingStudio.map(c => ({ who: ownerOf(org, c.owner).name, title: c.title, since: c.asked_ts })),
@@ -487,15 +509,21 @@ function qRender(state) {
     ${g.items.map(rowHtml).join("")}`).join("");
 
   const foldRow = (card, reason) => {
+    const view = workflowView(card);
+    const action = view.next_action || {};
     const preparation = (state.waiting.items || []).find(row => row.source_id === card.id);
-    const warnings = [reason, preparation && preparation.reason, card.check && card.check.summary].filter(Boolean);
+    const warnings = view.canonical
+      ? [workflowStatus(card), action.summary,
+         action.owner ? `next owner: ${ownerOf(org, action.owner).name}` : "",
+         view.last_moved ? `last moved ${view.last_moved}` : ""].filter(Boolean)
+      : [reason, preparation && preparation.reason, card.check && card.check.summary].filter(Boolean);
     return `<li><span class="q-fold-t">${esc(card.title)}</span>
       <small class="q-fold-r"> · ${esc([...new Set(warnings)].join(" · "))}</small>
-      <a class="plain" href="#/work/${encodeURIComponent(card.id)}">Open result</a></li>`;
+      <a class="plain" href="#/work/${encodeURIComponent(card.id)}${action.id ? `?action=${encodeURIComponent(action.id)}` : ""}">${esc(action.id ? "Open next action and evidence" : "Open result")}</a></li>`;
   };
 
   const wentInHtml = wentIn.map(c => `<li><b>${esc(c.title)}</b>
-    <small class="q-fold-r"> · ${esc(ownerOf(org, c.owner).name)} · went in ${esc(String((c.landed || {}).at || "").replace("T", " "))}</small>
+    <small class="q-fold-r"> · ${esc(ownerOf(org, c.owner).name)} · ${esc(workflowStatus(c))} · went in ${esc(String(workflowView(c).last_moved || (c.landed || {}).at || "").replace("T", " "))}</small>
     <button class="ghost q-undo" data-id="${esc(c.id)}">Undo</button></li>`).join("");
   const digestHtml = pendingCompletion.map(({ card, reason }) =>
     foldRow(card, reason)).join("");
@@ -526,14 +554,14 @@ function qRender(state) {
         <h2 class="q-fold-h">Landed without you <span class="chip q-chip q-count">${wentIn.length}</span></h2>
         <details class="q-fold"><summary>${wentIn.length} piece${wentIn.length === 1 ? "" : "s"} of finished work went in without you</summary>
           <ul class="q-fold-list">${wentInHtml || "<li>Nothing yet.</li>"}</ul></details>
-        <h2 class="q-fold-h">Awaiting completion <span class="chip q-chip q-count">${pendingCompletion.length}</span></h2>
-        <details class="q-fold"><summary>${pendingCompletion.length} result${pendingCompletion.length === 1 ? "" : "s"} still need completion recorded</summary>
+        <h2 class="q-fold-h">Reviewed, waiting to be merged <span class="chip q-chip q-count">${pendingCompletion.length}</span></h2>
+        <details class="q-fold"><summary>${pendingCompletion.length} result${pendingCompletion.length === 1 ? "" : "s"} still need to be checked against current code and merged</summary>
           <ul class="q-fold-list">${digestHtml || "<li>Nothing yet.</li>"}</ul></details>
         <h2 class="q-fold-h">${execution.paused ? "Held while automatic work is paused" : "Waiting to start"} <span class="chip q-chip q-count">${waitingToStart.length}</span></h2>
         <details class="q-fold"><summary>${waitingToStart.length} accepted piece${waitingToStart.length === 1 ? "" : "s"} of work ${execution.paused ? (waitingToStart.length === 1 ? "is" : "are") + " held" : (waitingToStart.length === 1 ? "has" : "have") + " not started yet"}</summary>
           <ul class="q-fold-list">${waitingStartHtml || "<li>Nothing yet.</li>"}</ul></details>
-        <h2 class="q-fold-h">Held from automatic work <span class="chip q-chip q-count">${heldToStart.length}</span></h2>
-        <details class="q-fold"><summary>${heldToStart.length} piece${heldToStart.length === 1 ? " is" : "s are"} waiting for a named blocker to clear</summary>
+        <h2 class="q-fold-h">Blocked studio work <span class="chip q-chip q-count">${heldToStart.length}</span></h2>
+        <details class="q-fold"><summary>${heldToStart.length} piece${heldToStart.length === 1 ? " is" : "s are"} blocked; each names the next owner and action</summary>
           <ul class="q-fold-list">${heldStartHtml || "<li>Nothing yet.</li>"}</ul></details>
         <h2 class="q-fold-h">Back with the studio <span class="chip q-chip q-count">${backCount}</span></h2>
         <details class="q-fold"><summary>${backCount} card${backCount === 1 ? "" : "s"} belong to the studio now, not to you</summary>
@@ -697,6 +725,10 @@ document.addEventListener("keydown", ev => {
 });
 
 async function renderQueue() {
+  // A link to a particular work item must show that item's outcome, recovery
+  // action and evidence. The queue reader is for choosing among CEO questions.
+  const focused = typeof workFocusId === "function" ? workFocusId() : "";
+  if (focused) return renderWork(focused);
   const state = await qLoadData();
   qRender(state);
 }

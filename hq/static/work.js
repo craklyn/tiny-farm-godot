@@ -217,7 +217,10 @@ function attemptsBehind(it) {
 }
 
 function repairHoldReason(it) {
-  return String(it.repair_hold || "").trim();
+  const view = workflowView(it);
+  return view.canonical && view.availability === "blocked"
+    ? String((view.blocker || {}).reason || "This work has a recorded problem that prevents it from proceeding.").trim()
+    : String(it.repair_hold || "").trim();
 }
 
 function resuming(it) {
@@ -254,6 +257,8 @@ function lastAttemptDid(it) {
 /* The one line a card being tried again has to carry: which attempt is coming,
    who starts it (never him), and what the attempt before it did. */
 function againLine(it, org) {
+  const view = workflowView(it);
+  if (view.canonical) return "";
   const repairHold = repairHoldReason(it);
   if (repairHold) return `<div class="w-again"><b>Held from automatic work</b> — ${esc(repairHold)}
     Nothing starts automatically. The studio must resolve the hold and record what happens next.</div>`;
@@ -262,7 +267,7 @@ function againLine(it, org) {
   const nth = ordinal(attemptsBehind(it) + 1);
   const running = it.state === "doing" && !!it.started;
   const head = running
-    ? `${first} is on the ${nth} attempt, running now`
+    ? `${first}'s ${nth} attempt was started; a live session is not confirmed`
     : it.state === "doing"
       ? `${first}'s ${nth} attempt starts in a moment`
       : `${first}'s ${nth} attempt is queued`;
@@ -288,13 +293,15 @@ function commentRow(first, closed) {
 }
 
 function consequence(it, org) {
+  const view = workflowView(it);
   const first = ownerOf(org, it.owner).name.split(" ")[0];
   const rows = [];
   let extra = "";
-  if (repairHoldReason(it)) {
+  if (repairHoldReason(it) || (view.canonical && Number(it.tier) > 0
+      && ["unverified", "reviewed", "held", "stale"].includes(view.candidate_status))) {
     return `<div class="w-conseq">
       <div class="w-conseq-h">Nothing needed from you</div>
-      <div class="w-conseq-row"><b>What happens</b><span>Nothing starts automatically. The studio must resolve the hold before this work can move.</span></div>
+      <div class="w-conseq-row"><b>What happens</b><span>${esc(workflowStatus(it))}. ${esc((view.next_action || {}).summary || "The studio is responsible for the next step.")}</span></div>
     </div>`;
   } else if (it.state === "needs_approval") {
     rows.push(["Yes, go ahead", `Nothing runs on its own. It joins the build queue, and the next run — a session, or the studio's own scheduled one — carries out the step above and shows you the diff.`]);
@@ -369,7 +376,7 @@ function childrenNote(it, org) {
     <div class="w-kids-h">Already filed off this card — ${kids.length} piece${kids.length > 1 ? "s" : ""} of work</div>
     ${kids.map(k => `<div class="w-kid">
       <span class="w-kid-t">${esc(k.title)}</span>
-      <span class="w-kid-m">${esc(ownerOf(org, k.owner).emoji)} ${esc(ownerOf(org, k.owner).name.split(" ")[0])} · ${esc(STATE_WORD[k.state] || k.state)}</span>
+      <span class="w-kid-m">${esc(ownerOf(org, k.owner).emoji)} ${esc(ownerOf(org, k.owner).name.split(" ")[0])} · ${esc(workflowView(k).canonical ? workflowStatus(k) : STATE_WORD[k.state] || k.state)}</span>
     </div>`).join("")}
   </div>`;
 }
@@ -518,6 +525,7 @@ function saveOpen(set) {
 }
 
 function wantsLine(it, org) {
+  if (workflowView(it).canonical) return workflowStatus(it);
   const first = ownerOf(org, it.owner).name.split(" ")[0];
   const repairHold = repairHoldReason(it);
   if (repairHold) return `held from automatic work — ${repairHold}`;
@@ -527,14 +535,14 @@ function wantsLine(it, org) {
   if (resuming(it)) {
     const nth = ordinal(attemptsBehind(it) + 1);
     if (it.state === "doing") {
-      return it.started ? `${first} is on the ${nth} attempt — nothing waiting on you`
+      return it.started ? `${first}'s ${nth} attempt was started — live session not confirmed`
         : `${first}'s ${nth} attempt starts in a moment — nothing waiting on you`;
     }
     return `${first}'s ${nth} attempt is queued — nothing waiting on you`;
   }
   if (it.state === "doing") {
     if (!it.started) return `${first} is waiting to start`;
-    return it.revising ? `${first} is revising it` : `${first} is working on it`;
+    return `${first}'s work was started — live session not confirmed`;
   }
   if (it.state === "waiting_session") return it.revising ? "queued for a build session — revising the result" : "queued for a build session";
   if (it.state === "needs_approval") return "not started — wants your yes";
@@ -565,6 +573,7 @@ const CHECK_WORD = {
 function drainBlock(it, org) {
   const d = it.diff, c = it.check, s = it.suites;
   if (!d && !c && !s) return "";
+  const view = workflowView(it);
   // A card tiered "changes files" that changed no files is either an honest
   // "nothing needed changing" or work that did not happen. The card cannot tell
   // which, so it states the fact and leaves the judgement where it belongs.
@@ -576,7 +585,9 @@ function drainBlock(it, org) {
   const by = it.done_by || {};
   const seat = by.seat ? ownerOf(org, by.seat).name.split(" ")[0] : "";
   const files = (d && d.files || []);
-  const filesLine = !d ? "" : d.applied
+  const filesLine = view.canonical && view.candidate_status !== "none"
+    ? `${files.length} file${files.length === 1 ? "" : "s"} in the recorded proposed version; ${view.candidate_status === "landed" ? "merged into the main code branch" : "not merged into the main code branch"}`
+    : !d ? "" : d.applied
     ? `${files.length} file${files.length === 1 ? "" : "s"} changed, already in your working tree`
     : (d.why_not || "") === "nothing changed"
       ? "no files changed"
@@ -592,6 +603,8 @@ function drainBlock(it, org) {
     `<span class="${v.ok ? "w-sui-ok" : "w-sui-bad"}">${esc(k)} tests ${v.ok ? "green" : "RED"}</span>`
   ).join(" · ")}</div>` : "";
   return `<div class="w-drain">
+    ${view.canonical && ["stale", "held", "unverified"].includes(view.candidate_status)
+      ? `<div class="w-nodiff">This evidence applies to an earlier proposed version, not the version now intended for the main code branch.</div>` : ""}
     <div class="w-drain-h">${esc(seat || "The owner")} did this on their own${
       by.model ? `, on ${esc(by.model)}` : ""} — ${esc(filesLine)}</div>
     ${emptyDiff}
@@ -655,10 +668,13 @@ function decisionFor(it) {
 }
 
 function workCard(it, org, pol) {
+  const view = workflowView(it);
   const who = ownerOf(org, it.owner);
   const repairHold = repairHoldReason(it);
+  const pendingCode = view.canonical && Number(it.tier) > 0
+    && ["unverified", "reviewed", "held", "stale"].includes(view.candidate_status);
   const again = resuming(it);
-  const busy = !repairHold && (!!it.awaiting_reply || it.state === "doing" || again);
+  const busy = !repairHold && (!!it.awaiting_reply || view.availability === "running");
   const open = openSet().has(it.id);
   // Saying yes to a card that is about to be attempted again would settle a
   // result the studio is in the middle of replacing, so the yes is shown and
@@ -670,10 +686,10 @@ function workCard(it, org, pol) {
   // those states renders a verdict button, so there is nothing here to disable.
   // The banner above the card is what tells him the result is being replaced.
   const locked = "";
-  const acts = repairHold ? "" : ({
+  const acts = repairHold || pendingCode ? "" : ({
     needs_approval: `<button data-act="approve" data-id="${it.id}"${locked}>Yes, go ahead</button>
                      <button class="ghost" data-act="drop" data-id="${it.id}">Not this</button>`,
-    for_review: heldReason(it)
+    for_review: heldReason(it) || (view.canonical && view.candidate_status === "stale")
       ? `<button class="ghost" data-act="drop" data-id="${it.id}">Drop it</button>`
       : `<button data-act="accept" data-id="${it.id}"${locked}>Good — accept</button>
          <button class="ghost" data-act="drop" data-id="${it.id}">Drop it</button>`,
@@ -683,7 +699,7 @@ function workCard(it, org, pol) {
   // Comment with no verdict: the owner answers on the card and makes a move.
   // Available on every card, closed ones included — a question about work
   // already accepted is still a question its owner should answer.
-  const talkBtn = repairHold ? "" : `<button class="${acts ? "ghost" : ""}" data-send="${esc(it.id)}">Comment</button>`;
+  const talkBtn = repairHold || pendingCode ? "" : `<button class="${acts ? "ghost" : ""}" data-send="${esc(it.id)}">Comment</button>`;
   // The result is the tall part of a card. It folds to a readable window with
   // the rest one click away, rather than pushing the next decision off screen.
   const long = (it.result || "").length > 900;
@@ -698,6 +714,7 @@ function workCard(it, org, pol) {
     ? `<div class="w-result${long ? " w-clip" : ""}"><div class="w-result-h">${esc(who.name.split(" ")[0])}${
         repairHold ? "'s last result — held from automatic work"
           : held ? "'s attempt — what came back" : it.revising ? "'s result so far — being revised"
+          : pendingCode ? " created this proposed version; it has not been merged"
           : again ? "'s last attempt — what came back before it stopped"
             : " did it — here's the result"}${revised}</div>${md(it.result)}
        ${long ? `<button class="w-more" data-more="${esc(it.id)}">Read all of it</button>` : ""}</div>${earlier}`
@@ -714,6 +731,15 @@ function workCard(it, org, pol) {
       </details>`
     : "";
   const dec = decisionFor(it);
+  const action = view.canonical && view.next_action || null;
+  const shipped = view.canonical && view.shipped_evidence || null;
+  const workflowLine = view.canonical ? `<div class="w-drain" id="w-action-${esc(action && action.id || it.id)}">
+      <b>${esc(workflowStatus(it))}</b>
+      ${action ? `<p><b>Next action:</b> ${esc(action.summary || action.type || "Recorded action")}${action.owner ? ` · ${esc(ownerOf(org, action.owner).name)}` : ""}${action.age_seconds != null ? ` · waiting ${esc(Math.floor(action.age_seconds / 3600))} h` : ""}</p>` : ""}
+      ${view.candidate_status && view.candidate_status !== "none" ? `<p>Proposed version: ${esc(view.candidate_status)}.</p>` : ""}
+      ${shipped && shipped.landed_sha ? `<p>Commit merged into the main code branch: <code>${esc(shipped.landed_sha)}</code>. ${shipped.ci_confirmed ? "Automated checks confirmed this change." : "Automated checks are not confirmed."}</p>` : ""}
+      ${view.last_moved ? `<p>Last moved: ${timeControl(view.last_moved)}</p>` : ""}
+    </div>` : "";
   const card = h(`<div class="w-card w-${it.state}${busy ? " w-busy" : ""}${open ? " w-open" : ""}" data-id="${esc(it.id)}">
     <div class="w-head" data-toggle="${esc(it.id)}">
       <span class="w-caret">${open ? "▾" : "▸"}</span>
@@ -726,11 +752,12 @@ function workCard(it, org, pol) {
             title="Who ${esc(who.name.split(" ")[0])} is, what they own, and what else they are carrying">${esc(who.emoji)} ${esc(who.name)}</button></span>
         </div>
         <h3>${esc(FINISHED.includes(it.state) ? reviewTitle(it) : it.title)}</h3>
-        <div class="w-wants">${esc((it.effective || {}).label || wantsLine(it, org))}${busy ? `<span class="w-dots"><i></i><i></i><i></i></span>` : ""}${it.effective && it.effective.at ? ` · ${timeControl(it.effective.at)}` : ""}</div>
+        <div class="w-wants">${esc(view.canonical ? wantsLine(it, org) : (it.effective || {}).label || wantsLine(it, org))}${busy ? `<span class="w-dots"><i></i><i></i><i></i></span>` : ""}${!view.canonical && it.effective && it.effective.at ? ` · ${timeControl(it.effective.at)}` : ""}</div>
       </div>
     </div>
     <div class="w-body">
       ${againLine(it, org)}
+      ${workflowLine}
       ${it.effective && it.effective.record_is_behind ? `<div class="w-recovered">The session ended before this card finished updating. HQ recovered its latest record.</div>` : ""}
       ${dec ? `<div class="w-decision">
         <div class="w-decision-h">The decision this work came from — the card you ruled on</div>
@@ -747,7 +774,7 @@ function workCard(it, org, pol) {
       ${spawnedNote(it)}
       ${decidedNote(it)}
       ${(again || repairHold || heldReason(it) || ["for_review", "accepted", "dropped"].includes(it.state) ? "" : recommendBlock(it))
-          + consequence(it, org) + (repairHold ? "" : replyBox(it, org))
+          + consequence(it, org) + (repairHold || pendingCode ? "" : replyBox(it, org))
           + `<div class="w-acts">${acts}${talkBtn}</div>`}
       ${brief}
       <div class="w-outcome" hidden></div>
@@ -818,6 +845,12 @@ function workFocusId() {
   return "";
 }
 
+function workActionId() {
+  const match = /[?&]action=([^&]+)/.exec(location.hash || "");
+  if (!match) return "";
+  try { return decodeURIComponent(match[1]); } catch { return ""; }
+}
+
 function advanceDirectDecision(finishedId, readyDecisions, focusId) {
   if (focusId !== finishedId) { renderWork(); return; }
   const next = readyDecisions.find(card => card.id !== finishedId);
@@ -882,11 +915,12 @@ async function renderWork(focusId = workFocusId()) {
     const set = openSet(); set.add(focusId); saveOpen(set);
   }
   const pol = snap.policy;
-  const repairHeld = snap.items.filter(i => repairHoldReason(i));
-  const by = st => snap.items.filter(i => i.state === st && !repairHoldReason(i));
+  const repairHeld = snap.items.filter(i => workflowView(i).availability === "blocked");
+  const by = st => snap.items.filter(i => i.state === st && workflowView(i).availability !== "blocked");
   const focusedItem = focusId ? snap.items.find(i => i.id === focusId) : null;
-  const doingNow = by("doing").filter(i => !!i.started);
-  const waitingToStart = by("doing").filter(i => !i.started);
+  const doingNow = by("doing").filter(i => workflowView(i).availability === "running");
+  const waitingToStart = by("doing").filter(i => workflowView(i).availability !== "running");
+  const waitingEvent = by("waiting_session").filter(i => workflowView(i).availability === "waiting_event");
   childIndex = {};
   snap.items.forEach(i => { if (i.parent) (childIndex[i.parent] ||= []).push(i); });
   // A finished card whose changes never reached the repository is not his to
@@ -894,8 +928,10 @@ async function renderWork(focusId = workFocusId()) {
   // hides Accept on one. It must not be counted as waiting on him either: it
   // is waiting on whoever holds the files it could not be written over.
   const reviewable = [...by("needs_approval"), ...by("for_review")];
-  const waiting = reviewable.filter(i => readyIds.has(i.id));
-  const preparing = reviewable.filter(i => !readyIds.has(i.id));
+  const candidateNeedsLanding = i => workflowView(i).canonical && Number(i.tier) > 0
+    && ["unverified", "reviewed", "held", "stale"].includes(workflowView(i).candidate_status);
+  const waiting = reviewable.filter(i => readyIds.has(i.id) && !candidateNeedsLanding(i));
+  const preparing = reviewable.filter(i => !readyIds.has(i.id) || candidateNeedsLanding(i));
   const closed = [...by("accepted"), ...by("dropped")];
   // First visit: the top decision is open and everything else is one line, so
   // the page opens showing how many things want him rather than one of them.
@@ -955,14 +991,15 @@ async function renderWork(focusId = workFocusId()) {
         : "Two kinds: work that has not happened because it is hard to undo, and work that is finished and wants your verdict on the result.",
       waiting, org, pol, { always: true }),
     workSection("Preparation and verification",
-      "These results are not counted as waiting on you. Read the preparation or verification warning before giving a verdict; you can still open a finished result and comment or decide explicitly.",
+      "These results are not counted as waiting on you. The studio must finish verification or integration before presenting a code result for a verdict.",
       preparing, org, pol, { reasons: attentionReasons }),
     workSection("Happening now", "This work is now underway.", doingNow, org, pol),
-    workSection("Held from automatic work",
-      "Nothing here starts automatically. The reason on each card says what the studio must resolve before it can move.",
+    workSection("Blocked studio work",
+      "Each card names what prevents it from moving and who is responsible for the next action. A recovery action may be ready even while the original action remains blocked.",
       repairHeld, org, pol),
-    workSection("Waiting to start", "The studio accepted this work, but it has not started yet and can still be cancelled.", waitingToStart, org, pol),
-    workSection("Queued for a build session", "Changes files in the repository, so a session with write access — or the studio's own scheduled run — makes the change and shows you what it altered.", by("waiting_session"), org, pol),
+    workSection("Not confirmed running", "Some actions were started earlier, but HQ has no record of an automated task running for them now.", waitingToStart, org, pol),
+    workSection("Waiting for another action to finish", "These actions cannot start yet; each card names what must change first.", waitingEvent, org, pol),
+    workSection("Ready to start", "An automated task can start these actions. No automated task is running solely because an action is ready.", by("waiting_session").filter(i => workflowView(i).availability === "runnable"), org, pol),
   ].filter(Boolean);
   secs.forEach(s => body.appendChild(s));
 
@@ -1016,8 +1053,12 @@ async function renderWork(focusId = workFocusId()) {
     if (el) {
       const hist = el.closest("#w-hist");
       if (hist && hist.hidden) document.getElementById("w-hist-t").click();
-      el.scrollIntoView({ block: "center" });
-      el.classList.add("ms-flash");
+      const wantedAction = workActionId();
+      const target = wantedAction
+        ? [...el.querySelectorAll('[id^="w-action-"]')].find(node => node.id === `w-action-${wantedAction}`) || el
+        : el;
+      target.scrollIntoView({ block: "center" });
+      target.classList.add("ms-flash");
     }
   }
 
@@ -1114,7 +1155,8 @@ async function renderWork(focusId = workFocusId()) {
       // is on has to move when it does.
       const stamp = JSON.stringify(s.items.map(
         i => [i.id, i.state, (i.conversation || []).length, !!i.awaiting_reply,
-              i.attempts || 0, !!i.started]));
+              i.attempts || 0, !!i.started, (i.workflow_view || {}).last_moved,
+              (i.workflow_view || {}).availability, ((i.workflow_view || {}).next_action || {}).id]));
       if (stamp !== workPoll.stamp) { workPoll.stamp = stamp; renderWork(focusId); }
     }).catch(() => { });
   }, period);

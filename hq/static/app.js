@@ -42,6 +42,59 @@ function showStaleBanner() {
 function h(html) { const t = document.createElement("template"); t.innerHTML = html.trim(); return t.content; }
 function esc(s) { return String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
 
+/* One adapter for the work system's public projection. The server owns these
+   facts; views must not turn a finished session or an old patch into a claim
+   that work is running or shipped. Old cards remain readable during migration. */
+function workflowView(item) {
+  const source = item && item.workflow_view;
+  if (source && source.version === 1) return { ...source, canonical: true };
+  const state = item && item.state || "";
+  const hold = String(item && (item.repair_hold || (item.waiting_for || {}).reason) || "").trim();
+  const terminal = ["accepted", "dropped", "done", "landed"].includes(state);
+  return {
+    canonical: false,
+    phase: state === "for_review" ? "review" : state === "doing" ? "working"
+      : state === "waiting_session" ? "ready" : state,
+    // A legacy started timestamp is not a live claim. Never call it running.
+    availability: terminal ? "terminal" : hold ? "blocked"
+      : state === "needs_approval" || state === "for_review" ? "waiting_event"
+        : state === "doing" && item.started ? "waiting_event" : "runnable",
+    next_action: item && item.first_action ? { summary: item.first_action, owner: item.owner } : null,
+    blocker: hold ? { reason: hold, owner: item.owner } : null,
+    last_moved: item && (item.updated_at || item.created) || "",
+    candidate_status: item && item.landed && item.landed.sha ? "landed" : "none",
+    shipped_evidence: item && item.landed && item.landed.sha
+      ? { landed_sha: item.landed.sha, ci_confirmed: false } : null,
+  };
+}
+
+function workflowStatus(item) {
+  const view = workflowView(item);
+  const action = view.next_action || {};
+  const reason = (view.blocker || {}).reason || "";
+  if (view.availability === "blocked") {
+    const recovery = action.availability === "running" ? "recovery is running"
+      : action.availability === "runnable" ? "recovery is ready" : "";
+    return `Blocked${reason ? ` — ${reason}` : ""}${recovery ? `; ${recovery}` : ""}`;
+  }
+  if (view.availability === "running") return "An automated task is running now";
+  if (view.candidate_status === "landed" || view.phase === "landed")
+    return view.shipped_evidence && view.shipped_evidence.ci_confirmed
+      ? "Merged into the main code branch; automated checks confirmed"
+      : "Merged into the main code branch; automated checks are not confirmed";
+  if (view.candidate_status === "reviewed") return "Reviewed; waiting to be merged";
+  if (view.candidate_status === "stale") return "Earlier checks no longer apply; check this version again";
+  if (view.candidate_status === "held") return "The proposed version is on hold; the studio must resolve what stopped it";
+  if (view.candidate_status === "unverified") return "A proposed version exists; its checks are incomplete";
+  if (view.phase === "review") return "Review pending";
+  if (view.availability === "runnable") return action.summary ? `Ready: ${action.summary}` : "Ready to run";
+  if (view.availability === "waiting_event") return reason ? `Waiting — ${reason}` : "Waiting for the next recorded action";
+  if (view.phase === "accepted") return "Accepted";
+  if (view.phase === "dropped") return "Dropped";
+  if (view.phase === "done") return "The work is complete; no code merge has been recorded";
+  return "Status not yet verified";
+}
+
 // A work title tells the studio what it was asked to do. A review heading
 // tells Daniel what finished thing is in front of him. Keep those names apart;
 // old records retain their title as the readable fallback rather than gaining
@@ -396,7 +449,21 @@ function waitingCard(w) {
    dense; (3) the state of the world, glanceable; (4) the narrative brief,
    folded unless something changed since he last read it. */
 async function renderDashboard() {
-  const [org, pillars, sig] = await Promise.all([api("/api/org"), api("/api/pillars"), signals(true)]);
+  const [org, pillars, sig, executionQueue, work] = await Promise.all([
+    api("/api/org"), api("/api/pillars"), signals(true),
+    fetch("/api/execution/queue").then(r => r.json()).catch(() => null),
+    fetch("/api/work").then(r => r.json()).catch(() => null),
+  ]);
+  const landed = work ? (work.items || []).filter(item => {
+    const view = workflowView(item);
+    return (view.phase === "landed" || view.candidate_status === "landed")
+      && !!(view.shipped_evidence || {}).landed_sha;
+  }) : [];
+  const studioFlow = executionQueue ? {
+    working: (executionQueue.working || []).length,
+    ready: (executionQueue.eligible || []).length,
+    blocked: (executionQueue.held || []).length,
+  } : null;
   const hour = new Date().getHours();
   const greet = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
   // Pills mark EXCEPTIONS only (Rin's rule): everything in this list is for
@@ -446,12 +513,19 @@ async function renderDashboard() {
       </div>
       <div class="dash-side">
         ${waitingCard(sig.waiting)}
+        <div class="side-nums small" aria-label="Studio work status">
+          <b>Studio work</b>
+          ${studioFlow ? `<a class="plain" href="#/work/queue">${studioFlow.working} actions being worked on · ${studioFlow.ready} actions ready · ${studioFlow.blocked} blocked</a>`
+            : `<span>Status unavailable; no queue count is implied.</span>`}
+          ${work ? `<a class="plain" href="#/work">${landed.length} work item${landed.length === 1 ? " has" : "s have"} a commit merged into the main code branch${landed.some(item => (workflowView(item).shipped_evidence || {}).ci_confirmed) ? ` · ${landed.filter(item => (workflowView(item).shipped_evidence || {}).ci_confirmed).length} passed automated checks` : ""}</a>`
+            : `<span>Evidence that work was merged is unavailable.</span>`}
+        </div>
         <details class="side-fold" id="dash-pillars-fold">
           <summary class="side-head">The pillars <span class="small muted">· ${pillars.pillars.every(p => surfaceParked("/pillar/" + p.id)) ? "detail pages are switched off" : "click for detail"}</span></summary>
           <div id="dash-pillars"></div>
         </details>
         <div class="side-nums small">
-          <a class="plain" href="#/work">${sig.work.queued} pieces of work queued</a>
+          <a class="plain" href="#/work/queue">Open the action queue</a>
           <a class="plain" href="#/program">${sig.projects.in_progress} in flight · ${sig.projects.blocked} blocked</a>
           <a class="plain" href="#/playtests">${sig.playtests.count} playtests</a>
           <a class="plain" href="#/org">${org.employees.length - 1} on your team</a>
@@ -659,13 +733,6 @@ function showPerson(org, id) {
    leads and the standing charter sits underneath it as reference. Everything
    on it is derived from the same sources the rest of HQ reads; nothing here
    is a second copy of the truth. */
-const WORK_STATE = {
-  needs_approval: "waiting on your yes",
-  for_review: "finished — wants your verdict",
-  doing: "in flight",
-  waiting_session: "queued for a build session",
-};
-
 async function renderPerson(id) {
   const org = await api("/api/org");
   const e = org.employees.find(x => x.id === id);
@@ -675,20 +742,28 @@ async function renderPerson(id) {
   }
   const first = e.name.split(" ")[0];
   // /api/work is polled, never cached — a stale plate would be worse than none.
-  const [projects, work] = await Promise.all([
+  const [projects, work, attention] = await Promise.all([
     api("/api/projects").catch(() => []),
     fetch("/api/work").then(r => r.json()).catch(() => ({ items: [] })),
+    fetch("/api/waiting-on-you").then(r => r.json()).catch(() => ({ available: false, ready: [] })),
   ]);
-  const mine = (work.items || []).filter(i => i.owner === id);
-  const waiting = mine.filter(i => i.state === "needs_approval" || i.state === "for_review");
-  const moving = mine.filter(i => i.state === "doing" || i.state === "waiting_session");
+  const mine = (work.items || []).filter(i => i.owner === id || (workflowView(i).next_action || {}).owner === id);
+  const readyForDaniel = new Set((attention.ready || []).map(row => row.source_id));
+  const candidateNeedsLanding = item => Number(item.tier) > 0
+    && ["unverified", "reviewed", "held", "stale"].includes(workflowView(item).candidate_status);
+  const waiting = mine.filter(i => readyForDaniel.has(i.id)
+    && workflowView(i).availability !== "blocked" && !candidateNeedsLanding(i));
+  const moving = mine.filter(i => workflowView(i).availability === "running");
+  const ready = mine.filter(i => workflowView(i).availability === "runnable");
+  const blocked = mine.filter(i => ["blocked", "waiting_event"].includes(workflowView(i).availability)
+    && (!readyForDaniel.has(i.id) || candidateNeedsLanding(i)));
   const live = p => p.status !== "done";
   const owns = projects.filter(p => p.owner === id && live(p));
   const helps = projects.filter(p => p.owner !== id && (p.contributors || []).includes(id) && live(p));
 
   const wRow = it => `<div class="pl-row">
-      <a class="plain" href="#/work">${esc(it.title)}</a>
-      <span class="small muted">${esc(WORK_STATE[it.state] || it.state)}</span>
+      <a class="plain" href="#/work/${encodeURIComponent(it.id)}">${esc(it.title)}</a>
+      <span class="small muted">${esc(workflowStatus(it))}</span>
     </div>`;
   const pRow = p => `<div class="pl-row">
       <a class="plain" href="#/project/${esc(p.id)}">${esc(p.name)}</a>
@@ -698,7 +773,9 @@ async function renderPerson(id) {
 
   const plate = [
     block(`waiting on you`, waiting.map(wRow)),
-    block(`${first} is doing now`, moving.map(wRow)),
+    block(`worker session running now`, moving.map(wRow)),
+    block(`ready for ${first}`, ready.map(wRow)),
+    block(`blocked or waiting`, blocked.map(wRow)),
     block(`projects ${first} owns`, owns.map(pRow)),
     block(`helping on`, helps.map(pRow)),
   ].filter(Boolean).join("");

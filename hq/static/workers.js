@@ -17,17 +17,64 @@ function wkKey(s) { return s.run + "/" + s.name; }
 
 function wkActivity(s) { return s.finished || s.started || ""; }
 
-function wkGroups(sessions) {
+function wkGroups(sessions, workById = new Map(), wanted = "") {
   const groups = new Map();
   for (const session of sessions) {
     const key = session.item || `session:${wkKey(session)}`;
-    if (!groups.has(key)) groups.set(key, {item: session.item || "", title: session.title || session.item || "Untitled work", sessions: [], updated: ""});
+    if (!groups.has(key)) groups.set(key, {item: session.item || "", title: session.title || session.item || "Untitled work", sessions: [], updated: "", work: workById.get(session.item) || null});
     const group = groups.get(key);
     group.sessions.push(session);
     if (wkActivity(session) > group.updated) group.updated = wkActivity(session);
   }
-  for (const group of groups.values()) group.sessions.sort((a, b) => wkActivity(b).localeCompare(wkActivity(a)));
+  if (wanted && workById.has(wanted) && !groups.has(wanted)) {
+    const work = workById.get(wanted);
+    groups.set(wanted, {item: wanted, title: work.title || wanted, sessions: [], updated: "", work});
+  }
+  for (const group of groups.values()) {
+    group.sessions.sort((a, b) => wkActivity(b).localeCompare(wkActivity(a)));
+    const moved = group.work && typeof workflowView === "function" ? workflowView(group.work).last_moved || "" : "";
+    if (moved > group.updated) group.updated = moved;
+  }
   return [...groups.values()].sort((a, b) => b.updated.localeCompare(a.updated));
+}
+
+function wkRecordedActions(work) {
+  if (!work || typeof workflowView !== "function") return [];
+  const view = workflowView(work);
+  if (!view.canonical) return [];
+  const records = Array.isArray(view.actions) ? view.actions.filter(a => a && a.id) : [];
+  const next = view.next_action;
+  return next && next.id && !records.some(a => a.id === next.id) ? [...records, next] : records;
+}
+
+function wkActionPanel(work, action, org = null) {
+  const label = action.summary || action.type || "Recorded action";
+  const state = action.availability || action.state || "recorded";
+  const stateLabel = { terminal: "finished", runnable: "ready", blocked: "blocked",
+    waiting_event: "waiting for something else", running: "worker session running" }[state] || state;
+  const when = action.updated_at || action.finished_at || action.claimed_at || action.created_at || "";
+  const owner = org && (org.employees || []).find(person => person.id === action.owner);
+  return `<div class="wk-action" data-action="${esc(action.id)}">
+    <span class="wk-state ${esc(state)}">${esc(stateLabel)}</span>
+    <b>${esc(label)}</b> <span class="muted">· ${esc(work.title || work.id)}</span>${action.owner ? ` <span class="muted">· owner ${esc(owner ? owner.name : action.owner)}</span>` : ""}
+    ${when ? ` <span class="muted">· ${esc(when)}</span>` : ""}
+    <a class="plain" href="#/work/${encodeURIComponent(work.id)}?action=${encodeURIComponent(action.id)}">Open action and evidence</a>
+  </div>`;
+}
+
+function wkActionTimeline(sessions, workById, wanted = "", org = null) {
+  const entries = sessions.map(s => ({ at: wkActivity(s), html: wkPanel(s) }));
+  const shownWork = new Set(sessions.map(s => s.item).filter(Boolean));
+  if (wanted) shownWork.add(wanted);
+  for (const id of shownWork) {
+    const work = workById.get(id);
+    if (!work) continue;
+    for (const action of wkRecordedActions(work)) entries.push({
+      at: action.updated_at || action.finished_at || action.claimed_at || action.created_at || "",
+      html: wkActionPanel(work, action, org),
+    });
+  }
+  return entries.sort((a, b) => b.at.localeCompare(a.at)).map(entry => entry.html).join("");
 }
 
 function wkView() {
@@ -73,23 +120,26 @@ function wkPanel(s, showTitle=true) {
     : `<details><summary class="wk-files">Show what it did</summary><div class="wk-log"></div></details>`}</div>`;
 }
 
-function wkGroup(group, activeItem, wanted) {
+function wkGroup(group, activeItem, wanted, org = null) {
   const running = group.sessions.some(s => s.state === "running");
   const isActive = running || (activeItem && group.item === activeItem);
   const workers = group.sessions.filter(s => s.phase !== "checker").length;
   const reviews = group.sessions.filter(s => s.phase === "checker").length;
+  const actions = wkRecordedActions(group.work);
   const parts = [];
   if (workers) parts.push(`${workers} work session${workers === 1 ? "" : "s"}`);
   if (reviews) parts.push(`${reviews} review${reviews === 1 ? "" : "s"}`);
-  const state = running ? "working now" : isActive ? "active" : "latest session finished";
+  const state = running ? "session running" : group.sessions.length ? "latest session finished" : "action recorded";
+  const outcome = group.work && typeof workflowView === "function" && workflowView(group.work).canonical
+    ? workflowStatus(group.work) : "";
   return `<details class="wk-group" data-item="${esc(group.item)}" ${isActive || wanted ? "open" : ""}>
     <summary class="wk-group-head">
       <span class="wk-state ${running ? "running" : "finished"}">${state}</span>
       <span class="wk-group-title">${esc(group.title)}</span>
-      <span class="muted">${esc(group.updated)} · ${parts.join(" · ")}</span>
+      <span class="muted">${esc([outcome, group.updated, ...parts].filter(Boolean).join(" · "))}</span>
     </summary>
     ${group.item ? `<div class="wk-group-card-link"><a class="plain" href="#/work/${encodeURIComponent(group.item)}">Open work card</a></div>` : ""}
-    <div class="wk-group-sessions">${group.sessions.map(s => wkPanel(s, false)).join("")}</div>
+    <div class="wk-group-sessions">${actions.map(a => wkActionPanel(group.work, a, org)).join("")}${group.sessions.map(s => wkPanel(s, false)).join("")}</div>
   </details>`;
 }
 
@@ -133,12 +183,15 @@ function wkWantedSession() {
 }
 
 async function renderWorkers() {
-  let snap, execution;
-  try { [snap, execution] = await Promise.all([
-    fetch("/api/workers").then(r => r.json()), fetch("/api/execution").then(r => r.json())]); }
+  let snap, execution, work, org;
+  try { [snap, execution, work, org] = await Promise.all([
+    fetch("/api/workers").then(r => r.json()), fetch("/api/execution").then(r => r.json()),
+    fetch("/api/work").then(r => r.json()).catch(() => ({ items: [] })),
+    api("/api/org").catch(() => ({ employees: [] }))]); }
   catch (e) { $view.innerHTML = `<div class="card">HQ could not read the sessions: ${esc(e.message)}</div>`; return; }
   const wanted = wkWantedItem();
   const wantedSession = wkWantedSession();
+  const workById = new Map((work.items || []).map(item => [item.id, item]));
   const sessions = (snap.sessions || []).filter(x => !wanted || x.item === wanted);
   const running = sessions.filter(s => s.state === "running");
   const earlier = sessions.filter(s => s.state !== "running");
@@ -155,7 +208,7 @@ async function renderWorkers() {
   const forOne = wanted
     ? `<p><b>Showing one piece of work.</b> <a class="plain" href="#/chat/bullpen">Show the whole Bullpen</a></p>`
     : "";
-  const autoStatus = execution.paused ? "Paused" : (execution.timer.active === false ? "Scheduler stopped" : "Running");
+  const autoStatus = execution.paused ? "Paused" : (execution.timer.active === false ? "Scheduler stopped" : "Scheduler enabled");
   const statusTip = execution.paused
     ? `${execution.queued} accepted pieces are held${execution.pause.reason ? `: ${execution.pause.reason}` : "."}`
     : `${execution.queued} accepted pieces are eligible. The scheduler is ${execution.timer.active === false ? "stopped" : "active"}; up to ${execution.batch_limit} start every ${execution.interval_minutes} minutes.`;
@@ -174,11 +227,11 @@ async function renderWorkers() {
     <p><b>${head}</b></p>
     <div class="wk-view-toggle" role="group" aria-label="Bullpen view">
       <button type="button" data-view="work" aria-pressed="${view === "work"}">By work item</button>
-      <button type="button" data-view="sessions" aria-pressed="${view === "sessions"}">Every session</button>
+      <button type="button" data-view="sessions" aria-pressed="${view === "sessions"}">Action timeline</button>
     </div>
     <div id="wk-sessions" data-active="${esc(activeKey)}">${view === "work"
-      ? wkGroups(sessions).map(group => wkGroup(group, active && active.item, wanted)).join("")
-      : `${running.map(s => wkPanel(s)).join("")}${earlier.length ? `<details class="card" open><summary>Sessions from the last day (${earlier.length})</summary>${earlier.map(s => wkPanel(s)).join("")}</details>` : ""}`
+      ? wkGroups(sessions, workById, wanted).map(group => wkGroup(group, active && active.item, wanted, org)).join("")
+      : wkActionTimeline(sessions, workById, wanted, org)
     }</div>`;
   $view.querySelectorAll(".wk-view-toggle button").forEach(button => button.addEventListener("click", () => {
     try { localStorage.setItem(WK_VIEW_KEY, button.dataset.view); } catch (e) { /* The default still works without storage. */ }
@@ -245,11 +298,19 @@ async function renderWorkers() {
 function wkQueueRows(rows, org, held=false) {
   if (!rows.length) return `<p class="muted">Nothing here.</p>`;
   return `<div class="exec-queue-list">${rows.map(row => {
-    const owner = (org.employees || []).find(e => e.id === row.owner) || {name: row.owner || "the studio"};
-    return `<a class="exec-queue-row" href="#/work/${encodeURIComponent(row.id)}">
+    const view = typeof workflowView === "function" ? workflowView(row) : { canonical: false };
+    const action = view.next_action || {};
+    const ownerId = action.owner || row.owner;
+    const owner = (org.employees || []).find(e => e.id === ownerId) || {name: ownerId || "the studio"};
+    const workId = row.work_id || row.id;
+    const why = view.canonical
+      ? [row.why || action.priority_reason, action.summary, view.blocker && view.blocker.reason].filter(Boolean).join(" · ")
+      : held ? row.reason : row.why;
+    const kind = row.action_type === "reconcile" ? "Reconciliation" : row.action_type === "integrate" ? "Integration" : row.priority;
+    return `<a class="exec-queue-row" href="#/work/${encodeURIComponent(workId)}${row.action_id ? `?action=${encodeURIComponent(row.action_id)}` : ""}">
       <span class="exec-rank">${held ? "—" : row.position || "•"}</span>
-      <span><b>${esc(row.title)}</b><small>${esc(owner.name)} · ${esc(held ? row.reason : row.why)}</small></span>
-      <span class="chip ${row.priority === "urgent" ? "blocked" : row.priority === "retry" ? "done" : "planned"}">${esc(row.priority)}</span>
+      <span><b>${esc(row.title)}</b><small>${esc(owner.name)} · ${esc(why || (held ? "Blocked" : "Ready"))}${view.last_moved ? ` · last moved ${esc(view.last_moved)}` : ""}</small></span>
+      <span class="chip ${row.priority === "urgent" ? "blocked" : row.priority === "retry" ? "done" : "planned"}">${esc(kind || "ordinary")}</span>
     </a>`;
   }).join("")}</div>`;
 }
@@ -261,7 +322,7 @@ async function renderExecutionQueue() {
   catch (e) { $view.innerHTML = `<div class="card">HQ could not read the task queue: ${esc(e.message)}</div>`; return; }
   const next = (queue.eligible || []).slice(0, 10), later = (queue.eligible || []).slice(10);
   $view.innerHTML = `<h1>Task queue</h1>
-    <p class="sub">The order the scheduler will actually use. Retries come first, then urgent work, then ordinary work newest first. Held work cannot start until its named reason is cleared.</p>
+    <p class="sub">The order the scheduler will actually use. A reviewed fix for overlapping changes can start ahead of new work; older work gains priority over newer work. A blocked change can have a separate fix ready to start.</p>
     <p><a class="plain" href="#/chat/bullpen">← Back to the bullpen</a></p>
     <section class="exec-queue-section"><h2>Working now <span class="w-count">${(queue.working || []).length}</span></h2>${wkQueueRows(queue.working || [], org)}</section>
     <section class="exec-queue-section"><h2>Next <span class="w-count">${next.length}</span></h2>${wkQueueRows(next, org)}</section>

@@ -10,7 +10,16 @@
    "verdict": "decode",
    "why": "'Frontier' is unexplained house vocabulary — a reader would not know what divides the items shown from those behind this boundary."
   },
+  "01122df4a0861a1858b2": {
+   "instead": "This action is waiting for another action to finish first",
+   "quote": "Waiting for something else it needs first",
+   "verdict": "decode",
+   "why": "The reader must infer what “it” refers to and what the prerequisite is."
+  },
   "0131fcc64f069c52ccd6": {
+   "verdict": "ok"
+  },
+  "015d91ed73d359ae5ab4": {
    "verdict": "ok"
   },
   "01b1506064351fda7066": {
@@ -109,6 +118,9 @@
   "0878f4d491c631be4354": {
    "verdict": "ok"
   },
+  "08bce8f1e91639c02eab": {
+   "verdict": "ok"
+  },
   "08e136d76f452f72b6ea": {
    "verdict": "ok"
   },
@@ -146,6 +158,9 @@
    "verdict": "ok"
   },
   "0ae1a5aa794964b6bcfc": {
+   "verdict": "ok"
+  },
+  "0b2c4e886db53ed12ad7": {
    "verdict": "ok"
   },
   "0b2e75031299aa5edc7d": {
@@ -317,6 +332,12 @@
   "13a996cb445afa5a9e2b": {
    "verdict": "ok"
   },
+  "13a9cfa7ffac781518c8": {
+   "instead": "Automated checks confirmed the change described on this page.",
+   "quote": "this change",
+   "verdict": "second-look",
+   "why": "“This” has no referent in the sentence and makes the reader look elsewhere for the change being confirmed."
+  },
   "13f25afd53a45a973a95": {
    "verdict": "ok"
   },
@@ -337,6 +358,12 @@
   },
   "14e916bbe70b581f9093": {
    "verdict": "ok"
+  },
+  "15334b08f906abd4106d": {
+   "instead": "Merged into the main code branch; automated checks are not confirmed",
+   "quote": "Landed on main; CI not confirmed",
+   "verdict": "decode",
+   "why": "“Landed on main” and “CI” are engineering shorthand for a change being merged and automatically checked."
   },
   "15c22d4221e7c340938b": {
    "verdict": "ok"
@@ -459,11 +486,20 @@
   "1c6f19a350111a0459fb": {
    "verdict": "ok"
   },
+  "1cac4b9eb232320dc37c": {
+   "verdict": "ok"
+  },
   "1cdb9b48658c73847d6a": {
    "verdict": "ok"
   },
   "1cfb5e4ce696aba499ae": {
    "verdict": "ok"
+  },
+  "1d3cf27d4be11571524c": {
+   "instead": "The proposed version is on hold; it needs to be restored",
+   "quote": "Candidate held; recovery needed",
+   "verdict": "decode",
+   "why": "“Candidate” and “recovery” are internal process terms that do not say what is on hold or what must be restored."
   },
   "1e12eeddbc603de9944d": {
    "verdict": "ok"
@@ -544,6 +580,12 @@
    "verdict": "decode",
    "why": "Bare pronouns without referents. Showing what? Keep what?"
   },
+  "22dfb4ae623d6db9e8fe": {
+   "instead": "An automated task can start the listed actions. No automated task is running only because one of those actions is ready.",
+   "quote": "these actions",
+   "verdict": "second-look",
+   "why": "“These” points outside the sentence, leaving the reader to work out which actions the automated task can start."
+  },
   "243ec9d3102adcc554a1": {
    "verdict": "ok"
   },
@@ -560,6 +602,9 @@
    "verdict": "ok"
   },
   "24a55c838265368ba00b": {
+   "verdict": "ok"
+  },
+  "24ea1de910c34b36a86a": {
    "verdict": "ok"
   },
   "2557ff4de89d2f03d1a0": {
@@ -667,6 +712,9 @@
    "verdict": "decode",
    "why": "\"The sell-then-buy economy\" is a game concept not introduced; the reader doesn't know what is being reversed."
   },
+  "2b978fee0b6b80f27e87": {
+   "verdict": "ok"
+  },
   "2bd75617a23f8e847650": {
    "verdict": "ok"
   },
@@ -734,6 +782,12 @@
   "2f388cd47075079f2fca": {
    "verdict": "ok"
   },
+  "2f8a01b848a259e9df15": {
+   "instead": "The work is complete; no code merge has been recorded",
+   "quote": "no code landing recorded",
+   "verdict": "decode",
+   "why": "“Code landing” is engineering shorthand for merging a change."
+  },
   "2fa365f1a8f75b7c8b90": {
    "baselined": "2026-09-19",
    "instead": "No one has opened the public build. One public build has been live for weeks and nobody in this studio can say whether anyone has opened it",
@@ -796,6 +850,9 @@
    "verdict": "decode",
    "why": "References a prior message ('when you wrote back') that is not on this surface."
   },
+  "345a775a2fccb2867d12": {
+   "verdict": "ok"
+  },
   "3480e0b12a8d994464ed": {
    "verdict": "ok"
   },
@@ -848,10 +905,19 @@
   "378df1febaca2a4fc214": {
    "verdict": "ok"
   },
+  "37966f96709d2be43679": {
+   "instead": "cannot start yet",
+   "quote": "not runnable yet",
+   "verdict": "second-look",
+   "why": "“Runnable” is engineering shorthand for something that can start."
+  },
   "37b6854a559b14c585f8": {
    "verdict": "ok"
   },
   "38515d6ef103618a22bb": {
+   "verdict": "ok"
+  },
+  "3865c6c35aa4e004a74a": {
    "verdict": "ok"
   },
   "38859f2fa206cd4718ac": {
@@ -874,6 +940,12 @@
   },
   "3a2b4bf32582230d87d5": {
    "verdict": "ok"
+  },
+  "3a53420569ba46a4ce48": {
+   "instead": "Waiting for something else it needs first",
+   "quote": "dependency",
+   "verdict": "decode",
+   "why": "The reader has to work out that this means something else the action needs first."
   },
   "3b773df5a71a1f656490": {
    "verdict": "ok"
@@ -990,6 +1062,12 @@
   "44631c6ae04a20809c4f": {
    "verdict": "ok"
   },
+  "44761e8222c31b63dedd": {
+   "instead": "underway",
+   "quote": "in flight",
+   "verdict": "second-look",
+   "why": "“In flight” is a metaphor for work that is currently underway."
+  },
   "4526a478f619fef10c9f": {
    "verdict": "ok"
   },
@@ -1102,6 +1180,9 @@
    "verdict": "decode",
    "why": "The reader cannot tell what red is being shifted in or what the one is counting."
   },
+  "4c2a7ef4630c8fe66a29": {
+   "verdict": "ok"
+  },
   "4c68b336f38cedf45de6": {
    "verdict": "ok"
   },
@@ -1132,6 +1213,9 @@
    "verdict": "decode",
    "why": "Piece lacks a clear referent — the reader cannot tell whether it is a work item, a decision card, a feature, or something else."
   },
+  "4e2fcb4e467e63b19b7d": {
+   "verdict": "ok"
+  },
   "4e5ccc3ef678e6b18b9d": {
    "verdict": "ok"
   },
@@ -1150,6 +1234,9 @@
    "quote": "failing on an old build label",
    "verdict": "second-look",
    "why": "The reader has to work out whether the check uses an old version label or is checking an old build."
+  },
+  "4f267f8ec581ccde0845": {
+   "verdict": "ok"
   },
   "4f2b553d74a794f2859c": {
    "verdict": "ok"
@@ -1297,6 +1384,12 @@
   "576bc50eeb72d05d16c3": {
    "verdict": "ok"
   },
+  "577574f9daa4077ace76": {
+   "instead": "A proposed version was created; it has not been merged.",
+   "quote": "this proposed version",
+   "verdict": "second-look",
+   "why": "“This” points outside the sentence, so a cold reader has to infer which version you mean."
+  },
   "577b33f8282da5ff651b": {
    "instead": "the studio's own scheduled run starts automatically",
    "quote": "the studio's own scheduled run starts it",
@@ -1333,6 +1426,9 @@
   "5a8b0481e8a09b50f745": {
    "verdict": "ok"
   },
+  "5afa63722fa272974319": {
+   "verdict": "ok"
+  },
   "5b105fed254b2143e558": {
    "verdict": "ok"
   },
@@ -1340,6 +1436,9 @@
    "verdict": "ok"
   },
   "5b874f52da0cd0371592": {
+   "verdict": "ok"
+  },
+  "5b996ac3d8c97635d040": {
    "verdict": "ok"
   },
   "5c1a64fd9702c2f832ae": {
@@ -1377,6 +1476,12 @@
   },
   "5e72c3e94f849ebe03d0": {
    "verdict": "ok"
+  },
+  "5e777d4a558075c665ca": {
+   "instead": "A proposed version exists; its checks are incomplete",
+   "quote": "Candidate exists; checks are incomplete",
+   "verdict": "decode",
+   "why": "“Candidate” does not tell a cold reader what version or result it refers to."
   },
   "5ea70f73f46acedea9d8": {
    "verdict": "ok"
@@ -1485,6 +1590,9 @@
   "6650f8b0e9321adc675d": {
    "verdict": "ok"
   },
+  "665a2a244517321270fd": {
+   "verdict": "ok"
+  },
   "6670a4abb14772bbc02e": {
    "verdict": "ok"
   },
@@ -1514,6 +1622,12 @@
    "quote": "ledger line",
    "verdict": "decode",
    "why": "'Ledger line' is internal terminology for a record of where an asset came from."
+  },
+  "67c8c568b0dd46379cc4": {
+   "instead": "Merged into the main code branch; automated checks confirmed",
+   "quote": "Landed on main; CI confirmed",
+   "verdict": "decode",
+   "why": "“Landed on main” and “CI” are engineering shorthand for a change being merged and automatically checked."
   },
   "68a3539225cfff3214ef": {
    "verdict": "ok"
@@ -1682,6 +1796,12 @@
   },
   "729f3853e05cc678e5d7": {
    "verdict": "ok"
+  },
+  "72e5c29811b6636cc17b": {
+   "instead": "An automated task produced this proposed version; it has not been merged",
+   "quote": "'s session produced this proposed version",
+   "verdict": "decode",
+   "why": "The sentence does not identify whose session produced the version, and session is internal process language."
   },
   "72e6b1e51c01e226e63c": {
    "verdict": "ok"
@@ -1876,12 +1996,21 @@
   "7e416e2146df81c4283a": {
    "verdict": "ok"
   },
+  "7e9c5f0c43bb82474352": {
+   "verdict": "ok"
+  },
   "7fc195090a053707bde9": {
    "baselined": "2026-09-19",
    "instead": "This is ours, and it's been delayed too long",
    "quote": "the delay is the news",
    "verdict": "second-look",
    "why": "A clever observation that taxes the reader with a second read; the plain fact is that waiting has become the problem."
+  },
+  "7fd62f4d555a176b1696": {
+   "instead": "in the recorded proposed version",
+   "quote": "in the recorded candidate",
+   "verdict": "decode",
+   "why": "“Candidate” is internal process language and does not identify the version being discussed."
   },
   "8021cdb1baabf2f1ac51": {
    "baselined": "2026-09-19",
@@ -1892,6 +2021,12 @@
   },
   "8035dff1d58ee311c890": {
    "verdict": "ok"
+  },
+  "8041e36f79c7f4fdf95f": {
+   "instead": "a commit merged into the main code",
+   "quote": "a landed commit",
+   "verdict": "decode",
+   "why": "“Landed commit” is engineering shorthand for a commit that was merged."
   },
   "8081d4318cf78c39bdeb": {
    "verdict": "ok"
@@ -1950,6 +2085,9 @@
   "839e9973392b01478144": {
    "verdict": "ok"
   },
+  "83c71d68f244df9f6470": {
+   "verdict": "ok"
+  },
   "83e5e1235a8b6c6d73ad": {
    "verdict": "ok"
   },
@@ -1965,6 +2103,12 @@
    "quote": "derived from pixels we already ship",
    "verdict": "second-look",
    "why": "\"Derived from\" is vague—upscaled, extracted, composited, or something else?"
+  },
+  "843823b86d10502f8c83": {
+   "verdict": "ok"
+  },
+  "843fed67c6e5ec55add6": {
+   "verdict": "ok"
   },
   "845edb59cc4583e08b52": {
    "baselined": "2026-09-19",
@@ -2070,6 +2214,12 @@
   "8c2ee42643b8b5a2efce": {
    "verdict": "ok"
   },
+  "8ca10acefddc1989f0b5": {
+   "instead": "An automated task is running now",
+   "quote": "A worker session is running now",
+   "verdict": "decode",
+   "why": "The reader has to know that a worker session means an automated task is currently running."
+  },
   "8cd1287c4e553e7a3f91": {
    "verdict": "ok"
   },
@@ -2135,7 +2285,13 @@
   "9072c5defa3a69c93458": {
    "verdict": "ok"
   },
+  "913c5c5e69d22ef0bba7": {
+   "verdict": "ok"
+  },
   "91757e1af2c66a9d5097": {
+   "verdict": "ok"
+  },
+  "91a64bebe6e973c5b8cc": {
    "verdict": "ok"
   },
   "91b273615c831a683408": {
@@ -2252,6 +2408,9 @@
   "97f9a67e1c1d094217ab": {
    "verdict": "ok"
   },
+  "98160cafeca6990177c4": {
+   "verdict": "ok"
+  },
   "98bfab9353f6ef329ded": {
    "verdict": "ok"
   },
@@ -2320,6 +2479,9 @@
   "9bec9e77a7c7822f9574": {
    "verdict": "ok"
   },
+  "9c1191a15097ea8be947": {
+   "verdict": "ok"
+  },
   "9c67bf164c655053c59b": {
    "verdict": "ok"
   },
@@ -2341,6 +2503,12 @@
   },
   "9cf588600a49c11f4443": {
    "verdict": "ok"
+  },
+  "9eb17804810df6a5788c": {
+   "instead": "an earlier proposed version, not a check of the current version intended for the main code branch",
+   "quote": "an earlier candidate, not a check of the current prospective main",
+   "verdict": "decode",
+   "why": "“Candidate” and “prospective main” are engineering terms that obscure which version was checked."
   },
   "9ec33bdc445d6b7d437e": {
    "instead": "Show one consistent number for decisions waiting on Daniel",
@@ -2393,6 +2561,9 @@
   "a0bc94e710ffb8638e4f": {
    "verdict": "ok"
   },
+  "a169eec8ee73fcea44d1": {
+   "verdict": "ok"
+  },
   "a1af1c701e8b3b00fa59": {
    "verdict": "ok"
   },
@@ -2438,6 +2609,9 @@
   "a34996db638740f0b929": {
    "verdict": "ok"
   },
+  "a4935454f57ebd8038fa": {
+   "verdict": "ok"
+  },
   "a4d70bccc5f49b5a12c6": {
    "instead": "The reply exceeds what was originally asked",
    "quote": "the reply overclaimed",
@@ -2481,7 +2655,13 @@
   "a5cf37a1e813bfd7b66c": {
    "verdict": "ok"
   },
+  "a6088e8798cd364f183c": {
+   "verdict": "ok"
+  },
   "a61b7a34feb87bef2dcb": {
+   "verdict": "ok"
+  },
+  "a67ff8e7221a0cbb4289": {
    "verdict": "ok"
   },
   "a6a2dcd72c5938db46d3": {
@@ -2524,6 +2704,15 @@
   "a9b47b0c6217a4b28763": {
    "verdict": "ok"
   },
+  "aa0fa0c42a9921feeb9c": {
+   "instead": "Automated checks confirmed this proposed version",
+   "quote": "Automated checks confirmed it.",
+   "verdict": "decode",
+   "why": "The pronoun has no referent in the sentence, so the reader cannot tell what was confirmed."
+  },
+  "aa55a3c25e810f4e64cd": {
+   "verdict": "ok"
+  },
   "aaa63a7a0753a011b719": {
    "verdict": "ok"
   },
@@ -2563,6 +2752,12 @@
   "ac7f938c60eabe16850c": {
    "verdict": "ok"
   },
+  "ad0754b1caea72d23f3b": {
+   "instead": "produced this proposed version; it has not been merged",
+   "quote": "returned this candidate; it has not landed",
+   "verdict": "decode",
+   "why": "“Candidate” and “landed” are internal terms for a proposed version that has not been merged."
+  },
   "ad6e0524e7974624f3c8": {
    "verdict": "ok"
   },
@@ -2591,6 +2786,9 @@
    "quote": "After this one, on the board, still being scoped — see the program .",
    "verdict": "decode",
    "why": "Three bare references with no antecedents: 'this one,' 'the board,' and 'the program' cannot be resolved from the sentence alone."
+  },
+  "ae443a54259214419dbb": {
+   "verdict": "ok"
   },
   "ae6dee18ff58efdf783f": {
    "verdict": "ok"
@@ -2652,6 +2850,9 @@
   "b2454a3b82907e6f26e3": {
    "verdict": "ok"
   },
+  "b26128731650e08b31e2": {
+   "verdict": "ok"
+  },
   "b2741383440790e21748": {
    "verdict": "ok"
   },
@@ -2671,6 +2872,15 @@
    "verdict": "ok"
   },
   "b449661b5686cbc7ec97": {
+   "verdict": "ok"
+  },
+  "b500c97095b5e277eaa8": {
+   "instead": "An automated task can start these actions; none is running merely because it is ready",
+   "quote": "A worker can start these actions",
+   "verdict": "decode",
+   "why": "The reader has to know that a worker is the automated task that starts an action."
+  },
+  "b5833064b22f80a15104": {
    "verdict": "ok"
   },
   "b5a15e232ee67f498c1b": {
@@ -3104,6 +3314,12 @@
   "d0576ee3c651dd1b59ce": {
    "verdict": "ok"
   },
+  "d0cc430b64a4dc08447a": {
+   "instead": "This work has a recorded problem that prevents it from proceeding",
+   "quote": "recorded blocker",
+   "verdict": "decode",
+   "why": "“Blocker” is process shorthand for a problem that prevents the work from proceeding."
+  },
   "d0e0c5ac3e3c68b1a290": {
    "verdict": "ok"
   },
@@ -3113,6 +3329,12 @@
    "quote": "how magnified the yard is",
    "verdict": "second-look",
    "why": "Magnified is mechanism language; a reader needs to know the consequence they would notice."
+  },
+  "d12e988a917858bcc153": {
+   "instead": "Some have an earlier record of being started, but no one is working on any of them now.",
+   "quote": "none has a live claimed session now",
+   "verdict": "decode",
+   "why": "This internal status phrase does not plainly say whether anyone is working on the actions."
   },
   "d14fc7cbf3891eb94663": {
    "instead": "its color specifications were measured from a sprite pack that is no longer in this repo",
@@ -3194,6 +3416,12 @@
   "d5b2bedabd8e4014f58e": {
    "verdict": "ok"
   },
+  "d5b8f3d2c2caa8b8f0db": {
+   "instead": "Evidence that the change was merged is unavailable",
+   "quote": "Landing evidence unavailable",
+   "verdict": "decode",
+   "why": "“Landing” is engineering shorthand for merging a change."
+  },
   "d5d06a5f24986e0d3c7c": {
    "verdict": "ok"
   },
@@ -3244,6 +3472,12 @@
   },
   "d8ca9b78a66af8c61a0f": {
    "verdict": "ok"
+  },
+  "d8da73a68e68ed70f2a1": {
+   "instead": "Reviewed; waiting to be merged",
+   "quote": "awaiting integration",
+   "verdict": "second-look",
+   "why": "“Integration” makes the reader work out that the reviewed work is waiting to be merged."
   },
   "d9519560c37cef9bf363": {
    "verdict": "ok"
@@ -3348,6 +3582,18 @@
   "df81857a0e8b714200cf": {
    "verdict": "ok"
   },
+  "dfb3a59571300a31bb52": {
+   "instead": "Each card names what is blocking it and who owns its next action. A recovery action may be ready even while the original action remains blocked.",
+   "quote": "the original candidate",
+   "verdict": "decode",
+   "why": "The reader cannot tell what the candidate is."
+  },
+  "e07915978a637f967dba": {
+   "instead": "The studio is responsible for the next step",
+   "quote": "The studio owns the next step",
+   "verdict": "second-look",
+   "why": "“Owns” is being used as a metaphor for responsibility."
+  },
   "e0a685b866155c557bad": {
    "verdict": "ok"
   },
@@ -3400,6 +3646,12 @@
   "e35693e9351d09ab0869": {
    "verdict": "ok"
   },
+  "e3818b4965f8328ae467": {
+   "instead": "Earlier checks no longer apply; it needs to be checked again",
+   "quote": "Earlier checks are stale; needs fresh verification",
+   "verdict": "second-look",
+   "why": "“Stale” and “fresh verification” describe the checking process instead of plainly saying that the work must be checked again."
+  },
   "e382ce2fbc4b1c63eb68": {
    "instead": "a cost range display",
    "quote": "a cost band",
@@ -3446,6 +3698,12 @@
   "e73608ee7f4fd2c6cd49": {
    "verdict": "ok"
   },
+  "e7494cbab36fec1ff9af": {
+   "instead": "A session is reported as running",
+   "quote": "A claimed session is running",
+   "verdict": "decode",
+   "why": "“Claimed” is internal status language and does not tell the reader what is actually known."
+  },
   "e7759ba64f178f396e1c": {
    "baselined": "2026-09-19",
    "instead": "cannot be applied to the real render",
@@ -3479,6 +3737,12 @@
   },
   "e9bde8325e7d30b41d17": {
    "verdict": "ok"
+  },
+  "e9e440f23bec8d69264a": {
+   "instead": "Some actions were started earlier, but HQ has no record of an automated task running for them now",
+   "quote": "Some have an earlier record of being started, but HQ has no live worker session recorded for them now.",
+   "verdict": "decode",
+   "why": "The reader must infer what “Some” refers to and what a live worker session means."
   },
   "ead7228104c4e84ca19e": {
    "verdict": "ok"
@@ -3543,6 +3807,9 @@
    "verdict": "ok"
   },
   "ef54d38034eca8249b94": {
+   "verdict": "ok"
+  },
+  "efbd83015d0ec8e96187": {
    "verdict": "ok"
   },
   "efd3aa79ffd26ff5865d": {
@@ -3733,6 +4000,24 @@
   },
   "fcb00bd5802c4e3630fc": {
    "verdict": "ok"
+  },
+  "fccb03eaf688d96b36ad": {
+   "instead": "Ready to start",
+   "quote": "Ready for a build session",
+   "verdict": "decode",
+   "why": "The reader has to know what a build session is to understand what is ready."
+  },
+  "fcec217e9e03b367cc49": {
+   "verdict": "ok"
+  },
+  "fd025797fc6dceb2a238": {
+   "verdict": "ok"
+  },
+  "fd1fbbb8fc0c9a02f360": {
+   "instead": "… just taken on · … actions ready · … blocked",
+   "quote": "… claimed now · … ready actions · … blocked",
+   "verdict": "decode",
+   "why": "“Claimed now” and “ready actions” are internal status labels whose meaning is not clear to a stranger."
   },
   "fd2c79343f9541c75739": {
    "verdict": "ok"

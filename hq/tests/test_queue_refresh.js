@@ -25,6 +25,7 @@ const ctx = vm.createContext({
   $view: { replaceChildren: value => { rendered = value; }, addEventListener() {} },
 });
 vm.runInContext(app.slice(app.indexOf('async function api('), app.indexOf('/* This page is long-lived')), ctx);
+vm.runInContext(app.slice(app.indexOf('function workflowView('), app.indexOf('// A work title')), ctx);
 vm.runInContext(app.slice(app.indexOf("function reviewEvidenceLinks("), app.indexOf("/* Markdown for authored prose")), ctx);
 const submissionStart = app.indexOf('function decisionSubmissionId');
 const submissionEnd = app.indexOf('\n\nfunction decisionCard', submissionStart);
