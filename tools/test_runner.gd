@@ -459,6 +459,28 @@ func _scenario_e() -> void:
 		"deposit moves carried units out of the pouch")
 	_assert(int(GameState.bin_reserve.get("wheat", 0)) == 7 and GameState.gold == gold_before,
 		"the bin reserves seven wheat without paying gold")
+	# Stage another carried stack, then send it through the actual bin button.
+	# The first three fill reserve; the other seven must visibly become a sale.
+	GameState.pouch["wheat"] = 10
+	InputManager.click_tile = Vector2i(4, 1)
+	InputManager.has_click = true
+	var open_again := await _wait_until(
+		func(): return main_scene.menus.active_menu == "bin", 120)
+	_assert(open_again, "the bin reopens for an excess deposit")
+	if open_again:
+		_press_row(main_scene.menus.options_container, 0)
+		var bin_labels: Array = []
+		_collect_labels(main_scene.menus.options_container, bin_labels)
+		var names_sale := false
+		for label in bin_labels:
+			if String(label.text).contains("Last deposit: sold 7 wheat units"):
+				names_sale = true
+		_assert(names_sale, "the bin tells her seven wheat units sold")
+		main_scene.menus.close_menu()
+	_assert(int(GameState.bin_reserve.get("wheat", 0)) == 10
+		and int(GameState.pouch.get("wheat", 0)) == 0
+		and GameState.gold == gold_before + 7 * GameState.crop_price("wheat"),
+		"a real menu deposit fills reserve to ten and sells exactly seven")
 	# Return with an empty pouch, take the reserve through the panel, then sow it
 	# through the same simulated tile input the rest of the suite uses.
 	InputManager.click_tile = Vector2i(4, 1)
@@ -469,9 +491,9 @@ func _scenario_e() -> void:
 	if reopened:
 		_press_row(main_scene.menus.options_container, 1)  # Wheat reserve
 		main_scene.menus.close_menu()
-	_assert(int(GameState.pouch.get("wheat", 0)) == 7
+	_assert(int(GameState.pouch.get("wheat", 0)) == 10
 		and int(GameState.bin_reserve.get("wheat", 0)) == 0,
-		"taking wheat moves all seven units from reserve to the pouch")
+		"taking wheat moves all ten units from reserve to the pouch")
 	var sow := Vector2i(11, 8)
 	_stage_tile(sow.x, sow.y, "tilled")
 	player.pos = Vector2(11.5 * 16.0, 9.5 * 16.0)
@@ -483,7 +505,7 @@ func _scenario_e() -> void:
 	InputManager.has_click = true
 	var sown := await _wait_until(
 		func(): return String(farm.get_tile(sow.x, sow.y).state) == "seeded", 200)
-	_assert(sown and int(GameState.pouch.get("wheat", 0)) == 6,
+	_assert(sown and int(GameState.pouch.get("wheat", 0)) == 9,
 		"a tile tap plants one of the units taken from the bin")
 	# The tile changes at the strike, before the planting animation releases its
 	# action lock. Later scenarios need a finished player action, not just a
@@ -1293,6 +1315,51 @@ func _scenario_j_wordless_shop() -> void:
 	await get_tree().create_timer(0.3).timeout
 	_assert(GameState.held_count(String(later.seed_type)) == had + 1,
 		"and pressing a later card buys that row's own thing (%s)" % later.seed_type)
+
+	# The cap is part of the shop's visible state, not just a gateway refusal:
+	# she sees a darkened 10/10 card, and a press tells her why no gold moved.
+	var gold_before_cap: int = GameState.gold
+	var harvests_before_cap: Dictionary = GameState.harvest_counts.duplicate()
+	var tomatoes_before_cap: int = int(GameState.pouch.get("tomato", 0))
+	GameState.gold = 100
+	GameState.harvest_counts["wheat"] = 1
+	GameState.pouch["tomato"] = farm.sim.carry_cap("tomato")
+	menus._rebuild_options()
+	var tomato_row := -1
+	for i in menus.shop_items.size():
+		if String(menus.shop_items[i].seed_type) == "tomato":
+			tomato_row = i
+	_assert(tomato_row >= 0, "the unlocked tomato card is on the shelf")
+	if tomato_row >= 0:
+		var tomato_card: Dictionary = menus.shop_items[tomato_row]
+		var all_buttons: Array = menus.options_container.find_children("*", "Button", true, false)
+		_assert(bool(tomato_card.full_pouch) and not bool(tomato_card.affordable)
+			and not (all_buttons[tomato_row] as Button).disabled,
+			"a full 10/10 tomato card is darkened but answers a press")
+		var full_labels: Array = []
+		_collect_labels(menus.options_container, full_labels)
+		var shows_capacity := false
+		for label in full_labels:
+			if String(label.text) == "10/10":
+				shows_capacity = true
+		_assert(shows_capacity, "the full card shows its ten-of-ten capacity")
+		_press_row(menus.options_container, tomato_row)
+		await get_tree().create_timer(0.3).timeout
+		var refusal_labels: Array = []
+		_collect_labels(menus.options_container, refusal_labels)
+		var reason_visible := false
+		for label in refusal_labels:
+			if String(label.text) == "Pouch full":
+				reason_visible = true
+		_assert(menus.active_menu == "shop" and reason_visible,
+			"the rejected purchase keeps the shop open and shows the full-pouch reason")
+		_assert(GameState.gold == 100 and int(GameState.pouch.tomato) == 10,
+			"the rejected purchase changes neither gold nor stock")
+	GameState.gold = gold_before_cap
+	GameState.harvest_counts = harvests_before_cap
+	GameState.pouch["tomato"] = tomatoes_before_cap
+	menus.shop_feedback = ""
+	menus._rebuild_options()
 
 	# **Put her hand back where it was.** Buying a machine always takes hold of it
 	# (`GameState.buy_machine`, deliberate — nobody buys a robot to keep it in a
@@ -7142,6 +7209,10 @@ func _scenario_az_a_full_pouch_leaves_the_crop() -> void:
 	_assert(refused, "the tap reaches the gateway and comes back a no")
 	_assert(_full_pouch_refusal_since(mark),
 		"and the trace names it: a harvest refused because the pouch is full")
+	_assert(farm._refusals.has(target)
+		and String(farm._refusals[target].get("why", "")) == "pouch_full"
+		and not farm._refuse_icon("pouch_full").is_empty(),
+		"the refused tap shows the full-pouch wobble and seed-pouch picture")
 	_assert(String(farm.sim.get_tile(target.x, target.y).get("state", "")) == "ready",
 		"**the wheat is still standing** — a refused harvest does not cut the square")
 	_assert(int(GameState.pouch.get("wheat", 0)) == cap,

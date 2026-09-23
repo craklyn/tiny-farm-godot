@@ -52,6 +52,7 @@ const CONFIG_LABELS := {
 var active_menu: String = ""  # "", "pause", "shop", "bin", "inventory", "machine", "workbench", "window"
 var selected_option: int = 0
 var bin_options: Array[Dictionary] = []
+var shop_feedback: String = ""
 
 # **What number the next row on a panel gets.** `_select_current_option` reads a
 # tap back as a position in a list — `shop_items[n]`, `machine_options[n]` — so
@@ -216,6 +217,7 @@ func _ready() -> void:
 func open_menu(menu_name: String) -> void:
 	active_menu = menu_name
 	selected_option = 0
+	shop_feedback = ""
 	dim_overlay.visible = true
 	menu_panel.visible = true
 	menu_panel.pivot_offset = menu_panel.size / 2.0
@@ -413,6 +415,11 @@ func _rebuild_options() -> void:
 			options_container.add_child(shelf)
 			for item in shop_items:
 				_add_shop_card(shelf, item)
+			if shop_feedback != "":
+				var feedback := Label.new()
+				feedback.text = shop_feedback
+				feedback.add_theme_color_override("font_color", Color(1.0, 0.55, 0.45))
+				options_container.add_child(feedback)
 			# × — a symbol, not a word. The row is already full-width and 52px
 			# tall, so the *target* was never the problem; the glyph was — twice:
 			# U+2715 ✕ lives outside the bundled font, and the web export has no
@@ -907,8 +914,14 @@ func _add_shop_card(into: Control, item: Dictionary) -> void:
 		price_row.alignment = BoxContainer.ALIGNMENT_BEGIN
 		price_row.custom_minimum_size = Vector2(66, 0)
 		hbox.add_child(price_row)
-		_add_icon_number(price_row, coin_icon(), str(item.price), 20.0,
-			Color(1, 0.85, 0.2) if item.affordable else Color(0.9, 0.3, 0.3))
+		if bool(item.get("full_pouch", false)):
+			var full := Label.new()
+			full.text = "%d/%d" % [int(item.owned), int(item.cap)]
+			full.add_theme_color_override("font_color", Color(0.9, 0.3, 0.3))
+			price_row.add_child(full)
+		else:
+			_add_icon_number(price_row, coin_icon(), str(item.price), 20.0,
+				Color(1, 0.85, 0.2) if item.affordable else Color(0.9, 0.3, 0.3))
 
 		var owned_row := HBoxContainer.new()
 		owned_row.alignment = BoxContainer.ALIGNMENT_BEGIN
@@ -927,7 +940,9 @@ func _add_shop_card(into: Control, item: Dictionary) -> void:
 	btn.set_anchors_preset(Control.PRESET_FULL_RECT)
 	container.add_child(btn)
 	
-	if not item.unlocked or not item.affordable:
+	# A full pouch is a darkened card that still answers a tap with the reason.
+	# Locked or unaffordable cards keep their existing disabled treatment.
+	if not item.unlocked or (not item.affordable and not bool(item.get("full_pouch", false))):
 		btn.disabled = true
 	
 	btn.pressed.connect(_on_shop_card_pressed.bind(idx, container))
@@ -1068,11 +1083,17 @@ func _select_current_option() -> void:
 				else:
 					purchase["verb"] = "buy_seed"
 					purchase["seed_type"] = item.seed_type
-				var bought: bool = farm.apply_action(purchase, GameState).get("ok", false)
+				var result: Dictionary = farm.apply_action(purchase, GameState)
+				var bought: bool = result.get("ok", false)
 				if bought:
+					shop_feedback = ""
 					AudioManager.play_sfx("harvest")
 					_rebuild_options()
 					menu_action.emit("bought_seed")
+				elif String(result.get("reason", "")) == "pouch_full":
+					shop_feedback = "Pouch full"
+					AudioManager.play_sfx("nope")
+					_rebuild_options()
 			else:
 				close_menu()
 				menu_action.emit("resume")
@@ -1195,7 +1216,9 @@ func _build_shop_items() -> void:
 		if not CropDefs.is_on_shelf(crop_name):
 			continue
 		var unlocked := CropDefs.is_seed_unlocked(crop_name, GameState.harvest_counts)
-		var affordable: bool = GameState.gold >= def.seed_price and unlocked
+		var full_pouch: bool = CropDefs.is_plantable(crop_name) and farm != null \
+			and GameState.held_count(crop_name) >= farm.sim.carry_cap(crop_name)
+		var affordable: bool = GameState.gold >= def.seed_price and unlocked and not full_pouch
 		shop_items.append({
 			"kind": "seed",
 			"seed_type": crop_name,
@@ -1203,6 +1226,8 @@ func _build_shop_items() -> void:
 			"price": def.seed_price,
 			"unlocked": unlocked,
 			"affordable": affordable,
+			"full_pouch": full_pouch,
+			"cap": farm.sim.carry_cap(crop_name) if farm != null and CropDefs.is_plantable(crop_name) else 0,
 			"icon": crop_icon(int(def.icon_col)),
 			"owned": GameState.held_count(crop_name)
 		})

@@ -15726,9 +15726,12 @@ func test_one_pouch() -> void:
 	_assert(second.ok and int(second.reserved.wheat) == 5 and int(second.sold.wheat) == 3
 		and int(GameState.bin_reserve.wheat) == 10 and GameState.gold == 45,
 		"eight more reserve five and sell three")
+	var last_player_deposit: Dictionary = GameState.last_bin_delivery.duplicate(true)
 	var machine: Dictionary = GameState.sell_one_crop("wheat")
 	_assert(machine.ok and machine.reserved == 0 and machine.sold == 1
 		and GameState.gold == 60, "another delivery sells one")
+	_assert(GameState.last_bin_delivery == last_player_deposit,
+		"a machine delivery does not rewrite the last player deposit")
 	GameState.items["egg"] = 2
 	var eggs := world.apply_action({"actor": "player", "verb": "sell"}, GameState)
 	_assert(eggs.ok and int(eggs.sold.egg) == 2 and GameState.gold == 80
@@ -15790,6 +15793,23 @@ func test_carry_cap() -> void:
 	world.set_object(21, 10, "silo_fixture")
 	_assert(world.carry_cap("wheat") == 40 and world.carry_cap("tomato") == 40,
 		"a placed silo fixture raises each species cap to forty")
+	world.set_tile_state(plot.x, plot.y, "ready", "wheat")
+	GameState.pouch["wheat"] = 38
+	energy_before = GameState.energy
+	rng_before = SimRng.rng.state
+	var silo_refusal := world.apply_action({"actor": "player", "verb": "harvest",
+		"target": plot}, GameState)
+	_assert(not silo_refusal.ok and silo_refusal.reason == "pouch_full"
+		and String(world.get_tile(plot.x, plot.y).state) == "ready"
+		and int(GameState.pouch.wheat) == 38 and GameState.energy == energy_before
+		and SimRng.rng.state == rng_before,
+		"38 of 40 refuses all three units without changing tile, energy, or RNG")
+	GameState.pouch["wheat"] = 37
+	var silo_harvest := world.apply_action({"actor": "player", "verb": "harvest",
+		"target": plot}, GameState)
+	_assert(silo_harvest.ok and int(GameState.pouch.wheat) == 40
+		and String(world.get_tile(plot.x, plot.y).state) == "cleared",
+		"37 of 40 accepts all three units and cuts the crop")
 	MachineDefs.ORDER.erase("test_silo")
 	MachineDefs.TYPES.erase("test_silo")
 

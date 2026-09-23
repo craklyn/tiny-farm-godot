@@ -533,11 +533,9 @@ func sell_crops_to_bin() -> Dictionary:
 
 
 func sell_one_crop(crop_type: String, count: int = 1) -> Dictionary:
-	var result := allocate_bin_delivery(crop_type, count)
-	if result.ok:
-		last_bin_delivery = { "ok": true, "reserved": {crop_type: result.reserved},
-			"sold": {crop_type: result.sold}, "gold": result.gold }
-	return result
+	# The bin menu reports the last *player* deposit. A machine may deliver after
+	# she leaves; it must not rewrite that sentence as if she had deposited it.
+	return allocate_bin_delivery(crop_type, count)
 
 
 func withdraw_reserved_crop(crop_type: String, cap: int = 10) -> int:
