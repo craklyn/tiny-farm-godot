@@ -1476,17 +1476,23 @@ def _tree_reason(blocked):
 # on its own. On 2026-09-21 three items were retried hourly at $15 a run,
 # landing nothing, because a misread hold was never counted as an attempt.
 ITEM_COST_CAP_USD = 20.0
+# Codex subscription sessions do not report a dollar price. A dollar-only cap
+# therefore reads a multi-million-token attempt as free. The per-card token
+# limits are the guard for every provider, priced or not; an explicit reviewed
+# card override may raise them for exceptional work.
+ITEM_TOKEN_CAP = 1_000_000
+ITEM_FRESH_TOKEN_CAP = 150_000
 
 
 def _item_spend(item_id):
-    """Dollars every recorded session of this item has cost, from the session
-    records under hq/data/runs/workers/."""
+    """Measured dollar and token spend from every recorded model session."""
     total = 0.0
+    tokens = fresh = 0
     n = 0
     try:
         runs = os.listdir(WORKERS)
     except OSError:
-        return 0.0, 0
+        return 0.0, 0, 0, 0
     for run in runs:
         for name in os.listdir(os.path.join(WORKERS, run)):
             if not name.startswith(item_id + "-") or not name.endswith(".json"):
@@ -1496,7 +1502,11 @@ def _item_spend(item_id):
                     meta = json.load(f)
             except (OSError, ValueError):
                 continue
-            cost = ((meta.get("usage") or {}).get("list_usd")) or 0.0
+            usage = meta.get("usage") or {}
+            tokens += int(usage.get("tokens") or 0)
+            fresh += int(usage.get("fresh") or
+                         (int(usage.get("input_tokens") or 0) + int(usage.get("output_tokens") or 0)))
+            cost = usage.get("list_usd") or 0.0
             if not cost:
                 try:
                     with open(os.path.join(WORKERS, run, name[:-5] + ".jsonl"), encoding="utf-8") as f:
@@ -1510,16 +1520,30 @@ def _item_spend(item_id):
             total += float(cost or 0.0)
             # A session the window guard stopped before it began costs nothing
             # and is not an attempt.
-            n += 1 if (name.endswith("-drain-work.json") and cost) else 0
-    return total, n
+            n += int(name.endswith("-drain-work.json") and bool(usage.get("tokens") or cost))
+    return total, n, tokens, fresh
+
+
+def item_capacity_reason(item):
+    """One human-readable hold, including unpriced subscription usage."""
+    dollars, attempts, tokens, fresh = _item_spend(item["id"])
+    dollar_cap = float(item.get("cost_cap_usd") or ITEM_COST_CAP_USD)
+    token_cap = int(item.get("token_cap") or ITEM_TOKEN_CAP)
+    fresh_cap = int(item.get("fresh_token_cap") or ITEM_FRESH_TOKEN_CAP)
+    if dollars > dollar_cap:
+        return (f"this has already cost ${dollars:.0f} across {attempts} build attempts, "
+                f"above its ${dollar_cap:.0f} cap; a reviewed cap increase is required")
+    if tokens >= token_cap:
+        return (f"this has used {tokens:,} model tokens, above its {token_cap:,} cap; "
+                "review the result and set a bounded token cap before another model session")
+    if fresh >= fresh_cap:
+        return (f"this has used {fresh:,} fresh model tokens, above its {fresh_cap:,} cap; "
+                "review the result and set a bounded fresh-token cap before another model session")
+    return ""
 
 
 def _parked_by_cost(item):
-    spent, _attempts = _item_spend(item["id"])
-    # A rewritten brief alone does not refund recorded spend. A reviewed cap
-    # increase must be explicit on this card before another attempt starts.
-    cap = float(item.get("cost_cap_usd") or ITEM_COST_CAP_USD)
-    return spent > cap
+    return bool(item_capacity_reason(item))
 
 
 def _parked_by_tree(item):
@@ -2149,11 +2173,8 @@ def project_work(item, *, head=None, active=None, now=None):
     main_holder = integration.main_checkout(REPO)
     blocked = _held_by_tree(files) if patch and main_holder and \
         os.path.realpath(main_holder) == os.path.realpath(REPO) else []
-    spent, attempts = _item_spend(item["id"]) if item.get("state") in ("waiting_session", "for_review") else (0, 0)
-    cap = float(item.get("cost_cap_usd") or ITEM_COST_CAP_USD)
-    cost_reason = (f"this has already cost ${spent:.0f} across {attempts} attempts without a result, "
-                   f"more than its ${cap:.0f} cap; a reviewed, bounded cap above recorded spend is required"
-                   if spent > cap else "")
+    cost_reason = (item_capacity_reason(item) if item.get("state") in
+                   ("waiting_session", "for_review") else "")
     waiting = item.get("waiting_for") or {}
     waiting_valid = not ((waiting.get("files") and not blocked) or
                          ("spent_usd" in waiting and not cost_reason))

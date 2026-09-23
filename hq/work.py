@@ -847,7 +847,7 @@ def work_view(item, repo_facts=None, now=None):
         elif blocker and blocker["type"] == "recovery":
             kind, summary, priority = "recover", "Recover the interrupted transaction.", "reconciliation"
         elif blocker and blocker["type"] == "capacity":
-            kind, summary, priority = "rebrief", "Review a bounded cost-cap increase before more work starts.", "reconciliation"
+            kind, summary, priority = "rebrief", "Review a bounded usage-cap increase before more work starts.", "reconciliation"
         elif item.get("state") in ("for_review", "needs_approval"):
             kind, summary, priority = "decide", "Review the prepared result or decision.", "decision"
         elif item.get("state") == "prepping":
@@ -895,7 +895,7 @@ def work_view(item, repo_facts=None, now=None):
     if not terminal and blocker and blocker["type"] == "capacity" and not any(a.get("type") == "rebrief" for a in active_actions):
         active_actions.append({"id": action_key(item["id"], "rebrief", input_id),
                                "type": "rebrief", "input_id": input_id, "owner": "claude",
-                               "summary": "Review a bounded cost-cap increase before more work starts.",
+                               "summary": "Review a bounded usage-cap increase before more work starts.",
                                "wake": blocker["wake"], "priority": "reconciliation",
                                "created_at": item.get("finished") or item.get("created") or "",
                                "state": "open", "virtual": True})
@@ -912,7 +912,7 @@ def work_view(item, repo_facts=None, now=None):
     for action in active_actions:
         if action.get("type") == "rebrief":
             action["owner"] = "claude"
-            action["wake"] = "A reviewed, bounded cost cap above the amount already spent."
+            action["wake"] = "A reviewed, bounded usage cap above the amount already spent."
         claim = action.get("claim") or {}
         lease_live = claim.get("expires_at", 0) > instant
         running = lease_live and bool(facts.get("active_session")) and action.get("state") == "running"

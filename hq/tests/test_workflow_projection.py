@@ -138,7 +138,7 @@ class WorkflowProjection(unittest.TestCase):
         self.assertEqual(view["next_action"]["type"], "rebrief")
         self.assertEqual(view["next_action"]["owner"], "claude")
         self.assertEqual(view["next_action"]["availability"], "waiting_event")
-        with patch.object(drain, "_item_spend", return_value=(1000, 3)):
+        with patch.object(drain, "_item_spend", return_value=(1000, 3, 0, 0)):
             queue = drain.queue_view()
             self.assertNotIn(item["id"], [row["work_id"] for row in queue["eligible"]])
             self.assertNotIn(item["id"], [card["id"] for card in drain.classified_queue()[0]])
@@ -151,13 +151,13 @@ class WorkflowProjection(unittest.TestCase):
         self.assertEqual(held_saved["next_action"]["availability"], "waiting_event")
         item["ask"] = "A smaller first step"
         work.save_item(item)
-        with patch.object(drain, "_item_spend", return_value=(1000, 3)):
+        with patch.object(drain, "_item_spend", return_value=(1000, 3, 0, 0)):
             still_held = drain.project_work(item)
         self.assertEqual(still_held["blocker"]["type"], "capacity")
         self.assertEqual(still_held["next_action"]["availability"], "waiting_event")
         item["cost_cap_usd"] = 1200.0
         work.save_item(item)
-        with patch.object(drain, "_item_spend", return_value=(1000, 3)):
+        with patch.object(drain, "_item_spend", return_value=(1000, 3, 0, 0)):
             after_wake = drain.project_work(item)
         self.assertEqual(after_wake["next_action"]["type"], "build")
         self.assertEqual(after_wake["next_action"]["availability"], "runnable")
