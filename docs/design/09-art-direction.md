@@ -89,8 +89,9 @@ captures are made from. It replaces the strawman of four treatments circulated o
 
 **Staging, identical across all four.** The field at mid-morning on day three,
 random seed 12345 (the seed the visual-regression check already uses), crops at
-mixed growth, the player and one station in frame, same camera, same frame. A
-difference the designer sees has to be a difference of treatment and nothing else.
+mixed growth, the player, one station, the fence line and an open boundary in
+frame, same camera, same frame. A difference the designer sees has to be a
+difference of treatment and nothing else.
 
 **1. The game as it looks today.** No grading. Every other capture is judged
 against this one, and "today" is a legitimate answer to the session.
