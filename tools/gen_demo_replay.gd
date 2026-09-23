@@ -21,6 +21,7 @@ extends SceneTree
 const OUT_PATH := "res://assets/demo/demo_replay.json"
 const SEED := 20260830          # fixed, so the demo is reproducible byte-for-byte
 const MIN_DAYS := 3
+const DEMO_DAYS := 4  # Day four shows the first planted wheat ready to harvest.
 const PLOT_ROWS := [3, 4, 5]
 const PLOT_COLS := [13, 14, 15, 16, 17, 18]
 
@@ -51,15 +52,26 @@ func _init() -> void:
 	var days := 0
 	var planted_today: Array[Vector2i] = []
 
-	# Three days of tidy, legible work. Whole passes rather than tile-by-tile:
+	# Four days of tidy, legible work. Whole passes rather than tile-by-tile:
 	# the spike's notch bug came from deciding each tile's verb as the loop
-	# reached it, so a tile cleared on the way past never got tilled.
-	for day in MIN_DAYS:
+	# reached it, so a tile cleared on the way past never got tilled. The fourth
+	# day shows the wheat planted on day one paying off. Refill and bin deposits
+	# are recorded Actions too: the new three-unit harvest can fill her pouch.
+	for day in DEMO_DAYS:
 		planted_today.clear()
 		refused += _pass(world, gs, log, "till")
 		refused += _pass(world, gs, log, "plant", planted_today)
 		refused += _pass(world, gs, log, "water")
+		# Sleep clears the daily wet flag, so the old end-of-recording check
+		# measured the next morning, not whether she watered what she planted.
+		# Check every live crop while this day's watering is still observable.
+		_check(_unwatered(world) == 0,
+			"day %d: every growing tile was watered before sleep (%d dry)" \
+			% [day + 1, _unwatered(world)])
 		refused += _pass(world, gs, log, "harvest")
+		# A three-unit harvest can leave a bare square in the middle of a row.
+		# Till those squares now so the title-loop farm never ends with notches.
+		refused += _pass(world, gs, log, "till")
 		# Sleep last, always, so the recording ends on a resolved day.
 		var sleep := { "verb": "sleep", "actor": "world", "weather": "sunny" }
 		var r := world.apply_action(sleep, gs)
@@ -71,8 +83,6 @@ func _init() -> void:
 	_check(refused == 0, "no refused actions in the recording (%d)" % refused)
 	_check(days >= MIN_DAYS, "at least %d in-game days (%d)" % [MIN_DAYS, days])
 	_check(_last_verb(log) == "sleep", "the recording ends on a sleep")
-	_check(_unwatered(world) == 0,
-		"every planted tile was watered the day it was planted (%d dry)" % _unwatered(world))
 	_check(_notches(world) == 0,
 		"the worked plot is contiguous — no bare grass notches (%d)" % _notches(world))
 	_check(gs.pouch.get("wheat", 0) > 0, "the seed pouch never hit zero mid-pass")
@@ -142,9 +152,15 @@ func _pass(world: SimWorld, gs, log: ReplayLog, verb: String,
 	for ty in PLOT_ROWS:
 		for tx in PLOT_COLS:
 			var t := Vector2i(tx, ty)
-			var st := String(world.get_tile(t.x, t.y).get("state", ""))
-			if not _wants(verb, st, gs):
+			var tile: Dictionary = world.get_tile(t.x, t.y)
+			if not _wants(verb, tile, gs):
 				continue
+			if verb == "water" and gs.watering_can_charges == 0:
+				refused += _support_action(world, gs, log, {"verb": "refill", "actor": "player"})
+			if verb == "harvest":
+				var crop_type := String(tile.get("crop_type", ""))
+				if int(gs.pouch.get(crop_type, 0)) + 3 > world.carry_cap(crop_type):
+					refused += _support_action(world, gs, log, {"verb": "sell", "actor": "player"})
 			var a := { "verb": verb, "target": t, "actor": "player" }
 			if verb == "plant":
 				a["seed_type"] = "wheat"
@@ -155,19 +171,33 @@ func _pass(world: SimWorld, gs, log: ReplayLog, verb: String,
 					planted.append(t)
 			else:
 				refused += 1
+				print("  refused %s at %s: %s" % [verb, t, r.get("reason", "unknown")])
 	return refused
+
+
+# The well and bin are actions, not invisible state edits. A failed support
+# action counts as a refusal just like failed work on a tile.
+func _support_action(world: SimWorld, gs, log: ReplayLog, action: Dictionary) -> int:
+	var result := world.apply_action(action, gs)
+	if not result.get("ok", false):
+		print("  refused %s: %s" % [action.verb, result.get("reason", "unknown")])
+		return 1
+	log.record(action, result, world.clock.tick)
+	return 0
 
 
 # Whether this tile is one the pass should touch. Checked before applying, so a
 # refusal in the recording is a real fault rather than an expected miss.
-func _wants(verb: String, state: String, gs) -> bool:
+func _wants(verb: String, tile: Dictionary, gs) -> bool:
+	var state := String(tile.get("state", ""))
 	match verb:
 		"till":
 			return state == "cleared"
 		"plant":
 			return state == "tilled" and gs.pouch.get("wheat", 0) > 1
 		"water":
-			return state == "seeded" or state == "growing"
+			return (state == "seeded" or state == "growing") \
+				and not bool(tile.get("watered_today", false))
 		"harvest":
 			return state == "ready"
 	return false
