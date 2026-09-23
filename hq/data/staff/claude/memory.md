@@ -30,3 +30,5 @@
 - (2026-09-21) Daniel named the Chief of Staff Adam. The name belongs to the seat regardless of whether Claude or Codex executes its work. Keep the internal `claude` identifier and existing history connected.
 
 - (2026-09-21) The Codex routing trial correctly stopped on an integration failure after its model review passed. Scenario AH searched random unprepared tiles for an unmarked square; f38efa5 prepares x20 while retaining the assertions. Preserve failed verification evidence, repair the fixture, then rerun checks using the successful independent review when the artifact is byte-identical. Do not spend worker/checker calls again just to retry tests, and do not mark a card accepted before its backend commit succeeds.
+
+- (2026-09-23) Daniel likes a clear closeout when work is done. Confirm whether the work was committed to `main`, pushed to the GitHub server, and whether this Codex task is in a good state to archive. Check the actual repository and push status before making those claims; name any remaining work that would make archiving premature.
