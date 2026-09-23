@@ -33,11 +33,9 @@ const SHOP_GUTTER := 16
 # not want to find this arithmetic by reading it.
 const PAUSE_LAB_FIRST := 2
 
-# What each of the robot's three settings is called in its menu (2026-09-03).
-# Plain descriptions of what it will do rather than the engineering words the
-# sim uses ("follow"/"circle"/"shoo"), because the player is choosing a job for a
-# machine, not naming a mode. Q-87 is the open question of doing this with
-# pictures instead of words.
+# The mark-2's three jobs use paired pictures (Q-87); the off switch still has
+# its own row beside Pick up. These names are fallbacks for settings without a
+# picture, not the labels the three job rows draw.
 const CONFIG_LABELS := {
 	"shoo": "Chase birds off",
 	"follow": "Follow me",
@@ -48,6 +46,8 @@ const CONFIG_LABELS := {
 	# setting — "none selected" would be a fact about the panel, not about the farm.
 	"idle": "Wait here",
 }
+const ROBOT_JOB_SHEET := preload("res://assets/sprites/generated/robot_job_icons.png")
+const ROBOT_JOB_COLS := {"shoo": 0, "follow": 1, "circle": 2}
 
 var active_menu: String = ""  # "", "pause", "shop", "inventory", "machine", "workbench", "window"
 var selected_option: int = 0
@@ -451,10 +451,8 @@ func _rebuild_options() -> void:
 			# "Pick up" is the same `collect` verb an egg gets, so nothing here is
 			# a capability the player did not already have.
 			#
-			# Words, for now, and knowingly against S-7's no-required-reading rule:
-			# there is no icon vocabulary yet for any of it. Filed for the designer
-			# as Q-87; the shop, which a pre-reader must use to play at all, stays
-			# wordless.
+			# The mark-2's jobs have Q-87 pictures. The other machine controls
+			# still use words, so this panel is not wholly wordless yet.
 			var mid: String = machine_id if farm != null and farm.sim.has_actor(machine_id) else ""
 			var mkey: String = farm.sim.machine_key_of(mid) if mid != "" else ""
 			title_label.text = MachineDefs.name_of(mkey).to_upper() if mkey != "" else ""
@@ -511,7 +509,9 @@ func _rebuild_options() -> void:
 						# wanted to check.
 						var mark: String = "\u00bb " if config == current else "   "
 						machine_options.append({ "kind": "config", "config": config })
-						_add_option(mark + CONFIG_LABELS.get(config, config), true)
+						var picture := robot_job_icon(config)
+						_add_option(mark + ("" if picture != null else CONFIG_LABELS.get(config, config)),
+							true, 0, picture)
 				"policy":
 					# **The Mark III has no dial and no list**, so where the other
 					# marks put rows this one puts its practice (Q-97, ruled
@@ -706,6 +706,15 @@ static func crop_icon(icon_col: int) -> AtlasTexture:
 	return atlas
 
 
+static func robot_job_icon(config: String) -> AtlasTexture:
+	if not ROBOT_JOB_COLS.has(config):
+		return null
+	var atlas := AtlasTexture.new()
+	atlas.atlas = ROBOT_JOB_SHEET
+	atlas.region = Rect2(int(ROBOT_JOB_COLS[config]) * 48, 0, 48, 32)
+	return atlas
+
+
 ## The seed box as an icon: the world's own object, cropped to the half of its
 ## 16x32 that is actually drawn (the top half is the empty air above it, and left
 ## in it would shrink the box to nothing inside a header's box).
@@ -774,7 +783,8 @@ func _add_scorecard(extra: Dictionary) -> void:
 	card.show_bot(extra)
 
 
-func _add_option(text: String, enabled: bool, font_size: int = 0) -> void:
+func _add_option(text: String, enabled: bool, font_size: int = 0,
+		picture: Texture2D = null) -> void:
 	var container = PanelContainer.new()
 	container.custom_minimum_size = Vector2(0, OPTION_H)
 	var style = StyleBoxFlat.new()
@@ -798,6 +808,13 @@ func _add_option(text: String, enabled: bool, font_size: int = 0) -> void:
 	else:
 		lbl.add_theme_color_override("font_color", Color(0.4, 0.4, 0.4, 0.6))
 	hbox.add_child(lbl)
+	if picture != null:
+		var icon := TextureRect.new()
+		icon.custom_minimum_size = Vector2(48, 32)
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		icon.texture = picture
+		hbox.add_child(icon)
 	
 	var btn = Button.new()
 	btn.flat = true

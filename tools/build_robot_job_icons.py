@@ -2,7 +2,7 @@
 """Compose the three Mark II job icons from shipped sprite pixels.
 
 No generation call is involved. Each figure is copied at native resolution from
-its game sheet; only the circle setting's gold ring is drawn here.
+its game sheet; the follow arrow and circle ring are drawn here.
 """
 
 from pathlib import Path
@@ -38,6 +38,12 @@ def main() -> None:
             pen = ImageDraw.Draw(cell)
             pen.ellipse((24, 2, 46, 29), outline="#9a7a2e", width=3)
             pen.ellipse((25, 3, 45, 28), outline="#eae178", width=1)
+        elif index == 1:
+            # The pair alone could mean either follow or circle. The arrow
+            # names the robot's direction of travel toward the farmer.
+            pen = ImageDraw.Draw(cell)
+            pen.line((22, 16, 27, 16), fill="#eae178", width=1)
+            pen.line((25, 14, 27, 16, 25, 18), fill="#eae178", width=1)
         cell.alpha_composite(robot, (4, 32 - robot.height - 3))
         if index == 0:
             crow_at = (28, 32 - crow.height - 6)

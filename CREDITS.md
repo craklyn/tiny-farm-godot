@@ -297,7 +297,7 @@ before the first public build ships.*
   `assets/sprites/generated/robot_job_icons.png` pairs the shipped Mark II robot
   with the crow or farmer, copied at native resolution from `bot_mk2.png`,
   `crow.png`, and `characters.png`. `tools/build_robot_job_icons.py` composes the
-  three cells and draws the gold ring for the circle job. No API call or new
+  three cells, draws the follow arrow and gold circle ring. No API call or new
   third-party art was used; the source sprites are covered above.
 - **T-39, the farmhouse and the robot stall, 2026-09-06** — **generated, $0.21**
   (same Retro Diffusion pipeline, rights and post-processing as above; raws with

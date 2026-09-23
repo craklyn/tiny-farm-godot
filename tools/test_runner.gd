@@ -3467,6 +3467,17 @@ func _scenario_ag_a_machine_is_bought_placed_and_told_what_to_do() -> void:
 	_assert(opened, "the machine's menu opens the moment it lands — the one beat where she is thinking about its job")
 	_assert(menus.machine_options.size() == MachineDefs.configs_of("bot_mk2").size() + 2,
 		"one row per setting, plus pick-up and close")
+	for i in 3:
+		var job_row: Node = menus.options_container.get_child(i)
+		var job_labels: Array = []
+		_collect_labels(job_row, job_labels)
+		var letters := false
+		for label in job_labels:
+			letters = letters or _has_letters(String(label.text))
+		_assert(_pictures_in(job_row) == 1 and not letters,
+			"job %d has one picture and needs no reading" % i)
+		_assert(is_equal_approx(float(job_row.custom_minimum_size.y), menus.OPTION_H),
+			"job %d keeps the same thumb-height tap target" % i)
 	var rows: Array = []
 	_collect_labels(menus.options_container, rows)
 	var ticked := 0
@@ -4782,8 +4793,8 @@ func _scenario_am_the_mark_three_shows_its_practice() -> void:
 		"with no readout on it — a mark-2 has nothing to practise, it does what it is told")
 	_assert(_scorecard_in(menus.options_container) == null,
 		"and no scorecard: a machine that is told what to do has no practice to chart")
-	_assert(_pictures_in(menus.options_container) == 0,
-		"and no pictures either: its rows are the words they have always been (Q-87)")
+	_assert(_pictures_in(menus.options_container) == 3,
+		"and its three job rows show the paired pictures (Q-87)")
 	_assert(is_equal_approx(menus.menu_panel.size.x, 320.0),
 		"on the panel it has always had, at the width it has always been (%s)"
 			% str(menus.menu_panel.size.x))

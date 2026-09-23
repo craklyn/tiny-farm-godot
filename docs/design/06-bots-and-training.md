@@ -367,12 +367,12 @@ hand-written list (mark-1) → hand-written options (mark-2) → learned policy 
 options (P-8) → learned everything. Nothing about the mark-1 has to be thrown away for the
 next rung; it becomes the thing a bot can be *shown*.
 
-Two things this knowingly leaves open. The menu **uses words** — "Chase birds off" — which
-is the first required reading the game has added since the shop was deliberately stripped
-of it (S-7, T-12/Q-35). Q-87 ruled for paired sprites: the three job icons now pair the
-Mark II with a crow or farmer, and the menu swap remains to be wired. Nothing yet **teaches** that a
-robot is tappable: it is discoverable by poking at it, which is fine for a placeholder and
-is `design/13`'s problem when the debut becomes real content.
+Two things this knowingly leaves open. Q-87 ruled for paired sprites: the three
+job rows now pair the Mark II with a crow or farmer, with an arrow for follow
+and a ring for circle. The off switch and other controls still use words, so
+the panel still asks a player to read (S-7, T-12/Q-35). Nothing yet **teaches**
+that a robot is tappable: it is discoverable by poking at it, which is fine for
+a placeholder and is `design/13`'s problem when the debut becomes real content.
 
 ## The ladder's third rung: a mark-3 learns (designer, 2026-09-09)
 
