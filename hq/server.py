@@ -489,73 +489,8 @@ def _pending_review_status(item):
 
 
 def work_preparation(item):
-    """Return the recorded preparation a work card needs before it is ready.
-
-    This is deliberately a pure reader.  A queue read must not silently revise
-    a card or start an owner session; the caller receives stable codes it can
-    show to Daniel and pass back to the owner.
-
-    A finished result may honestly have no recommendation.  In that case its
-    owner records ``recommendation_required: false`` and why, leaving Daniel
-    able to make an explicit verdict instead of manufacturing an answer for
-    him.
-    """
-    missing = []
-    deliverable = item.get("deliverable")
-    if not isinstance(deliverable, dict) or not str(deliverable.get("name") or "").strip():
-        missing.append("deliverable")
-
-    evidence = deliverable.get("evidence") if isinstance(deliverable, dict) else None
-    if not isinstance(evidence, list) or not any(
-            isinstance(entry, dict) and str(entry.get("href") or entry.get("path") or "").strip()
-            for entry in evidence):
-        missing.append("evidence")
-
-    question = ((item.get("recommend") or {}).get("question")
-                if isinstance(item.get("recommend"), dict) else "")
-    question = question or item.get("review_question")
-    if not str(question or "").strip():
-        missing.append("question")
-
-    recommendation_required = item.get("recommendation_required") is not False
-    if recommendation_required:
-        if not work.has_recommendation(item):
-            missing.append("recommendation")
-    elif not str(item.get("recommendation_reason") or "").strip():
-        missing.append("recommendation_explanation")
-
-    # The canonical empty list explicitly starts no work. A legacy singular
-    # follow-up must name concrete work; null and malformed values say nothing.
-    def concrete_follow_up(value):
-        if not isinstance(value, dict):
-            return False
-        if not all(isinstance(value.get(key), str) and value[key].strip()
-                   for key in ("title", "owner", "first_action")):
-            return False
-        return ("tier" not in value or
-                type(value["tier"]) is int and value["tier"] in (0, 1, 2))
-
-    consequences = False
-    if "follow_ups" in item:
-        values = item["follow_ups"]
-        consequences = isinstance(values, list) and all(concrete_follow_up(v) for v in values)
-        if "follow_up" in item:
-            consequences = consequences and concrete_follow_up(item["follow_up"])
-    elif "follow_up" in item:
-        consequences = concrete_follow_up(item["follow_up"])
-    if not consequences:
-        missing.append("consequences")
-
-    labels = {
-        "deliverable": "a short name for the deliverable",
-        "evidence": "inspectable evidence for that deliverable",
-        "question": "the specific question for Daniel",
-        "recommendation": "the owner's recommendation",
-        "recommendation_explanation": "why no recommendation is appropriate",
-        "consequences": "what Daniel's answer will do next",
-    }
-    return {"ready": not missing, "missing": missing,
-            "missing_labels": [labels[code] for code in missing]}
+    """Compatibility alias for the canonical pure work-card projection."""
+    return work.work_preparation(item)
 
 
 def waiting_on_you():
@@ -609,6 +544,10 @@ def _waiting_on_you_complete():
                 "ready": [], "items": projected, "decisions": decisions,
                 "work": [], "error": "Work records are unavailable."}
     finished = []
+    import drain
+    head_result = drain.sh(["git", "rev-parse", "main"], cwd=drain.REPO, timeout=10)
+    head = head_result.stdout.strip() if head_result.returncode == 0 else ""
+    active = drain.server.drain_state()
     labels = {
         "prepping": ("preparing", "The owner is preparing the question."),
         "owed": ("awaiting_owner_reply", "The studio owes a reply."),
@@ -621,22 +560,19 @@ def _waiting_on_you_complete():
         # even though no verified commit reached main. That is studio work,
         # not a verdict Daniel can use to make code ship. A tier-2 approval
         # before work starts is a different, genuine decision.
-        view = work.work_view(item)
-        unlanded_code = (item.get("state") == "for_review" and item.get("tier") in (1, 2)
-                         and not (view.get("shipped_evidence") or {}).get("landed_sha"))
+        view = item.get("workflow_view") or drain.project_work(
+            item, head=head, active=active)
         studio_hold = bool(view.get("blocker"))
         held = item.get("state") == "for_review" and work._held_back(item)
         preparation = work_preparation(item)
-        ready = (work._in_his_list(item) and preparation["ready"]
-                 and not item.get("awaiting_reply") and not item.get("repair_hold")
-                 and not item.get("pending_landing") and not item.get("pending_followups")
-                 and not studio_hold and not unlanded_code)
+        ready = work.work_ready_for_daniel(item, view, preparation)
         if ready:
             status, reason = "ready", "A prepared result is ready for your verdict."
             finished.append(item)
         elif item.get("pending_landing"):
             status, reason = "verification_pending", "The recorded commit attempt is being recovered."
-        elif unlanded_code:
+        elif (item.get("state") == "for_review" and item.get("tier") in (1, 2)
+              and not (view.get("shipped_evidence") or {}).get("landed_sha")):
             status, reason = "verification_pending", "The code result still needs verification and a commit on main."
         elif studio_hold:
             status, reason = "verification_pending", view["blocker"]["reason"]

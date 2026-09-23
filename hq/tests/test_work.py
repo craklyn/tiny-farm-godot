@@ -305,7 +305,8 @@ def main():
         snap = work.snapshot()
         check(not any(i["state"] == "owed" and work._in_his_list(i) for i in snap["items"])
               and snap["waiting_on_you"] + snap["unprepped"]
-              == sum(1 for i in snap["items"] if work._in_his_list(i)),
+              == sum(1 for i in snap["items"] if work.work_reviewable(
+                  i, i.get("workflow_view"))),
               "a handed-back card is not counted as waiting on him")
         check(snap["owed"] == 1 and snap["reply_seconds"] == 30 and snap["now"] > 0,
               "the page is told what is coming back, and on what clock")
@@ -590,17 +591,18 @@ def main():
             os.remove(os.path.join(work.CAPTURES, n))
 
         print("only a question with an answer counts as waiting on him")
-        work.save_item(card(id="w0000000a0001", recommend={}, follow_ups=[]))
-        work.save_item(card(id="w0000000a0002", recommend=REC, follow_ups=[]))
+        deliverable = {"name": "The revised result", "evidence": [{"href": "/review/result"}]}
+        work.save_item(card(id="w0000000a0001", tier=0, recommend={}, follow_ups=[], deliverable=deliverable))
+        work.save_item(card(id="w0000000a0002", tier=0, recommend=REC, follow_ups=[], deliverable=deliverable))
         snap = work.snapshot()
         mine = {i["id"] for i in snap["items"] if work._in_his_list(i)}
         check("w0000000a0002" in mine and "w0000000a0001" in mine,
               "both are still on the page with their buttons")
-        check(snap["waiting_on_you"] == sum(1 for i in snap["items"]
-                                            if work._in_his_list(i) and work.has_recommendation(i)),
-              "the count is of cards carrying a recommended answer")
+        check(snap["waiting_on_you"] == 1,
+              "the count is of cards with a recommendation and complete decision material")
         check(snap["unprepped"] == sum(1 for i in snap["items"]
-                                       if work._in_his_list(i) and not work.has_recommendation(i)),
+                                       if work.work_reviewable(i, i.get("workflow_view"))
+                                       and not work.work_preparation(i)["ready"]),
               "and the rest are counted separately rather than dropped")
 
         print("the old send-back path is gone")

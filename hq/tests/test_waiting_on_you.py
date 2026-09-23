@@ -73,6 +73,10 @@ def main():
              recommendation_reason="Only Daniel can judge whether this animation reads clearly."),
         card("w-reply", "for_review", awaiting_reply=True),
         card("w-held", "for_review", held_patch="/tmp/patch"),
+        card("w-studio-held", "for_review", tier=1,
+             diff={"applied": False, "why_not": "overlaps uncommitted files"},
+             workflow_view={"blocker": {"type": "code_conflict",
+                                         "reason": "The candidate overlaps uncommitted files."}}),
         card("w-preparing", "prepping"),
         card("w-doing", "doing", started="2026-09-21T12:00:00Z"),
         card("w-waiting", "doing", started=""),
@@ -90,7 +94,7 @@ def main():
     old_queue, old_items, old_held = server.api_queue, server.work.items, server.work._held_back
     server.api_queue = lambda **kwargs: queue
     server.work.items = lambda **kwargs: fixtures
-    server.work._held_back = lambda item: item["id"] == "w-held"
+    server.work._held_back = lambda item: item["id"] in ("w-held", "w-studio-held")
     try:
         got = server.waiting_on_you()
         ids = {row["source_id"] for row in got["ready"]}
@@ -279,6 +283,10 @@ console.log("Rendered review cards keep question, artifact, recommendation, and 
     blocked_code = card("w-code-held", "for_review", tier=1,
                         diff={"applied": True, "files": ["systems/weather.gd"]},
                         repair_hold="The candidate needs reconciliation.")
+    uncommitted_code = card("w-uncommitted", "for_review", tier=1,
+                            diff={"applied": False, "why_not": "overlaps uncommitted files"},
+                            workflow_view={"blocker": {"type": "code_conflict",
+                                                        "reason": "The candidate overlaps uncommitted files."}})
     actual_choice = card("w-tier-two-choice", "needs_approval", tier=2)
     projected_fixture = Path(HERE) / "fixtures" / "blocked_reconciliation_view.json"
     projected_item = {"id": "weather", "state": "waiting_session", "owner": "rin",
@@ -288,7 +296,8 @@ console.log("Rendered review cards keep question, artifact, recommendation, and 
                          "tree_reason": "Save-lineage edits overlap the old patch"}, now=1790100000),
         "browser fixture is exactly the backend's blocked-outcome/runnable-action projection")
     with patch.object(server, "api_queue", return_value={"items": [], "curated": [], "decided": [], "rulings": {}}), \
-         patch.object(server.work, "items", return_value=[code_result, blocked_code, actual_choice]):
+         patch.object(server.work, "items", return_value=[code_result, blocked_code,
+                                                           uncommitted_code, actual_choice]):
         held_view = server.work.work_view(blocked_code, now=1000)
         check(held_view["availability"] == "runnable" and held_view["blocker"]
               and held_view["next_action"]["type"] == "reconcile",
@@ -300,9 +309,14 @@ console.log("Rendered review cards keep question, artifact, recommendation, and 
               and server.waiting_reading()["count"] == 1
               and server.waiting_block()["count"] == 1,
               "dashboard and navigation counts exclude both studio-owned code results")
+        with patch.object(server.work, "HOST", server):
+            snapshot = server.work.snapshot()
+        check(snapshot["waiting_on_you"] == projection["counts"]["work"] == 1
+              and snapshot["unprepped"] == 0,
+              "Work counts use the same canonical predicate as the verdict inbox")
         statuses = {row["source_id"]: row for row in projection["items"]}
         check(all(statuses[ident]["status"] == "verification_pending" for ident in
-                  ("w-code-result", "w-code-held")),
+                  ("w-code-result", "w-code-held", "w-uncommitted")),
               "the studio's missing landing evidence stays visible without a CEO verdict")
         signals = server._compute_signals_now()
         check(signals["work"]["waiting_on_you"] == signals["waiting"]["count"] == 1

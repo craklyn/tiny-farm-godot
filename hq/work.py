@@ -1128,6 +1128,80 @@ def has_recommendation(item):
     return not recommendation_gaps(item.get("recommend"))
 
 
+def work_preparation(item):
+    """Return the recorded material Daniel needs before a work verdict."""
+    missing = []
+    deliverable = item.get("deliverable")
+    if not isinstance(deliverable, dict) or not str(deliverable.get("name") or "").strip():
+        missing.append("deliverable")
+    evidence = deliverable.get("evidence") if isinstance(deliverable, dict) else None
+    if not isinstance(evidence, list) or not any(
+            isinstance(entry, dict) and str(entry.get("href") or entry.get("path") or "").strip()
+            for entry in evidence):
+        missing.append("evidence")
+    question = ((item.get("recommend") or {}).get("question")
+                if isinstance(item.get("recommend"), dict) else "")
+    question = question or item.get("review_question")
+    if not str(question or "").strip():
+        missing.append("question")
+    if item.get("recommendation_required") is not False:
+        if not has_recommendation(item):
+            missing.append("recommendation")
+    elif not str(item.get("recommendation_reason") or "").strip():
+        missing.append("recommendation_explanation")
+
+    def concrete_follow_up(value):
+        if not isinstance(value, dict):
+            return False
+        if not all(isinstance(value.get(key), str) and value[key].strip()
+                   for key in ("title", "owner", "first_action")):
+            return False
+        return ("tier" not in value or
+                type(value["tier"]) is int and value["tier"] in (0, 1, 2))
+
+    if "follow_ups" in item:
+        values = item["follow_ups"]
+        consequences = isinstance(values, list) and all(concrete_follow_up(v) for v in values)
+        if "follow_up" in item:
+            consequences = consequences and concrete_follow_up(item["follow_up"])
+    elif "follow_up" in item:
+        consequences = concrete_follow_up(item["follow_up"])
+    else:
+        consequences = False
+    if not consequences:
+        missing.append("consequences")
+    labels = {
+        "deliverable": "a short name for the deliverable",
+        "evidence": "inspectable evidence for that deliverable",
+        "question": "the specific question for Daniel",
+        "recommendation": "the owner's recommendation",
+        "recommendation_explanation": "why no recommendation is appropriate",
+        "consequences": "what Daniel's answer will do next",
+    }
+    return {"ready": not missing, "missing": missing,
+            "missing_labels": [labels[code] for code in missing]}
+
+
+def work_reviewable(item, workflow_view=None):
+    """Canonical gate for whether the studio has actually handed back a verdict."""
+    view = workflow_view or {}
+    if item.get("state") not in HIS_STATES or _held_back(item):
+        return False
+    if (item.get("awaiting_reply") or item.get("repair_hold") or item.get("pending_landing")
+            or item.get("pending_followups") or view.get("blocker")):
+        return False
+    shipped = view.get("shipped_evidence") or {}
+    unlanded_code = (item.get("state") == "for_review" and item.get("tier") in (1, 2)
+                     and not shipped.get("landed_sha"))
+    return not unlanded_code
+
+
+def work_ready_for_daniel(item, workflow_view=None, preparation=None):
+    """Single readiness predicate shared by the Work page and verdict inbox."""
+    prep = preparation if preparation is not None else work_preparation(item)
+    return work_reviewable(item, workflow_view) and prep["ready"]
+
+
 def _file_item(fields, cap, org):
     owner = fields["owner"]
     if not any(e["id"] == owner for e in org["employees"]):
@@ -2392,8 +2466,10 @@ def snapshot():
         # is still on the page with its buttons, its owner is the seat that
         # owes the recommendation, and `unprepped` says how many there
         # are — uncounted rather than hidden.
-        "waiting_on_you": sum(1 for i in got if _in_his_list(i) and has_recommendation(i)),
-        "unprepped": sum(1 for i in got if _in_his_list(i) and not has_recommendation(i)),
+        "waiting_on_you": sum(1 for i in got if work_ready_for_daniel(
+            i, i.get("workflow_view"), work_preparation(i))),
+        "unprepped": sum(1 for i in got if work_reviewable(i, i.get("workflow_view"))
+                         and not work_preparation(i)["ready"]),
         "prepping": sum(1 for i in got if i["state"] == "prepping"),
         "prep_stalled": sum(1 for i in got if i.get("prep_stalled")),
         "owed": sum(1 for i in got if i["state"] == "owed"),
