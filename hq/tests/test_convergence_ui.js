@@ -94,6 +94,10 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/workers.js'), 'u
   ctx.workForTest = new Map([['weather', weather]]);
   const actionTimeline = vm.runInContext('wkActionTimeline(groupForTest.sessions, workForTest)', ctx);
   assert.ok(actionTimeline.indexOf('Rebuild the weather patch') < actionTimeline.indexOf('Review the old candidate'));
+  const noSessionGroups = vm.runInContext('wkGroups([], workForTest)', ctx);
+  assert.equal(noSessionGroups.length, 1, 'reconciliation appears before its first model session');
+  assert.match(vm.runInContext("wkGroup(wkGroups([], workForTest)[0], '', '')", ctx), /action recorded/);
+  assert.match(vm.runInContext('wkActionTimeline([], workForTest)', ctx), /Rebuild the weather patch/);
 
   let focused = '';
   ctx.workFocusId = () => 'weather';

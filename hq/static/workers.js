@@ -17,6 +17,20 @@ function wkKey(s) { return s.run + "/" + s.name; }
 
 function wkActivity(s) { return s.finished || s.started || ""; }
 
+function wkVisibleWorkIds(sessions, workById, wanted = "") {
+  const ids = new Set(sessions.map(s => s.item).filter(Boolean));
+  if (wanted) ids.add(wanted);
+  // Bullpen is not a second copy of the whole backlog. Show newly owned
+  // finish-line work even before its first model session, so a recovery job
+  // is visible without implying an agent has started it.
+  for (const [id, work] of workById) {
+    const view = typeof workflowView === "function" ? workflowView(work) : null;
+    const action = view && view.next_action;
+    if (view && view.canonical && action && ["reconcile", "integrate"].includes(action.type)) ids.add(id);
+  }
+  return ids;
+}
+
 function wkGroups(sessions, workById = new Map(), wanted = "") {
   const groups = new Map();
   for (const session of sessions) {
@@ -26,9 +40,10 @@ function wkGroups(sessions, workById = new Map(), wanted = "") {
     group.sessions.push(session);
     if (wkActivity(session) > group.updated) group.updated = wkActivity(session);
   }
-  if (wanted && workById.has(wanted) && !groups.has(wanted)) {
-    const work = workById.get(wanted);
-    groups.set(wanted, {item: wanted, title: work.title || wanted, sessions: [], updated: "", work});
+  for (const id of wkVisibleWorkIds(sessions, workById, wanted)) {
+    if (!workById.has(id) || groups.has(id)) continue;
+    const work = workById.get(id);
+    groups.set(id, {item: id, title: work.title || id, sessions: [], updated: "", work});
   }
   for (const group of groups.values()) {
     group.sessions.sort((a, b) => wkActivity(b).localeCompare(wkActivity(a)));
@@ -64,8 +79,7 @@ function wkActionPanel(work, action, org = null) {
 
 function wkActionTimeline(sessions, workById, wanted = "", org = null) {
   const entries = sessions.map(s => ({ at: wkActivity(s), html: wkPanel(s) }));
-  const shownWork = new Set(sessions.map(s => s.item).filter(Boolean));
-  if (wanted) shownWork.add(wanted);
+  const shownWork = wkVisibleWorkIds(sessions, workById, wanted);
   for (const id of shownWork) {
     const work = workById.get(id);
     if (!work) continue;
