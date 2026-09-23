@@ -18,6 +18,8 @@ class Revisions(unittest.TestCase):
         host=fake_host(self.tmp.name)
         host.load_json=lambda path:json.loads(Path(path).read_text())
         work.bind(host)
+        (Path(host.DATA)/'completion_reconciliation.json').write_bytes(
+            (Path(work.__file__).parent/'data/completion_reconciliation.json').read_bytes())
     def tearDown(self):self.tmp.cleanup()
     def test_legacy_migration_and_repeated_saves_update_the_caller(self):
         legacy={'id':'wtest','state':'for_review','owner':'sam'}

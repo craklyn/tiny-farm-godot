@@ -19,6 +19,7 @@ import tempfile
 from datetime import datetime, timezone
 
 import drain
+import roots
 import work
 
 
@@ -70,7 +71,7 @@ def _save_evidence(path, evidence):
     os.replace(pending, path)
 
 
-def verify(item_id, runs, assertion, repo=drain.REPO, output_root=None, runner=None):
+def verify(item_id, runs, assertion, repo=None, output_root=None, runner=None, data_root=None):
     """Return evidence path, preserving every completed and incomplete attempt."""
     # New cards use eleven hex characters after w; older imported cards also
     # have readable alphanumeric IDs. Validate the path, not a guessed length.
@@ -80,7 +81,13 @@ def verify(item_id, runs, assertion, repo=drain.REPO, output_root=None, runner=N
         raise ValueError("runs must be between 1 and 100")
     if not assertion:
         raise ValueError("an exact assertion phrase is required")
-    card_path = os.path.join(repo, "hq", "data", "work", item_id + ".json")
+    repo = repo or drain.REPO
+    # A caller-supplied fixture repo historically carries its own data.  In a
+    # relocated live process, however, the data store is deliberately separate
+    # from authoritative main.
+    data_root = data_root or (roots.ROOTS["data"] if os.path.realpath(repo) == os.path.realpath(drain.REPO)
+                              else os.path.join(repo, "hq", "data"))
+    card_path = os.path.join(data_root, "work", item_id + ".json")
     with open(card_path, encoding="utf-8") as source:
         item = json.load(source)
     candidate = (item.get("attempt_outcome") or {}).get("candidate") or {}
@@ -88,7 +95,7 @@ def verify(item_id, runs, assertion, repo=drain.REPO, output_root=None, runner=N
     files = candidate.get("files")
     if item.get("diff", {}).get("applied") or not base or not files or not candidate.get("tree"):
         raise ValueError("card has no held, identified candidate patch")
-    patch_path = os.path.join(repo, "hq", "data", "patches", item_id + ".patch")
+    patch_path = os.path.join(data_root, "patches", item_id + ".patch")
     with open(patch_path, encoding="utf-8") as source:
         patch = source.read()
     if not patch.strip() or work.evidence_id(patch) != item["attempt_outcome"].get("patch_id"):
@@ -97,7 +104,7 @@ def verify(item_id, runs, assertion, repo=drain.REPO, output_root=None, runner=N
         raise ValueError("recorded candidate base is unavailable")
     if drain.git_blobs(repo, base, files) != candidate.get("base_files"):
         raise ValueError("recorded candidate base files no longer match")
-    root = output_root or os.path.join(repo, "hq", "data", "runs", "verification")
+    root = output_root or os.path.join(data_root, "runs", "verification")
     os.makedirs(root, exist_ok=True)
     evidence_dir = tempfile.mkdtemp(prefix=item_id + "-", dir=root)
     worktree = tempfile.mkdtemp(prefix="hq-held-verify-")
@@ -140,7 +147,9 @@ def verify(item_id, runs, assertion, repo=drain.REPO, output_root=None, runner=N
             if not evidence["import"]["ok"]:
                 print(f"Candidate import failed; see {import_log}", flush=True)
                 return evidence_path
-        wrapper = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+        # The runner belongs to this invocation's checked-in code, not the
+        # historical candidate or an arbitrary fixture repository.
+        wrapper = os.path.join(os.path.dirname(roots.ROOTS["code"]),
                                "tools", "run_godot_test.py")
         run_cmd = runner or [sys.executable, wrapper, "--timeout", "840", "--",
                              "godot", "--headless", "--path", ".", "res://tools/test_runner.tscn"]

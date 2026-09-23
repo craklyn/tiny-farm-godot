@@ -183,11 +183,11 @@ class ExecutionTests(unittest.TestCase):
     def test_snapshot_import_and_judge(self):
         # Copy precisely the staged-snapshot dependencies declared by the hook.
         hook = (ROOT / '.githooks/pre-commit').read_text()
-        for name in ['hq/execution.py', 'hq/data/execution_policy.json']:
+        for name in ['hq/execution.py', 'hq/roots.py', 'hq/data/execution_policy.json']:
             self.assertIn(name, hook)
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
-            for name in ['tools/check_writing.py', 'hq/execution.py', 'hq/data/execution_policy.json']:
+            for name in ['tools/check_writing.py', 'hq/execution.py', 'hq/roots.py', 'hq/data/execution_policy.json']:
                 dest = root / name
                 dest.parent.mkdir(parents=True, exist_ok=True)
                 source = self.policy_path if name == 'hq/data/execution_policy.json' else ROOT / name
@@ -203,7 +203,7 @@ class ExecutionTests(unittest.TestCase):
     def test_actual_hook_preserves_unstaged_cache(self):
         with tempfile.TemporaryDirectory() as folder:
             root = Path(folder)
-            for name in ['.githooks/pre-commit', 'tools/check_writing.py', 'hq/execution.py',
+            for name in ['.githooks/pre-commit', 'tools/check_writing.py', 'hq/execution.py', 'hq/roots.py',
                          'hq/data/execution_policy.json', 'docs/WRITING.md', 'docs/writing_rulings.json']:
                 dest = root / name
                 dest.parent.mkdir(parents=True, exist_ok=True)

@@ -5,6 +5,7 @@ import json
 from pathlib import Path
 
 import work
+import roots
 
 
 class FileHost:
@@ -24,7 +25,7 @@ def main(argv=None):
     parser.add_argument("--apply", action="store_true",
                         help="write the reviewed transitions; without this flag the command is read-only")
     parser.add_argument("--data-root", type=Path,
-                        default=Path(__file__).resolve().parent / "data",
+                        default=Path(roots.ROOTS["data"]),
                         help=argparse.SUPPRESS)
     parser.add_argument("--manifest", type=Path, help=argparse.SUPPRESS)
     args = parser.parse_args(argv)

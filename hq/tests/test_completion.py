@@ -40,6 +40,8 @@ class Completion(unittest.TestCase):
         host = fake_host(self.tmp.name)
         host.load_json = lambda path: json.loads(Path(path).read_text())
         work.bind(host)
+        (Path(host.DATA) / 'completion_reconciliation.json').write_bytes(
+            (Path(work.__file__).parent / 'data/completion_reconciliation.json').read_bytes())
         self.card = {'id': 'wtest', 'title': 'Read the records', 'owner': 'sam', 'tier': 0,
                      'state': 'doing', 'ask': 'Read', 'first_action': 'Read', 'attempts': 0}
     def tearDown(self):

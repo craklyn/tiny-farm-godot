@@ -73,7 +73,7 @@ trap 'rm -rf "$TMP"' EXIT
 # INDEX's content rather than the working tree's, which is the entire point.
 # `git ls-files` expands the patterns against the index, so a path staged for
 # deletion is simply absent and never asked for.
-FILES=$(git ls-files -- $PATTERNS tools/check_writing.py hq/execution.py \
+FILES=$(git ls-files -- $PATTERNS tools/check_writing.py hq/execution.py hq/roots.py \
                        hq/data/execution_policy.json docs/WRITING.md \
                        docs/writing_rulings.json docs/writing_verdicts.json 2>/dev/null)
 [ -n "$FILES" ] || exit 0

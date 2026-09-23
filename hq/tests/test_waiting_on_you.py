@@ -377,7 +377,7 @@ console.log("Rendered review cards keep question, artifact, recommendation, and 
                 handler.send_response = codes.append
                 handler.send_header = lambda *args: None
                 handler.end_headers = lambda: None
-                with patch.object(server, "REPO", tmp):
+                with patch.object(server, "REPO", tmp), patch.object(server, "USER_WORKSPACE", tmp):
                     handler.do_GET()
                 return codes[-1], handler.wfile.getvalue()
             check(request("review%20image.png") == (200, b"review evidence"),

@@ -46,6 +46,7 @@ timer take the same lock.
 """
 import execution
 import integration
+import roots
 
 import argparse
 import concurrent.futures
@@ -59,8 +60,8 @@ import threading
 import time
 import uuid
 
-HERE = os.path.dirname(os.path.abspath(__file__))
-REPO = os.path.dirname(HERE)
+HERE = roots.ROOTS["code"]
+REPO = roots.ROOTS["main"]
 sys.path.insert(0, HERE)
 
 import server                      # noqa: E402  (path set above)
@@ -70,17 +71,17 @@ TEST_SCRATCH = os.environ.get("HQ_TEST_SCRATCH", "")
 WORKTREES = (os.path.join(TEST_SCRATCH, "worktrees") if TEST_SCRATCH
              else os.path.expanduser("~/.cache/tiny-farm-drain"))
 PATCHES = (os.path.join(TEST_SCRATCH, "patches") if TEST_SCRATCH
-           else os.path.join(REPO, "hq", "data", "patches"))
+           else os.path.join(roots.ROOTS["data"], "patches"))
 # Every model session the drain runs is written here as it happens — one event
 # per line, the CLI's own stream — with a small record beside it. That is what
 # HQ's bullpen page (#/chat/bullpen) reads while a worker runs, and what a card's
 # "How it was done" fold reads afterwards. Gitignored with the rest of runs/.
 WORKERS = (os.path.join(TEST_SCRATCH, "workers") if TEST_SCRATCH
-           else os.path.join(REPO, "hq", "data", "runs", "workers"))
+           else os.path.join(roots.ROOTS["data"], "runs", "workers"))
 DRAIN_STATE = (os.path.join(TEST_SCRATCH, "drain.json") if TEST_SCRATCH
-               else os.path.join(REPO, "hq", "data", "runs", "drain.json"))
+               else os.path.join(roots.ROOTS["data"], "runs", "drain.json"))
 TRANSACTIONS = (os.path.join(TEST_SCRATCH, "transactions") if TEST_SCRATCH
-                else os.path.join(REPO, "hq", "data", "runs", "transactions"))
+                else os.path.join(roots.ROOTS["data"], "runs", "transactions"))
 RUN_ID = ""
 
 

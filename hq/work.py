@@ -2458,7 +2458,7 @@ def reconcile_legacy_completion(manifest=None, *, apply=False):
 def _reconcile_legacy_completion(manifest=None, *, apply=False):
     """Apply only the reviewed historical manifest; preflight every card first."""
     if manifest is None:
-        manifest = os.path.join(os.path.dirname(__file__), "data", "completion_reconciliation.json")
+        manifest = os.path.join(HOST.DATA, "completion_reconciliation.json")
     if isinstance(manifest, (str, os.PathLike)):
         with open(manifest, encoding="utf-8") as source:
             manifest = json.load(source)
@@ -2562,7 +2562,7 @@ def reconcile_process_completion(manifest=None, *, apply=False):
 
 def _reconcile_process_completion(manifest=None, *, apply=False):
     if manifest is None:
-        manifest = os.path.join(os.path.dirname(__file__), "data", "process_completion_reconciliation.json")
+        manifest = os.path.join(HOST.DATA, "process_completion_reconciliation.json")
     if isinstance(manifest, (str, os.PathLike)):
         with open(manifest, encoding="utf-8") as source:
             manifest = json.load(source)

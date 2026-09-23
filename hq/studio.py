@@ -176,8 +176,12 @@ def commit_of(key, seq):
     commit and git already knows which, so ask it."""
     if not KEY_RE.match(key or ""):
         return ""
-    rel = os.path.relpath(os.path.join(_dir(key), f"{int(seq):04d}.png"), HOST.REPO)
-    return HOST.run_cmd(["git", "log", "-1", "--format=%h", "--", rel])
+    repo = getattr(HOST, "USER_WORKSPACE", HOST.REPO)
+    ledger = os.path.join(_dir(key), f"{int(seq):04d}.png")
+    if os.path.commonpath((os.path.realpath(ledger), os.path.realpath(repo))) != os.path.realpath(repo):
+        return ""
+    rel = os.path.relpath(ledger, repo)
+    return HOST.run_cmd(["git", "log", "-1", "--format=%h", "--", rel], cwd=repo)
 
 
 def _now():

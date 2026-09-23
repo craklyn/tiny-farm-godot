@@ -54,7 +54,7 @@ def bind(server_module):
     """server.py hands us itself, matching studio.py and work.py."""
     global HOST, REPO, DATA, PREVIEWS, RUNS
     HOST = server_module
-    REPO = server_module.REPO
+    REPO = getattr(server_module, "USER_WORKSPACE", server_module.REPO)
     DATA = server_module.DATA
     PREVIEWS = os.path.join(DATA, "loop_previews")
     RUNS = os.path.join(DATA, "anim_runs")

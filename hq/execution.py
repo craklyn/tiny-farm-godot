@@ -14,7 +14,9 @@ import threading
 import time
 import tomllib
 
-POLICY_PATH = Path(__file__).parent / 'data' / 'execution_policy.json'
+import roots
+
+POLICY_PATH = Path(roots.ROOTS['data']) / 'execution_policy.json'
 MODELS = {'fable': 'gpt-6-astra', 'opus': 'gpt-5.6-sol',
           'sonnet': 'gpt-5.6-terra', 'haiku': 'gpt-5.6-luna'}
 

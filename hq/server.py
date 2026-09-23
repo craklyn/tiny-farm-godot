@@ -45,15 +45,17 @@ from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlparse
 
 import anim  # sibling module: the Animation Lab (see its docstring)
+import roots  # one set of code, data, user-workspace and authoritative-main roots
 import studio  # sibling module: the ledger of hand edits to sprites
 import work  # sibling module: how work originates (see its docstring)
 
-HQ_DIR = os.path.dirname(os.path.abspath(__file__))
-REPO = os.path.dirname(HQ_DIR)
+HQ_DIR = roots.ROOTS["code"]
+REPO = roots.ROOTS["main"]
+USER_WORKSPACE = roots.ROOTS["user_workspace"]
 STATIC = os.path.join(HQ_DIR, "static")
-DATA = os.path.join(HQ_DIR, "data")
+DATA = roots.ROOTS["data"]
 LOOKS = os.path.join(DATA, "looks")
-PORT = 8642
+PORT = int(os.environ.get("HQ_PORT", "8642"))
 
 MIME = {
     ".html": "text/html; charset=utf-8",
@@ -92,8 +94,13 @@ def _last_touched(path):
     hit = _PROJ_TOUCH_CACHE.get(path)
     if hit and hit[0] == m:
         return hit[1]
-    rel = os.path.relpath(path, REPO)
-    when = run_cmd(["git", "log", "-1", "--format=%ad", "--date=relative", "--", rel]) or "uncommitted"
+    if os.path.commonpath((os.path.realpath(path), os.path.realpath(REPO))) == os.path.realpath(REPO):
+        rel = os.path.relpath(path, REPO)
+        when = run_cmd(["git", "log", "-1", "--format=%ad", "--date=relative", "--", rel]) or "uncommitted"
+    else:
+        # An external live data store has no Git history in authoritative main.
+        # Its file mtime is still a real source; do not query the wrong branch.
+        when = datetime.datetime.fromtimestamp(m).astimezone().isoformat(timespec="minutes")
     _PROJ_TOUCH_CACHE[path] = (m, when)
     return when
 
@@ -1494,7 +1501,7 @@ def deploy_pair(payload):
 # ---------------------------------------------------------------------------
 
 def parse_playtest(name):
-    tdir = os.path.join(REPO, "playtests", name)
+    tdir = os.path.join(USER_WORKSPACE, "playtests", name)
     trace = os.path.join(tdir, "session_trace.jsonl")
     if not os.path.isfile(trace):
         return {"name": name, "error": "no trace"}
@@ -1607,7 +1614,7 @@ def playtest_events(name):
     """The full indexed event stream of one session, for the scrubber: every
     tap and act in file order (chronological — single writer), untouched
     except for an index. Renders only what was recorded; no simulation."""
-    tdir = os.path.join(REPO, "playtests", name)
+    tdir = os.path.join(USER_WORKSPACE, "playtests", name)
     trace = os.path.join(tdir, "session_trace.jsonl")
     if not os.path.isfile(trace):
         return {"name": name, "error": "no trace"}
@@ -1658,7 +1665,7 @@ def shelf_names():
 
 
 def list_playtests():
-    root = os.path.join(REPO, "playtests")
+    root = os.path.join(USER_WORKSPACE, "playtests")
     out = []
     shelf = shelf_names()
     for name in sorted(os.listdir(root), reverse=True) if os.path.isdir(root) else []:
@@ -1928,6 +1935,10 @@ def land_sprite_edit(rec, work_id=""):
     sheet = rec.get("sheet", "")
     ledger = os.path.join("hq", "data", "sprite_edits", rec.get("key", ""))
     paths = [sheet, ledger]
+    if (os.path.realpath(USER_WORKSPACE) != os.path.realpath(REPO)
+            or os.path.realpath(DATA) != os.path.realpath(os.path.join(USER_WORKSPACE, "hq", "data"))):
+        return {"ok": False, "why": ("Saved in the user workspace and live ledger; automatic Git commit "
+                                     "is disabled while HQ uses separate roots.")}
     if run_cmd(["git", "rev-parse", "--git-dir"]) == "":
         return {"ok": False, "why": "not a git repository"}
     # A tree mid-merge or mid-rebase is somebody's unfinished business; adding a
@@ -1973,8 +1984,8 @@ def save_sprite(payload):
     import base64
     sheet = str(payload.get("sheet", ""))
     data_url = str(payload.get("data_url", ""))
-    full = os.path.realpath(os.path.join(REPO, sheet))
-    root = os.path.realpath(os.path.join(REPO, "assets", "sprites"))
+    full = os.path.realpath(os.path.join(USER_WORKSPACE, sheet))
+    root = os.path.realpath(os.path.join(USER_WORKSPACE, "assets", "sprites"))
     if not (full.startswith(root + os.sep) and full.endswith(".png") and os.path.isfile(full)):
         return {"error": "sheet must be an existing PNG under assets/sprites/"}
     prefix = "data:image/png;base64,"
@@ -2017,8 +2028,8 @@ def revert_sprite(payload):
         seq = int(payload.get("seq"))
     except (TypeError, ValueError):
         return {"error": "which step?"}
-    full = os.path.realpath(os.path.join(REPO, sheet))
-    root = os.path.realpath(os.path.join(REPO, "assets", "sprites"))
+    full = os.path.realpath(os.path.join(USER_WORKSPACE, sheet))
+    root = os.path.realpath(os.path.join(USER_WORKSPACE, "assets", "sprites"))
     if not (full.startswith(root + os.sep) and full.endswith(".png") and os.path.isfile(full)):
         return {"error": "sheet must be an existing PNG under assets/sprites/"}
     key = studio.sheet_key(sheet)
@@ -2899,7 +2910,7 @@ def _playtests_cached():
     if _PT_CACHE["data"] and _t.time() - _PT_CACHE["at"] < 60:
         return _PT_CACHE["data"]
     rows = []
-    root = os.path.join(REPO, "playtests")
+    root = os.path.join(USER_WORKSPACE, "playtests")
     if os.path.isdir(root):
         for name in sorted(d for d in os.listdir(root) if os.path.isdir(os.path.join(root, d))):
             rows.append(parse_playtest(name))
@@ -4994,7 +5005,7 @@ def _compute_signals_now():
                        if r.get("status") == "pending_integration"]
     projects = load_projects()
     blocked = _blocked_projects(projects)
-    _pt_root = os.path.join(REPO, "playtests")
+    _pt_root = os.path.join(USER_WORKSPACE, "playtests")
     sessions = sorted(d for d in os.listdir(_pt_root)
                       if os.path.isdir(os.path.join(_pt_root, d))) \
         if os.path.isdir(_pt_root) else []
@@ -6326,13 +6337,13 @@ class Handler(BaseHTTPRequestHandler):
             if path.startswith("/static/"):
                 return self._send_file(STATIC, path[len("/static/"):])
             if path.startswith("/assets/"):
-                return self._send_repo_file(os.path.join(REPO, "assets"), path[len("/assets/"):])
+                return self._send_repo_file(os.path.join(USER_WORKSPACE, "assets"), path[len("/assets/"):])
             if path.startswith("/docs/"):
                 # Decision cards attach mockups and design pages under docs/; served
                 # read-only like assets/ so a card's pictures show in the queue.
                 return self._send_repo_file(os.path.join(REPO, "docs"), path[len("/docs/"):])
             if path.startswith("/loops/"):
-                return self._send_repo_file(os.path.join(REPO, anim.LOOPS_DIR), path[len("/loops/"):])
+                return self._send_repo_file(os.path.join(USER_WORKSPACE, anim.LOOPS_DIR), path[len("/loops/"):])
             if path.startswith("/loop-preview/"):
                 return self._send_file(anim.PREVIEWS, path[len("/loop-preview/"):])
             if path.startswith("/ledger/"):
@@ -6481,7 +6492,10 @@ class Handler(BaseHTTPRequestHandler):
             if path.startswith("/api/work"):
                 return self._send(200, work.api_get(path))
             if path == "/api/health":
-                return self._send(200, {"ok": True, "limit_until": limited_until()})
+                return self._send(200, {"ok": True, "limit_until": limited_until(),
+                                        "roots": {"code": HQ_DIR, "data": DATA,
+                                                  "user_workspace": USER_WORKSPACE,
+                                                  "main": REPO}})
             return self._send(404, {"error": "not found"})
         except Exception as e:  # keep the service alive whatever happens
             return self._send(500, {"error": str(e)[:300]})
@@ -6631,31 +6645,42 @@ def _transaction_recovery_thread():
 
 
 def main():
+    canary = os.environ.get("HQ_CANARY_MODE") == "1"
+    if canary and (os.environ.get("HQ_REQUIRE_EXPLICIT_ROOTS") != "1" or PORT != 0):
+        raise ValueError("An offline HQ canary requires explicit roots and HQ_PORT=0")
     # Consistency checks resolve goal routes through the work store. Bind that
     # store first or every valid work reference looks absent at startup.
-    work.bind(sys.modules[__name__])
+    if canary:
+        work.bind(sys.modules[__name__], sanitize=False)
+    else:
+        work.bind(sys.modules[__name__])
     check_consistency()
-    sanitize_runs()
-    sanitize_outbox()
+    if not canary:
+        sanitize_runs()
+        sanitize_outbox()
     studio.bind(sys.modules[__name__])
     anim.bind(sys.modules[__name__])
-    threading.Thread(target=_drain_outbox, daemon=True).start()
+    if not canary:
+        threading.Thread(target=_drain_outbox, daemon=True).start()
     # The 100-run CI window, polled off the request path: at --limit 100 the gh
     # call costs about four seconds against a one-second call at --limit 10, so
     # widening it in the render path would triple every post-TTL page visit for
     # a strip nobody is looking at yet.
-    threading.Thread(target=_ci_history_thread, daemon=True).start()
+    if not canary:
+        threading.Thread(target=_ci_history_thread, daemon=True).start()
     # Two of the four escalation tests are about time, which needs more than one
     # reading. Hourly, off the request path, because it writes a tracked file.
-    threading.Thread(target=_goal_journal_thread, daemon=True).start()
+    if not canary:
+        threading.Thread(target=_goal_journal_thread, daemon=True).start()
     # One reading of his queue each evening. The promise is that nothing waits
     # on him overnight, and the only reading that can settle that is the one
     # taken at the end of the day.
-    threading.Thread(target=_queue_night_thread, daemon=True).start()
-    threading.Thread(target=_transaction_recovery_thread, daemon=True).start()
-    work.start()
+    if not canary:
+        threading.Thread(target=_queue_night_thread, daemon=True).start()
+        threading.Thread(target=_transaction_recovery_thread, daemon=True).start()
+        work.start()
     server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
-    print(f"Tiny Farm HQ on http://localhost:{PORT}")
+    print(f"Tiny Farm HQ on http://localhost:{server.server_address[1]}", flush=True)
     server.serve_forever()
 
 
