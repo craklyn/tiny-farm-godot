@@ -96,6 +96,15 @@ class Completion(unittest.TestCase):
         r = record();r['result'] += 'changed'
         self.assertFalse(drain.meets_landing_bar(self.card, r, False, None)[0])
 
+    def test_checker_failure_is_the_recorded_landing_reason(self):
+        r = record(check={'verdict': 'fail', 'read': True, 'complete': False,
+                          'findings': [{'what': 'The assertion is wrong.'}]})
+        self.assertEqual(drain.meets_landing_bar(self.card, r, False, None)[1],
+                         'the read of it says this should not go in as it stands')
+        got = drain.write_back(self.card, r, False, '', None, ORG)
+        self.assertEqual(got['diff']['why_not_landed'],
+                         'the read of it says this should not go in as it stands')
+
     def test_one_repair_then_hold(self):
         r = record(check={'verdict':'concerns','read':True,'complete':False,'findings':[{'what':'missing answer'}]})
         got = drain.write_back(self.card, r, False, '', None, ORG)

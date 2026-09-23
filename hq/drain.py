@@ -722,6 +722,7 @@ def run_cli(prompt, system, tools, model, cwd, timeout, turns, phase, seat, item
     return result.get("text", ""), usage, err
 
 SUPERVISED_IDS = set()
+RETRY_ONCE_IDS = set()
 
 
 def _launch_context(item_id):
@@ -1534,6 +1535,10 @@ def meets_landing_bar(item, rec, applied, suites, *, repo=None):
         return False, outcome["reason"] or "the attempt did not finish"
     if rec.get("check_evidence") != check_evidence_id(rec):
         return False, "the check does not describe this result and diff"
+    check = rec.get("check") or {}
+    if check.get("read") is True and check.get("verdict") in ("concerns", "fail"):
+        return False, ("the read of it raised something you should see" if check["verdict"] == "concerns"
+                       else "the read of it says this should not go in as it stands")
 
     candidate = rec.get("candidate") or {}
     if not candidate.get("tree") or rec.get("candidate_unchanged") is not True:
@@ -1902,7 +1907,8 @@ def project_work(item, *, head=None, active=None, now=None):
     return work.work_view(item, {"blocked_files": blocked, "tree_reason": _tree_reason(blocked) if blocked else "",
                                  "cost_reason": cost_reason, "active_session":
                                  (active or {}).get("run") if (active or {}).get("item") == item["id"] else None,
-                                 "head": head, "waiting_for_valid": waiting_valid}, now=now)
+                                 "head": head, "waiting_for_valid": waiting_valid,
+                                 "supervised_retry": item["id"] in RETRY_ONCE_IDS}, now=now)
 
 
 def _queue_entries(include_thinking=False):
@@ -2322,13 +2328,32 @@ def main():
                     help=f"the timer's shape: --all, at most {UNATTENDED_LIMIT} items, "
                          f"{UNATTENDED_JOBS} seats, and nothing at all when the token window "
                          "is dry or mostly spent")
+    ap.add_argument("--retry-once", metavar="ID",
+                    help="run one supervised retry of the nominated trial card's exhausted repair")
     args = ap.parse_args()
 
     if args.apply:
         print("--apply is retired: it writes into the shared checkout. Use the clean integration lane and a reviewed reconciliation action.")
         return 2
 
+    if args.retry_once:
+        policy = execution.load_policy()
+        if (args.unattended or args.all or args.ids or args.repair or args.recover_only or args.brief
+                or args.no_suites
+                or args.limit not in (0, 1)
+                or not policy["background_paused"] or args.retry_once != policy["trial_item"]):
+            print("--retry-once requires the single nominated trial card while background work is paused.")
+            return 2
+        args.ids = [args.retry_once]
+        RETRY_ONCE_IDS.add(args.retry_once)
+
     work.bind(server, sanitize=not (args.list or args.list_json or args.dry_run or args.brief))
+    if args.retry_once:
+        trial = next((item for item in work.items() if item["id"] == args.retry_once), None)
+        if not trial or not trial.get("repair_hold") or trial.get("automatic_repairs", 0) < 1:
+            RETRY_ONCE_IDS.clear()
+            print("--retry-once requires a nominated trial card with an exhausted repair hold.")
+            return 2
     org = server.load_org()
     # Recovery is local bookkeeping and must run even while models are paused.
     if not (args.list or args.list_json or args.dry_run or args.brief):
@@ -2379,6 +2404,10 @@ def main():
     selected_actions = action_dispatch.choose(
         sys.modules[__name__], include_thinking=args.thinking,
         ids=args.ids, limit=args.limit)
+    RETRY_ONCE_IDS.clear()
+    if args.retry_once and (len(selected_actions) != 1 or selected_actions[0][1]["type"] != "reconcile"):
+        print("The nominated trial card has no runnable reconciliation action.")
+        return 2
     pool = [item for item, _action in selected_actions]
     action_map = {item["id"]: action for item, action in selected_actions}
     if args.ids:

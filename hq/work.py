@@ -785,7 +785,9 @@ def work_view(item, repo_facts=None, now=None):
     active_actions = [a for a in actions if a.get("state") != "done"]
     blocked_files = sorted(set(facts.get("blocked_files") or []))
     repair = str(item.get("repair_hold") or "")
+    exhausted_repair = bool(repair and item.get("automatic_repairs", 0) >= 1)
     cost_reason = str(facts.get("cost_reason") or "")
+    supervised_retry = exhausted_repair and not cost_reason and bool(facts.get("supervised_retry"))
     # A saved rebrief is a capacity hold, not a coding job. Once a reviewed
     # cap increase clears recorded spend, project the normal build again.
     if not cost_reason:
@@ -799,6 +801,11 @@ def work_view(item, repo_facts=None, now=None):
                 ((workflow.get("candidates") or [{}])[-1].get("id")) or
                 ((actions or [{}])[-1].get("input_id")) or
                 str(item.get("last_recorded_attempt") or "legacy"))
+    if supervised_retry:
+        # One explicit invocation gets a distinct action for this failed attempt.
+        # Repeating a queue read must never mint another repair action.
+        input_id = action_key(item["id"], "supervised_retry",
+                              str(item.get("last_recorded_attempt") or input_id))
     terminal = item.get("state") in TERMINAL_STATES
     blocker = None
     if blocked_files:
@@ -811,6 +818,8 @@ def work_view(item, repo_facts=None, now=None):
     elif repair:
         blocker = {"type": "missing_evidence", "reason": repair, "files": [],
                    "owner": item.get("owner") or "claude"}
+        if exhausted_repair:
+            blocker["wake"] = "An explicit supervised retry of this card after reviewing the failed repair."
     elif cost_reason:
         blocker = {"type": "capacity", "reason": cost_reason, "files": [],
                    "owner": "claude", "wake": "A reviewed, bounded cost cap above the amount already spent."}
@@ -911,7 +920,8 @@ def work_view(item, repo_facts=None, now=None):
                                   action.get("type") in ("decide", "rebrief") else "blocked" if
                                   action.get("state") == "blocked" or
                                   (blocker and action.get("type") == "build") or
-                                  (blocker and blocker["type"] == "capacity" and action.get("type") != "rebrief") else "runnable")
+                                  (blocker and blocker["type"] == "capacity" and action.get("type") != "rebrief") else
+                                  "waiting_event" if exhausted_repair and not supervised_retry else "runnable")
         if claim and not running:
             action["lease_expired"] = not lease_live
         action["age_seconds"] = max(0, int(instant - _iso_seconds(action.get("created_at")))) if _iso_seconds(action.get("created_at")) else 0

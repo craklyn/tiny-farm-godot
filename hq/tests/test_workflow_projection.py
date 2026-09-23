@@ -88,6 +88,34 @@ class WorkflowProjection(unittest.TestCase):
         self.assertEqual(view["blocker"]["type"], "missing_evidence")
         self.assertIn(item["id"], [row["work_id"] for row in drain.queue_view()["eligible"]])
 
+    def test_exhausted_repair_waits_until_one_explicit_supervised_retry(self):
+        item = self.card(state="for_review", automatic_repairs=1,
+                         last_recorded_attempt="failed-repair",
+                         repair_hold="The repair still needs verification.")
+        prior = work.ensure_action(item, "reconcile", input_id="failed-repair")
+        work.claim_action(item, prior["id"], "prior-claim")
+        work.finish_action(item, prior["id"], "prior-claim")
+        before = Path(work._item_path(item["id"])).read_bytes()
+        held = drain.project_work(item)
+        self.assertEqual(held["availability"], "waiting_event")
+        self.assertEqual(held["blocker"]["type"], "missing_evidence")
+        self.assertIn("explicit supervised retry", held["blocker"]["wake"])
+        self.assertNotIn(item["id"], [row["work_id"] for row in drain.queue_view()["eligible"]])
+        self.assertEqual(before, Path(work._item_path(item["id"])).read_bytes())
+
+        with patch.object(drain, "RETRY_ONCE_IDS", {item["id"]}):
+            trial = drain.project_work(item)
+            self.assertEqual(trial["next_action"]["type"], "reconcile")
+            self.assertEqual(trial["availability"], "runnable")
+            self.assertNotEqual(trial["next_action"]["id"], prior["id"])
+            self.assertEqual(trial["next_action"], drain.project_work(item)["next_action"])
+            self.assertEqual([row["work_id"] for row in drain.queue_view()["eligible"]], [item["id"]])
+            capped = work.work_view(item, repo_facts={"supervised_retry": True,
+                                                      "cost_reason": "Cost cap reached"})
+            self.assertEqual(capped["availability"], "waiting_event")
+        self.assertEqual(drain.project_work(item)["availability"], "waiting_event")
+        self.assertEqual(before, Path(work._item_path(item["id"])).read_bytes())
+
     def test_newly_stale_candidate_has_runnable_reconciliation(self):
         old_head = self.git("rev-parse", "HEAD")
         item = self.card(attempt_outcome={"candidate": {"base": old_head, "tree": "candidate-tree"}})

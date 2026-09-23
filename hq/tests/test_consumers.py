@@ -65,6 +65,19 @@ class Consumers(unittest.TestCase):
                     self.assertEqual(drain._launch_context('trial'),
                                      'supervised' if paused else 'automatic')
 
+    def test_retry_once_requires_paused_nominated_trial(self):
+        for trial, paused in [('other', True), ('weather', False)]:
+            with self.subTest(trial=trial, paused=paused), \
+                 patch.object(sys, 'argv', ['drain.py', '--retry-once', 'weather']), \
+                 patch.object(execution, 'load_policy', return_value={
+                     'background_paused': paused, 'trial_item': trial}), \
+                 patch.object(work, 'bind') as bind, \
+                 patch.object(execution, 'run_session') as run, \
+                 contextlib.redirect_stdout(io.StringIO()):
+                self.assertEqual(drain.main(), 2)
+                bind.assert_not_called()
+                run.assert_not_called()
+
     def test_structured_max_turns_can_resume_changed_files(self):
         self.assertTrue(drain.ran_out_of_turns({'stop_reason': 'max_turns'}))
         self.assertTrue(drain.ran_out_of_turns({'subtype': 'error_max_turns'}))
