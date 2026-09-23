@@ -1958,14 +1958,14 @@
           "sheet": "assets/sprites/generated/terrain_field.png",
           "frames": [
             [
-              0,
-              0,
-              48,
-              48
+              16,
+              16,
+              16,
+              16
             ]
           ],
           "fps": 1,
-          "layout": "A 3x3 arrangement of one seamless 16px tile.",
+          "layout": "Nine 16px cells; the farm repeats the 3x3 pattern by position.",
           "sounds": [],
           "code": [
             "world/farm.gd"
@@ -1973,7 +1973,8 @@
           "facts": {
             "Tillable": "yes",
             "Replaced": "terrain_grass.png as the field's ground (Q-70); the old tile remains as the yard's derivation source"
-          }
+          },
+          "ground_tile": true
         },
         {
           "id": "terrain_yard",
@@ -1983,10 +1984,10 @@
           "sheet": "assets/sprites/generated/terrain_yard.png",
           "frames": [
             [
-              0,
-              0,
-              48,
-              48
+              16,
+              16,
+              16,
+              16
             ]
           ],
           "fps": 1,
@@ -1999,7 +2000,8 @@
           "facts": {
             "Tillable": "never",
             "Consequence": "the first till of every game is beyond the gate"
-          }
+          },
+          "ground_tile": true
         },
         {
           "id": "terrain_floor",
@@ -2009,10 +2011,10 @@
           "sheet": "assets/sprites/generated/terrain_floor.png",
           "frames": [
             [
-              0,
-              0,
-              48,
-              48
+              16,
+              16,
+              16,
+              16
             ]
           ],
           "fps": 1,
@@ -2025,7 +2027,8 @@
           "facts": {
             "Tillable": "never",
             "Home": "the player's house (T-37)"
-          }
+          },
+          "ground_tile": true
         },
         {
           "id": "interior_wall",

@@ -75,6 +75,35 @@ function spComputeDiff(frames, names, sheetColors) {
   return out;
 }
 
+/* Ground uses all nine 16px cells. The farm chooses (tx % 3, ty % 3), so
+   showing or saving just the catalogue's representative center cell lies. */
+function spEditorRects(ent, sheetW, sheetH) {
+  const cellW = Math.max(...ent.frames.map(f => f[2]));
+  const cellH = Math.max(...ent.frames.map(f => f[3]));
+  const rects = [];
+  for (let y = 0; y < sheetH; y += cellH) for (let x = 0; x < sheetW; x += cellW) {
+    rects.push([x, y, Math.min(cellW, sheetW - x), Math.min(cellH, sheetH - y)]);
+  }
+  return rects;
+}
+
+function spSaveRects(ent, frame, sheetW, sheetH) {
+  return [frame.rect];
+}
+
+function spGroundIndex(x, y) { return (y % 3) * 3 + x % 3; }
+
+function spRollHalf(data) {
+  const w = data.width, h = data.height;
+  const out = new ImageData(w, h);
+  for (let y = 0; y < h; y++) for (let x = 0; x < w; x++) {
+    const src = (y * w + x) * 4;
+    const dst = (((y + h / 2) % h) * w + (x + w / 2) % w) * 4;
+    out.data.set(data.data.subarray(src, src + 4), dst);
+  }
+  return out;
+}
+
 async function renderSpriteEditor(path) {
   const [gid, eid] = path.split("/");
   const [data, org] = await Promise.all([api("/api/entities"), api("/api/org")]);
@@ -88,6 +117,7 @@ async function renderSpriteEditor(path) {
     $view.replaceChildren(h(`<div class="card">Nothing editable here. <a class="plain" href="#/entities">Back to the gallery</a></div>`));
     return;
   }
+  const groundSheet = !!ent.ground_tile;
 
   // The cell size is the size of this entity's frames; every frame in the
   // catalogue sits on that grid with its origin at the sheet's top-left corner.
@@ -108,12 +138,8 @@ async function renderSpriteEditor(path) {
   // width or height is not a whole number of cells still has all of its pixels
   // reachable: the last cell in a row or column is clipped to what is there.
   const sheetW = img.naturalWidth, sheetH = img.naturalHeight;
-  const cols = Math.max(1, Math.ceil(sheetW / cellW)), rows = Math.max(1, Math.ceil(sheetH / cellH));
-  const rects = [];
-  for (let r = 0; r < rows; r++) for (let c = 0; c < cols; c++) {
-    rects.push([c * cellW, r * cellH,
-                Math.min(cellW, sheetW - c * cellW), Math.min(cellH, sheetH - r * cellH)]);
-  }
+  const cols = Math.max(1, Math.ceil(sheetW / cellW));
+  const rects = spEditorRects(ent, sheetW, sheetH);
   const cellAt = (x, y) => Math.floor(y / cellH) * cols + Math.floor(x / cellW);
 
   // Which cell each catalogue frame lands on. Composites reference the
@@ -236,6 +262,7 @@ async function renderSpriteEditor(path) {
       : ent.frames.length > 1 ? `frame ${m.pos + 1}` : ent.name;
   };
   const names = rects.map((_, i) => {
+    if (groundSheet) return `ground row ${Math.floor(i / 3) + 1}, column ${i % 3 + 1}`;
     const named = (ent.frame_names || [])[poolAt.get(i)];
     if (named) return named;
     const ms = cellClips.get(i);
@@ -244,10 +271,11 @@ async function renderSpriteEditor(path) {
     if (cl) return cl.map(c => c.of > 1 ? `${c.name} frame ${c.k}` : c.name).join(", ");
     return `row ${Math.floor(i / cols) + 1}, column ${i % cols + 1}`;
   });
-  const cellKind = i => cellClips.has(i) ? "anim"
+  const cellKind = i => groundSheet ? "ground" : cellClips.has(i) ? "anim"
     : claims.has(i) ? "other"
     : frames[i].ink ? "stray" : "blank";
   const cellTag = i => {
+    if (groundSheet) return `ground ${i + 1}`;
     const k = cellKind(i);
     if (k === "stray") return "not listed";
     if (k === "blank") return "empty";
@@ -268,7 +296,9 @@ async function renderSpriteEditor(path) {
   const listNames = ns => ns.length <= 1 ? (ns[0] || "")
     : ns.slice(0, -1).join(", ") + " and " + ns[ns.length - 1];
   const sheetLine = [
-    `This is all ${frames.length} cell${frames.length === 1 ? "" : "s"} of the sheet, ${cellW}×${cellH} pixels each.`,
+    groundSheet
+      ? `The farm repeats these ${frames.length} ground cells in their sheet order, ${cellW}×${cellH} pixels each.`
+      : `This is all ${frames.length} cell${frames.length === 1 ? "" : "s"} of the sheet, ${cellW}×${cellH} pixels each.`,
     nAnim ? `${nAnim} of them ${ent.frames.length > 1
       ? (nAnim === 1 ? "animates" : "animate") : (nAnim === 1 ? "draws" : "draw")} ${esc(ent.name)}.` : "",
     nOther ? `${nOther} ${nOther === 1 ? "draws" : "draw"} ${listNames(otherLinks)}.` : "",
@@ -346,8 +376,9 @@ async function renderSpriteEditor(path) {
           </div>
           <button id="sp-play" class="ghost sp-tgl">▶ Play</button>
           <button id="sp-onion" class="ghost sp-tgl on" aria-pressed="true"
-                  title="show the frame before this one as a ghost">◐ Onion skin</button>
+                  title="show the previous frame faintly">◐ Show previous frame faintly</button>
           <button id="sp-undo" class="ghost sp-last" title="Ctrl+Z">↩ Undo</button>
+          ${groundSheet ? `<button id="sp-offset" class="ghost" title="Move this cell half a tile in both directions">↔ Offset half a cell</button>` : ""}
         </div>
         <section class="sp-tones">
           <div class="sp-tones-head">
@@ -367,13 +398,13 @@ async function renderSpriteEditor(path) {
         <p class="small muted">Everything this sheet animates. Pick one to preview it and edit its
         frames — a dot marks the ones your unsaved edits touch.</p>
         <div class="sp-clips" id="sp-clips"></div>` : ""}
-        <h2 id="sp-pv-head" ${clips.length > 1 ? "" : `style="margin-top:0"`}>Live preview</h2>
+        <h2 id="sp-pv-head" ${clips.length > 1 ? "" : `style="margin-top:0"`}>${groundSheet ? "Ground as it repeats on the farm" : "Live preview"}</h2>
         <div class="sp-previews" id="sp-previews">
           <figure><canvas id="sp-before" width="${pvW}" height="${pvH}"></canvas><figcaption>before</figcaption></figure>
           <figure><canvas id="sp-preview" width="${pvW}" height="${pvH}"></canvas><figcaption>after (your edits)</figcaption></figure>
         </div>
         <div id="sp-contact" class="sp-contact" hidden></div>
-        <p class="small muted" id="sp-pv-note">The two previews loop in step at the game's own rate. The "before" sheet is how it looked when you opened the editor.</p>
+        <p class="small muted" id="sp-pv-note">${groundSheet ? "Five by five farm tiles, using each of the nine ground cells by position. Before is the sheet as opened; after includes your edits." : `The two previews loop in step at the game's own rate. The "before" sheet is how it looked when you opened the editor.`}</p>
         <div id="sp-field"></div>
         <h2>Save</h2>
         <p class="small muted">Writes your edits back into <code class="ref">${esc(ent.sheet)}</code> and adds a revision to this sheet's history below. Every revision is kept — nothing you save is ever overwritten.</p>
@@ -605,6 +636,20 @@ async function renderSpriteEditor(path) {
   // any cell of the sheet. A stills clip has no cycle to run: its preview holds
   // the pose under the cursor (or its first, when the cursor is elsewhere).
   const renderPreview = i => {
+    if (groundSheet) {
+      pctx.clearRect(0, 0, pv.width, pv.height);
+      bctx.clearRect(0, 0, bv.width, bv.height);
+      for (let y = 0; y < 5; y++) for (let x = 0; x < 5; x++) {
+        const f = frames[spGroundIndex(x, y)];
+        for (const [dest, original] of [[pctx, false], [bctx, true]]) {
+          tmp.width = fw; tmp.height = fh;
+          tctx.putImageData(pixelsOf(f, original), 0, 0);
+          dest.drawImage(tmp, x * fw * pvScale, y * fh * pvScale,
+            fw * pvScale, fh * pvScale);
+        }
+      }
+      return;
+    }
     const d = curClip.stills
       ? (curClip.drawings.find(dd => dd.cell === cur) || curClip.drawings[0])
       : curClip.drawings[i % curClip.drawings.length];
@@ -782,6 +827,7 @@ async function renderSpriteEditor(path) {
 
   const renderContact = () => {
     if (!contact || !previews) return;
+    if (groundSheet) { contact.hidden = true; previews.hidden = false; return; }
     const on = !!curClip.stills;
     contact.hidden = !on;
     previews.hidden = on;
@@ -842,6 +888,15 @@ async function renderSpriteEditor(path) {
   const startPreview = () => {
     if (pvTimer) { clearInterval(pvTimer); pvTimer = null; }
     pvi = 0;
+    if (groundSheet) {
+      pvScale = 2;
+      pv.width = 5 * fw * pvScale; pv.height = 5 * fh * pvScale;
+      bv.width = pv.width; bv.height = pv.height;
+      pctx.imageSmoothingEnabled = false; bctx.imageSmoothingEnabled = false;
+      renderPreview(0);
+      renderContact();
+      return;
+    }
     // Refit the preview canvases to the clip's grid — an assembly spans tiles.
     pvScale = Math.max(1, Math.min(3,
       Math.floor(150 / (curClip.cols * fw)), Math.floor(150 / (curClip.rows * fh))));
@@ -1266,7 +1321,9 @@ async function renderSpriteEditor(path) {
     startFieldPreview();
     const note = document.getElementById("sp-pv-note");
     if (note) {
-      note.textContent = cl.assembled
+      note.textContent = groundSheet
+        ? "Five by five farm tiles, using each of the nine ground cells by position. Before is the sheet as opened; after includes your edits."
+        : cl.assembled
         ? (cl.stills
           ? "Assembled the way the game renderer builds this creature — parts placed, rotated and joined, with your edits live on the right."
           : "Assembled drawings playing in sequence, built the way the game renderer builds this creature — your edits live on the right.")
@@ -1401,6 +1458,15 @@ async function renderSpriteEditor(path) {
   playBtn.addEventListener("click", () => setPlaying(!playing));
   onionBtn.addEventListener("click", () => { onion = !onion; syncOnionBtn(); render(); });
   document.getElementById("sp-undo").addEventListener("click", doUndo);
+  if (groundSheet) document.getElementById("sp-offset").addEventListener("click", () => {
+    if (playing || mergeMode) return;
+    const f = frames[cur];
+    pushUndo();
+    f.data = spRollHalf(f.data);
+    f.touched = true;
+    dirty = true;
+    redrawAll(false);
+  });
   document.getElementById("sp-merge-start").addEventListener("click", enterMerge);
   document.getElementById("sp-revert").addEventListener("click", () => route());
 
@@ -1424,11 +1490,13 @@ async function renderSpriteEditor(path) {
       // `sheetNow` tracks, and what `img` stopped being at the first save.
       frames.forEach(f => {
         if (!f.touched) return;
-        const [x, y, w, hh] = f.rect;
-        fctx.clearRect(x, y, w, hh);
+        const [, , w, hh] = f.rect;
         tmp.width = w; tmp.height = hh;
         tctx.putImageData(f.data, 0, 0);
-        fctx.drawImage(tmp, x, y);
+        spSaveRects(ent, f, full.width, full.height).forEach(([x, y, rw, rh]) => {
+          fctx.clearRect(x, y, rw, rh);
+          fctx.drawImage(tmp, x, y);
+        });
       });
       const r = await fetch("/api/sprite/save", {
         method: "POST", headers: { "Content-Type": "application/json" },

@@ -383,6 +383,9 @@
    "verdict": "decode",
    "why": "Both 'record' and 'result' are undefined, and the phrasing describes mechanism rather than stating clearly what the reader can do."
   },
+  "1628ec6c0935e0d336d9": {
+   "verdict": "ok"
+  },
   "16309f97681c1fc3a011": {
    "verdict": "ok"
   },
@@ -908,6 +911,9 @@
    "verdict": "decode",
    "why": "Bare pronoun with no referent in the same sentence; the reader cannot identify who 'she' is from this text alone."
   },
+  "36b7571081b931c539b3": {
+   "verdict": "ok"
+  },
   "36c0ff358b9ea830a219": {
    "instead": "Rebuild the page where Daniel answers questions from the studio, showing: how long each answer takes, questions organized by topic, and one place to view each answer",
    "quote": "where Daniel answers the studio: how long it will take him, the questions grouped by subject, and one place to read each",
@@ -1171,6 +1177,9 @@
   "48df11628890ba04be2a": {
    "verdict": "ok"
   },
+  "49229677a4241d827299": {
+   "verdict": "ok"
+  },
   "49396e9bb43c928aa981": {
    "verdict": "ok"
   },
@@ -1184,6 +1193,9 @@
    "verdict": "ok"
   },
   "49fc8e3895e5861014bd": {
+   "verdict": "ok"
+  },
+  "4a0e1effc9d3a8196a16": {
    "verdict": "ok"
   },
   "4a22e1b793920ea2ab63": {
@@ -1455,6 +1467,9 @@
    "quote": "Record decision answers from every review surface",
    "verdict": "decode",
    "why": "“Decision answers” and “review surface” are internal shorthand, so the reader must work out what decisions and places this refers to."
+  },
+  "5996b3051016c9d8c6eb": {
+   "verdict": "ok"
   },
   "59a881673f4d1e3383d2": {
    "verdict": "ok"
@@ -2613,6 +2628,9 @@
    "verdict": "ok"
   },
   "9f65f60508cf5e04120b": {
+   "verdict": "ok"
+  },
+  "9f670bef80d8dc29b2da": {
    "verdict": "ok"
   },
   "9f6e0a5e536669b50c3c": {
@@ -4038,6 +4056,9 @@
    "quote": "The robot ladder's bottom two rungs: the mark-1 arrives when the work has been felt, the mark-2 once a mark-1 has been used",
    "verdict": "decode",
    "why": "\"Robot ladder\" is not introduced plainly, and \"when the work has been felt\" is vague—felt by whom, in what sense?"
+  },
+  "f740d8acbd81afe1a9a5": {
+   "verdict": "ok"
   },
   "f77a60d6e2d9ef672f71": {
    "verdict": "ok"
