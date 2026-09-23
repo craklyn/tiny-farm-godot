@@ -3,6 +3,7 @@
 extends Node
 
 signal input_mode_changed(new_mode: String)
+signal tap_buffered(tile: Vector2i)
 
 # TOUCH is distinct from MOUSE on purpose. A finger has no hover: it is either
 # down somewhere or absent, and there is no "the pointer is resting on this tile"
@@ -18,6 +19,7 @@ var mouse_tile: Vector2i = Vector2i(-1, -1)
 const TOUCH_EMULATION_WINDOW_MS := 1200
 var _last_touch_ms: int = -100000
 var click_tile: Vector2i = Vector2i(-1, -1)
+var click_actor_id: String = ""
 var has_click: bool = false
 
 # Swipe-chain state
@@ -89,6 +91,7 @@ func swallow_input(on: bool) -> void:
 	_swallowing = on
 	if on:
 		has_click = false
+		click_actor_id = ""
 		swipe_active = false
 		swipe_moved = false
 		swipe_tile = Vector2i(-1, -1)
@@ -123,9 +126,17 @@ func is_swallowing() -> bool:
 func tap_tile(t: Vector2i) -> bool:
 	if _swallowing:
 		return false
-	click_tile = t
-	has_click = true
+	_record_click(t)
 	return true
+
+
+func _record_click(t: Vector2i) -> void:
+	click_tile = t
+	click_actor_id = ""
+	has_click = true
+	# Main may attach the actor the finger hit. The input layer only reports the
+	# raw tile; it does not know what a machine or world is.
+	tap_buffered.emit(t)
 
 
 # What the two fingers add up to, measured once a frame with both positions
@@ -197,10 +208,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				# The second finger cancels the first one's tap. Whatever she is
 				# doing now, it is not marking a square.
 				has_click = false
+				click_actor_id = ""
 				swipe_active = false
 			else:
-				click_tile = screen_to_tile(event.position)
-				has_click  = true
+				_record_click(screen_to_tile(event.position))
 				swipe_active = false
 		else:
 			touches.erase(event.index)
@@ -208,6 +219,7 @@ func _unhandled_input(event: InputEvent) -> void:
 			# gesture is over, and the leftover finger is on its way off the glass.
 			if touches.size() <= 1:
 				has_click = false
+				click_actor_id = ""
 			swipe_active = false
 			swipe_tile   = Vector2i(-1, -1)
 	elif event is InputEventScreenDrag:
@@ -216,6 +228,7 @@ func _unhandled_input(event: InputEvent) -> void:
 		touches[event.index] = event.position
 		if touches.size() >= 2:
 			has_click = false
+			click_actor_id = ""
 			swipe_active = false
 			return
 		var new_tile := screen_to_tile(event.position)
@@ -226,8 +239,7 @@ func _unhandled_input(event: InputEvent) -> void:
 
 	# Track mouse clicks
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		click_tile = screen_to_tile(event.position)
-		has_click = true
+		_record_click(screen_to_tile(event.position))
 
 
 ## Where the two fingers have got to, relative to where they started. Nothing is
@@ -278,6 +290,7 @@ func update_camera_offset(offset: Vector2, scale: float = float(SCALE)) -> void:
 
 func consume_click() -> Vector2i:
 	has_click = false
+	click_actor_id = ""
 	return click_tile
 
 

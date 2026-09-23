@@ -133,8 +133,16 @@ const PERSIST_INTERVAL := 20.0
 var persist_timer: float = 0.0
 
 
+func _capture_machine_tap(tile: Vector2i) -> void:
+	# A temporary preview scene must not take ownership of the played farm's tap.
+	if get_tree().get_first_node_in_group("Main") == self \
+			and farm != null and farm.sim != null:
+		InputManager.click_actor_id = farm.sim.machine_at(tile)
+
+
 func _ready() -> void:
 	InputManager.has_click = false
+	InputManager.click_actor_id = ""
 	InputManager.swipe_active = false
 	add_to_group("Main")
 	# Pixel art rendering
@@ -204,6 +212,7 @@ func _ready() -> void:
 		farm.start_replay_log(gen_seed)
 		farm.start_trace(gen_seed, false)
 	farm.queue_redraw()
+	InputManager.tap_buffered.connect(_capture_machine_tap)
 
 	# Where the bed actually is, scanned rather than assumed so it survives a
 	# layout change — and since 2026-09-06 it is indoors, on page 1. This stays

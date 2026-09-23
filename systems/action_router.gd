@@ -112,8 +112,10 @@ const OBSTACLE_TOOLS := {
 ## @param player_t Vector2i|null — player's current tile (0-indexed)
 ## @param is_drag  bool      — true if triggered by a drag/swipe
 ## @param drag_tool_idx Variant|null — if provided, restricts action to this tool_idx (int) or -1 (no action)
+## @param tapped_machine_id String — optional actor captured at press time, before it moved
 ## @return Dictionary|null
-func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: bool = false, drag_tool_idx = null) -> Dictionary:
+func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: bool = false,
+		drag_tool_idx = null, tapped_machine_id: String = "") -> Dictionary:
 	var tx := tap_t.x
 	var ty := tap_t.y
 
@@ -146,6 +148,18 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 			"action": "teach", "tool_idx": 0, "target_t": tap_t,
 			"walk_to": false, "seed_type": "", "machine": teaching_machine,
 		})
+
+	# A moving machine may have left the touched square between the input event
+	# and this frame. A captured actor id keeps that single tap attached to what
+	# the finger hit; a machine already picked up cannot answer it.
+	if not is_drag and tapped_machine_id != "" and teach_world != null \
+			and teach_world.has_actor(tapped_machine_id):
+		var machine_tile: Vector2i = teach_world.actor_pos(tapped_machine_id)
+		if teach_world.machine_at(machine_tile) == tapped_machine_id:
+			return check_result.call({
+				"action": "open_machine", "tool_idx": 0, "target_t": machine_tile,
+				"walk_to": false, "seed_type": "", "machine": tapped_machine_id,
+			})
 
 	# 1. Special objects
 	var obj: String = farm.get_object(tx, ty)
@@ -217,7 +231,7 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 		# walk nobody asked for.
 		return check_result.call({
 			"action": "open_machine", "tool_idx": 0, "target_t": tap_t,
-			"walk_to": false, "seed_type": "",
+			"walk_to": false, "seed_type": "", "machine": world.machine_at(tap_t),
 		})
 
 	# 1c-ii. Her fences answer before the ground does (Q-92). That includes the
@@ -383,8 +397,8 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 ## Sim untouched: this is intent resolution, layer 3, and it produces no verb the
 ## player did not already have.
 func resolve_with_halo(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null,
-		is_drag: bool = false, drag_tool_idx = null) -> Dictionary:
-	var direct := resolve(farm, gs, tap_t, player_t, is_drag, drag_tool_idx)
+		is_drag: bool = false, drag_tool_idx = null, tapped_machine_id: String = "") -> Dictionary:
+	var direct := resolve(farm, gs, tap_t, player_t, is_drag, drag_tool_idx, tapped_machine_id)
 	if not direct.is_empty():
 		return direct                                    # guard 1
 	if is_drag or player_t == null:

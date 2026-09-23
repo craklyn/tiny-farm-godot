@@ -3498,10 +3498,19 @@ func _scenario_ag_a_machine_is_bought_placed_and_told_what_to_do() -> void:
 	var gap: int = apart.call()
 	_assert(gap > 1, "it has settled away from her, so the tap under test is a far one (%d tiles)" % gap)
 	var walking_at: Vector2i = farm.sim.actor_pos(mid)
-	InputManager.click_tile = walking_at
-	InputManager.has_click = true
+	var player_before_tap: Vector2i = player.get_tile_pos()
+	InputManager.tap_tile(walking_at)
+	_assert(InputManager.click_actor_id == mid,
+		"the input edge remembers which moving machine the finger touched")
+	# Guarantee the race the old test only happened to hit on some CI seeds:
+	# the machine leaves its tapped square before the player consumes the click.
+	farm.sim.set_actor_pos(mid, spot)
+	_assert(farm.sim.machine_at(walking_at) == "",
+		"the touched square is empty by the time the tap is routed")
 	var reopened := await _wait_until(func(): return menus.active_menu == "machine", 2000)
 	_assert(reopened, "one tap on a walking robot, from across the yard, opens its panel")
+	_assert(player.get_tile_pos() == player_before_tap,
+		"opening a far machine panel does not make her chase the robot")
 	# That she does not have to walk to it is the router's own answer, so ask the
 	# router rather than watching her feet: measuring movement meant measuring
 	# whether she happened to be standing still mid-scenario, which she is not.

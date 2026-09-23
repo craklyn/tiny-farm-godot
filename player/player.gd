@@ -184,8 +184,10 @@ func update_player(delta: float) -> void:
 	var target_t: Variant = null
 	var is_drag := false
 	var is_new_tap := false
+	var tapped_machine_id := ""
 	
 	if InputManager.has_click:
+		tapped_machine_id = InputManager.click_actor_id
 		target_t = InputManager.consume_click()
 		is_new_tap = true
 	elif InputManager.swipe_active and InputManager.swipe_moved:
@@ -222,7 +224,8 @@ func update_player(delta: float) -> void:
 		# T-27 (box 3): the refusal-aware halo. The tapped tile still wins whenever
 		# it produces a real world change; a tap that produced nothing, made while
 		# she is standing beside the cot, resolves as the cot tap it was meant to be.
-		var resolved := ActionRouter.resolve_with_halo(farm, gs, target_vec, player_t, is_drag, drag_intent)
+		var resolved := ActionRouter.resolve_with_halo(
+			farm, gs, target_vec, player_t, is_drag, drag_intent, tapped_machine_id)
 
 		# What the finger hit, kept apart from what the tap meant. The trace records
 		# the tile she actually touched — the fat-finger evidence is the whole reason
@@ -240,6 +243,19 @@ func update_player(delta: float) -> void:
 				drag_tool_idx = resolved.get("tool_idx", -1)
 			else:
 				drag_tool_idx = -1
+
+		# UI navigation explicitly asks for no walk. Do not send a far machine
+		# tap into A*: a follow robot moves while she approaches and its panel
+		# can become impossible to catch. The captured id survives that movement.
+		if not resolved.is_empty() and not bool(resolved.get("walk_to", true)):
+			var menu_tile: Vector2i = resolved.get("target_t", target_vec)
+			tap_indicator = { "tx": menu_tile.x, "ty": menu_tile.y,
+				"timer": TAP_INDICATOR_DURATION, "r": 0.2, "g": 0.9, "b": 0.3 }
+			if farm.trace != null:
+				farm.trace.tap("tap", tapped_t, player_t, gs.selected_tool,
+					String(resolved.get("action", "")), "acted", "", Vector2i(-1, -1))
+			_execute_resolved_action(resolved)
+			return
 		
 		# Q-30: stop *beside* a tile she could work rather than on top of it.
 		#
@@ -687,7 +703,7 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 		# machine that walks could be one step away by the time the deferred call
 		# lands, and a panel that misses by a step reads as a dead tap.
 		get_tree().get_first_node_in_group("Main").call_deferred(
-			"trigger_machine_menu_for", farm.sim.machine_at(target_t))
+			"trigger_machine_menu_for", String(pa.get("machine", farm.sim.machine_at(target_t))))
 		return
 	# ...and a tap on a building opens the building's own panel (P-18,
 	# 2026-09-15). The machine panel's shape, keyed on the tile: a coop cannot

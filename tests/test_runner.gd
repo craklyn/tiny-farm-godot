@@ -655,14 +655,21 @@ func test_input_bleed() -> void:
 	# ordinary cot tap; and it obeys T-27's consumption window, because a tap made
 	# during a day transition is not a tap in the day it would land in.
 	var cot := Vector2i(2, 1)
+	InputManager.tap_buffered.connect(func(tile: Vector2i):
+		if tile == cot:
+			InputManager.click_actor_id = "fixture_machine")
 	_assert(InputManager.tap_tile(cot), "a tile tap is taken when nothing is in the way")
 	_assert(InputManager.has_click, "and fills the same buffer a finger fills")
+	_assert(InputManager.click_actor_id == "fixture_machine",
+		"the press-time observer can attach the actor before the next sim frame")
 	_assert(InputManager.consume_click() == cot, "with the tile it was aimed at")
 	_assert(not InputManager.has_click, "consumed exactly once, like any tap")
+	_assert(InputManager.click_actor_id == "", "consuming a tap also forgets its actor")
 
 	InputManager.swallow_input(true)
 	_assert(not InputManager.tap_tile(cot), "during a day transition the tap is refused")
 	_assert(not InputManager.has_click, "and nothing is left buffered to fire on the first frame of morning")
+	_assert(InputManager.click_actor_id == "", "a blocked tap cannot carry an old machine into morning")
 	InputManager.swallow_input(false)
 	_assert(InputManager.tap_tile(cot), "the instant the window shuts it is an ordinary tap again")
 	InputManager.consume_click()
