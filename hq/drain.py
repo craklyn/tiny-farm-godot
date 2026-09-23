@@ -901,13 +901,14 @@ def _remove_reviewed_generated_file(item, tree, patch):
     prior = (item.get("prior_checks") or [])[-1:]
     check = prior[0] if prior else {}
     path = "docs/writing_verdicts.json"
-    if (check.get("verdict") not in ("concerns", "fail")
-            or path not in (check.get("unrelated_generated_files") or [])
-            or path not in _patch_paths(patch)):
+    if check.get("verdict") not in ("concerns", "fail") or path not in _patch_paths(patch):
         return False
     findings = check.get("findings") or []
+    marked = path in (check.get("unrelated_generated_files") or [])
     if not any(re.fullmatch(re.escape(path) + r"(?::\d+)?", f.get("where") or "")
                and re.search(r"\b(remove|drop|revert|exclude)\b", f.get("fix") or "", re.I)
+               and (marked or re.search(r"\bunrelated\b", " ".join(
+                   (f.get("what") or "", f.get("fix") or "")), re.I))
                for f in findings if isinstance(f, dict)):
         return False
     sh(["git", "restore", "--source=HEAD", "--staged", "--worktree", "--", path],
