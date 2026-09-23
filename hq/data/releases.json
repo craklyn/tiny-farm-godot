@@ -11,8 +11,8 @@
         {
           "id": "shop",
           "evidence": "P-12",
-          "headline": "A shop that sells everything",
-          "for_players": "Seeds, tools, animals and machines — if you can own it, you can buy it. The whole screen is pictures, coins and numerals, so a child who cannot read can shop on their own."
+          "headline": "A shop for seeds and machines",
+          "for_players": "Buy seeds and machines on a screen made of pictures, coins and numerals, so a child who cannot read can shop on their own."
         },
         {
           "id": "robots",
@@ -23,8 +23,9 @@
         {
           "id": "home",
           "evidence": "T-37, T-39",
-          "headline": "A home to go inside",
-          "for_players": "The farmhouse stands in your yard with a front door you can walk through. Inside is a room with your bed — at dusk the door glows to show you the way, and the bed glows once you are in."
+          "headline": "The farmhouse interior is not reachable",
+          "for_players": "The farmhouse interior exists, but players cannot reach it from the farm because the home screen has no working door.",
+          "reachable_in_play": false
         },
         {
           "id": "clock",
@@ -138,7 +139,17 @@
       "name": "M3 — the next content milestone (parked)",
       "tag_intent": null,
       "goal": "Parked by the CEO on 2026-09-09: the plan entry named 'Machines that pay for themselves' was cryptic and unhelpful, so M3 is off the release plan until its content is re-sketched with him in plain words. The next slice of the five-phase arc, scoped by your ruling and planned on the M2.5 template. What M3 actually contains is itself the opening decision.",
-      "definition_of_done": "Scope ruled; plan written with a measured exit gate; work items delivered and verified."
+      "definition_of_done": "Scope ruled; plan written with a measured exit gate; work items delivered and verified.",
+      "features": [
+        {
+          "id": "machine-distress",
+          "evidence": "S-10",
+          "headline": "The stuck-machine notice is not reachable",
+          "for_players": "The notice is not reachable in play. Its project has completed 1 of 5 steps.",
+          "project": "machine-distress-state",
+          "reachable_in_play": false
+        }
+      ]
     }
   ]
 }
