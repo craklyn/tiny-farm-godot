@@ -21,6 +21,16 @@ def git(repo, *args):
 
 
 class SuiteTests(unittest.TestCase):
+    def test_logged_timeout_keeps_log_and_returns_incomplete(self):
+        with tempfile.TemporaryDirectory() as temp:
+            log_path = os.path.join(temp, "timeout.log")
+            code = verify_held_patch._run_logged(
+                [sys.executable, "-c", "import time; print('started', flush=True); time.sleep(30)"],
+                temp, log_path, timeout=0.1)
+            self.assertEqual(code, 124)
+            with open(log_path) as source:
+                self.assertIn("verification timed out", source.read())
+
     def test_wrapper_isolates_data_and_rejects_missing_result(self):
         wrapper = os.path.join(os.path.dirname(HQ), "tools/run_godot_test.py")
         command = [sys.executable, wrapper, "--", sys.executable, "-c",
@@ -125,26 +135,54 @@ class HeldPatchTests(unittest.TestCase):
         with open(path) as source:
             evidence = json.load(source)
         self.assertEqual(evidence["completed_runs"], 0)
-        self.assertEqual([row["completed"] for row in evidence["runs"]], [False, False])
+        self.assertEqual([row["completed"] for row in evidence["runs"]], [False])
 
     def test_default_wrapper_is_current_checkout_not_historical_candidate(self):
-        original = verify_held_patch._command
         seen = []
-        def fake_command(args, cwd, timeout=120, input=None):
-            if len(args) > 1 and args[0] == sys.executable and args[1].endswith("run_godot_test.py"):
-                seen.append((args, cwd))
-                return subprocess.CompletedProcess(args, 0,
-                    "  ✓ known assertion\nResults: 2 PASSED, 0 FAILED\n", "")
-            return original(args, cwd, timeout=timeout, input=input)
-        with patch.object(verify_held_patch, "_command", side_effect=fake_command):
+        def fake_logged(args, cwd, log_path, timeout):
+            seen.append((args, cwd))
+            with open(log_path, "w") as sink:
+                if args[0] == "godot":
+                    sink.write("imported\n")
+                else:
+                    sink.write("  ✓ known assertion\nResults: 2 PASSED, 0 FAILED\n")
+            return 0
+        with patch.object(verify_held_patch, "_run_logged", side_effect=fake_logged):
             path = verify_held_patch.verify(self.item_id, 1, "known assertion", repo=self.repo)
         with open(path) as source:
             evidence = json.load(source)
         self.assertEqual(evidence["assertion_passes"], 1)
-        self.assertEqual(len(seen), 1)
-        self.assertTrue(os.path.isabs(seen[0][0][1]))
-        self.assertTrue(seen[0][0][1].startswith(os.path.dirname(HQ)))
-        self.assertNotEqual(seen[0][1], os.path.dirname(HQ))
+        self.assertEqual(len(seen), 2)
+        self.assertTrue(os.path.isabs(seen[1][0][1]))
+        self.assertTrue(seen[1][0][1].startswith(os.path.dirname(HQ)))
+        self.assertNotEqual(seen[1][1], os.path.dirname(HQ))
+
+    def test_incomplete_first_run_stops_and_keeps_partial_evidence(self):
+        command = [sys.executable, "-c", "import sys; print('no result'); sys.exit(124)"]
+        path = verify_held_patch.verify(self.item_id, 10, "known assertion", repo=self.repo,
+                                        runner=command)
+        with open(path) as source:
+            evidence = json.load(source)
+        self.assertEqual(evidence["requested_runs"], 10)
+        self.assertEqual(len(evidence["runs"]), 1)
+        self.assertEqual(evidence["completed_runs"], 0)
+        with open(os.path.join(os.path.dirname(path), "run-01.log")) as source:
+            self.assertIn("no result", source.read())
+        self.assertFalse(os.path.exists(os.path.join(os.path.dirname(path), "run-02.log")))
+
+    def test_import_failure_stops_before_suite_and_keeps_log(self):
+        def fail_import(args, cwd, log_path, timeout):
+            with open(log_path, "w") as sink:
+                sink.write("SCRIPT ERROR: missing class\n")
+            self.assertEqual(args[0], "godot")
+            return 1
+        with patch.object(verify_held_patch, "_run_logged", side_effect=fail_import):
+            path = verify_held_patch.verify(self.item_id, 10, "known assertion", repo=self.repo)
+        with open(path) as source:
+            evidence = json.load(source)
+        self.assertFalse(evidence["import"]["ok"])
+        self.assertEqual(evidence["runs"], [])
+        self.assertTrue(os.path.exists(os.path.join(os.path.dirname(path), "import.log")))
 
     def test_rejects_multiple_summaries_and_stray_assertion_after_summary(self):
         command = [sys.executable, "-c", "print('  ✓ known assertion'); "

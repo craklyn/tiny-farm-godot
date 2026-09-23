@@ -12,6 +12,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -26,6 +27,36 @@ RESULT = re.compile(r"Results:\s*(\d+) PASSED,\s*(\d+) FAILED")
 
 def _command(args, cwd, timeout=120, input=None):
     return subprocess.run(args, cwd=cwd, input=input, capture_output=True, text=True, timeout=timeout)
+
+
+def _run_logged(args, cwd, log_path, timeout):
+    """Stream a check to durable storage and stop its entire child group."""
+    with open(log_path, "w", encoding="utf-8") as sink:
+        proc = subprocess.Popen(args, cwd=cwd, stdout=sink, stderr=subprocess.STDOUT,
+                                start_new_session=True)
+        try:
+            return proc.wait(timeout=timeout)
+        except (subprocess.TimeoutExpired, KeyboardInterrupt) as exc:
+            code = 130 if isinstance(exc, KeyboardInterrupt) else 124
+            os.killpg(proc.pid, signal.SIGTERM)
+            try:
+                proc.wait(timeout=3)
+            except subprocess.TimeoutExpired:
+                os.killpg(proc.pid, signal.SIGKILL)
+                proc.wait()
+            sink.write(f"\nERROR: verification {'interrupted' if code == 130 else 'timed out'}\n")
+            sink.flush()
+            return code
+
+
+def _save_evidence(path, evidence):
+    pending = path + ".pending"
+    with open(pending, "w", encoding="utf-8") as sink:
+        json.dump(evidence, sink, indent=2)
+        sink.write("\n")
+        sink.flush()
+        os.fsync(sink.fileno())
+    os.replace(pending, path)
 
 
 def verify(item_id, runs, assertion, repo=drain.REPO, output_root=None, runner=None):
@@ -79,22 +110,36 @@ def verify(item_id, runs, assertion, repo=drain.REPO, output_root=None, runner=N
                     "assertion": assertion, "requested_runs": runs, "completed_runs": 0,
                     "assertion_passes": 0, "assertion_failures": 0, "runs": [],
                     "created": datetime.now(timezone.utc).isoformat()}
+        evidence_path = os.path.join(evidence_dir, "evidence.json")
+        _save_evidence(evidence_path, evidence)
+        print(f"Evidence: {evidence_path}", flush=True)
+        # A detached historical worktree has no imported Godot class cache.
+        # The suite can otherwise emit hundreds of parse errors and sit until
+        # timeout, which says nothing about the proposed game change.
+        if runner is None:
+            print("Importing candidate before tests...", flush=True)
+            import_log = os.path.join(evidence_dir, "import.log")
+            import_code = _run_logged(["godot", "--headless", "--path", ".", "--import"],
+                                      worktree, import_log, timeout=300)
+            with open(import_log, encoding="utf-8") as source:
+                import_output = source.read()
+            evidence["import"] = {"exit_code": import_code, "log": "import.log",
+                                  "ok": import_code == 0 and "SCRIPT ERROR:" not in import_output}
+            _save_evidence(evidence_path, evidence)
+            if not evidence["import"]["ok"]:
+                print(f"Candidate import failed; see {import_log}", flush=True)
+                return evidence_path
         wrapper = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
                                "tools", "run_godot_test.py")
         run_cmd = runner or [sys.executable, wrapper, "--timeout", "840", "--",
                              "godot", "--headless", "--path", ".", "res://tools/test_runner.tscn"]
         for number in range(1, runs + 1):
-            try:
-                result = _command(run_cmd, worktree, timeout=900)
-                output = result.stdout + result.stderr
-                code = result.returncode
-            except subprocess.TimeoutExpired as exc:
-                output = (exc.stdout or b"").decode(errors="replace") if isinstance(exc.stdout, bytes) else (exc.stdout or "")
-                output += "\nERROR: outer verification timeout\n"
-                code = 124
+            print(f"Integration run {number}/{runs} starting...", flush=True)
             log_name = f"run-{number:02d}.log"
-            with open(os.path.join(evidence_dir, log_name), "w", encoding="utf-8") as sink:
-                sink.write(output)
+            log_path = os.path.join(evidence_dir, log_name)
+            code = _run_logged(run_cmd, worktree, log_path, timeout=900)
+            with open(log_path, encoding="utf-8") as source:
+                output = source.read()
             matches = list(RESULT.finditer(output))
             # Exit 1 is a completed failing suite; timeouts, kills, and other
             # abnormal exits cannot count even if output contained a result.
@@ -119,10 +164,14 @@ def verify(item_id, runs, assertion, repo=drain.REPO, output_root=None, runner=N
                 evidence["completed_runs"] += 1
                 evidence["assertion_failures"] += int(failed_assertion)
                 evidence["assertion_passes"] += int(passed_assertion)
-            with open(os.path.join(evidence_dir, "evidence.json"), "w", encoding="utf-8") as sink:
-                json.dump(evidence, sink, indent=2)
-                sink.write("\n")
-        return os.path.join(evidence_dir, "evidence.json")
+            _save_evidence(evidence_path, evidence)
+            print(f"Integration run {number}/{runs}: "
+                  f"{'complete' if completed else 'incomplete'}, exit {code}, "
+                  f"assertion {row['assertion']}; log {log_path}", flush=True)
+            if not completed or code != 0 or row["failed"] != 0 or row["assertion"] != "pass":
+                print("Stopping after unsuccessful run; no further runs will start.", flush=True)
+                break
+        return evidence_path
     finally:
         _command(["git", "worktree", "remove", "--force", worktree], repo)
         shutil.rmtree(worktree, ignore_errors=True)
@@ -136,6 +185,10 @@ def main():
     args = parser.parse_args()
     try:
         path = verify(args.item_id, args.runs, args.assertion)
+    except KeyboardInterrupt:
+        print("Verification interrupted; completed evidence remains in the printed directory.",
+              file=sys.stderr)
+        return 130
     except (OSError, ValueError, subprocess.TimeoutExpired) as exc:
         print(f"Verification refused: {exc}", file=sys.stderr)
         return 1
