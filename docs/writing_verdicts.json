@@ -206,6 +206,9 @@
    "verdict": "decode",
    "why": "Three internal terms in one clause: where it came from, how often the game releases, and whether it behaves the same way."
   },
+  "0cfd802a2257d6759017": {
+   "verdict": "ok"
+  },
   "0cfe040f04c7d118768e": {
    "verdict": "ok"
   },
@@ -760,6 +763,12 @@
   },
   "2d3a4ad24ee98b6736c3": {
    "verdict": "ok"
+  },
+  "2d4f5c8cb0b48bdbaf0d": {
+   "instead": "After the player buys her first fence, the starting fence can be picked up and laid again",
+   "quote": "her",
+   "verdict": "second-look",
+   "why": "The sentence does not say who bought the fence, so the reader has to infer that “her” means the player."
   },
   "2d52d0c8e1af607aa7df": {
    "verdict": "ok"
