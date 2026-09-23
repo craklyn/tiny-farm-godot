@@ -52,7 +52,7 @@ const CONFIG_LABELS := {
 var active_menu: String = ""  # "", "pause", "shop", "bin", "inventory", "machine", "workbench", "window"
 var selected_option: int = 0
 var bin_options: Array[Dictionary] = []
-var shop_feedback: String = ""
+var shop_refused_seed: String = ""  # The full card whose last press was refused.
 
 # **What number the next row on a panel gets.** `_select_current_option` reads a
 # tap back as a position in a list — `shop_items[n]`, `machine_options[n]` — so
@@ -217,7 +217,7 @@ func _ready() -> void:
 func open_menu(menu_name: String) -> void:
 	active_menu = menu_name
 	selected_option = 0
-	shop_feedback = ""
+	shop_refused_seed = ""
 	dim_overlay.visible = true
 	menu_panel.visible = true
 	menu_panel.pivot_offset = menu_panel.size / 2.0
@@ -415,11 +415,6 @@ func _rebuild_options() -> void:
 			options_container.add_child(shelf)
 			for item in shop_items:
 				_add_shop_card(shelf, item)
-			if shop_feedback != "":
-				var feedback := Label.new()
-				feedback.text = shop_feedback
-				feedback.add_theme_color_override("font_color", Color(1.0, 0.55, 0.45))
-				options_container.add_child(feedback)
 			# × — a symbol, not a word. The row is already full-width and 52px
 			# tall, so the *target* was never the problem; the glyph was — twice:
 			# U+2715 ✕ lives outside the bundled font, and the web export has no
@@ -866,6 +861,12 @@ func _add_shop_card(into: Control, item: Dictionary) -> void:
 		style.bg_color = Color(0.18, 0.18, 0.25, 0.6)
 	else:
 		style.bg_color = Color(0.1, 0.1, 0.15, 0.6)
+	# The full card already says 10/10 in red. A refused press keeps that card
+	# ringed in red after the press animation, with the existing nope sound — no
+	# new word a pre-reader must decode on the one wordless shop screen (S-7).
+	if bool(item.get("full_pouch", false)) and shop_refused_seed == String(item.seed_type):
+		style.border_color = Color(0.95, 0.28, 0.24)
+		style.set_border_width_all(3)
 	style.corner_radius_top_left = 6
 	style.corner_radius_top_right = 6
 	style.corner_radius_bottom_left = 6
@@ -1086,12 +1087,12 @@ func _select_current_option() -> void:
 				var result: Dictionary = farm.apply_action(purchase, GameState)
 				var bought: bool = result.get("ok", false)
 				if bought:
-					shop_feedback = ""
+					shop_refused_seed = ""
 					AudioManager.play_sfx("harvest")
 					_rebuild_options()
 					menu_action.emit("bought_seed")
 				elif String(result.get("reason", "")) == "pouch_full":
-					shop_feedback = "Pouch full"
+					shop_refused_seed = String(item.seed_type)
 					AudioManager.play_sfx("nope")
 					_rebuild_options()
 			else:

@@ -1317,7 +1317,8 @@ func _scenario_j_wordless_shop() -> void:
 		"and pressing a later card buys that row's own thing (%s)" % later.seed_type)
 
 	# The cap is part of the shop's visible state, not just a gateway refusal:
-	# she sees a darkened 10/10 card, and a press tells her why no gold moved.
+	# she sees a darkened 10/10 card, and a press rings that card in red while
+	# the existing nope sound plays. The live shop remains wordless (S-7).
 	var gold_before_cap: int = GameState.gold
 	var harvests_before_cap: Dictionary = GameState.harvest_counts.duplicate()
 	var tomatoes_before_cap: int = int(GameState.pouch.get("tomato", 0))
@@ -1345,20 +1346,26 @@ func _scenario_j_wordless_shop() -> void:
 		_assert(shows_capacity, "the full card shows its ten-of-ten capacity")
 		_press_row(menus.options_container, tomato_row)
 		await get_tree().create_timer(0.3).timeout
+		var live_shelf: Node = menus.options_container.get_node("shop_shelf")
+		var live_card: PanelContainer = live_shelf.get_child(tomato_row) as PanelContainer
+		var outline: StyleBoxFlat = live_card.get_theme_stylebox("panel") as StyleBoxFlat
+		_assert(menus.active_menu == "shop" and menus.shop_refused_seed == "tomato"
+			and outline.border_width_left == 3 and outline.border_color.r > 0.9,
+			"the rejected purchase keeps the shop open and rings the full card in red")
 		var refusal_labels: Array = []
 		_collect_labels(menus.options_container, refusal_labels)
-		var reason_visible := false
+		var worded_after_press := false
 		for label in refusal_labels:
-			if String(label.text) == "Pouch full":
-				reason_visible = true
-		_assert(menus.active_menu == "shop" and reason_visible,
-			"the rejected purchase keeps the shop open and shows the full-pouch reason")
+			if _has_letters(String(label.text)):
+				worded_after_press = true
+		_assert(not worded_after_press,
+			"the failed press leaves the live shop wordless, with 10/10 as the reason")
 		_assert(GameState.gold == 100 and int(GameState.pouch.tomato) == 10,
 			"the rejected purchase changes neither gold nor stock")
 	GameState.gold = gold_before_cap
 	GameState.harvest_counts = harvests_before_cap
 	GameState.pouch["tomato"] = tomatoes_before_cap
-	menus.shop_feedback = ""
+	menus.shop_refused_seed = ""
 	menus._rebuild_options()
 
 	# **Put her hand back where it was.** Buying a machine always takes hold of it
