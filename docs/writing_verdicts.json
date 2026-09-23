@@ -1143,6 +1143,9 @@
   "47069a9ea70697fcaa56": {
    "verdict": "ok"
   },
+  "471cfc3b88ddd2b52172": {
+   "verdict": "ok"
+  },
   "4739dd7f61d44ac05817": {
    "verdict": "ok"
   },
@@ -2419,6 +2422,12 @@
   },
   "92aab01ca095802120be": {
    "verdict": "ok"
+  },
+  "92d4d7859163ec238a10": {
+   "instead": "Rewrite the questions coming back to the studio",
+   "quote": "Style the questions returning to the studio",
+   "verdict": "decode",
+   "why": "The reader has to work out whether “style” means rewrite and who or what is returning to the studio."
   },
   "92e546324dff0acbefd7": {
    "verdict": "ok"

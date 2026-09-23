@@ -96,6 +96,7 @@ generator left all three chip sheets byte-identical. Current tests passed:
 | Store-page rewrite [^store] | `ITCH_PAGE.md` is claimed by an accepted card, but the draft says the unreleased v0.2.2 text is live. | TK — compare copy with actual release state before landing. |
 | White-edge sprite processing [^white] | The helper and four synthetic checks exist in `tools/asset_pipeline/`, but the two builders import only `key_background`; neither invokes the new removal or final check. | Incomplete; wire and verify before landing. |
 | Ground-sheet sprite editor [^ground] | The original card said to copy the center cell over all nine, but the current renderer selects all nine by tile position. | Reconciled against current behavior; the card retains its stale earlier claim and records the corrected result. |
+| Returning-work list | The shared checkout added spacing and labels for the existing return strip, with four focused assertions. | Recovered as `3c0886d`; all 45 HQ test files pass. The broader reader card was already landed and has separate open concerns. |
 | Five playtest sessions [^playtests] | Each replay is distinct; all fifteen files parse as JSON lines and match the shared checkout by SHA-256. | Preserved as `9dc003b`, with the older-version note in `playtests/README.md`; the blocked card now records the successful recovery. |
 | Rulings, HQ ledger, art, experiments | 71 modified work cards, 23 new work cards, plus untracked assets. | TK — reconcile decisions and records by owner; preserve raw evidence. |
 
@@ -119,8 +120,8 @@ plausible helper file cannot by itself establish completion. Continue with
 the remaining candidates in small groups. Keep the shared checkout and its
 snapshot until every source path and untracked artifact has a disposition.
 
-1. **RUNNING:** Compare and land the remaining branch-only behavior, with
-   robot unlocks and obstacle images checked against current gameplay.
+1. **DONE:** All nine branch-only commits have a disposition: their result is
+   already on `main`, or the distinct work has been recovered and tested.
 2. **TK:** Finish or hold the uncommitted code and content by work card;
    distinguish accepted copy from a published release.
 3. **TK:** Reconcile rulings and HQ records, then classify raw assets,
