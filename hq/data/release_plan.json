@@ -203,6 +203,14 @@
           "title": "Cut the v0.2.1 tag from a green main through the deploy runbook",
           "estimate_days": 0.5,
           "done": false
+        },
+        {
+          "id": "s27",
+          "title": "Publish the approved store-page rewrite with v0.2.1 after checking that it describes the build players receive",
+          "owner": "lena",
+          "estimate_days": 0.25,
+          "done": false,
+          "source": "ITCH_PAGE.md"
         }
       ]
     },
