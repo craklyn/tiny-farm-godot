@@ -141,7 +141,9 @@ class CandidateHygiene(unittest.TestCase):
                     "prior_checks": [{"verdict": "fail", "findings": [{
                         "where": "docs/writing_verdicts.json:2911",
                         "what": "The hook added a verdict unrelated to this work.",
-                        "fix": "Remove the unrelated change."}]}]}
+                        "fix": "Remove the unrelated change."}]},
+                        {"verdict": "fail", "findings": [{"where": "owner reply",
+                            "what": "The run count is missing.", "fix": "Run it again."}]}]}
             self.assertTrue(drain.resume_held_patch(item, str(self.repo), False))
             self.assertEqual((self.repo / "docs/writing_verdicts.json").read_text(),
                              '{"verdicts": {}}\n')
@@ -151,6 +153,32 @@ class CandidateHygiene(unittest.TestCase):
             drain.save_patch(item["id"], revised)
             self.assertNotEqual(drain.patch_artifact(revised), original)
             self.assertEqual(Path(original["path"]).read_text(), held)
+
+    def test_recover_prior_check_requires_matching_checked_candidate(self):
+        (self.repo / "game.gd").write_text("held patch\n")
+        held = git(self.repo, "diff", "--binary") + "\n"
+        with patch.object(drain, "PATCHES", str(Path(self.temp.name) / "patches")):
+            drain.save_patch("w0123456789ab", held)
+            artifact = drain.patch_artifact(held)
+            rec = {"id": "w0123456789ab", "attempt_id": "edcc", "patch": held,
+                   "patch_artifact": artifact, "result": "Checked result",
+                   "candidate": {"tree": "checked-tree"},
+                   "check": {"read": True, "verdict": "fail", "findings": [{
+                       "where": "docs/writing_verdicts.json:2911",
+                       "fix": "Remove the unrelated change."}]}}
+            rec["check_evidence"] = drain.check_evidence_id(rec)
+            transaction = {"phase": "written_back", "item": rec["id"], "record": rec}
+            item = {"id": rec["id"], "workflow": {"candidates": [{
+                "attempt_id": "edcc", "tree": "checked-tree", "patch": artifact}]}}
+            self.assertTrue(drain.recover_prior_check(item, transaction, "edcc"))
+            self.assertEqual(item["prior_checks"][0]["attempt_id"], "edcc")
+            self.assertFalse(drain.recover_prior_check(item, transaction, "edcc"))
+            wrong = {**transaction, "record": {**rec, "patch": held + "tampered"}}
+            with self.assertRaises(ValueError):
+                drain.recover_prior_check({"id": rec["id"], "workflow": item["workflow"]}, wrong, "edcc")
+            wrong_card = {"id": rec["id"], "workflow": {"candidates": []}}
+            with self.assertRaises(ValueError):
+                drain.recover_prior_check(wrong_card, transaction, "edcc")
 
 
 if __name__ == "__main__":

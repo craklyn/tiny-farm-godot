@@ -114,6 +114,24 @@ class Completion(unittest.TestCase):
                          'the read of it says this should not go in as it stands')
         self.assertEqual(got['repair_hold'], got['diff']['why_not_landed'])
 
+    def test_new_attempt_keeps_previous_checker_result(self):
+        first = record(result=result('blocked'), check={
+            'verdict': 'fail', 'read': True, 'complete': False,
+            'findings': [{'what': 'Remove the unrelated change.',
+                          'where': 'docs/writing_verdicts.json:2911',
+                          'fix': 'Remove the unrelated change.'}]})
+        got = drain.write_back(self.card, first, False, '', None, ORG)
+        self.assertNotIn('prior_checks', got)
+        second = record(attempt_id='attempt2', result=result('blocked'), check={
+            'verdict': 'fail', 'read': True, 'complete': False,
+            'findings': [{'what': 'The run count is missing.'}]})
+        got = drain.write_back(got, second, False, '', None, ORG)
+        self.assertEqual([row['attempt_id'] for row in got['prior_checks']], ['attempt1'])
+        self.assertEqual(got['prior_checks'][0]['findings'], first['check']['findings'])
+        self.assertEqual(got['check']['attempt_id'], 'attempt2')
+        drain.write_back(got, second, False, '', None, ORG)
+        self.assertEqual(len(got['prior_checks']), 1)
+
     def test_one_repair_then_hold(self):
         r = record(check={'verdict':'concerns','read':True,'complete':False,'findings':[{'what':'missing answer'}]})
         got = drain.write_back(self.card, r, False, '', None, ORG)

@@ -884,6 +884,39 @@ def checked_patch(rec):
     return archived
 
 
+def recover_prior_check(item, transaction, attempt_id):
+    """Restore one lost review from a finished transaction onto its own card.
+
+    The caller saves the card after inspecting it. The attempt, checked patch,
+    and candidate must all match the card's durable workflow record.
+    """
+    rec = transaction.get("record") or {}
+    candidate = rec.get("candidate") or {}
+    artifact = rec.get("patch_artifact") or {}
+    if (transaction.get("phase") != "written_back"
+            or transaction.get("item") != item.get("id")
+            or rec.get("id") != item.get("id")
+            or rec.get("attempt_id") != attempt_id
+            or not rec.get("check") or not rec.get("check_evidence")
+            or rec["check_evidence"] != check_evidence_id(rec)):
+        raise ValueError("Transaction does not contain this card's finished, checked attempt")
+    checked_patch(rec)
+    if not any(row.get("attempt_id") == attempt_id
+               and row.get("tree") == candidate.get("tree")
+               and (row.get("patch") or {}).get("id") == artifact.get("id")
+               for row in (item.get("workflow") or {}).get("candidates", [])):
+        raise ValueError("Checked candidate is not recorded on this card")
+    if (item.get("check") or {}).get("attempt_id") == attempt_id:
+        return False
+    if any(row.get("attempt_id") == attempt_id for row in item.get("prior_checks") or []):
+        return False
+    restored = {key: value for key, value in rec["check"].items()
+                if key != "lesson_for_owner"}
+    restored["attempt_id"] = attempt_id
+    item.setdefault("prior_checks", []).append(restored)
+    return True
+
+
 def resume_held_patch(item, tree, thinking):
     """A second attempt starts from what the first one wrote, not from main.
 
@@ -917,22 +950,26 @@ def _remove_reviewed_generated_file(item, tree, patch):
     The held patch and its immutable archive remain untouched. This changes the
     retry worktree, so its next cumulative patch is a new reviewed candidate.
     """
-    prior = (item.get("prior_checks") or [])[-1:]
-    check = prior[0] if prior else {}
     path = "docs/writing_verdicts.json"
-    if check.get("verdict") not in ("concerns", "fail") or path not in _patch_paths(patch):
+    if path not in _patch_paths(patch):
         return False
-    findings = check.get("findings") or []
-    marked = path in (check.get("unrelated_generated_files") or [])
-    if not any(re.fullmatch(re.escape(path) + r"(?::\d+)?", f.get("where") or "")
-               and re.search(r"\b(remove|drop|revert|exclude)\b", f.get("fix") or "", re.I)
-               and (marked or re.search(r"\bunrelated\b", " ".join(
-                   (f.get("what") or "", f.get("fix") or "")), re.I))
-               for f in findings if isinstance(f, dict)):
+    if not any(_review_explicitly_removed_generated_file(check, path)
+               for check in reversed(item.get("prior_checks") or [])):
         return False
     sh(["git", "restore", "--source=HEAD", "--staged", "--worktree", "--", path],
        cwd=tree, check=True, timeout=120)
     return True
+
+
+def _review_explicitly_removed_generated_file(check, path):
+    if not isinstance(check, dict) or check.get("verdict") not in ("concerns", "fail"):
+        return False
+    marked = path in (check.get("unrelated_generated_files") or [])
+    return any(re.fullmatch(re.escape(path) + r"(?::\d+)?", f.get("where") or "")
+               and re.search(r"\b(remove|drop|revert|exclude)\b", f.get("fix") or "", re.I)
+               and (marked or re.search(r"\bunrelated\b", " ".join(
+                   (f.get("what") or "", f.get("fix") or "")), re.I))
+               for f in (check.get("findings") or []) if isinstance(f, dict))
 
 
 def load_patch(item_id):
@@ -1772,6 +1809,12 @@ def _write_back(item, rec, applied, why_not, suites, org):
     # do_item decides this before the patch is held; a record that skipped
     # do_item gets the same answer here. Edits that landed are never retried.
     resume = "" if applied or item.get("automatic_repairs") else (rec.get("resume") or auto_resume_reason(item, rec))
+    previous_check = item.get("check") or {}
+    previous_id = previous_check.get("attempt_id") or (item.get("attempt_outcome") or {}).get("id")
+    if previous_check and previous_id and previous_id != rec.get("attempt_id"):
+        prior = item.setdefault("prior_checks", [])
+        if not any(row.get("attempt_id") == previous_id for row in prior):
+            prior.append({**previous_check, "attempt_id": previous_id})
     item["last_recorded_attempt"] = rec.get("attempt_id")
     item["attempts"] = item.get("attempts", 0) + 1
     item["done_by"] = {"seat": rec["seat"], "model": rec["model"], "lane": "drain"}
