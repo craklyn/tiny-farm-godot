@@ -45,6 +45,8 @@ One implementation owner owns this cohesive change because sim, save, UI, and bo
 - `GameState.withdraw_reserved_crop(crop_type: String) -> int` transfers from reserve into carried stock up to that species' cap. The exact carried-stock field name is chosen once and used consistently in sim, consumers, and save schema.
 - `SaveGame.capture/restore/migrate` moves v4 to v5 with one canonical carried plantable-stock map, preserved noncrop inventory, a separate reserve map, and backward-compatible machine-hand count. Unit tests lock the migration and replay behavior, including a v4 save with pending `shipping_bin` sale through sleep.
 - `ActionRouter.resolve(...)` routes bin tap to a menu-open intent (UI-only, no world mutation), and the menu dispatches `sell` or `withdraw_seed` through the normal action gateway. Remove the old `basket_empty` satisfied result that would prevent opening the menu when the pouch is empty; update the contextual keyboard/tap hint. Keep machine actor behavior deterministic.
+- The shop card must not look affordable when a plantable species' pouch is at its cap. A rejected purchase leaves the shop visible and shows a clear full-pouch reason; gold and stock do not change.
+- The bin's “last deposit” display reports the last **player** deposit. Machine delivery must not overwrite that claim; if machine delivery is shown, label its source distinctly.
 
 Acceptance criteria:
 
@@ -56,6 +58,7 @@ Acceptance criteria:
 6. A pre-v5 save with both seed and crop stock loads the sum of plantable counts without loss, even above the new cap; future harvests refuse until room exists. Eggs, scarecrows, and nonzero legacy pending `shipping_bin` sales also survive with their old behavior.
 7. A machine harvest carries three counted units and delivers all three through the bin allocator; old one-unit hand state loads as one. A real-scene integration test reaches deposit, withdrawal, planting, and full-pouch refusal by simulated input, not by calling only the renderer. Existing robot session and replay still pass or any intentional fixture change is documented.
 8. Design docs accurately state the three rulings and mark them `[Playtest]`. HQ cards remain open until this is actually landed and verified.
+9. Tests exercise cap boundaries for the future 40-capacity silo at 37/38 carried stock (three-unit harvest all-or-nothing), a real-scene deposit that sells excess after the reserve reaches ten, and the actual visible full-pouch refusal cue. Do not count trace-only refusals as UI coverage.
 
 Verification before landing: Godot import if assets changed; headless unit suite; full integration suite; robot session; benchmark; `python3 tools/check_gateway.py`; any relevant writing check. Record exact pass/fail counts and logs. Do not push or close cards on a partial run.
 
@@ -63,3 +66,4 @@ Verification before landing: Godot import if assets changed; headless unit suite
 
 - 2026-09-23: Daniel settled Q-113, Q-115, Q-116 in HQ. Old candidate remains held and unapplied.
 - 2026-09-23: Read-only survey completed against main `68a8a0f`. Independent review found seven gaps; all folded into sections 3–4 before implementation.
+- 2026-09-23: First worker commit `2e12e52` passed its suites. Independent diff review found shop-cap and “last deposit” truth defects plus three coverage gaps. These are required before landing.
