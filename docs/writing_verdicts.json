@@ -1589,6 +1589,12 @@
    "verdict": "decode",
    "why": "Code is embedded in the prose, making the sentence unreadable."
   },
+  "6313db5c4dfcf3f598cd": {
+   "instead": "Farm build history is now available",
+   "quote": "has landed",
+   "verdict": "second-look",
+   "why": "“Landed” is a metaphor for a feature being completed, so the reader has to infer what happened."
+  },
   "631b9301d655adf8905e": {
    "verdict": "ok"
   },
@@ -2571,6 +2577,9 @@
    "verdict": "ok"
   },
   "9cf588600a49c11f4443": {
+   "verdict": "ok"
+  },
+  "9eb0ac692c815a662240": {
    "verdict": "ok"
   },
   "9eb17804810df6a5788c": {
