@@ -498,7 +498,8 @@ OWNER EXECUTION EVIDENCE (recorded by HQ's session adapter, not the owner's repl
 {evidence}
 VALIDATED EXTERNAL VERIFICATION (only for this exact candidate tree and patch):
 {external}
-The record names this review's run, attempt and candidate tree. A command's
+The owner record names its original run, attempt and candidate tree. An
+evidence-only re-review may have a later review run for that same tree. A command's
 output proves only what that command reported at that point in the session;
 inspect the candidate diff and do not assume a later edit was tested. The full
 stream is at log_path. Claims need completed command results or validated external evidence.
@@ -1279,6 +1280,99 @@ def do_item(item, org, run_id, log, action=None):
     finally:
         if tree:
             drop_worktree(tree)
+    return rec
+
+
+def held_recheck_source(item):
+    """Return the last immutable owner record only for an exactly verified patch.
+
+    New test evidence is a reason to re-read the same candidate, not to pay for
+    another coding session. A changed base, patch, or missing command transcript
+    sends the card back through its normal reconciliation path.
+    """
+    evidence = verification_evidence.lookup(item, roots.ROOTS["data"])
+    outcome = item.get("attempt_outcome") or {}
+    candidate = outcome.get("candidate") or {}
+    if (not evidence or evidence["completed_runs"] != evidence["requested_runs"] or
+            evidence["passing_suites"] != evidence["requested_runs"] or
+            evidence["assertion_passes"] != evidence["requested_runs"] or
+            candidate.get("base") != integration.main_head(server.REPO)):
+        return None
+    attempt_id = item.get("last_recorded_attempt")
+    try:
+        runs = sorted(os.listdir(TRANSACTIONS), reverse=True)
+    except OSError:
+        return None
+    for run in runs:
+        path = os.path.join(TRANSACTIONS, run, item["id"] + ".json")
+        try:
+            with open(path, encoding="utf-8") as source:
+                tx = json.load(source)
+        except (OSError, ValueError):
+            continue
+        old = tx.get("record") or {}
+        if (old.get("attempt_id") != attempt_id or
+                old.get("candidate") != candidate or
+                work.evidence_id(old.get("patch", "")) != outcome.get("patch_id") or
+                not old.get("result") or not old.get("execution_evidence")):
+            continue
+        return old, evidence
+    return None
+
+
+def recheck_held_candidate(item, org, run_id, source):
+    """Fresh independent review of an unchanged candidate; no owner model call."""
+    old, external = source
+    rec = {**old, "attempt_id": uuid.uuid4().hex, "usage": [], "error": "",
+           "limited": False, "held": False, "resume": "", "applied": False,
+           "review_only": True, "check": None, "check_evidence": None,
+           "candidate_suites": None, "suites": None, "tree_evidence": None,
+           "integration_checkout": "", "external_verification": external}
+    rec["execution_evidence"] = {**old["execution_evidence"],
+                                 "external_verification": external}
+    tree = ""
+    try:
+        record_phase(run_id, item, "preparing_review", "The verified held patch is being reconstructed exactly.")
+        tree, kind, why = prepare_integration(rec)
+        if kind:
+            rec["held"], rec["error"] = True, why
+            return rec
+        if touches_game(rec.get("files") or []):
+            preflight_godot_import(tree)
+        record_phase(run_id, item, "reviewing", "The chief of staff is re-reading the unchanged candidate and new test evidence.")
+        cmodel = server.seat_model(org, "claude")
+        ctext, cusage, cerr = run_cli(check_prompt(item, rec["result"], rec["patch"], org,
+                                                  rec["execution_evidence"], external), CHECK_SYSTEM,
+                                      "Read,Glob,Grep", cmodel, tree, CHECK_TIMEOUT,
+                                      CHECK_TURNS, "drain-check", "claude", item["id"], rec["attempt_id"])
+        if cusage:
+            rec["usage"].append(dict(cusage, phase="drain-check", seat="claude"))
+        if cerr:
+            rec["held"], rec["error"] = True, cerr
+            return rec
+        rec["check"] = enforce_execution_claims(parse_check(ctext) if ctext else None,
+                                                rec["result"], rec["execution_evidence"])
+        if rec["check"]:
+            rec["check_evidence"] = check_evidence_id(rec)
+        checkpoint(item, rec, "review_finished")
+        if rec["files"] and rec["check"]:
+            record_phase(run_id, item, "checking_candidate", "The re-reviewed candidate is running both game suites.")
+            rec["candidate_suites"] = run_suites(cwd=tree)
+            restore_test_generated(tree, rec["candidate"]["tree"])
+            checkpoint(item, rec, "candidate_tested")
+        rec["candidate_unchanged"] = candidate_unchanged(tree, rec["candidate"]["tree"])
+        rec["candidate_test_evidence"] = work.evidence_id([rec["candidate"], rec.get("candidate_suites")])
+        if rec["check"] is None:
+            rec["check"] = {"verdict": "concerns", "complete": False,
+                            "summary": "The evidence-only review did not return a readable verdict.",
+                            "findings": [], "escalates": None, "escalation_reason": None, "read": False}
+    except GodotImportHold as exc:
+        rec["held"], rec["tooling_hold"], rec["error"] = True, True, str(exc)
+    except Exception as exc:
+        rec["held"], rec["error"] = True, f"{type(exc).__name__}: {exc}"[:400]
+    finally:
+        if tree:
+            integration.remove_candidate(server.REPO, tree, WORKTREES)
     return rec
 
 
@@ -2301,8 +2395,13 @@ def run_verified_batch(pool, org, run_id, log, *, no_suites=False, actions=None)
                 continue
             resolve_handoff_action(item)
         record_phase(run_id, item, "starting", "The task queue is preparing its isolated checkout.")
-        rec = do_item(item, org, run_id, log, action=action) if action else \
-            do_item(item, org, run_id, log)
+        source = (held_recheck_source(item) if action and action.get("type") == "reconcile"
+                  else None)
+        if source:
+            rec = recheck_held_candidate(item, org, run_id, source)
+        else:
+            rec = do_item(item, org, run_id, log, action=action) if action else \
+                do_item(item, org, run_id, log)
         records[item["id"]] = rec
         if rec.get("held") or rec.get("limited"):
             if claim_id:
