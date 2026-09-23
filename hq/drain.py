@@ -50,6 +50,7 @@ import roots
 
 import argparse
 import concurrent.futures
+import hashlib
 import json
 import os
 import re
@@ -458,7 +459,7 @@ Be specific and be brief. Findings are for the person who has to act on them.
 You answer with raw JSON and nothing else."""
 
 
-def check_prompt(item, result, diff, org=None):
+def check_prompt(item, result, diff, org=None, execution_evidence=None):
     revising = ""
     if item.get("revising"):
         prior = (item.get("prior_results") or [{}])[-1].get("result") or ""
@@ -475,6 +476,8 @@ WHAT HE SAID ON THE CARD:
 THE EARLIER RESULT HE WAS READING:
 {prior[:4000]}
 """
+    evidence = json.dumps(execution_evidence or {"status": "no completed owner command evidence"},
+                          ensure_ascii=False, sort_keys=True)
     return f"""THE ITEM: {item['title']}
 What Daniel asked for: {item.get('ask', '')}
 The step that was theirs to take: {item.get('first_action', '')}
@@ -482,6 +485,13 @@ Who did it: {item['owner']}
 {revising}
 WHAT THEY SAID THEY DID:
 {(result or '(no reply came back)')[:8000]}
+
+OWNER EXECUTION EVIDENCE (recorded by HQ's session adapter, not the owner's reply):
+{evidence}
+The record names this review's run, attempt and candidate tree. A command's
+output proves only what that command reported at that point in the session;
+inspect the candidate diff and do not assume a later edit was tested. The full
+stream is at log_path. Claims without completed command results are unverified.
 
 THE DIFF THEY PRODUCED:
 {diff[:60000] if diff else '(no files changed)'}
@@ -513,6 +523,123 @@ an outsider can be hit by this now), "age" (it is ours, but it has waited long
 enough that the delay is itself the news). Approving a piece of work is NOT an
 escalation — that is what the work queue is for. Leave both null unless one of
 the four really applies."""
+
+
+_SUITE_RESULT = re.compile(r"Results: (\d+) PASSED, (\d+) FAILED")
+_SCENARIO_W_PASS = "✓ even though the sim washed it dry at the tap"
+_INTEGRATION_COMMAND = ("tools/run_godot_test.py", "res://tools/test_runner.tscn")
+
+
+def owner_execution_evidence(log_path, *, run, attempt_id, candidate):
+    """Summarize completed tool results from this attempt's session stream.
+
+    This is evidence for the checker to inspect, not a substitute for the
+    prospective-main suites. Failed, started-only and prose events never count.
+    The SHA allows a later reader to detect a changed stream; the candidate
+    identity says which proposed tree this review concerns, without claiming
+    that every earlier command ran on its final bytes.
+    """
+    evidence = {"version": 1, "run": run, "attempt_id": attempt_id,
+                "candidate_tree": (candidate or {}).get("tree", ""),
+                "log_path": os.path.abspath(log_path), "log_sha256": "",
+                "completed_integration_runs": 0, "scenario_w_passes": 0,
+                "commands": []}
+    try:
+        digest = hashlib.sha256()
+        starts = {}
+        seen = set()
+        with open(log_path, "rb") as source:
+            for raw in source:
+                digest.update(raw)
+                try:
+                    event = json.loads(raw)
+                except (UnicodeDecodeError, ValueError):
+                    continue
+                if not isinstance(event, dict):
+                    continue
+                for block in ((event.get("message") or {}).get("content") or []):
+                    if not isinstance(block, dict):
+                        continue
+                    if block.get("type") == "tool_use":
+                        starts[str(block.get("id") or "")] = str(
+                            (block.get("input") or {}).get("command") or "")
+                    if block.get("type") != "tool_result":
+                        continue
+                    call_id = str(block.get("tool_use_id") or "")
+                    if not call_id or call_id in seen:
+                        continue
+                    seen.add(call_id)
+                    command = str(block.get("command") or starts.get(call_id) or "")
+                    if not all(part in command for part in _INTEGRATION_COMMAND):
+                        continue
+                    output = block.get("content")
+                    if not isinstance(output, str):
+                        continue
+                    matches = list(_SUITE_RESULT.finditer(output))
+                    result = matches[-1] if matches else None
+                    exit_code = block.get("exit_code")
+                    complete = (block.get("status") == "completed"
+                                and type(exit_code) is int and exit_code == 0)
+                    passing = (complete and result is not None
+                               and int(result.group(2)) == 0)
+                    scenario_w = passing and _SCENARIO_W_PASS in output
+                    if passing:
+                        evidence["completed_integration_runs"] += 1
+                    if scenario_w:
+                        evidence["scenario_w_passes"] += 1
+                    if len(evidence["commands"]) < 20:
+                        evidence["commands"].append({
+                            "call_id": call_id, "exit_code": exit_code,
+                            "status": block.get("status"),
+                            "command": command[:300],
+                            "result": result.group(0) if result else "",
+                            "scenario_w_pass": bool(scenario_w),
+                        })
+        evidence["log_sha256"] = digest.hexdigest()
+    except OSError:
+        evidence["status"] = "owner session log missing"
+    return evidence
+
+
+def enforce_execution_claims(check, result, evidence):
+    """A reviewer cannot pass an explicit repeat-run claim on prose alone."""
+    if not check:
+        return check
+    words = {"one": 1, "two": 2, "three": 3, "four": 4, "five": 5,
+             "six": 6, "seven": 7, "eight": 8, "nine": 9, "ten": 10}
+    claims = []
+    text = str(result or "")
+    for match in re.finditer(r"\b(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+"
+                             r"(?:complete(?:d)?\s+)?integration runs?\b", text, re.I):
+        token = match.group(1).lower()
+        claims.append((int(token) if token.isdigit() else words[token],
+                       "completed_integration_runs", "integration runs"))
+    for match in re.finditer(r"Scenario W[^\n.]*?passed\s+(\d+|one|two|three|four|five|six|seven|eight|nine|ten)\s+times", text, re.I):
+        token = match.group(1).lower()
+        claims.append((int(token) if token.isdigit() else words[token],
+                       "scenario_w_passes", "Scenario W passes"))
+    for match in re.finditer(r"Scenario W[^\n.]*?\b(\d+)\s*/\s*(\d+)\b", text, re.I):
+        if match.group(1) == match.group(2):
+            claims.append((int(match.group(2)), "scenario_w_passes", "Scenario W passes"))
+    for expected, key, label in claims:
+        actual = int((evidence or {}).get(key) or 0)
+        if actual >= expected:
+            continue
+        check["verdict"] = "fail"
+        check["complete"] = False
+        check.setdefault("findings", []).append({
+            "what": f"The reply claims {expected} {label}; this attempt records {actual} completed passing results.",
+            "where": (evidence or {}).get("log_path") or "owner session log",
+            "fix": "Provide completed command results for this attempt or correct the claim.",
+        })
+    return check
+
+
+def check_evidence_id(rec):
+    parts = [rec.get("result"), rec.get("patch", ""), rec.get("candidate")]
+    if rec.get("execution_evidence") is not None:
+        parts.append(rec["execution_evidence"])
+    return work.evidence_id(parts)
 
 
 # ---------------------------------------------------------------------------
@@ -914,10 +1041,15 @@ def do_item(item, org, run_id, log, action=None):
             "files": git_blobs(tree, "", rec["files"]),
             "base_files": git_blobs(tree, base, rec["files"]),
         }
+        rec["execution_evidence"] = owner_execution_evidence(
+            os.path.join(WORKERS, RUN_ID or "byhand", f"{item['id']}-drain-work.jsonl"),
+            run=RUN_ID or "byhand", attempt_id=rec["attempt_id"],
+            candidate=rec["candidate"])
         # The chief of staff reads the diff, on his own seat's model.
         record_phase(run_id, item, "reviewing", "The chief of staff is reading the proposed change.")
         cmodel = server.seat_model(org, "claude")
-        ctext, cusage, cerr = run_cli(check_prompt(item, text, rec["patch"], org), CHECK_SYSTEM,
+        ctext, cusage, cerr = run_cli(check_prompt(item, text, rec["patch"], org,
+                                                  rec["execution_evidence"]), CHECK_SYSTEM,
                                       "Read,Glob,Grep", cmodel, tree, CHECK_TIMEOUT,
                                       CHECK_TURNS, "drain-check", "claude", item["id"], rec["attempt_id"])
         if cusage:
@@ -927,9 +1059,10 @@ def do_item(item, org, run_id, log, action=None):
             return rec
         if cerr == "LIMITED":
             rec["limited"] = True
-        rec["check"] = parse_check(ctext) if ctext else None
+        rec["check"] = enforce_execution_claims(
+            parse_check(ctext) if ctext else None, text, rec["execution_evidence"])
         if rec["check"] and not cerr:
-            rec["check_evidence"] = work.evidence_id([rec["result"], rec["patch"], rec["candidate"]])
+            rec["check_evidence"] = check_evidence_id(rec)
         checkpoint(item, rec, "review_finished")
         if rec["files"] and rec["check"] and not cerr:
             record_phase(run_id, item, "checking_candidate", "The proposed change is running its tests.")
@@ -1354,7 +1487,7 @@ def meets_landing_bar(item, rec, applied, suites, *, repo=None):
     outcome = work.attempt_outcome(rec.get("result", ""), rec.get("error"), rec.get("limited"))
     if outcome["status"] != "complete":
         return False, outcome["reason"] or "the attempt did not finish"
-    if rec.get("check_evidence") != work.evidence_id([rec.get("result"), rec.get("patch", ""), rec.get("candidate")]):
+    if rec.get("check_evidence") != check_evidence_id(rec):
         return False, "the check does not describe this result and diff"
 
     candidate = rec.get("candidate") or {}
