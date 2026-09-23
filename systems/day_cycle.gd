@@ -2,6 +2,8 @@
 # Mirrors the Love2D day_cycle.lua
 extends CanvasLayer
 
+const AnimSheet := preload("res://effects/anim_sheet.gd")
+
 var state: String = "idle"  # "idle", "tucking", "fading_out", "loop_in", "loop_playing", "loop_out", "hold", "fading_in"
 var alpha: float = 0.0
 var timer: float = 0.0
@@ -336,7 +338,7 @@ func _enter_hold_phase() -> void:
 # it invisible for `loop_in` to fade up. False on any failure (missing asset,
 # empty manifest) — the caller falls back to a plain hold, never a broken frame.
 func _prepare_loop(slug: String) -> bool:
-	var manifest := _load_anim_manifest(slug)
+	var manifest := AnimSheet.load_manifest(slug)
 	if manifest.is_empty():
 		return false
 	var frames := _frames_for_slug(slug, manifest)
@@ -397,59 +399,32 @@ func _step_loop_frame(delta: float) -> void:
 			AudioManager.stop_bed()
 
 
-func _load_anim_manifest(slug: String) -> Dictionary:
-	var path := "res://assets/anim/%s/manifest.json" % slug
-	if not FileAccess.file_exists(path):
-		return {}
-	var f := FileAccess.open(path, FileAccess.READ)
-	if f == null:
-		return {}
-	var parsed = JSON.parse_string(f.get_as_text())
-	return parsed if parsed is Dictionary else {}
-
-
-# The sheet is one horizontal strip, `frame_count` cells of `cell_width` ×
-# `cell_height` each (the export step's own layout, `19d18a2`) — the same
-# atlas-region pattern `ui/hud.gd`'s watering inset already cuts frames with.
-#
 # A manifest with `edge: "dissolve"` gets its whole sheet dithered once, before
-# slicing: the band is the same at every cell (it only depends on where a pixel
-# sits inside its own frame), so baking it into the shared sheet image and then
-# atlas-slicing as usual costs one pass over the sheet instead of one per frame.
+# slicing with AnimSheet: the band is the same at every cell, so baking it into
+# the sheet image costs one pass over the sheet instead of one per frame.
 func _frames_for_slug(slug: String, manifest: Dictionary) -> Array[Texture2D]:
 	if _frame_cache.has(slug):
 		return _frame_cache[slug]
-	var out: Array[Texture2D] = []
-	var sheet_path := "res://assets/anim/%s/%s" % [slug, String(manifest.get("sheet", "sheet.png"))]
-	var sheet: Texture2D = load(sheet_path)
-	if sheet == null:
-		return out
-	var cw := int(manifest.get("cell_width", 0))
-	var ch := int(manifest.get("cell_height", 0))
-	var count := int(manifest.get("frame_count", 0))
-	if cw <= 0 or ch <= 0 or count <= 0:
-		return out
-
-	var atlas_source: Texture2D = sheet
+	var atlas_source: Texture2D = null
 	if String(manifest.get("edge", "clean")) == "dissolve":
-		var sky_arr: Array = manifest.get("sky_colour", [33, 31, 32])
-		var sky := Color8(int(sky_arr[0]), int(sky_arr[1]), int(sky_arr[2]))
-		var img: Image = sheet.get_image()
-		if img != null:
-			img = img.duplicate()
-			img.convert(Image.FORMAT_RGBA8)
-			# Ruled 2026-09-11 (Q-106): half the width it was first drawn at — the
-			# designer read the wider band as a blur.
-			var band := maxi(2, int(cw * 0.06))
-			for i in count:
-				_dither_edge_band(img, i * cw, cw, ch, band, sky)
-			atlas_source = ImageTexture.create_from_image(img)
-
-	for i in count:
-		var atlas := AtlasTexture.new()
-		atlas.atlas = atlas_source
-		atlas.region = Rect2(i * cw, 0, cw, ch)
-		out.append(atlas)
+		var sheet := AnimSheet.load_sheet(slug, manifest)
+		if sheet != null:
+			var cw := int(manifest.get("cell_width", 0))
+			var ch := int(manifest.get("cell_height", 0))
+			var count := int(manifest.get("frame_count", 0))
+			if cw > 0 and ch > 0 and count > 0:
+				var sky_arr: Array = manifest.get("sky_colour", [33, 31, 32])
+				var sky := Color8(int(sky_arr[0]), int(sky_arr[1]), int(sky_arr[2]))
+				var img: Image = sheet.get_image()
+				if img != null:
+					img = img.duplicate()
+					img.convert(Image.FORMAT_RGBA8)
+					# Ruled 2026-09-11 (Q-106): half the original band width.
+					var band := maxi(2, int(cw * 0.06))
+					for i in count:
+						_dither_edge_band(img, i * cw, cw, ch, band, sky)
+					atlas_source = ImageTexture.create_from_image(img)
+	var out := AnimSheet.load_frames(slug, manifest, atlas_source)
 	_frame_cache[slug] = out
 	return out
 

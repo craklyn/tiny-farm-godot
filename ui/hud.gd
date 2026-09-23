@@ -2,6 +2,8 @@
 # Mirrors the Love2D hud.lua: top bar, bottom bar, tile cursor, toasts
 extends CanvasLayer
 
+const AnimSheet := preload("res://effects/anim_sheet.gd")
+
 # Tool icons
 var tool_icons_texture: Texture2D
 var tool_icon_regions: Dictionary = {}
@@ -584,10 +586,10 @@ func _build_ui() -> void:
 # produced (`assets/anim/watering_beam/`, `19d18a2`) rather than anything typed
 # by hand, so a re-export changes the shot without a code change.
 func _build_watering_inset() -> void:
-	var manifest := _load_anim_manifest(WATERING_INSET_SLUG)
+	var manifest := AnimSheet.load_manifest(WATERING_INSET_SLUG)
 	if manifest.is_empty():
 		return
-	_watering_frames = _load_anim_frames(WATERING_INSET_SLUG, manifest)
+	_watering_frames = AnimSheet.load_frames(WATERING_INSET_SLUG, manifest)
 	if _watering_frames.is_empty():
 		return
 	_watering_ms_per_frame = float(manifest.get("ms_per_frame", 100.0))
@@ -621,39 +623,6 @@ func _build_watering_inset() -> void:
 	_watering_inset_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_watering_inset_rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	watering_inset.add_child(_watering_inset_rect)
-
-
-func _load_anim_manifest(slug: String) -> Dictionary:
-	var path := "res://assets/anim/%s/manifest.json" % slug
-	if not FileAccess.file_exists(path):
-		return {}
-	var f := FileAccess.open(path, FileAccess.READ)
-	if f == null:
-		return {}
-	var parsed = JSON.parse_string(f.get_as_text())
-	return parsed if parsed is Dictionary else {}
-
-
-# The sheet is one horizontal strip, `frame_count` cells of `cell_width` ×
-# `cell_height` each (the export step's own layout, `19d18a2`) — the same
-# atlas-region pattern `MachineDefs.icon_of` already cuts shop icons with.
-func _load_anim_frames(slug: String, manifest: Dictionary) -> Array[Texture2D]:
-	var out: Array[Texture2D] = []
-	var sheet_path := "res://assets/anim/%s/%s" % [slug, String(manifest.get("sheet", "sheet.png"))]
-	var sheet: Texture2D = load(sheet_path)
-	if sheet == null:
-		return out
-	var cw := int(manifest.get("cell_width", 0))
-	var ch := int(manifest.get("cell_height", 0))
-	var count := int(manifest.get("frame_count", 0))
-	if cw <= 0 or ch <= 0 or count <= 0:
-		return out
-	for i in count:
-		var atlas := AtlasTexture.new()
-		atlas.atlas = sheet
-		atlas.region = Rect2(i * cw, 0, cw, ch)
-		out.append(atlas)
-	return out
 
 
 ## The watering shot (Q-104). Called through `main.gd` the moment
