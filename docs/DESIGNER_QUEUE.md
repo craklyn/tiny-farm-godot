@@ -1867,13 +1867,13 @@ never touched. Session: `playtests/2026-08-31_230643`.*
   by grinding wheat. Daniel extended the ruling past the question asked: **the mark-1
   should be triggered too**, and his strawman is *after a player spends more than half a
   day's energy watering* — so the first machine arrives when the work has been felt rather
-  than when the coins add up. That turns the placeholder shop rule (P-12) off for machines,
-  which is what P-12 always said would happen once a better acquisition design existed. **Extended
+  than when the coins add up. This closes P-12's open-shelf shortcut for the robots;
+  S-12 later kept the shop purchase after the proof. **Extended
   2026-09-10 (S-12):** the ladder continues past the mark-2 — the training desk appears once
   a mark-2 has done its job once, and the Mark III once the desk is placed.
-  Filed to Milo: the design note for both triggers — what the sim already counts that could
-  prove them, what the player sees when one fires, and what becomes of the shop entries the
-  machines carry today. Bears on `design/06`, `design/12`.
+  **Built 2026-09-23:** `design/06` gives both trigger rules, player cues, saved sim
+  facts, and the priced shop cards; `design/12` indexes the ladder. Both proofs,
+  locked cards, and the seed-box cue now work in the game.
 
 ## At D-3 trigger — before M4 (phase-3 content)
 

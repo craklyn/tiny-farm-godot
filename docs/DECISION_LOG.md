@@ -658,16 +658,18 @@ resource loop behind them is still M3's to design. What the rule removes is the
 *stall*: a thing nobody can obtain is a thing nobody can play with, judge or test,
 and the shop already exists.
 
-**First item to outgrow it: the machines (ruled 2026-09-04, Q-88).** The mark-2 robot is
-**earned by demonstration** — it unlocks once the player has actually used a mark-1 —
-and the designer extended the ruling to the mark-1 as well: it should be triggered too,
-his strawman being *after a player spends more than half a day's energy watering*, so the
-first machine arrives when the work has been felt rather than when the coins add up. Both
-robots therefore leave the shop as the designed triggers land, exactly as the adjustment
-condition below anticipates. The design note for the two triggers is Milo's.
+**First item to outgrow the open shelf: the robots (ruled 2026-09-04, Q-88).** The mark-2
+unlocks after a mark-1 has worked, and the mark-1 after the player spends more than half
+one day's energy budget watering. The implementation design is in `design/06`: 11
+successful player waters in one day, then a mark-1's first completed watering or hoeing
+action. S-12's later ruling settles the shop question: the proof opens each priced
+robot card; it does not grant a robot or remove its shop entry. Built 2026-09-23:
+the sim saves both proofs, the shop locks each card until its proof, and the
+action that earns it points the player to the seed box.
 
-**Adjustment conditions:** a designed acquisition replaces the shop entry for that
-item, one item at a time — the rule does not have to be repealed to be outgrown. The
+**Adjustment conditions:** a designed acquisition or unlock replaces the open-shelf
+rule for that item, one item at a time. S-12 keeps the shop transaction for the robot
+ladder; a later gift or crafting design could replace an item's shop entry. The
 one standing obligation it creates is structural: the shop catalogue must stay cheap
 to add a row to (`systems/machine_defs.gd`). When the scarecrow needed to be sellable
 it was bent into `CropDefs` as a crop with `is_object: true`; repeating that bend for

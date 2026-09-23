@@ -28,7 +28,7 @@ every farming action and learns which to use. The night the Mark III becomes ava
 plays the seeder-robot loop inside the sleep (P-15): its weights update by night (P-14),
 so the story night shows the machine at work.
 
-### Earning the first two robots (Q-88; design for implementation)
+### Earning the first two robots (Q-88; built 2026-09-23)
 
 **Mark-1: feel the watering round.** Count successful `water` Actions by the player
 within one day. Each costs 30 of the day's 600 energy units, so the first 11 actions

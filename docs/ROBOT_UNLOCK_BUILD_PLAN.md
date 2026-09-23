@@ -35,10 +35,15 @@
 
 ## Work item
 
-One implementation worker owns the sim, catalogue, save migration, focused tests, fixture updates, and shop presentation. Read this plan, the design section, and only the named source files. Use an isolated worktree based on current main. Commit on the branch; do not push.
+The first implementation worker owns the sim, catalogue, save migration, focused tests, fixture updates, and shop presentation. A second worker closes presentation findings after review. Each uses an isolated worktree, commits on its branch, and does not push.
 
 Acceptance: 10 player waters in one day leave Mk I locked; the 11th opens it; sleep clears an incomplete tally; machine and rain water do not count. Direct no-op water on already wet ground does not count. Buying/placing/teaching Mk I leaves Mk II locked; a completed taught water or till opens it. Direct purchase fails before proof and succeeds at the catalogue price after proof. Both unlocks persist through save/load and replay, and old ownership migrates. Locked cards show the proof's work using existing art; the action that earns a robot gives an unobtrusive cue. Full unit and integration suites pass. Do not loosen assertions to make them pass; report measurements and plan mistakes.
+
+Presentation follow-up from code review: consume `result.unlocked` at the existing player-visible action presentation seam, so the moment of work draws attention to the new shop card without interrupting play. The locked Mk II card must show a working Mk I, not Mk II beside a wheat packet. Use existing art. Verify the cue from both a player water Action and a robot's completed taught Action. Do not change unlock rules.
 
 ## Execution status
 
 - 2026-09-23: read-only survey and independent review complete; five gaps corrected before implementation.
+- 2026-09-23: first worker committed `baabd9b` in an isolated checkout. Reported unit 2,871/0, integration 977/0, gateway passed. Read-only code review found two presentation gaps; the second worker took them.
+- 2026-09-23: second worker committed `5f341bf`; both patches are in the shared checkout. Verified there: unit 2,877/0, integration 980/0, gateway passed, end-to-end robot session replay matched its autosave. The shared checkout also contains unrelated uncommitted work, preserved during the merge.
+- 2026-09-23: implementation committed on the shared branch as `df5fc46`, with only the nine worker-touched code files staged. The earlier plan and design commit is `d930dce`.
