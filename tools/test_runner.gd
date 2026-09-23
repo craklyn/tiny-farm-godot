@@ -3369,9 +3369,8 @@ func _scenario_af_a_pour_is_heard_whoever_pours() -> void:
 	farm.mute_feedback = false
 
 	# A machine waters nine tiles inside one day turn and answers with one spray
-	# animation, not nine simultaneous pours — those Actions resolve inside
-	# advance_day and never reach the cue table. That restraint is the rule's one
-	# limit and it must not regress into noise.
+	# animation and one quiet sound, not nine simultaneous pours. Those Actions
+	# resolve inside advance_day and never reach the per-verb cue table.
 	var spr := Vector2i(20, 14)
 	for dy in [-1, 0, 1]:
 		for dx in [-1, 0, 1]:
@@ -3380,10 +3379,26 @@ func _scenario_af_a_pour_is_heard_whoever_pours() -> void:
 	GameState.weather = "sunny"
 	heard_before = int(audio.sfx_count)
 	farm.advance_day()
-	_assert(int(audio.sfx_count) == heard_before,
-		"a sprinkler's morning is one spray, not nine pours")
+	_assert(int(audio.sfx_count) == heard_before + 1 and audio.last_sfx == "sprinkler",
+		"a sprinkler's morning has one spray sound, not nine pours")
+	_assert(float(audio.SFX_GAIN_DB["sprinkler"]) <= -6.0,
+		"the collective spray is quieter than the player's can")
 	_assert(farm.sim.get_tile(spr.x, spr.y).watered_today,
-		"...and it did water — the silence is the cue's, not the machine's")
+		"...and it did water the covered crop")
+	# Two machines on the same morning still produce one collective cue. A
+	# title-screen farm produces none, even with machines in its registry.
+	farm.sim.spawn_actor("af_sprinkler_2", SpeciesDefs.SPRINKLER, spr + Vector2i(4, 0))
+	heard_before = int(audio.sfx_count)
+	farm._notify_day_turn()
+	_assert(int(audio.sfx_count) == heard_before + 1,
+		"two sprinklers share one morning cue rather than stacking sounds")
+	farm.mute_feedback = true
+	heard_before = int(audio.sfx_count)
+	farm._notify_day_turn()
+	_assert(int(audio.sfx_count) == heard_before,
+		"an unplayed farm keeps its sprinklers silent")
+	farm.mute_feedback = false
+	farm.sim.despawn_actor("af_sprinkler_2")
 	farm.sim.despawn_actor("af_sprinkler")
 
 

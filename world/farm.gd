@@ -801,6 +801,13 @@ func _notify_day_turn() -> void:
 		var node = actor_nodes[id]
 		if is_instance_valid(node) and node.has_method("on_day_turn"):
 			node.on_day_turn()
+	# The sim fires each sprinkler's water Actions *inside* this morning turn.
+	# Answer with one quiet spray for the whole farm, never one sound per tile or
+	# machine: overlapping identical samples would grow louder with the field.
+	# Muted attract farms keep the same silence as every other actor cue.
+	if not mute_feedback and not sim.actors_of_species(SpeciesDefs.SPRINKLER).is_empty() \
+			and Engine.get_main_loop() and Engine.get_main_loop().root.has_node("AudioManager"):
+		Engine.get_main_loop().root.get_node("AudioManager").play_sfx("sprinkler")
 
 
 # --- A verb looks and sounds the same whoever performs it ---------------------
@@ -2119,5 +2126,3 @@ func _draw_ripe_glow() -> void:
 			_ripe_glow_node.draw_circle(centre, CropPresentation.bloom_radius(i),
 				Color(light.r, light.g, light.b,
 					CropPresentation.bloom_ring_alpha(tile, i)))
-
-

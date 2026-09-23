@@ -76,6 +76,15 @@ single day turn and answers with one spray animation rather than nine simultaneo
 (those Actions resolve inside `SimWorld.advance_day` and never reach the cue table), and
 a farm nobody is playing — the title screen's attract backdrop — stays muted.
 
+**Sprinkler morning cue (provisional mix, 2026-09-23).** The day-turn renderer
+answers any number of sprinklers with one sound, not one pour per tile or one
+sample per machine. For now the cue uses one of Daniel's recorded can-on-soil
+pours under its own `sprinkler` mixer name at −9 dB, quieter than her can. This
+keeps a field full of machines from stacking identical sounds on the same
+frame, and the attract farm remains silent. The source and level are
+`[Playtest]` until they have been heard in a real field of sprinklers; replacing
+that one mixer entry will not change the simulation or the one-cue rule.
+
 **Open gap: `plant` has no foley at all** — nothing in the mixer and no entry in the cue
 table. Under the 2026-09-02 rule above that a verb sounds the same whoever performs it,
 that silence is everybody's: the cold open's neighbour, a replay re-applying the action,

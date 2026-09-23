@@ -33,6 +33,9 @@ var sfx_streams = {
         preload("res://assets/audio/sfx/water_pour_02.wav"),
         preload("res://assets/audio/sfx/water_pour_03.wav"),
     ],
+    # One collective morning cue, however many sprinklers share the farm.
+    # Reuse the recorded pour until its own sound is chosen by ear.
+    "sprinkler": [preload("res://assets/audio/sfx/water_pour_01.wav")],
     "harvest": [
         preload("res://assets/audio/sfx/harvest_cc0_699491.wav"),
         preload("res://assets/audio/sfx/harvest_cc0_699492.wav"),
@@ -79,6 +82,10 @@ var _last_variant: Dictionary = {}
 # Per-sound pitch jitter (±fraction): a few percent multiplies three takes into
 # a dozen perceived pours. Only the heavy-repetition foley pool opts in.
 var sfx_jitter = {"water": 0.04}
+
+# The collective spray sits behind the player's own can. This is a mix choice,
+# not sim state; a field of sprinklers must never add identical waveforms.
+const SFX_GAIN_DB := {"sprinkler": -9.0}
 
 # The name of the last sound actually dispatched, and how many have been. A
 # headless run has no audio device, so this is the only way a test can assert
@@ -129,11 +136,13 @@ func play_sfx(sound_name: String):
 
     var jitter := float(sfx_jitter.get(sound_name, 0.0))
     var pitch := 1.0 + _variant_rng.randf_range(-jitter, jitter) if jitter > 0.0 else 1.0
+    var gain := float(SFX_GAIN_DB.get(sound_name, 0.0))
 
     for p in sfx_players:
         if not p.playing:
             p.stream = variants[idx]
             p.pitch_scale = pitch
+            p.volume_db = gain
             p.play()
             return
 
@@ -141,6 +150,7 @@ func play_sfx(sound_name: String):
     if not sfx_players.is_empty():
         sfx_players[0].stream = variants[idx]
         sfx_players[0].pitch_scale = pitch
+        sfx_players[0].volume_db = gain
         sfx_players[0].play()
 
 
