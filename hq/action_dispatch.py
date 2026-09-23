@@ -122,6 +122,7 @@ def record_ci(work, item, run, *, now=None, provider_available=True):
         return False
     if run and (run.get("headSha") != sha or run.get("status") != "completed"):
         return False
+    instant = time.time() if now is None else now
     with work.mutation_lock():
         fresh = work.load_item(item["id"])
         workflow = work._workflow(fresh)
@@ -131,11 +132,13 @@ def record_ci(work, item, run, *, now=None, provider_available=True):
                   "confirmed": run.get("conclusion") == "success", "commit_sha": sha,
                   "run_id": run.get("databaseId"), "url": run.get("url", ""),
                   "conclusion": run.get("conclusion"), "observed_at": work._now_iso()}
+            if not ci["confirmed"]:
+                ci["next_poll_after"] = instant + 20 * 60
         else:
             ci = {"status": "unavailable", "confirmed": False, "commit_sha": sha,
                   "reason": ("No completed tests workflow run matches this local commit."
                              if provider_available else "The tests workflow could not be read."),
-                  "next_poll_after": (now or time.time()) + 20 * 60}
+                  "next_poll_after": instant + 20 * 60}
         if old.get("commit_sha") == sha and old.get("status") == ci["status"] and \
                 old.get("reason") == ci.get("reason") and \
                 (not run or old.get("run_id") == ci.get("run_id")):
@@ -148,13 +151,13 @@ def record_ci(work, item, run, *, now=None, provider_available=True):
                     "owner": "claude", "summary": "Check the tests workflow for this exact commit.",
                     "priority": "ordinary", "created_at": work._now_iso(), "state": "open"}
             workflow["actions"].append(poll)
-        if run:
+        if ci["confirmed"]:
             poll["state"] = "done"
             poll["finished_at"] = work._now_iso()
             poll.pop("wake", None)
         else:
             poll["state"] = "open"
-            poll["wake"] = "matching tests workflow run or next scheduled CI poll"
+            poll["wake"] = "a later successful run for this commit or the next scheduled CI poll"
         work.save_item(fresh)
         return True
 
@@ -174,12 +177,15 @@ def poll_ci(work, items, fetch_runs, *, now=None):
         sha = ((item.get("completion") or {}).get("sha") or
                (item.get("landed") or {}).get("sha"))
         ci = (item.get("workflow") or {}).get("ci") or {}
-        if ci.get("commit_sha") == sha and ci.get("status") in ("confirmed", "failed"):
+        if ci.get("commit_sha") == sha and ci.get("status") == "confirmed":
             continue
-        if ci.get("status") == "unavailable" and ci.get("next_poll_after", 0) > instant:
+        if ci.get("commit_sha") == sha and ci.get("status") in ("unavailable", "failed") \
+                and ci.get("next_poll_after", 0) > instant:
             continue
-        matched = next((r for r in runs if r.get("headSha") == sha and
-                        r.get("status") == "completed"), None)
+        matching = [r for r in runs if r.get("headSha") == sha and
+                    r.get("status") == "completed"]
+        matched = max(matching, key=lambda r: (str(r.get("updatedAt") or ""),
+                                               int(r.get("databaseId") or 0)), default=None)
         changed += bool(record_ci(work, item, matched, now=instant,
                                   provider_available=provider_available))
     return changed

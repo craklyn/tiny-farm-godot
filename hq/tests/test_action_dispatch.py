@@ -143,6 +143,31 @@ class ActionDispatch(unittest.TestCase):
         self.assertEqual(ci["commit_sha"], "abc123")
         self.assertEqual(ci["run_id"], 5)
 
+    def test_failed_ci_can_be_superseded_by_successful_rerun_on_same_sha(self):
+        item = self.card(state="landed", repair_hold="", completion={"sha": "abc123"})
+        failure = {"headSha": "abc123", "status": "completed", "conclusion": "failure",
+                   "databaseId": 40, "url": "https://example.invalid/40",
+                   "updatedAt": "2026-09-22T10:00:00Z"}
+        self.assertEqual(action_dispatch.poll_ci(work, [item], lambda: [failure], now=100), 1)
+        fresh = work.load_item(item["id"])
+        self.assertEqual(fresh["workflow"]["ci"]["status"], "failed")
+        self.assertFalse(fresh["workflow"]["ci"]["confirmed"])
+        self.assertEqual(fresh["workflow"]["actions"][0]["state"], "open")
+        revision = fresh["_revision"]
+        self.assertEqual(action_dispatch.poll_ci(work, [fresh], lambda: [failure], now=1301), 0)
+        self.assertEqual(work.load_item(item["id"])["_revision"], revision)
+        rerun = {**failure, "databaseId": 41, "conclusion": "success",
+                 "updatedAt": "2026-09-22T10:20:00Z"}
+        wrong_newer = {**rerun, "headSha": "another", "databaseId": 42,
+                       "updatedAt": "2026-09-22T10:30:00Z"}
+        self.assertEqual(action_dispatch.poll_ci(work, [fresh],
+                                                 lambda: [failure, wrong_newer, rerun],
+                                                 now=1302), 1)
+        final = work.load_item(item["id"])
+        self.assertTrue(final["workflow"]["ci"]["confirmed"])
+        self.assertEqual(final["workflow"]["ci"]["run_id"], 41)
+        self.assertEqual(final["workflow"]["actions"][0]["state"], "done")
+
 
 if __name__ == "__main__":
     unittest.main()

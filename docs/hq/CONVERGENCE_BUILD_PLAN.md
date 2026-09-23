@@ -83,6 +83,8 @@ The first combined main suite passed, but an independent read-only review found 
 
 `classified_actions()` alone is not a scheduler: the legacy `queued()` selector still ignores reconciliation and integration actions. Add an idempotent action dispatcher with leases, owner/checker handoff, and a bounded WIP policy, so an eligible weather recovery actually starts when automatic starts resume. A typed blocker with no runnable action is only truthful, not convergent. Route a matching-SHA post-landing CI result into `workflow.ci` (or deliberately label it unavailable with a named polling action); do not claim CI confirmed from local suites. Fixture-test duplicate timer ticks, interrupted action recovery, wrong-SHA CI, and the exact weather-like path.
 
+Capacity holds have a narrower rule. A `rebrief` is a chief-of-staff review with a wake event, not a code worker action. The automatic dispatcher leaves it held. The current safe wake requires a reviewed change to `cost_cap_usd` that places the new cap above recorded spend, with a bounded amount for the smaller brief; editing the brief alone does not clear the existing spent-versus-cap calculation. The card must show this exact trigger until a separate brief-and-budget review transition is built. No automatic retry spends through the old cap.
+
 ## Verification and execution status
 
 - Run focused tests after each component, then all discovered HQ Python/JS tests, frontend static checks, both Godot suites in isolated user-data paths, and an offline end-to-end canary. Run actual browser interactions for changed controls. After integration, inspect `git diff` only for owned paths, check shared dirty-file hashes, and confirm persisted cards after restart.
