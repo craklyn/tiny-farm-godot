@@ -369,8 +369,8 @@ next rung; it becomes the thing a bot can be *shown*.
 
 Two things this knowingly leaves open. The menu **uses words** — "Chase birds off" — which
 is the first required reading the game has added since the shop was deliberately stripped
-of it (S-7, T-12/Q-35); the wordless version is filed as **Q-87**, with paired sprites
-(robot + the thing it deals with) as the recommendation. And nothing yet **teaches** that a
+of it (S-7, T-12/Q-35). Q-87 ruled for paired sprites: the three job icons now pair the
+Mark II with a crow or farmer, and the menu swap remains to be wired. Nothing yet **teaches** that a
 robot is tappable: it is discoverable by poking at it, which is fine for a placeholder and
 is `design/13`'s problem when the debut becomes real content.
 

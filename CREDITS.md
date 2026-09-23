@@ -293,6 +293,12 @@ before the first public build ships.*
   output by `tools/export_anim_loop.py` (P-15). A loop's editable sources stay
   under `tools/experiments/` and `assets/showcase/`; the exported directory is a
   derived copy and is regenerated, never hand-edited.
+- **Robot job icons, 2026-09-23** — **not generated, $0.00.**
+  `assets/sprites/generated/robot_job_icons.png` pairs the shipped Mark II robot
+  with the crow or farmer, copied at native resolution from `bot_mk2.png`,
+  `crow.png`, and `characters.png`. `tools/build_robot_job_icons.py` composes the
+  three cells and draws the gold ring for the circle job. No API call or new
+  third-party art was used; the source sprites are covered above.
 - **T-39, the farmhouse and the robot stall, 2026-09-06** — **generated, $0.21**
   (same Retro Diffusion pipeline, rights and post-processing as above; raws with
   `*_meta.json` archived per the standing policy at
