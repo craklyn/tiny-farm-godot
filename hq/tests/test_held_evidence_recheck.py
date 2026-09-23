@@ -77,6 +77,43 @@ class HeldEvidenceRecheckTests(unittest.TestCase):
         self.assertEqual(rec["candidate_suites"], green)
         self.assertTrue(rec["candidate_unchanged"])
 
+    def test_import_failure_reuses_passing_review_without_model(self):
+        self.old["check"] = {"read": True, "verdict": "pass", "complete": True,
+                             "findings": []}
+        self.old["external_verification"] = {**self.evidence, "attempt_id": "old-attempt",
+                                              "path": "runs/verification/wtest-example/evidence.json"}
+        self.old["candidate_unchanged"] = True
+        self.old["candidate_suites"] = {"unit": {"ok": True}, "integration": {"ok": True}}
+        self.old["candidate_test_evidence"] = work.evidence_id(
+            [self.old["candidate"], self.old["candidate_suites"]])
+        self.old["check_evidence"] = drain.check_evidence_id(self.old)
+        self.old["suites"] = {"unit": {"ok": False, "tail": "Parse Error: missing class"},
+                              "integration": {"ok": False, "tail": "Parse Error: missing class"}}
+        with open(os.path.join(self.tx, "wtest.json"), "w", encoding="utf-8") as sink:
+            json.dump({"record": self.old}, sink)
+        self.item["state"] = "for_review"
+        self.item["diff"] = {"applied": True}
+        with patch.object(drain, "TRANSACTIONS", self.tmp.name), \
+             patch.object(drain.integration, "main_head", return_value="main-head"), \
+             patch.object(drain.verification_evidence, "validate", return_value=self.old["external_verification"]), \
+             patch.object(drain, "record_phase"):
+            source = drain.verified_landing_source(self.item)
+            self.assertIsNotNone(source)
+            rec = drain.resume_verified_landing(self.item, "new-run", source)
+        self.assertTrue(rec["verification_only"])
+        self.assertEqual(rec["usage"], [])
+        self.assertEqual(rec["check_evidence"], self.old["check_evidence"])
+        self.assertIsNone(rec["suites"])
+        self.assertNotEqual(rec["attempt_id"], "old-attempt")
+
+        self.old["suites"]["integration"]["tail"] = "FAIL: actual game assertion"
+        with open(os.path.join(self.tx, "wtest.json"), "w", encoding="utf-8") as sink:
+            json.dump({"record": self.old}, sink)
+        with patch.object(drain, "TRANSACTIONS", self.tmp.name), \
+             patch.object(drain.integration, "main_head", return_value="main-head"), \
+             patch.object(drain.verification_evidence, "validate", return_value=self.old["external_verification"]):
+            self.assertIsNone(drain.verified_landing_source(self.item))
+
 
 if __name__ == "__main__":
     unittest.main()

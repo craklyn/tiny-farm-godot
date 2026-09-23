@@ -1283,20 +1283,11 @@ def do_item(item, org, run_id, log, action=None):
     return rec
 
 
-def held_recheck_source(item):
-    """Return the last immutable owner record only for an exactly verified patch.
-
-    New test evidence is a reason to re-read the same candidate, not to pay for
-    another coding session. A changed base, patch, or missing command transcript
-    sends the card back through its normal reconciliation path.
-    """
-    evidence = verification_evidence.lookup(item, roots.ROOTS["data"])
+def recorded_candidate_attempt(item):
+    """The last card attempt's immutable transaction, if it is still this patch."""
     outcome = item.get("attempt_outcome") or {}
     candidate = outcome.get("candidate") or {}
-    if (not evidence or evidence["completed_runs"] != evidence["requested_runs"] or
-            evidence["passing_suites"] != evidence["requested_runs"] or
-            evidence["assertion_passes"] != evidence["requested_runs"] or
-            candidate.get("base") != integration.main_head(server.REPO)):
+    if not candidate or candidate.get("base") != integration.main_head(server.REPO):
         return None
     attempt_id = item.get("last_recorded_attempt")
     try:
@@ -1314,10 +1305,69 @@ def held_recheck_source(item):
         if (old.get("attempt_id") != attempt_id or
                 old.get("candidate") != candidate or
                 work.evidence_id(old.get("patch", "")) != outcome.get("patch_id") or
-                not old.get("result") or not old.get("execution_evidence")):
+                not old.get("result")):
             continue
-        return old, evidence
+        return old
     return None
+
+
+def held_recheck_source(item):
+    """A new complete test manifest reopens only the unchanged review step."""
+    evidence = verification_evidence.lookup(item, roots.ROOTS["data"])
+    if (not evidence or evidence["completed_runs"] != evidence["requested_runs"] or
+            evidence["passing_suites"] != evidence["requested_runs"] or
+            evidence["assertion_passes"] != evidence["requested_runs"]):
+        return None
+    old = recorded_candidate_attempt(item)
+    return (old, evidence) if old and old.get("execution_evidence") else None
+
+
+def verified_landing_source(item):
+    """Reuse a passing review when only an unimported checkout stopped landing."""
+    old = recorded_candidate_attempt(item)
+    if not old:
+        return None
+    check = old.get("check") or {}
+    suites = old.get("suites") or {}
+    candidate = old.get("candidate") or {}
+    external = old.get("external_verification") or {}
+    if (check.get("verdict") != "pass" or check.get("complete") is not True or
+            check.get("findings") or old.get("check_evidence") != check_evidence_id(old) or
+            old.get("candidate_unchanged") is not True or
+            old.get("candidate_test_evidence") != work.evidence_id([candidate, old.get("candidate_suites")]) or
+            any(not (old.get("candidate_suites") or {}).get(name, {}).get("ok")
+                for name in ("unit", "integration")) or
+            not suites or any(row.get("ok") for row in suites.values()) or
+            not all("Parse Error:" in str(row.get("tail") or "") for row in suites.values())):
+        return None
+    # The manifest belongs to the original owner attempt, not this later
+    # review. Validate its hashed logs against that original candidate again.
+    if item.get("state") == "landed" or (item.get("attempt_outcome") or {}).get("landing_verified"):
+        return None
+    # `diff.applied` means the isolated prospective tree was prepared, not
+    # that local main received the patch. The old manifest was attached while
+    # this same candidate was held; validate it against that held snapshot.
+    historical = {**item, "last_recorded_attempt": external.get("attempt_id"),
+                  "diff": {**(item.get("diff") or {}), "applied": False}}
+    try:
+        validated = verification_evidence.validate(
+            historical, external.get("path", ""), roots.ROOTS["data"])
+    except (OSError, ValueError, TypeError, KeyError, json.JSONDecodeError):
+        return None
+    if validated != external:
+        return None
+    return old
+
+
+def resume_verified_landing(item, run_id, old):
+    """Retry only the prospective checkout and suites; use zero model calls."""
+    rec = {**old, "attempt_id": uuid.uuid4().hex, "usage": [], "error": "",
+           "limited": False, "held": False, "resume": "", "applied": False,
+           "verification_only": True, "suites": None, "tree_evidence": None,
+           "integration_checkout": ""}
+    record_phase(run_id, item, "preparing_verification",
+                 "The unchanged reviewed patch is retrying its local-main test gate.")
+    return rec
 
 
 def recheck_held_candidate(item, org, run_id, source):
@@ -2420,6 +2470,8 @@ def run_verified_batch(pool, org, run_id, log, *, no_suites=False, actions=None)
                   else None)
         if source:
             rec = recheck_held_candidate(item, org, run_id, source)
+        elif action and action.get("type") == "reconcile" and (previous := verified_landing_source(item)):
+            rec = resume_verified_landing(item, run_id, previous)
         else:
             rec = do_item(item, org, run_id, log, action=action) if action else \
                 do_item(item, org, run_id, log)
@@ -2466,14 +2518,20 @@ def run_verified_batch(pool, org, run_id, log, *, no_suites=False, actions=None)
         if ok and not no_suites:
             rec["tree_evidence"] = tree_evidence(rec["files"], repo=integration_repo)
             record_phase(run_id, item, "verifying", "The exact prospective main tree is running both game test suites.")
-            suites = run_suites(cwd=integration_repo)
-            rec["suites"] = suites
-            restore_test_generated(integration_repo, rec["candidate"]["tree"])
-            # A test or hook that changed tracked files invalidates the tested
-            # tree, even if the named candidate files still happen to match.
-            if not prospective_tree_intact(rec):
-                ok, blocker_kind = False, "missing_evidence"
-                why = "The prospective tree changed while its tests ran."
+            try:
+                if touches_game(rec.get("files") or []):
+                    preflight_godot_import(integration_repo)
+                suites = run_suites(cwd=integration_repo)
+                rec["suites"] = suites
+                restore_test_generated(integration_repo, rec["candidate"]["tree"])
+                # A test or hook that changed tracked files invalidates the tested
+                # tree, even if the named candidate files still happen to match.
+                if not prospective_tree_intact(rec):
+                    ok, blocker_kind = False, "missing_evidence"
+                    why = "The prospective tree changed while its tests ran."
+                    rec["applied"], rec["why_not"] = False, why
+            except GodotImportHold as exc:
+                ok, blocker_kind, why = False, "tooling", str(exc)
                 rec["applied"], rec["why_not"] = False, why
             checkpoint(item, rec, "verified")
         rec["test_evidence"] = work.evidence_id([rec.get("patch", ""), suites])
