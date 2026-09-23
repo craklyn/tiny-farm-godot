@@ -917,10 +917,28 @@ func _add_shop_card(into: Control, item: Dictionary) -> void:
 	icon.expand_mode = TextureRect.EXPAND_IGNORE_SIZE
 	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
 	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
-	icon.texture = item.icon
+	# The unopened second mark shows the first mark in a walk frame: the
+	# worker that earns it. Its own copper portrait appears after proof.
+	if not item.unlocked and item.get("seed_type", "") == "bot_mk2":
+		var working_mk1 := AtlasTexture.new()
+		working_mk1.atlas = load("res://assets/sprites/generated/bot.png")
+		working_mk1.region = Rect2(48, 0, 48, 48)
+		icon.texture = working_mk1
+	else:
+		icon.texture = item.icon
 	if not item.unlocked:
 		icon.modulate = Color(0.12, 0.11, 0.18, 0.85)
 	hbox.add_child(icon)
+	# The locked robot cards show the work that opens them: a water drop for
+	# the first mark, then a water drop beside the working first robot.
+	if not item.unlocked and item.get("seed_type", "") in ["bot_mk1", "bot_mk2"]:
+		var proof := TextureRect.new()
+		proof.custom_minimum_size = Vector2(18, 18)
+		proof.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		proof.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		proof.texture = crop_icon(4)
+		proof.modulate = Color(0.55, 0.62, 0.68, 0.9)
+		hbox.add_child(proof)
 
 	if item.unlocked:
 		# What it costs, and what she already has: coin + numeral, packet + numeral.
@@ -1257,8 +1275,8 @@ func _build_shop_items() -> void:
 		# of the robot ladder — the bench and the Mark III — and what has been
 		# earned is a fact about the farm rather than about the row, so the card
 		# asks the world the same question the till asks it (`SimWorld.offers`).
-		# A locked row still draws: same picture, darkened, like a seed packet she
-		# has not earned, so the shelf is what teaches the ladder.
+		# A locked row still draws darkened, like a seed packet she has not earned;
+		# the second robot's proof card depicts the working first robot below.
 		#
 		# With no farm behind it nothing on this shelf is offered. The shop cannot
 		# open before `main` hands the menus a farm, so this is a guard rather than

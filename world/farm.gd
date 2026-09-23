@@ -4,6 +4,8 @@
 # (player, entities, ActionRouter, Pathfinding, tests) are unchanged.
 extends Node2D
 
+signal robot_unlocked(machine_key: String)
+
 const TILE_SIZE := 16
 # Ground sheets are 3×3 grids of interchangeable cells for one kind of ground.
 const GROUND_VARIANTS := 3
@@ -747,6 +749,9 @@ func _record(action: Dictionary, result: Dictionary, at_tick: int,
 				refuse_at(rt, reason)
 
 	if result.get("ok", false):
+		var unlocked := String(result.get("unlocked", ""))
+		if unlocked in ["bot_mk1", "bot_mk2"] and not mute_feedback:
+			robot_unlocked.emit(unlocked)
 		if replay != null:
 			# Stamped with the sim time it resolved at (format v2, M2.5 WI-5).
 			# The clock is the sim's, not the frame's: this is the one number that

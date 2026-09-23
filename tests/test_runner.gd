@@ -211,6 +211,7 @@ func _init() -> void:
 	test_workbench_sim()
 	test_crate_remembers()
 	test_workbench_place()
+	test_first_robot_unlocks()
 	test_robot_ladder()
 	test_robot_story_night()
 	test_learning_robot()
@@ -10799,6 +10800,7 @@ func test_machines() -> void:
 	world.generate()
 
 	GameState.gold = 400
+	world.earn(SimWorld.RUNG_MK2_EARNED)
 	var refused: Dictionary = world.apply_action({
 		"verb": "buy_machine", "item": "bot_mk2", "actor": "player" }, GameState)
 	_assert(refused.get("ok", false), "she can buy a robot with 400 gold")
@@ -11015,6 +11017,7 @@ func test_machines() -> void:
 	var live := SimWorld.new()
 	live.generate()
 	GameState.gold = 1000
+	live.earn(SimWorld.RUNG_MK2_EARNED)
 	# Recorded as a **continued** session (`start_from_save`), because that is the
 	# only honest way to give the log a purse: `apply_to` resets GameState and
 	# regenerates the world itself, so a starting gold set beside the recorder
@@ -11915,6 +11918,7 @@ func test_mark_one_robot() -> void:
 	SimRng.reseed(2323)
 	var world := SimWorld.new()
 	world.generate()
+	world.earn(SimWorld.RUNG_MK1_EARNED)
 	GameState.gold = 1000
 
 	# --- buying and placing one -----------------------------------------------
@@ -12137,6 +12141,7 @@ func test_mark_one_robot() -> void:
 	var live := SimWorld.new()
 	live.generate()
 	GameState.gold = 1000
+	live.earn(SimWorld.RUNG_MK1_EARNED)
 	var here := Vector2i(-1, -1)
 	for y in range(4, 16):
 		for x in range(4, 28):
@@ -12896,6 +12901,7 @@ func test_workbench_sim() -> void:
 	_assert(_json_plain(extra),
 		"and every new value on it is one of the five things JSON has (ground rule 4)")
 
+	s.world.earn(SimWorld.RUNG_MK1_EARNED)
 	# --- one dial, one verb ---------------------------------------------------
 	# She is not *configuring* the machine — `configure` rebuilds a bot from
 	# scratch and a Mark III's row offers no configs for exactly that reason. She
@@ -13492,6 +13498,7 @@ func test_crate_remembers() -> void:
 			and is_equal_approx(float(twx["rewards"][0]), 10.0),
 		"the second Mark III she buys knows nothing at all: no nights, no weights, factory dials")
 
+	s.world.earn(SimWorld.RUNG_MK1_EARNED)
 	# --- nothing is kept for a machine with nothing to keep -------------------
 	# `weights` is the test, so a mark-1 — whose whole behaviour is its catalogue row
 	# and the squares she taught it — goes into the crate as a plain count, exactly
@@ -13792,6 +13799,94 @@ func test_workbench_place() -> void:
 # on a farm that climbs the ladder by being played: a machine bought, set to watch
 # a row of wheat, and a crow that turns round. The flags underneath it are checked
 # only where nothing else can see them — across a save, and across a replay.
+func test_first_robot_unlocks() -> void:
+	print("\n--- The first two robots are earned by work (Q-88) Tests ---")
+	var s := _bot_yard(8818)
+	s.gs.gold = 1000
+	_assert(not s.world.offers("bot_mk1", s.gs) and not s.world.offers("bot_mk2", s.gs),
+		"both robot cards begin locked")
+	_assert(String(s.act({"verb": "buy_machine", "item": "bot_mk1", "actor": "player"}).get("reason", "")) == "not_offered",
+		"the purchase guard uses the same locked answer")
+	for i in 10:
+		var t := Vector2i(4 + i, 8)
+		s.world.set_tile_state(t.x, t.y, "seeded", "wheat")
+		s.act({"verb": "water", "target": t, "actor": "player"})
+	_assert(s.world.player_water_actions_today == 10 and not s.world.offers("bot_mk1", s.gs),
+		"ten successful waters in one day still leave the first robot locked")
+	var dry := Vector2i(14, 8)
+	s.world.set_tile_state(dry.x, dry.y, "seeded", "wheat")
+	var opened := s.act({"verb": "water", "target": dry, "actor": ""})
+	_assert(opened.get("unlocked", "") == "bot_mk1" and s.world.offers("bot_mk1", s.gs),
+		"the eleventh player water opens the first card and gives a cue")
+	_assert(s.world.player_water_actions_today == 11,
+		"an omitted actor id is still the player")
+	s.act({"verb": "water", "target": dry, "actor": "player"})
+	_assert(s.world.player_water_actions_today == 11,
+		"a direct no-op water adds no credit")
+	var saved = JSON.parse_string(JSON.stringify(SaveGame.capture(s.world, s.gs)))
+	var loaded := SimWorld.new()
+	var loaded_gs = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(saved, loaded, loaded_gs)
+		and loaded.player_water_actions_today == 11 and loaded.offers("bot_mk1", loaded_gs),
+		"the tally and first rung survive a save")
+	loaded_gs.free()
+	_assert(s.act({"verb": "buy_machine", "item": "bot_mk1", "actor": "player"}).get("ok", false)
+		and s.gs.gold == 850 and not s.world.offers("bot_mk2", s.gs),
+		"buying the first robot costs 150g but does not open the second")
+	var spot := Vector2i(8, 10)
+	var placed := s.act({"verb": "place", "target": spot, "item": "bot_mk1", "actor": "player"})
+	var id := String(placed.get("machine", ""))
+	_assert(id != "" and not s.world.offers("bot_mk2", s.gs),
+		"placement is preparation, not proof")
+	var job := Vector2i(9, 10)
+	s.world.set_tile_state(job.x, job.y, "seeded", "wheat")
+	s.act({"verb": "teach", "target": job, "machine": id, "actor": "player"})
+	_assert(not s.world.offers("bot_mk2", s.gs), "teaching is preparation too")
+	var result := s.act({"verb": "water", "target": job, "actor": id})
+	_assert(result.get("unlocked", "") == "bot_mk2" and s.world.offers("bot_mk2", s.gs),
+		"the first completed taught robot water opens the second card")
+	_assert(s.world.player_water_actions_today == 11,
+		"robot watering cannot advance the player's round")
+	_assert(s.act({"verb": "buy_machine", "item": "bot_mk2", "actor": "player"}).get("ok", false)
+		and s.gs.gold == 450,
+		"the earned second card sells for 400g")
+	var old = JSON.parse_string(JSON.stringify(SaveGame.capture(s.world, s.gs)))
+	old["world"]["rungs"] = {}
+	var migrated := SimWorld.new()
+	var migrated_gs = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(old, migrated, migrated_gs)
+		and migrated.offers("bot_mk1", migrated_gs) and migrated.offers("bot_mk2", migrated_gs),
+		"old ownership in the crate and yard restores both cards")
+	migrated_gs.free()
+	var boxed_old = JSON.parse_string(JSON.stringify(old))
+	boxed_old["world"]["actors"].erase(id)
+	boxed_old["state"]["machines"].erase("bot_mk2")
+	boxed_old["state"]["boxed"] = {"bot_mk2": [{}]}
+	var from_box := SimWorld.new()
+	var box_gs = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(boxed_old, from_box, box_gs)
+		and from_box.offers("bot_mk2", box_gs),
+		"an older boxed second robot keeps its earned card")
+	box_gs.free()
+	var replay := _bot_yard(8820)
+	var replay_target := Vector2i(10, 8)
+	replay.world.set_tile_state(replay_target.x, replay_target.y, "seeded", "wheat")
+	replay.world.player_water_actions_today = 10
+	replay.rebase()
+	replay.act({"verb": "water", "target": replay_target, "actor": "player"})
+	var replay_save = JSON.parse_string(JSON.stringify(SaveGame.capture(replay.world, replay.gs)))
+	_assert(SaveGame.replay_matches(replay.log, replay_save),
+		"a recorded eleventh water reproduces the same unlocked shelf")
+	replay.done()
+	var another := _bot_yard(8819)
+	another.world.player_water_actions_today = 10
+	another.act({"verb": "sleep", "actor": "world", "weather": "sunny"})
+	_assert(another.world.player_water_actions_today == 0 and not another.world.offers("bot_mk1", another.gs),
+		"sleep clears an incomplete round")
+	another.done()
+	s.done()
+
+
 func test_robot_ladder() -> void:
 	print("\n--- The Mark III's bench is earned by a mark-2's first bird (S-12) Tests ---")
 
@@ -13804,16 +13899,20 @@ func test_robot_ladder() -> void:
 			and MachineDefs.earns_of("workbench") == SimWorld.RUNG_DESK_PLACED
 			and MachineDefs.earned_by("bot_mk3") == SimWorld.RUNG_DESK_PLACED,
 		"the catalogue spells the two rungs exactly as the sim does")
-	_assert(MachineDefs.earned_by("bot_mk1") == "" and MachineDefs.earned_by("stall") == ""
+	_assert(MachineDefs.earned_by("bot_mk1") == SimWorld.RUNG_MK1_EARNED
+			and MachineDefs.earned_by("bot_mk2") == SimWorld.RUNG_MK2_EARNED
+			and MachineDefs.earned_by("stall") == ""
 			and MachineDefs.earns_of("sprinkler") == "" and MachineDefs.earns_of("fence") == "",
 		"and no other row names a rung, so the rest of the shelf is untouched")
 
 	# --- the bottom of the ladder ---------------------------------------------
 	var s := _bot_yard(6120, true)
 	s.gs.gold = 4000
-	for key in ["fence", "sprinkler", "stall", "bot_mk1", "bot_mk2"]:
+	for key in ["fence", "sprinkler", "stall"]:
 		_assert_quiet(s.world.offers(key, s.gs), "%s is for sale on day one" % key)
-	_flush_quiet("everything below the ladder is on the shelf from the first morning")
+	_flush_quiet("ordinary machines are on the shelf from the first morning")
+	_assert(not s.world.offers("bot_mk1", s.gs) and not s.world.offers("bot_mk2", s.gs),
+		"both robots wait for their work proofs")
 	_assert(not s.world.offers("workbench", s.gs),
 		"the training bench is not: no machine of hers has done a job yet")
 	_assert(not s.world.offers("bot_mk3", s.gs),
@@ -13839,6 +13938,7 @@ func test_robot_ladder() -> void:
 	var target := _crow_target_for(s, 2)
 	# Everything above this line arranged the farm; everything below it is recorded,
 	# so the replay at the bottom reproduces a session rather than a fixture.
+	s.world.earn(SimWorld.RUNG_MK2_EARNED)
 	s.rebase()
 	var post := target + Vector2i(0, 2)
 	_assert(s.act({ "verb": "buy_machine", "item": "bot_mk2", "actor": "player" })
@@ -15078,6 +15178,7 @@ func test_robot_stall() -> void:
 	var live := SimWorld.new()
 	live.generate()
 	GameState.gold = 1000
+	live.earn(SimWorld.RUNG_MK1_EARNED)
 	var here := Vector2i(-1, -1)
 	for y in range(9, 16):
 		for x in range(5, 23):

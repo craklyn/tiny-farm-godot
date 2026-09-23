@@ -196,6 +196,7 @@ static var TYPES: Dictionary = {
 	"bot_mk1": {
 		"name": "Robot Mk I",
 		"price": 150,
+		"earned_by": "mk1_earned",
 		"species": SpeciesDefs.BOT,
 		"program": "orders",
 		# No behaviour to choose between: what it does is the list of tiles she
@@ -214,6 +215,7 @@ static var TYPES: Dictionary = {
 	"bot_mk2": {
 		"name": "Robot Mk II",
 		"price": 400,
+		"earned_by": "mk2_earned",
 		"species": SpeciesDefs.BOT,
 		"program": "configs",
 		# Order matters: it is the order the machine menu lists them in, and the

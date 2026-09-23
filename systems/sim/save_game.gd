@@ -101,6 +101,7 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 			# take a bench she has already earned back off the shelf. See the
 			# recovery in `load_into` for what an older save is read as.
 			"rungs": world.rungs.duplicate(),
+			"player_water_actions_today": world.player_water_actions_today,
 		},
 		"state": {
 			"day": gs.day,
@@ -315,6 +316,7 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 	# Only for a save with no field at all, so a farm that has genuinely put its
 	# bench back in the crate is never re-earned from a grid it is no longer on.
 	world.rungs = _flags(w.get("rungs", {}))
+	world.player_water_actions_today = maxi(0, int(w.get("player_water_actions_today", 0)))
 	if not w.has("rungs") and world.count_objects(WorldLayout.WORKBENCH) > 0:
 		world.earn(SimWorld.RUNG_MK2_WORKED)
 		world.earn(SimWorld.RUNG_DESK_PLACED)
@@ -379,6 +381,21 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 	gs.acorns = int(s.get("acorns", 0))  # T-30 (Q-48); absent ⇒ she has none
 	gs.machines = _int_values(s.get("machines", {}))  # absent ⇒ crate empty
 	gs.boxed = _restore_boxed(s.get("boxed", {}))  # Q-98; absent ⇒ it remembers nothing
+	# Older farms could buy the first two marks before their proof cards existed.
+	# Read every ownership form after both the cast and crate have been restored.
+	var owned_mk1 := int(gs.machines.get("bot_mk1", 0)) > 0 \
+		or not (gs.boxed.get("bot_mk1", []) as Array).is_empty()
+	var owned_mk2 := int(gs.machines.get("bot_mk2", 0)) > 0 \
+		or not (gs.boxed.get("bot_mk2", []) as Array).is_empty()
+	for id in world.actors:
+		var model := String(world.actors[id].get("extra", {}).get("model", ""))
+		owned_mk1 = owned_mk1 or model == "bot_mk1"
+		owned_mk2 = owned_mk2 or model == "bot_mk2"
+	if owned_mk2 or world.rungs.has(SimWorld.RUNG_MK2_WORKED) \
+			or world.rungs.has(SimWorld.RUNG_DESK_PLACED):
+		world.earn(SimWorld.RUNG_MK2_EARNED)
+	if owned_mk1 or world.rungs.has(SimWorld.RUNG_MK2_EARNED):
+		world.earn(SimWorld.RUNG_MK1_EARNED)
 	gs.machines_bought = int(s.get("machines_bought", 0))
 	gs.fence_purchased = bool(s.get("fence_purchased", false))
 	# Older saves have no purchase flag. An unspent post or player-built fence

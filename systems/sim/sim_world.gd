@@ -174,12 +174,14 @@ func crow_targets_of_crop(crop: String) -> Array[Vector2i]:
 # is standing on the farm. Each is still paid for at the seed box once it is there
 # (P-12 holds for the transaction); what the ladder settles is the *timing*.
 #
-# The two facts are named here and kept in `rungs` below. They are **latched**:
+# The four facts are named here and kept in `rungs` below. They are **latched**:
 # what a farm has done it has done, so putting the bench back in the crate never
 # takes the machine above it off the shelf, and a mark-2 she boxes on a whim does
 # not close the rung it opened. That is the same
 # reading the designer gave picking a robot up — repositioning, never a factory
 # reset (Q-98) — applied to the shelf.
+const RUNG_MK1_EARNED := "mk1_earned"
+const RUNG_MK2_EARNED := "mk2_earned"
 const RUNG_MK2_WORKED := "mk2_worked"
 const RUNG_DESK_PLACED := "desk_placed"
 
@@ -192,7 +194,7 @@ const RUNG_DESK_PLACED := "desk_placed"
 # Two conditions, and they are different kinds of thing. `unlock_requirement` is a
 # tally of what the farm has grown (`MachineDefs.is_unlocked`, the seeds' own
 # mechanism); `earns`/`earned_by` is the ladder. A row carrying neither is for sale
-# from day one, which is every row but the bench and the Mark III.
+# from day one.
 func offers(key: String, gs) -> bool:
 	if not MachineDefs.has(key):
 		return false
@@ -203,13 +205,16 @@ func offers(key: String, gs) -> bool:
 	return needs == "" or rungs.has(needs)
 
 
-# Record a rung as climbed. Called from the gateway at the two moments that count
-# — a mark-2's first `crow_scared` report and a bench being set down — and by a
+# Record a rung as climbed. Called from the gateway when proof is completed and by a
 # fixture arranging a farm that has already climbed it. Latching, so calling it
 # twice is calling it once.
 func earn(rung: String) -> void:
 	if rung != "":
 		rungs[rung] = true
+		if rung in [RUNG_MK2_EARNED, RUNG_MK2_WORKED, RUNG_DESK_PLACED]:
+			rungs[RUNG_MK1_EARNED] = true
+		if rung in [RUNG_MK2_WORKED, RUNG_DESK_PLACED]:
+			rungs[RUNG_MK2_EARNED] = true
 
 
 # Is tonight the night the bench went up (P-15)? True from the first sleep after a
@@ -459,6 +464,7 @@ var story_nights_told: Dictionary = {}
 # unwritten. It sits beside the story nights because it is the same kind of fact —
 # something this farm has done, once, that the game is allowed to notice.
 var rungs: Dictionary = {}
+var player_water_actions_today: int = 0
 
 
 func generate(with_layout: Dictionary = WorldLayout.WORLD) -> void:
@@ -477,6 +483,7 @@ func generate(with_layout: Dictionary = WorldLayout.WORLD) -> void:
 	story_night = STORY_NIGHT_NONE
 	story_nights_told.clear()
 	rungs.clear()
+	player_water_actions_today = 0
 
 	# 1. Bare ground inside the map border. Every later step overwrites; nothing
 	#    below reads a tile it has not written, so the fill order is the only
@@ -2446,7 +2453,32 @@ func schedule_all_brains() -> void:
 
 
 func apply_action(action: Dictionary, gs = null) -> Dictionary:
+	var verb := String(action.get("verb", ""))
+	var actor_id := String(action.get("actor", ""))
+	var target: Vector2i = action.get("target", Vector2i(-1, -1))
+	var before := get_tile(target.x, target.y).duplicate() if verb in ["water", "till"] else {}
 	var result := _apply(action, gs)
+	if result.get("ok", false) and not before.is_empty():
+		var after := get_tile(target.x, target.y)
+		var worked := false
+		if verb == "water":
+			worked = String(before.get("state", "")) in WETTABLE_STATES \
+				and not bool(before.get("watered_today", false)) \
+				and bool(after.get("watered_today", false))
+		elif verb == "till":
+			worked = String(before.get("state", "")) != String(after.get("state", ""))
+		if worked and verb == "water" and _is_player(actor_id):
+			player_water_actions_today += 1
+			if player_water_actions_today >= 11 and not rungs.has(RUNG_MK1_EARNED):
+				earn(RUNG_MK1_EARNED)
+				result["unlocked"] = "bot_mk1"
+		if worked and not _is_player(actor_id) and machine_key_of(actor_id) == "bot_mk1":
+			var extra: Dictionary = actor(actor_id).get("extra", {})
+			if String(extra.get("model", "")) == "bot_mk1" \
+					and target in BotBrain.orders_of(extra) and not rungs.has(RUNG_MK2_EARNED):
+				earn(RUNG_MK1_EARNED)
+				earn(RUNG_MK2_EARNED)
+				result["unlocked"] = "bot_mk2"
 	if result.get("ok", false) and gs != null \
 			and String(action.get("actor", "")) == "player" \
 			and not NON_WORK_VERBS.has(action.get("verb", "")) \
@@ -3557,6 +3589,7 @@ func _parcel_with_gate(gate: Vector2i) -> Dictionary:
 # turn without a GameState is a test fixture arranging a grid, not a farm waking
 # up, and the sleep verb — the only caller in the running game — always has one.
 func advance_day(weather: String, gs = null) -> void:
+	player_water_actions_today = 0
 	# **What kind of night this was, asked first and answered last** (P-15). The
 	# conditions are read off the farm she went to bed on, before the growth pass
 	# touches a tile, so the night the game tells a story about is the night the

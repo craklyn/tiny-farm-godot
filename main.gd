@@ -70,6 +70,17 @@ func play_watering_inset() -> void:
 		hud.play_watering_inset()
 
 
+# The shop card has already opened in sim truth when Farm reports this. A brief
+# HUD cue points to the seed box without stopping the player or opening a menu.
+func _on_robot_unlocked(machine_key: String) -> void:
+	if hud == null or not hud.has_method("show_toast"):
+		return
+	if machine_key == "bot_mk1":
+		hud.show_toast("Robot Mk I is in the seed box shop!")
+	elif machine_key == "bot_mk2":
+		hud.show_toast("Robot Mk II is in the seed box shop!")
+
+
 # The scene does not begin until the player can see it.
 #
 # Reported from the tablet 2026-08-30: it "plays while still pretty much
@@ -163,6 +174,7 @@ func _ready() -> void:
 	farm.name = "Farm"
 	farm.generate_on_ready = save_data.is_empty()
 	add_child(farm)
+	farm.robot_unlocked.connect(_on_robot_unlocked)
 
 	var overlay = Node2D.new()
 	overlay.name = "OverlayRenderer"

@@ -98,6 +98,8 @@ static func measure(with_robot: bool) -> Dictionary:
 	var machine := ""
 	gs.gold = 1000
 	if with_robot:
+		# This comparison begins after the player earned the first robot.
+		world.earn(SimWorld.RUNG_MK1_EARNED)
 		world.apply_action({ "verb": "buy_machine", "item": "stall", "actor": "player" }, gs)
 		world.apply_action({ "verb": "place", "target": STALL, "item": "stall",
 			"actor": "player" }, gs)

@@ -142,6 +142,51 @@ func _run_scenarios() -> void:
 	await _scenario_av_a_ransacked_plot_shows_it()
 	await _scenario_aw_the_front_door_holds_one_picture()
 	await _scenario_ax_three_farms_three_cards()
+	await _scenario_az_robot_unlock_cues()
+
+
+func _scenario_az_robot_unlock_cues() -> void:
+	print("\n--- Scenario AZ: each earned robot points to the seed box ---")
+	var yard = load("res://world/farm.gd").new()
+	yard.name = "UnlockCueYard"
+	add_child(yard)
+	await get_tree().process_frame
+	yard.robot_unlocked.connect(main_scene._on_robot_unlocked)
+	var first := Vector2i(10, 8)
+	yard.sim.set_tile_state(first.x, first.y, "seeded", "wheat")
+	yard.sim.player_water_actions_today = 10
+	main_scene.hud.toast_message = ""
+	var player_result: Dictionary = yard.apply_action({"verb": "water", "actor": "player",
+		"target": first}, GameState)
+	_assert(player_result.get("unlocked", "") == "bot_mk1"
+		and main_scene.hud.toast_message.contains("Mk I")
+		and main_scene.hud.toast_message.contains("seed box"),
+		"the player's eleventh water gives a small cue to the new shop card")
+	var second := Vector2i(11, 8)
+	yard.sim.set_tile_state(second.x, second.y, "seeded", "wheat")
+	yard.sim.spawn_actor("cue_mk1", SpeciesDefs.BOT, second,
+		{"model": "bot_mk1", "orders": [second.x, second.y]})
+	main_scene.hud.toast_message = ""
+	var robot_result: Dictionary = yard.apply_action({"verb": "water", "actor": "cue_mk1",
+		"target": second}, GameState)
+	_assert(robot_result.get("unlocked", "") == "bot_mk2"
+		and main_scene.hud.toast_message.contains("Mk II")
+		and main_scene.hud.toast_message.contains("seed box"),
+		"the first completed taught robot job gives the same shop cue")
+	var card_host := HBoxContainer.new()
+	var locked_mk2 := {"seed_type": "bot_mk2", "icon": MachineDefs.icon_of("bot_mk2"),
+		"unlocked": false, "affordable": false, "price": 400, "owned": 0}
+	main_scene.menus._add_shop_card(card_host, locked_mk2)
+	var pictures := card_host.find_children("*", "TextureRect", true, false)
+	var worker: AtlasTexture = pictures[0].texture if pictures.size() >= 2 else null
+	var work: AtlasTexture = pictures[1].texture if pictures.size() >= 2 else null
+	_assert(worker != null and worker.atlas.resource_path.ends_with("/bot.png")
+		and worker.region == Rect2(48, 0, 48, 48)
+		and work != null and work.region == Rect2(64, 0, 16, 16),
+		"the locked second card pictures a working first robot and water")
+	card_host.free()
+	yard.queue_free()
+	await get_tree().process_frame
 
 func _scenario_aw_the_front_door_holds_one_picture() -> void:
 	# **The boot's two pictures are one file** (Q-103 as amended 2026-09-15). The
