@@ -2,10 +2,27 @@
   "id": "Q-108",
   "option": null,
   "option_label": null,
-  "judgment": "I think we designed this in detail interactively in a claude code session with the chief of staff and the CEO.  Please check if this should be summarily closed based on that work.\n\nAlso check if there are other stories that are in the same boat?",
-  "ruled_at": "2026-09-19T23:57:12",
-  "status": "integrated",
-  "earlier": [],
-  "integrated_at": "2026-09-20T21:23",
-  "integrated_note": "Answered on the card; captures filed to Sam; eight stale cards closed under S-16."
+  "judgment": "Please show me how the house and a coop next to something interesting (plants and fence on either side for example) would render for each of these so I can make an informed decision.",
+  "intent": "revise",
+  "submission_id": "decision-2ce679e9-e60b-43d0-b2c8-a32b987d0090",
+  "submission_payload": {
+    "intent": "revise",
+    "option": null,
+    "judgment": "Please show me how the house and a coop next to something interesting (plants and fence on either side for example) would render for each of these so I can make an informed decision."
+  },
+  "ruled_at": "2026-09-21T20:31:22",
+  "status": "pending_integration",
+  "earlier": [
+    {
+      "id": "Q-108",
+      "option": null,
+      "option_label": null,
+      "judgment": "I think we designed this in detail interactively in a claude code session with the chief of staff and the CEO.  Please check if this should be summarily closed based on that work.\n\nAlso check if there are other stories that are in the same boat?",
+      "ruled_at": "2026-09-19T23:57:12",
+      "status": "integrated",
+      "integrated_at": "2026-09-20T21:23",
+      "integrated_note": "Answered on the card; captures filed to Sam; eight stale cards closed under S-16."
+    }
+  ],
+  "revision_work_id": "wbd8f6a0d25b"
 }

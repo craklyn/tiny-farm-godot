@@ -809,6 +809,9 @@
   "2e2c662e2ae729085fad": {
    "verdict": "ok"
   },
+  "2e69ac56876ab0248944": {
+   "verdict": "ok"
+  },
   "2f069f431a500508f5b1": {
    "verdict": "ok"
   },
@@ -2273,6 +2276,12 @@
   },
   "87e561cb4fe2028ad316": {
    "verdict": "ok"
+  },
+  "882b19ac02a1e8899779": {
+   "instead": "Revise decision Q-108: How the player sees the farm when walls block the view",
+   "quote": "How the farm reads through the walls",
+   "verdict": "decode",
+   "why": "This metaphor makes the reader work out what the farm is sensing or showing through the walls."
   },
   "883b4fbf767249de4463": {
    "verdict": "ok"
