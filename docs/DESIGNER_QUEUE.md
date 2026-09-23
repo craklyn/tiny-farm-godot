@@ -634,6 +634,29 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   returned by one planted seed were not settled by this choice. Make those details
   explicit before the economy change lands.
 
+- **Q-115 (Ruling)** How many crops one planted seed returns. The proposed change lets
+  a harvested crop be planted again instead of requiring a new seed purchase. Today
+  one planted seed returns one crop. Keeping that crop to replant leaves none to sell,
+  so the crop loop makes no gold. The hen then supplies the continuing income: an egg
+  arrives about half the mornings and sells for 10 gold, or 5 gold per day on average.
+  At that rate the 50-gold scarecrow takes 10 days on average, the 120-gold sprinkler
+  takes 24, and buying both from zero takes 34, before any other income.
+
+  **Recommendation: two crops per planted seed.** Keep one to plant again and sell
+  one. At current prices a single wheat plot then earns 15 gold every three growing
+  days, and a single tomato plot earns 30 gold every five. On one plot, buying the
+  scarecrow and then the sprinkler requires 170 gold: 12 wheat harvests or six tomato
+  harvests before egg income. More plots shorten that wait. Three crops per seed
+  would leave two to sell and speed purchases further. One crop per seed leaves eggs
+  as the only repeating income on a farm that replants every crop.
+
+  Options: **(a) two crops per seed** — one replanted, one sold; **(b) three crops
+  per seed** — one replanted, two sold; **(c) one crop per seed** — no repeating crop
+  income if the farm is fully replanted. **Recommendation: (a).** This ruling chooses
+  yield only. Q-113 settled carrying capacity, not how much the shipping bin keeps
+  back. The one-pouch implementation is still held and does not ship merely because
+  this question is prepared. The plain-language card is `hq/data/decisions/Q-115.json`.
+
 - **Q-43** ~~M1's exit gate depends on an unavailable playtester~~ — ✅ ruled 2026-08-28
   by the designer: **user-acceptance test satisfied at this stage.** The 4-year-old is
   consistently unavailable when review is needed, so gating a milestone on her was a

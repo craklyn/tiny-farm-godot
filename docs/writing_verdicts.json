@@ -434,6 +434,9 @@
   "19df59b36528058c41d2": {
    "verdict": "ok"
   },
+  "19e53cecf3161d1fe961": {
+   "verdict": "ok"
+  },
   "19f96fc639bbf2e986bc": {
    "verdict": "ok"
   },
@@ -500,6 +503,9 @@
    "quote": "Candidate held; recovery needed",
    "verdict": "decode",
    "why": "“Candidate” and “recovery” are internal process terms that do not say what is on hold or what must be restored."
+  },
+  "1d7d1f5065a6588426be": {
+   "verdict": "ok"
   },
   "1e12eeddbc603de9944d": {
    "verdict": "ok"
@@ -947,6 +953,9 @@
    "verdict": "decode",
    "why": "The reader has to work out that this means something else the action needs first."
   },
+  "3b73d82d9afddf1af43f": {
+   "verdict": "ok"
+  },
   "3b773df5a71a1f656490": {
    "verdict": "ok"
   },
@@ -999,6 +1008,9 @@
    "verdict": "ok"
   },
   "3f8adc37f9dec00f32f1": {
+   "verdict": "ok"
+  },
+  "3f8bf96cab7e62403495": {
    "verdict": "ok"
   },
   "3f9da22e4f2dc08151fb": {
@@ -1158,6 +1170,12 @@
   },
   "4a22e1b793920ea2ab63": {
    "verdict": "ok"
+  },
+  "4af71bd24aeef697b537": {
+   "instead": "how much the shipping bin can hold",
+   "quote": "how much the shipping bin keeps back",
+   "verdict": "decode",
+   "why": "“Keeps back” does not plainly say what limit of the shipping bin matters."
   },
   "4afee470a795a68ac263": {
    "verdict": "ok"
@@ -1361,6 +1379,12 @@
   },
   "559e514e67a7a116ce47": {
    "verdict": "ok"
+  },
+  "55f28a7e8cb8a388013f": {
+   "instead": "Egg income pays for the early purchases",
+   "quote": "eggs carry the early purchases",
+   "verdict": "second-look",
+   "why": "“Carry” is a metaphor for paying for the purchases."
   },
   "56d39b0b2580191c4493": {
    "baselined": "2026-09-19",
@@ -1966,6 +1990,9 @@
   "7b4ebc9bb58ec62fe160": {
    "verdict": "ok"
   },
+  "7bbdb17b73662853f5e6": {
+   "verdict": "ok"
+  },
   "7bd641e2f407182be29d": {
    "verdict": "ok"
   },
@@ -2295,6 +2322,9 @@
    "verdict": "ok"
   },
   "91b273615c831a683408": {
+   "verdict": "ok"
+  },
+  "91c9b086c67c958d1485": {
    "verdict": "ok"
   },
   "9205899bb188fe0075c2": {
@@ -3242,6 +3272,9 @@
   "cb811c4681baae83f29a": {
    "verdict": "ok"
   },
+  "cbb8b323fcc104ce6735": {
+   "verdict": "ok"
+  },
   "cc0212a8354b1398d5a5": {
    "verdict": "ok"
   },
@@ -3488,6 +3521,12 @@
   "d95d2645301a2a5f7008": {
    "verdict": "ok"
   },
+  "d9bd81342638aaf2d8dc": {
+   "instead": "the player can carry",
+   "quote": "she can carry",
+   "verdict": "second-look",
+   "why": "The pronoun refers to the player mentioned in the previous sentence, so the reader must look back to identify it."
+  },
   "d9bf13e9004e6dd26e23": {
    "verdict": "ok"
   },
@@ -3591,6 +3630,12 @@
    "verdict": "decode",
    "why": "The reader cannot tell what the candidate is."
   },
+  "e0773563dad893603556": {
+   "instead": "If the player replants the crop",
+   "quote": "If she replants it",
+   "verdict": "second-look",
+   "why": "The reader has to infer that “she” means the player."
+  },
   "e07915978a637f967dba": {
    "instead": "The studio is responsible for the next step",
    "quote": "The studio owns the next step",
@@ -3668,6 +3713,9 @@
    "verdict": "ok"
   },
   "e3b3ad0fad8efdb5bdb0": {
+   "verdict": "ok"
+  },
+  "e3f0e39f458a63c98f1c": {
    "verdict": "ok"
   },
   "e54239837fe58e0a0c2a": {
@@ -3816,6 +3864,9 @@
    "verdict": "ok"
   },
   "efd3aa79ffd26ff5865d": {
+   "verdict": "ok"
+  },
+  "f09d2dac476fb0bcb175": {
    "verdict": "ok"
   },
   "f10a30745648451534e8": {

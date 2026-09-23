@@ -1,0 +1,35 @@
+{
+  "id": "Q-115",
+  "title": "How many crops should one planted seed return?",
+  "question": "You want a harvested crop to be plantable again, so the player no longer has to buy another seed for every planting. Today one seed returns one crop. If the player replants that crop, nothing is left to sell; the hen's eggs become the only continuing income. The scarecrow costs 50 gold and the sprinkler 120. At the hen's average of 5 gold per day, buying both from zero takes about 34 days. How many crops should one seed produce? This decides crop income, not how much the player can carry or how many crops a sale must leave in the pouch for replanting.",
+  "why_now": "The proposed seed-and-crop pouch change is held until the farm can fund its early purchases without an accidental egg-only economy. Your choice lets engineering finish that change against a real target.",
+  "options": [
+    {
+      "key": "a",
+      "label": "Two crops per seed (Recommended)",
+      "detail": "Keep one crop for the next planting and sell one. At current prices, a single wheat plot earns 15 gold per harvest and a tomato plot earns 30. Buying the 50-gold scarecrow and then the 120-gold sprinkler takes 12 wheat harvests or six tomato harvests on one plot, before eggs; planting more plots shortens the wait.",
+      "recommended": true
+    },
+    {
+      "key": "b",
+      "label": "Three crops per seed",
+      "detail": "Keep one and sell two. Farming pays for early purchases faster; the player needs less time growing crops before buying the scarecrow and sprinkler."
+    },
+    {
+      "key": "c",
+      "label": "Keep one crop per seed",
+      "detail": "A fully replanted farm has no crop left to sell. Unless prices or another income source change too, egg income pays for the early purchases."
+    }
+  ],
+  "links": [
+    {
+      "label": "The yield calculation and the carrying-capacity ruling",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+    },
+    {
+      "label": "Current crop yields and sale prices",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/crops/crop_defs.gd"
+    }
+  ],
+  "subject": "What a harvest is worth"
+}
