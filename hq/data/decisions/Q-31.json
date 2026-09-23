@@ -24,8 +24,8 @@
   "attachments": [
     {
       "type": "audio",
-      "src": "assets/audio/sfx/water.wav",
-      "caption": "The synthesized watering sound to beat"
+      "src": "assets/audio/sfx/water_pour_01.wav",
+      "caption": "One of the three recorded can-on-soil pours from this session, replacing the synthesized watering sound"
     }
   ],
   "links": [

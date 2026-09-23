@@ -1,13 +1,14 @@
 #!/usr/bin/env python3
 """Synthesise Tiny Farm's gameplay SFX from scratch.
 
-Why: four shipped sounds (harvest, till, water, ui_click) had no recorded
+Why: the original four sounds (harvest, till, water, ui_click) had no recorded
 provenance, which blocks the first public release (CREDITS.md). Generating them
 here makes their origin unambiguous — this file is the source — and lets the mix
 be re-tuned without hunting for sample packs.
 
 Voicing follows docs/design/10 §"SFX: verb-driven foley": till = soft chunk,
-water = sprinkle, harvest = pop + chime, UI = one soft tick. Kid constraints from
+UI = one soft tick. Harvest and water were superseded by recordings; their
+recipes remain below for reference. Kid constraints from
 the same section: gentle attacks, no harsh stingers, comfortable at low volume.
 Output matches the existing in-repo originals: 22050 Hz, mono, 16-bit.
 
@@ -80,7 +81,7 @@ def till():
     return normalise(thump * 0.9 + body * 0.8 + grit, 0.66)
 
 
-def water():
+def water():  # superseded by Daniel's three recorded pours (CREDITS.md); kept for reference
     """Sprinkle: a soft hiss with a handful of droplet ticks over the top."""
     n = int(0.34 * SR)
     hiss = highpass(lowpass(noise(n), 4200), 1100)
@@ -322,7 +323,7 @@ def bloom_chime():
 
 SOUNDS = {
     "till": till,
-    "water": water,
+    "water": water,  # consume its old RNG draws so later shipped sounds stay byte-stable
     "ui_click": ui_click,
     "cluck": cluck,
     "squawk": squawk,
@@ -358,6 +359,11 @@ if __name__ == "__main__":
     table = dict(ALTERNATES) if "--alt" in sys.argv else dict(SOUNDS)
     for name, fn in table.items():
         s = fn()
+        if name == "water":
+            # The old synthesized take was replaced by recorded pours. Keep
+            # its RNG consumption before ui_click/cluck/etc., but never put
+            # water.wav back into the shipped assets or the preview.
+            continue
         rendered[name] = s
         path = os.path.join(OUT_DIR, f"{name}.wav")
         write_wav(path, s)

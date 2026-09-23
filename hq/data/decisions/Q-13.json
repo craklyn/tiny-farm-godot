@@ -11,7 +11,7 @@
   "attachments": [
     {"type": "audio", "src": "assets/audio/sfx/harvest_cc0_699491.wav", "caption": "Current harvest (CC0 recording — the direction's benchmark)"},
     {"type": "audio", "src": "assets/audio/sfx/till.wav", "caption": "Current till (synthesized — passes as an impact)"},
-    {"type": "audio", "src": "assets/audio/sfx/water.wav", "caption": "Current water (synthesized — the one the doc says must be re-recorded)"},
+    {"type": "audio", "src": "assets/audio/sfx/water_pour_01.wav", "caption": "Current watering sound — one of Daniel's three recorded pours, replacing the synthesized sound"},
     {"type": "audio", "src": "assets/audio/music/bgm_wholesome.ogg", "caption": "Current placeholder music"}
   ],
   "links": [

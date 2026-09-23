@@ -191,7 +191,7 @@
           "sounds": [
             "assets/audio/sfx/jingle.wav",
             "assets/audio/sfx/till.wav",
-            "assets/audio/sfx/water.wav",
+            "assets/audio/sfx/water_pour_01.wav",
             "assets/audio/sfx/harvest_cc0_699491.wav"
           ],
           "code": [
@@ -1760,7 +1760,7 @@
           "fps": 1,
           "layout": "tool_icons.png cell 4.",
           "sounds": [
-            "assets/audio/sfx/water.wav"
+            "assets/audio/sfx/water_pour_01.wav"
           ],
           "code": [
             "systems/tools.gd"
@@ -1852,7 +1852,7 @@
           "fps": 1,
           "layout": "Tall 16x32 cell.",
           "sounds": [
-            "assets/audio/sfx/water.wav"
+            "assets/audio/sfx/water_pour_01.wav"
           ],
           "code": [
             "systems/sim/sim_world.gd",

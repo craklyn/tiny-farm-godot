@@ -475,12 +475,12 @@ before the first public build ships.*
   byte-for-byte. Cleared. *(Entry written 2026-09-03: the file landed in a
   gameplay commit two days before the audio ledger pass and was its one
   omission, caught by the orphan check on the Finance & Ops page.)*
-- `assets/audio/sfx/till.wav`, `water.wav`, `ui_click.wav`, `cluck.wav`, `squawk.wav` —
+- `assets/audio/sfx/till.wav`, `ui_click.wav`, `cluck.wav`, `squawk.wav` —
   original, synthesized by `tools/gen_sfx.py` (2026-08-27), which *is* their source:
   rerun it to reproduce or retune them. Voiced to the docs/design/10 verb table.
-  Cleared. The `till`/`water`/`ui_click` files of these names previously had no
+  Cleared. The `till`/`ui_click` files of these names previously had no
   identifiable provenance and were replaced. Synthesis was abandoned for `harvest`
-  after four takes (see below).
+  after four takes and for `water` after Daniel recorded the three pours below.
 - **Watering can (3 variants, in use)** — `water_pour_01.wav`, `water_pour_02.wav`,
   `water_pour_03.wav`: original foley recorded by **Daniel Blackburn** (the game's
   designer), 2026-09-02 — the Q-31 session: a rose head sprinkling onto soil, the
@@ -488,8 +488,8 @@ before the first public build ships.*
   Daniel Blackburn, used with permission as the game's own asset; no third-party
   licence. Phone masters kept by the recordist; the in-repo files are the game-ready cuts (~1.05 s,
   22.05 kHz mono, peak-normalized to −4 dB to match the verb set). These replace the
-  synthesized `water.wav` in the pool; `tools/gen_sfx.py` still regenerates that file
-  and it remains in-repo as the fallback. Cycled with pitch jitter at play time.
+  synthesized `water.wav`, which is no longer shipped or generated; there was no
+  fallback wired in the game. Cycled with pitch jitter at play time.
 - **Harvest (3 variants, in use)** — CC0 1.0 recordings from Freesound, cycled at
   play time so repeated harvesting does not replay one identical buffer:
     - `harvest_cc0_699491.wav` — Freesound #699491 "Plant_Harvest_02" by Valenspire
