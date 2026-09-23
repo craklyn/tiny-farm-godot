@@ -66,6 +66,7 @@ sys.path.insert(0, HERE)
 
 import server                      # noqa: E402  (path set above)
 import work                        # noqa: E402
+import action_dispatch             # noqa: E402
 
 TEST_SCRATCH = os.environ.get("HQ_TEST_SCRATCH", "")
 WORKTREES = (os.path.join(TEST_SCRATCH, "worktrees") if TEST_SCRATCH
@@ -409,7 +410,8 @@ def prior_session(item):
     return ""
 
 
-def task_prompt(item, org, resumed="", continuing=False, turns=WORKER_TURNS):
+def task_prompt(item, org, resumed="", continuing=False, turns=WORKER_TURNS,
+                action=None, blocker=None):
     convo = work._convo_lines(item, org)
     said = (f"\n\nWHAT DANIEL HAS SAID ABOUT THIS ON THE CARD — the most recent word on it, "
             f"and it overrides the brief wherever they disagree:\n\n{convo}\n") if convo else ""
@@ -425,7 +427,7 @@ def task_prompt(item, org, resumed="", continuing=False, turns=WORKER_TURNS):
 What Daniel asked for: {item.get('ask', '')}
 
 The next step, which is yours to take now: {item.get('first_action', '')}
-{said}{prior_checks(item)}{prior_session(item)}{revising}{resume_brief(item, continuing, turns)}
+{said}{prior_checks(item)}{prior_session(item)}{revising}{resume_brief(item, continuing, turns)}{action_dispatch.reconcile_brief(action or {}, blocker)}
 Include outcome: {{"status": "complete|blocked|unfinished", "reason": "concrete reason"}} in the final WHAT FOLLOWS JSON object. Use items: [] rather than NONE.
 Do the work in your worktree. Then reply with the deliverable Daniel reads: what
 you changed, what it now does, and anything you found that he should know.
@@ -828,7 +830,7 @@ def touches_game(files):
 # the phases
 # ---------------------------------------------------------------------------
 
-def do_item(item, org, run_id, log):
+def do_item(item, org, run_id, log, action=None):
     """Worker then checker, both in the item's own worktree. Returns the record
     the session applies and writes back."""
     context = _launch_context(item["id"])
@@ -869,7 +871,9 @@ def do_item(item, org, run_id, log):
                 + ("" if resumed else " — the held patch no longer applies, so from main"))
         record_phase(run_id, item, "worker", "The owner is repairing it.")
         text, usage, err = run_cli(task_prompt(item, org, resumed=committed_prior,
-                                               continuing=bool(resumed), turns=turns),
+                                               continuing=bool(resumed), turns=turns,
+                                               action=action,
+                                               blocker=project_work(item).get("blocker") if action else None),
                                    seat_prompt(org, seat, thinking),
                                    READ_TOOLS if thinking else WRITE_TOOLS,
                                    model, tree, WORKER_TIMEOUT,
@@ -1917,11 +1921,30 @@ def resolve_handoff_action(item):
         item.clear(); item.update(fresh)
 
 
-def run_verified_batch(pool, org, run_id, log, *, no_suites=False):
+def run_verified_batch(pool, org, run_id, log, *, no_suites=False, actions=None):
     """Finish one candidate before creating the next, retaining exact parent identity."""
     records, done = {}, []
     for selected in pool:
         item = work.load_item(selected["id"])
+        action = (actions or {}).get(item["id"])
+        claim_id = ""
+        if action:
+            claim_id = action_dispatch.claim(work, item, action, run_id)
+            if not claim_id:
+                records[item["id"]] = {"id": item["id"], "held": True,
+                                       "error": "Action was already claimed", "usage": [],
+                                       "check": None, "applied": False}
+                continue
+            if action["type"] == "recover":
+                progressed = bool(item.get("pending_landing") and recover_pending_landing(item))
+                action_dispatch.finish(work, item, action, claim_id,
+                                       progressed=progressed,
+                                       reason="No recoverable landing transaction remains.")
+                records[item["id"]] = {"id": item["id"], "usage": [], "check": None,
+                                       "applied": progressed}
+                if progressed:
+                    done.append(work.load_item(item["id"]))
+                continue
         if int(item.get("tier") or 0) >= 1:
             ready, reason = integration.handoff_status(server.REPO)
             if not ready:
@@ -1929,12 +1952,20 @@ def run_verified_batch(pool, org, run_id, log, *, no_suites=False):
                        "usage": [], "check": None, "applied": False}
                 records[item["id"]] = rec
                 record_handoff_blocker(item, reason)
+                if claim_id:
+                    action_dispatch.finish(work, item, action, claim_id,
+                                           progressed=False, reason=reason)
                 continue
             resolve_handoff_action(item)
         record_phase(run_id, item, "starting", "The task queue is preparing its isolated checkout.")
-        rec = do_item(item, org, run_id, log)
+        rec = do_item(item, org, run_id, log, action=action) if action else \
+            do_item(item, org, run_id, log)
         records[item["id"]] = rec
         if rec.get("held") or rec.get("limited"):
+            if claim_id:
+                action_dispatch.finish(work, item, action, claim_id,
+                                       progressed=False,
+                                       reason=rec.get("error") or "The owner session did not finish.")
             continue
         ok, why = False, "the check said it should not land as it stands"
         blocker_kind = ""
@@ -2001,6 +2032,9 @@ def run_verified_batch(pool, org, run_id, log, *, no_suites=False):
             if integration_repo and not work.load_item(item["id"]).get("pending_landing"):
                 integration.remove_candidate(server.REPO, integration_repo, WORKTREES)
             continue
+        if claim_id:
+            action_dispatch.finish(work, item, action, claim_id,
+                                   progressed=True)
         log(f"finished {item['id']} · {done[-1]['state']}")
     return records, done
 
@@ -2138,9 +2172,13 @@ def main():
             return 0
 
     recovered = recover_interrupted_transactions(org) if lock else 0
+    if lock:
+        recovered += action_dispatch.recover_orphaned_claims(work)
     if args.recover_only:
         print(f"Recovered {recovered} interrupted attempt(s).")
         return 0
+    if lock:
+        action_dispatch.poll_ci(work, work.items(), action_dispatch.fetch_tests_runs)
 
     if args.repair:
         n = 0
@@ -2159,16 +2197,17 @@ def main():
         print(json.dumps(queue_view()))
         return 0
 
-    pool = queued(args.thinking)
+    selected_actions = action_dispatch.choose(
+        sys.modules[__name__], include_thinking=args.thinking,
+        ids=args.ids, limit=args.limit)
+    pool = [item for item, _action in selected_actions]
+    action_map = {item["id"]: action for item, action in selected_actions}
     if args.ids:
         want = set(args.ids)
         pool = [i for i in pool if i["id"] in want]
         missing = want - {i["id"] for i in pool}
         if missing:
             print(f"not queued: {', '.join(sorted(missing))}")
-    if args.limit:
-        pool = pool[:args.limit]
-
     if args.brief:
         for it in work.items():
             if it["id"] == args.brief:
@@ -2201,7 +2240,8 @@ def main():
     def log(msg):
         print(f"  [{time.strftime('%H:%M:%S')}] {msg}", flush=True)
 
-    records, done = run_verified_batch(pool, org, run_id, log, no_suites=args.no_suites)
+    records, done = run_verified_batch(pool, org, run_id, log,
+                                       no_suites=args.no_suites, actions=action_map)
     record_phase(run_id, None, "finished", "The selected batch finished.")
     shutil.rmtree(os.path.join(WORKTREES, run_id), ignore_errors=True)
 
