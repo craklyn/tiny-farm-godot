@@ -502,7 +502,7 @@ func _load_textures() -> void:
 	tile_regions[WorldLayout.GATE_OPEN] = Rect2(1 * 16, 0, 16, 16)
 	# T-37: the home's shell lives on its own sheets (one per tile, 2026-09-06),
 	# so the per-state sheet table says so; every state absent from it draws
-	# from obstacles.png as always.
+	# from its own sheet above.
 	tile_regions[WorldLayout.WALL] = Rect2(0, 0, 16, 16)
 	tile_regions[WorldLayout.WINDOW] = Rect2(0, 0, 16, 16)
 	tile_sheets[WorldLayout.WALL] = interior_wall_texture

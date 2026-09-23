@@ -14,7 +14,7 @@ const MAP_CELL = 30;
 // The label for a parcel's gate: a real gate in a real fence, the gap a player
 // walks through — not a release gate.
 const GATE_LABEL = "gate (x,y or -1,-1)";  // plain-ok: the opening in a fence
-const OBSTACLE_CELLS = { obstacle_rock: 0, obstacle_log: 1, obstacle_weed: 2, obstacle_tree: 3, fence: 4, hedge: 5, gate_closed: 6, gate_open: 7 };
+const OBSTACLE_NAMES = ["obstacle_rock", "obstacle_log", "obstacle_weed", "obstacle_tree"];
 
 async function renderMapEditor() {
   const maps = await api("/api/maps");
@@ -38,20 +38,21 @@ async function renderMapEditor() {
   const cv = document.getElementById("mp-canvas");
   const ctx = cv.getContext("2d");
   const status = document.getElementById("mp-status");
-  const [grass, yard, floorImg, wallImg, windowImg, obstacles, tools] = await Promise.all([
+  const [grass, yard, floorImg, wallImg, windowImg, rock, log, weed, tree, fence, hedge, gate, tools] = await Promise.all([
     getSheet("assets/sprites/generated/terrain_grass.png"),
     getSheet("assets/sprites/generated/terrain_yard.png"),
     getSheet("assets/sprites/generated/terrain_floor.png"),
     getSheet("assets/sprites/generated/interior_wall.png"),
     getSheet("assets/sprites/generated/interior_window.png"),
-    getSheet("assets/sprites/generated/obstacles.png"),
+    ...[...OBSTACLE_NAMES, "fence", "hedge", "gate"].map(name => getSheet(`assets/sprites/generated/${name}.png`)),
     getSheet("assets/sprites/tool_icons.png"),
   ]);
   const GROUNDS = { yard, floor: floorImg };
+  const OBSTACLES = { obstacle_rock: rock, obstacle_log: log, obstacle_weed: weed, obstacle_tree: tree };
   // boundary kind -> [sheet, cell x-offset]; interior kinds live on their own sheets
   const BOUNDS = {
-    fence: [obstacles, 4 * 16], hedge: [obstacles, 5 * 16],
-    gate_closed: [obstacles, 6 * 16], gate_open: [obstacles, 7 * 16],
+    fence: [fence, 0], hedge: [hedge, 0],
+    gate_closed: [gate, 0], gate_open: [gate, 16],
     wall: [wallImg, 0], window: [windowImg, 0],
   };
 
@@ -76,10 +77,10 @@ async function renderMapEditor() {
       (p.rects || []).forEach(r => {
         for (let y = r[1]; y < r[1] + r[3]; y++) for (let x = r[0]; x < r[0] + r[2]; x++) {
           if (GROUNDS[p.ground]) cellAt(GROUNDS[p.ground], 16, 16, x, y);
-          if (p.obstacle && OBSTACLE_CELLS[p.obstacle] !== undefined) {
+          if (p.obstacle && OBSTACLES[p.obstacle]) {
             // deterministic dither so the preview is stable
             if (((x * 7 + y * 13) % 100) / 100 < (p.density || 0)) {
-              cellAt(obstacles, OBSTACLE_CELLS[p.obstacle] * 16, 0, x, y, 0.85);
+              cellAt(OBSTACLES[p.obstacle], 0, 0, x, y, 0.85);
             }
           }
         }
@@ -98,7 +99,7 @@ async function renderMapEditor() {
     }));
     (L.parcels || []).forEach(p => {
       const g = p.gate || [-1, -1];
-      if (g[0] >= 0) cellAt(obstacles, OBSTACLE_CELLS.gate_closed * 16, 0, g[0], g[1]);
+      if (g[0] >= 0) cellAt(gate, 0, 0, g[0], g[1]);
     });
     (L.tools || []).forEach(t => {
       const col = t.tool === "axe" ? 1 : t.tool === "pickaxe" ? 2 : 0;

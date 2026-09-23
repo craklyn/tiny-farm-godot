@@ -12,7 +12,7 @@ furnishings initially."* These are the pictures of that space:
   assets/sprites/generated/interior_window.png — 16x16, the wall cell with a pane
 
 Derived, not generated, in the yard-ground tradition (tools/gen_yard_ground.py):
-the planks and trim take their browns from the fence cell of obstacles.png, so
+the planks and trim take their browns from fence.png, so
 indoor wood and outdoor wood are the same wood. The wall plaster is the fence's
 lightest brown mixed toward cream; the window pane is the one new colour (a
 quiet blue — no ambient tile in the game is blue, so it reads as sky through

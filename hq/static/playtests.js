@@ -165,10 +165,10 @@ async function renderScrubber(s, root) {
   bg.width = cv.width; bg.height = cv.height;
   const bctx = bg.getContext("2d");
   bctx.imageSmoothingEnabled = false;
-  const [grass, yard, obstacles] = await Promise.all([
+  const [grass, yard, fence, hedge, gate] = await Promise.all([
     getSheet("assets/sprites/generated/terrain_grass.png"),
     getSheet("assets/sprites/generated/terrain_yard.png"),
-    getSheet("assets/sprites/generated/obstacles.png"),
+    ...["fence", "hedge", "gate"].map(name => getSheet(`assets/sprites/generated/${name}.png`)),
   ]);
   const cellBg = (img, sx, x, y) => bctx.drawImage(img, sx, sx === 16 ? 16 : 0, 16, 16, x * CELL, y * CELL, CELL, CELL);
   for (let y = 0; y < GH; y++) for (let x = 0; x < GW; x++) {
@@ -183,15 +183,15 @@ async function renderScrubber(s, root) {
         bctx.drawImage(yard, 16, 16, 16, 16, x * CELL, y * CELL, CELL, CELL);
     }));
     bctx.globalAlpha = 0.7;
-    const BCELL = { fence: 4, hedge: 5, gate_closed: 6, gate_open: 7 };
+    const BOUNDS = { fence: [fence, 0], hedge: [hedge, 0], gate_closed: [gate, 0], gate_open: [gate, 16] };
     (L.boundaries || []).forEach(b => (b.rects || []).forEach(r => {
-      const sx = (BCELL[b.kind] ?? 4) * 16;
+      const [sheet, sx] = BOUNDS[b.kind] || BOUNDS.fence;
       for (let y = r[1]; y < r[1] + r[3]; y++) for (let x = r[0]; x < r[0] + r[2]; x++)
-        bctx.drawImage(obstacles, sx, 0, 16, 16, x * CELL, y * CELL, CELL, CELL);
+        bctx.drawImage(sheet, sx, 0, 16, 16, x * CELL, y * CELL, CELL, CELL);
     }));
     (L.parcels || []).forEach(p => {
       const g = p.gate || [-1, -1];
-      if (g[0] >= 0) bctx.drawImage(obstacles, 6 * 16, 0, 16, 16, g[0] * CELL, g[1] * CELL, CELL, CELL);
+      if (g[0] >= 0) bctx.drawImage(gate, 0, 0, 16, 16, g[0] * CELL, g[1] * CELL, CELL, CELL);
     });
   }
   bctx.globalAlpha = 1;
