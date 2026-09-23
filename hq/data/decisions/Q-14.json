@@ -1,7 +1,7 @@
 {
   "id": "Q-14",
   "title": "Approve the art style guide",
-  "question": "The art style guide draft is ready: measured palette ramps, outline and shape rules, contrast standards, reserved overlay colors (like the magenta that only ever means pest scent), an animation budget, and what all this implies for the eventual full reskin. Everything generated since has followed it informally; your sign-off makes it the law.",
+  "question": "The art style guide draft is ready: measured palette ramps, outline and shape rules, contrast standards, reserved overlay colors (like the magenta that only ever means pest scent), an animation budget, and what all this implies for the eventual full reskin. Everything generated since has followed it informally; your sign-off makes it the law.\n\nAt the look session, also settle how a sprite ends: must its edge be a hard cut between fully drawn and absent pixels, or may the edge use partly transparent pixels? The guide does not say. The fourth look promises softer edges, so that look depends on your answer. The hand-edits section of the art direction guide records the evidence behind this question.",
   "why_now": "The full reskin off placeholder art can't be scheduled until the style is locked — and every sprite generated before lock risks regeneration after it.",
   "options": [
     {
@@ -47,6 +47,10 @@
     {
       "label": "The draft itself (docs/design/09-art-direction.md)",
       "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/09-art-direction.md"
+    },
+    {
+      "label": "Why the sprite edge needs a ruling (hand edits)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/09-art-direction.md#hand-edits-are-evidence-2026-09-02"
     },
     {
       "label": "Entity gallery (all sprites in motion)",
