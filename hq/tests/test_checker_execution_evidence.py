@@ -6,6 +6,7 @@ from pathlib import Path
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import drain
@@ -108,7 +109,7 @@ class CheckerExecutionEvidence(unittest.TestCase):
                     "assertion_passes": 10, "passing_assertions": 10, "assertion_failures": 0}
         item = {"id": "w123", "title": "Weather", "owner": "grace", "ask": "Repair it",
                 "first_action": "Check the dry tap"}
-        with unittest.mock.patch.object(drain.verification_evidence, "lookup", return_value=external):
+        with patch.object(drain.verification_evidence, "lookup", return_value=external):
             brief = drain.task_prompt(item, {"employees": []})
         self.assertIn("manifest-id", brief)
         prompt = drain.check_prompt(item, CLAIM, "diff", external_evidence=external)
