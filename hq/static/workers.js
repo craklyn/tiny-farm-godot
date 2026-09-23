@@ -11,7 +11,6 @@ routes["/chat/bullpen"] = renderWorkers;
 routes["/work/queue"] = renderExecutionQueue;
 
 let wkPoll = null;
-const wkSeen = {};   // session key -> lines already rendered
 const WK_VIEW_KEY = "hq-bullpen-view";
 
 function wkKey(s) { return s.run + "/" + s.name; }
@@ -53,7 +52,9 @@ function wkHeader(s, showTitle=true) {
   const title = s.title ? `<a class="plain" href="#/work/${esc(s.item)}">${esc(s.title)}</a>` : esc(s.item || "");
   const turns = s.provider !== "codex" && s.turns_allowed ? `${s.turns} of ${s.turns_allowed} turns` : `${s.turns} turns`;
   const cost = s.cost != null ? ` · $${Number(s.cost).toFixed(2)}` : (s.tokens ? ` · ${s.tokens.toLocaleString()} tokens through the model so far` : "");
-  const stateLabel = {running: "session running", finished: "session finished", failed: "session failed", stopped: "session stopped"}[s.state] || s.state;
+  let stateLabel = {running: "session running", finished: "session finished", failed: "session failed", stopped: "session stopped"}[s.state] || s.state;
+  if (s.state === "finished" && s.phase === "worker") stateLabel = "work session finished";
+  if (s.state === "finished" && s.phase === "checker") stateLabel = s.has_finding ? "review finished — changes requested" : "review finished";
   const when = s.state === "running" ? `running ${wkElapsed(s.elapsed)}` : `started ${esc(s.started || "")}`;
   return `<div class="wk-head">
     <span class="wk-state ${esc(s.state)}">${esc(stateLabel)}</span>
@@ -96,22 +97,27 @@ function wkLine(l) {
   return `<div class="l ${esc(l.kind)}" data-n="${l.n}">${esc(l.text)}</div>`;
 }
 
+function wkAfter(log) {
+  const rendered = log.querySelectorAll(".l[data-n]");
+  return rendered.length ? Number(rendered[rendered.length - 1].dataset.n) || 0 : 0;
+}
+
 async function wkFill(panel, s) {
-  const key = wkKey(s);
   const log = panel.querySelector(".wk-log");
-  const after = wkSeen[key] || 0;
+  const after = wkAfter(log);
   let got;
   try {
     got = await fetch(`/api/workers/${encodeURIComponent(s.run)}/${encodeURIComponent(s.name)}?after=${after}`).then(r => r.json());
   } catch (e) { return; }
   if (!got || !got.lines) return;
   if (got.lines.length) {
+    const empty = log.querySelector(".l.empty");
+    if (empty) empty.remove();
     const atBottom = log.scrollTop + log.clientHeight >= log.scrollHeight - 8;
     log.insertAdjacentHTML("beforeend", got.lines.map(wkLine).join(""));
     if (atBottom || after === 0) log.scrollTop = log.scrollHeight;
   }
-  wkSeen[key] = got.total || after;
-  if (!log.children.length) log.innerHTML = `<div class="l said">Nothing written yet.</div>`;
+  if (!log.children.length) log.innerHTML = `<div class="l said empty">Nothing written yet.</div>`;
 }
 
 function wkWantedItem() {

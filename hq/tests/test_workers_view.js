@@ -23,6 +23,12 @@ assert.strictEqual(result[0].item, "B", "groups are newest first");
 assert.strictEqual(result[1].sessions[0].phase, "checker", "sessions inside a group are newest first");
 assert.strictEqual(vm.runInContext("wkPhase({phase: 'checker'})", context), "Review");
 assert.strictEqual(vm.runInContext("wkPhase({phase: 'worker'})", context), "Work");
+context.finishedReview = {phase: "checker", state: "finished", has_finding: true};
+assert.ok(vm.runInContext("wkHeader(finishedReview)", context).includes("review finished — changes requested"),
+  "a blocking review is not presented as completed work");
+context.finishedWork = {phase: "worker", state: "finished"};
+assert.ok(vm.runInContext("wkHeader(finishedWork)", context).includes("work session finished"),
+  "the worker label describes the process phase");
 context.groupForTest = result[1];
 const groupMarkup = vm.runInContext("wkGroup(groupForTest, '', '')", context);
 assert.ok(groupMarkup.includes("1 work session") && groupMarkup.includes("1 review"), "group summary describes phases accurately");
@@ -30,6 +36,14 @@ assert.strictEqual((groupMarkup.match(/Alpha/g) || []).length, 1, "the work titl
 assert.ok(!groupMarkup.split("</summary>")[0].includes("<a "), "the disclosure contains no competing link");
 assert.ok(groupMarkup.split("</summary>")[1].includes("Open work card"), "the card link remains available in the expanded body");
 assert.ok(!source.includes("attempt"), "the Bullpen does not call phases attempts");
+assert.ok(!source.includes("wkSeen"), "a replaced panel does not inherit an invisible event cursor");
+assert.ok(source.includes('.l[data-n]'), "incremental reads derive their cursor from rendered history");
+context.emptyLog = {querySelectorAll: () => []};
+assert.strictEqual(vm.runInContext("wkAfter(emptyLog)", context), 0,
+  "a rebuilt empty panel requests the full durable history");
+context.filledLog = {querySelectorAll: () => [{dataset: {n: "7"}}, {dataset: {n: "19"}}]};
+assert.strictEqual(vm.runInContext("wkAfter(filledLog)", context), 19,
+  "a mounted panel requests only events after its last rendered line");
 for (const kind of ["warning", "command-failure", "recovered", "finding", "terminal-failure"]) {
   context.lineForTest = {kind, n: 1, text: kind};
   const line = vm.runInContext("wkLine(lineForTest)", context);

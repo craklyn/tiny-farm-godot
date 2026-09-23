@@ -216,6 +216,18 @@ class Consumers(unittest.TestCase):
             self.assertEqual(states['clean'], 'finished')
             self.assertEqual(states['broken'], 'failed')
 
+    def test_worker_progress_marks_a_blocking_review_finding(self):
+        finding = {'verdict': 'concerns', 'summary': 'needs another pass', 'findings': [{
+            'what': 'The second candidate cannot land', 'where': 'docs/plan.md:17',
+            'fix': 'Rebuild it against the new parent'}]}
+        with tempfile.TemporaryDirectory() as tmp:
+            path = Path(tmp) / 'item-drain-check.jsonl'
+            path.write_text(json.dumps({'type': 'assistant', 'message': {'content': [{
+                'type': 'text', 'text': json.dumps(finding)}]}}) + '\n')
+            progress = server._session_progress(str(path), 'drain-check')
+            self.assertTrue(progress['has_finding'])
+            self.assertIn('Review finding:', progress['last'])
+
 
 if __name__ == '__main__':
     unittest.main()

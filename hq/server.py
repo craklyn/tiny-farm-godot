@@ -2341,13 +2341,14 @@ def _compact_event(ev, phase=""):
     return out
 
 
-def _session_progress(events_path):
+def _session_progress(events_path, phase=""):
     """Turns, tokens and the last line so far, read from the stream file."""
     seen = set()     # a streamed message arrives as several events; one turn each
     tokens = 0
     cost = None
     last = ""
     n = 0
+    has_finding = False
     try:
         with open(events_path, encoding="utf-8") as f:
             for line in f:
@@ -2372,11 +2373,13 @@ def _session_progress(events_path):
                     if ev.get("provider") == "codex":
                         u = ev.get("usage") or {}
                         tokens = sum(int(u.get(k) or 0) for k in ("input_tokens", "output_tokens", "cache_read_input_tokens", "cache_creation_input_tokens"))
-                for c in _compact_event(ev):
+                for c in _compact_event(ev, phase=phase):
                     last = c["text"]
+                    has_finding = has_finding or c["kind"] == "finding"
     except OSError:
         pass
-    return {"events": n, "turns": len(seen), "tokens": tokens, "cost": cost, "last": last[:160]}
+    return {"events": n, "turns": len(seen), "tokens": tokens, "cost": cost,
+            "last": last[:160], "has_finding": has_finding}
 
 
 def worker_sessions():
@@ -2407,7 +2410,7 @@ def worker_sessions():
             started_ts = float(meta.get("started_ts") or 0)
             if not running and now - started_ts > 86400:
                 continue
-            prog = _session_progress(os.path.join(rd, stem + ".jsonl"))
+            prog = _session_progress(os.path.join(rd, stem + ".jsonl"), meta.get("phase") or "")
             files = []
             cwd = meta.get("cwd") or ""
             if running and os.path.isdir(cwd):
