@@ -214,6 +214,7 @@ func _ready() -> void:
 			if farm.sim.gen_seed != 0:
 				gen_seed = farm.sim.gen_seed
 				SimRng.reseed(gen_seed)
+			SaveGame.note_session(GameState, farm.sim, "resume")
 			farm.start_replay_log_from_save(save_data, farm.sim.gen_seed)
 			farm.start_trace(0, true)
 		else:
@@ -221,6 +222,7 @@ func _ready() -> void:
 	if not restored:
 		if not save_data.is_empty():
 			farm.sim.generate()  # restore failed after generation was skipped
+		SaveGame.note_session(GameState, farm.sim, "start")
 		farm.start_replay_log(gen_seed)
 		farm.start_trace(gen_seed, false)
 	farm.queue_redraw()

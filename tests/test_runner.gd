@@ -952,6 +952,11 @@ func test_save_game() -> void:
 	world.apply_action({ "verb": "sleep", "actor": "world" }, GameState)
 	GameState.gold = 123
 	GameState._milestones_earned = { "first_harvest": true }
+	SaveGame.note_session(GameState, world, "start")
+	_assert(GameState.save_lineage == [{
+		"build": ReplayLog.current_build(), "day": 2,
+		"tick": world.clock.tick, "event": "start",
+	}], "a new farm starts its build lineage")
 
 	var live := JSON.stringify(SaveGame.capture(world, GameState))
 
@@ -967,6 +972,24 @@ func test_save_game() -> void:
 	_assert(world2.get_tile(5, 2).state in ["growing", "seeded"], "planted tile restored")
 	var roundtrip := JSON.stringify(SaveGame.capture(world2, GameState))
 	_assert(roundtrip == live, "capture->restore->capture is value-identical")
+
+	# Continue adds only a genuinely new build. The build argument is injectable
+	# here so the test never rewrites the process-wide project setting.
+	SaveGame.note_session(GameState, world2, "resume", ReplayLog.current_build())
+	_assert(GameState.save_lineage.size() == 1,
+		"continuing under the same build does not repeat the lineage entry")
+	SaveGame.note_session(GameState, world2, "resume", "future-build")
+	_assert(GameState.save_lineage.size() == 2,
+		"continuing under a different build adds a lineage entry")
+	_assert(GameState.save_lineage[-1] == {
+		"build": "future-build", "day": 2,
+		"tick": world2.clock.tick, "event": "resume",
+	}, "the resume entry records its build, day and tick")
+
+	var canonical_with_lineage := SaveGame.capture_canonical(world2, GameState)
+	GameState.save_lineage.clear()
+	_assert(SaveGame.capture_canonical(world2, GameState) == canonical_with_lineage,
+		"canonical state is byte-identical with and without build lineage")
 
 	# Unknown version refused
 	var bad = JSON.parse_string(live)
@@ -6971,6 +6994,11 @@ func test_replay_v2() -> void:
 	# is skipped here and reported once, by the autosave block above.
 	var dir := DirAccess.open("res://playtests")
 	_assert(dir != null, "the playtests fixtures directory is readable")
+	var shelf_build_note := SaveGame.build_note({
+		"state": { "build_id": "recorded-build" },
+	}, "checking-build")
+	_assert(shelf_build_note == "recorded under recorded-build, checked under checking-build",
+		"the shelf message names both its recorded and checking builds")
 	var checked := 0
 	for name in dir.get_directories():
 		var path := "res://playtests/%s/session_replay.json" % name
@@ -6996,6 +7024,8 @@ func test_replay_v2() -> void:
 		# the cross-provenance speaking, not a bug.)
 		var is_match := SaveGame.replay_matches(fixture, SaveGame.load_dict(
 				"res://playtests/%s/autosave.json" % name))
+		var fixture_save := SaveGame.load_dict("res://playtests/%s/autosave.json" % name)
+		print("      %s: %s" % [name, SaveGame.build_note(fixture_save)])
 		_assert_quiet(is_match == (String(expect["verdict"]) == "match"),
 			"%s replays to the '%s' verdict the shelf records" % [name, expect["verdict"]])
 		gsf.free()

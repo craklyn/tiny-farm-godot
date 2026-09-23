@@ -93,6 +93,11 @@ replays. For phase 4 the real robustness move is materialising `(observation, ac
 pairs at *record* time rather than deriving them at *train* time, which decouples the
 corpus from logic drift entirely — a P-5/D-2 decision with real cost, not one to take now.
 
+**Save history (2026-09-10).** A save also records the build that wrote it and the builds
+the farm has lived under. The history starts with the new farm and adds an entry only when
+Continue opens it under a different build. These are additive metadata fields, not sim
+truth: older saves have unknown history, and replay comparison excludes both fields.
+
 ### S-4. Grid world as the universal substrate
 The tile grid (already present in `world/farm.gd`) is the shared representation for
 farming state, tower placement, pathfinding, and bot observations. Bots observe egocentric

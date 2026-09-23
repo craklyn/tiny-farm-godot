@@ -104,6 +104,10 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 			"player_water_actions_today": world.player_water_actions_today,
 		},
 		"state": {
+			# Build history is additive metadata. A save without either key has
+			# unknown history; it still loads exactly as it did before this field.
+			"build_id": ReplayLog.current_build(),
+			"lineage": gs.save_lineage.duplicate(true),
 			"day": gs.day,
 			"weather": gs.weather,
 			"energy": gs.energy,
@@ -350,6 +354,7 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 		world.schedule_all_brains()
 
 	var s: Dictionary = d.get("state", {})
+	gs.save_lineage = _restore_lineage(s.get("lineage", []))
 	gs.day = int(s.get("day", 1))
 	gs.weather = String(s.get("weather", "sunny"))
 	# Defaults in the day's fine units (T-29). Anything reaching here is already a
@@ -766,9 +771,58 @@ static func save_to(path: String, world: SimWorld, gs) -> bool:
 static func capture_canonical(world: SimWorld, gs) -> String:
 	var c := capture(world, gs)
 	var s: Dictionary = c.get("state", {})
+	s.erase("build_id")
+	s.erase("lineage")
 	s.erase("selected_tool")
 	s.erase("selected_seed_type")
 	return _canonical_text(c)
+
+
+# Session boundaries are the only places a farm's build history changes. A
+# second load under the same build is deliberately a no-op: the lineage records
+# builds the farm lived under, not how often Continue was pressed.
+static func note_session(gs, world: SimWorld, event: String,
+		build: String = "") -> void:
+	var running := build if build != "" else ReplayLog.current_build()
+	if not gs.save_lineage.is_empty() \
+			and String(gs.save_lineage[-1].get("build", "")) == running:
+		return
+	gs.save_lineage.append({
+		"build": running,
+		"day": int(gs.day),
+		"tick": int(world.clock.tick),
+		"event": event,
+	})
+
+
+static func build_note(save: Dictionary, checked_build: String = "") -> String:
+	var state = save.get("state", {})
+	var recorded := "unknown"
+	if typeof(state) == TYPE_DICTIONARY:
+		recorded = String(state.get("build_id", "unknown"))
+		if recorded == "":
+			recorded = "unknown"
+	var checked := checked_build if checked_build != "" else ReplayLog.current_build()
+	return "recorded under %s, checked under %s" % [recorded, checked]
+
+
+static func _restore_lineage(raw) -> Array[Dictionary]:
+	var out: Array[Dictionary] = []
+	if typeof(raw) != TYPE_ARRAY:
+		return out
+	for item in raw:
+		if typeof(item) != TYPE_DICTIONARY:
+			continue
+		var event := String(item.get("event", ""))
+		if event not in ["start", "resume"]:
+			continue
+		out.append({
+			"build": String(item.get("build", "")),
+			"day": int(item.get("day", 1)),
+			"tick": int(item.get("tick", 0)),
+			"event": event,
+		})
+	return out
 
 
 # Comparison text, with one normalization: everything goes through JSON and back

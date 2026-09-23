@@ -1527,9 +1527,12 @@ def parse_playtest(name):
         lost = load_json(os.path.join(tdir, "session.json")).get("build_lost")
     except Exception:
         pass
+    save_build_id, lineage = _save_build_history(tdir)
     return {
         "name": name,
         "build_id": _replay_build_id(tdir),
+        "save_build_id": save_build_id,
+        "lineage": lineage,
         "build_lost": lost,
         "gen_seed": header.get("gen_seed") if isinstance(header.get("gen_seed"), int) else None,
         "continued": header.get("continued", False),
@@ -1557,6 +1560,28 @@ def _replay_build_id(tdir):
             return json.loads(f.readline()).get("build_id", "")
     except Exception:
         return ""
+
+
+def _save_build_history(tdir):
+    """Read additive save metadata. Older and malformed saves have unknown history."""
+    try:
+        data = load_json(os.path.join(tdir, "autosave.json"))
+        state = data.get("state", {})
+        build_id = state.get("build_id", "") if isinstance(state, dict) else ""
+        raw = state.get("lineage", []) if isinstance(state, dict) else []
+        lineage = []
+        for entry in raw if isinstance(raw, list) else []:
+            if not isinstance(entry, dict) or entry.get("event") not in ("start", "resume"):
+                continue
+            lineage.append({
+                "build": str(entry.get("build", "")),
+                "day": int(entry.get("day", 1)),
+                "tick": int(entry.get("tick", 0)),
+                "event": entry["event"],
+            })
+        return str(build_id), lineage
+    except (OSError, ValueError, TypeError):
+        return "", []
 
 
 def playtest_events(name):

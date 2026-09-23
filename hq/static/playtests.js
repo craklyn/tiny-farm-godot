@@ -13,6 +13,17 @@ const fmtMs = ms => {
 // The ruled bars from the M1.5 gate (regression bars, not aspirations).
 const BAR_WASTED = 12, BAR_STALL_MS = 20000;
 
+const lineageText = lineage => {
+  if (!Array.isArray(lineage) || !lineage.length) return "build history not recorded";
+  const entries = lineage.map(e => {
+    const build = esc(e.build || "unknown");
+    if (e.event === "start") return `started under ${build}`;
+    return `resumed under ${build} on day ${Number(e.day) || 1}`;
+  });
+  if (lineage[0].event === "resume") entries.unshift("earlier build history not recorded");
+  return entries.join(", ");
+};
+
 async function renderPlaytests() {
   const sessions = await api("/api/playtests");
   const real = sessions.filter(s => !s.error && s.taps > 5);
@@ -33,7 +44,7 @@ async function renderPlaytests() {
       ${real.map(s => `<tr class="pt-row" data-name="${esc(s.name)}" title="Watch this session played back">
         <td class="pt-play">▶</td>
         <td><b>${esc(s.name)}</b>${s.continued ? ' <span class="small muted">(resumed)</span>' : ""}${s.classified === false ? ' <span class="small muted">(unclassified)</span>' : ""}${(s.dropped_lines || s.unknown_outcomes || s.mislabelled) ? " ⚠️" : ""}</td>
-        <td class="small muted">${esc(s.build_id || "not recorded")}</td>
+        <td class="small muted" title="${lineageText(s.lineage)}">${esc(s.build_id || "not recorded")}</td>
         <td>${s.taps}</td>
         <td class="${s.wasted_pct <= BAR_WASTED ? "good" : "bad"}">${s.wasted} (${s.wasted_pct}%)</td>
         <td>${s.satisfied}</td>
@@ -59,6 +70,7 @@ async function renderPlaytestDetail(name) {
     <p class="crumbs"><a class="plain" href="#/playtests">Playtests</a> <span>›</span> <b>${esc(s.name)}</b></p>
     <h1>🧪 ${esc(s.name)}</h1>
     <p class="sub">build ${esc(s.build_id || "not recorded")} · seed ${esc(String(s.gen_seed ?? "?"))} ${s.continued ? "· resumed from a save" : "· fresh farm"}</p>
+    <p class="small muted">${lineageText(s.lineage)}</p>
     <div class="statrow">
       <div class="stat"><b>${s.taps}</b><span>taps</span></div>
       <div class="stat"><b class="${s.wasted_pct <= BAR_WASTED ? "good" : "bad"}">${s.wasted_pct}%</b><span>wasted (bar: ≤${BAR_WASTED}%)</span></div>

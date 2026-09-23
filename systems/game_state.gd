@@ -155,6 +155,11 @@ var phase1_complete: bool  # Q-12/P-4: set silently by the sim at sleep when the
 # moment a loop is chosen (`systems/day_cycle.gd`), not once it finishes.
 var story_loops_shown: Dictionary = {}
 
+# Which builds this farm has lived under. This is save metadata, not sim truth:
+# it never affects an action or a replay comparison, but it must survive between
+# autosaves so a later Continue can add the next build to the history.
+var save_lineage: Array[Dictionary]
+
 # Milestones tracking
 var _milestones_earned: Dictionary = {}
 
@@ -244,6 +249,7 @@ func reset() -> void:
 	cans_refilled = 0
 	phase1_complete = false
 	story_loops_shown = {}
+	save_lineage = []
 	_milestones_earned = {}
 	game_paused = false
 	day_changed.emit(day)

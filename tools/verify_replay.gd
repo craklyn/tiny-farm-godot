@@ -40,7 +40,8 @@ func _init() -> void:
 		" (tick-stamped, brains recomputed)" if rlog.version >= 2 else " (legacy action stream)"])
 	if rlog.version >= 2:
 		print("sim time:       %d ticks" % rlog.end_tick)
-	print("provenance:     %s" % rlog.build_note())
+	print("save:           %s" % SaveGame.build_note(save))
+	print("replay:         %s" % rlog.build_note())
 
 	# Q-41: a mismatch is reported, not refused. A replay from another build may
 	# still reproduce — most changes touch nothing it depends on — and when it does
