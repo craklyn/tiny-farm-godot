@@ -14,6 +14,7 @@ HQ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, HQ)
 import drain
 import verify_held_patch
+import verification_evidence
 import work
 
 
@@ -122,6 +123,84 @@ class HeldPatchTests(unittest.TestCase):
         self.assertEqual((evidence["completed_runs"], evidence["assertion_passes"],
                           evidence["assertion_failures"]), (3, 3, 0))
         self.assertEqual(git(self.repo, "status", "--porcelain"), "?? hq/")
+
+    def _card(self):
+        with open(os.path.join(self.repo, "hq/data/work", self.item_id + ".json")) as source:
+            return json.load(source)
+
+    def _evidence(self, runs=2, *, complete=True):
+        script = ("print('  ✓ known assertion'); print('Results: 2 PASSED, 0 FAILED')"
+                  if complete else "print('unfinished')")
+        return verify_held_patch.verify(self.item_id, runs, "known assertion", repo=self.repo,
+                                        runner=[sys.executable, "-c", script])
+
+    def test_attached_manifest_is_bounded_and_candidate_bound(self):
+        path = self._evidence()
+        card = self._card()
+        summary = verification_evidence.attach(card, path, os.path.join(self.repo, "hq/data"))
+        self.assertEqual(summary["passing_suites"], 2)
+        self.assertEqual(summary["assertion_passes"], 2)
+        self.assertEqual(verification_evidence.lookup(card, os.path.join(self.repo, "hq/data")), summary)
+        card["last_recorded_attempt"] = "attempt-2"
+        self.assertIsNone(verification_evidence.lookup(card, os.path.join(self.repo, "hq/data")))
+        card["last_recorded_attempt"] = "attempt-1"
+        card["attempt_outcome"]["candidate"]["tree"] = "different"
+        self.assertIsNone(verification_evidence.lookup(card, os.path.join(self.repo, "hq/data")))
+
+    def test_attachment_is_saved_on_card_with_manifest_id(self):
+        path = self._evidence()
+        card = self._card()
+        card.setdefault("_revision", 0)
+        with patch.object(work, "WORK", os.path.join(self.repo, "hq/data/work")):
+            verification_evidence.attach(card, path, os.path.join(self.repo, "hq/data"))
+            work.save_item(card)
+        saved = self._card()
+        self.assertEqual(saved["verification_evidence"]["id"],
+                         verification_evidence.lookup(saved, os.path.join(self.repo, "hq/data"))["id"])
+
+    def test_tampered_log_and_manifest_are_rejected(self):
+        path = self._evidence()
+        card = self._card()
+        verification_evidence.attach(card, path, os.path.join(self.repo, "hq/data"))
+        with open(os.path.join(os.path.dirname(path), "run-01.log"), "a") as sink:
+            sink.write("extra\n")
+        self.assertIsNone(verification_evidence.lookup(card, os.path.join(self.repo, "hq/data")))
+        path = self._evidence()
+        verification_evidence.attach(card, path, os.path.join(self.repo, "hq/data"))
+        with open(path) as source:
+            manifest = json.load(source)
+        manifest["completed_runs"] = 99
+        with open(path, "w") as sink:
+            json.dump(manifest, sink)
+        self.assertIsNone(verification_evidence.lookup(card, os.path.join(self.repo, "hq/data")))
+
+    def test_incomplete_manifest_reports_only_completed_runs(self):
+        path = self._evidence(runs=10, complete=False)
+        card = self._card()
+        summary = verification_evidence.attach(card, path, os.path.join(self.repo, "hq/data"))
+        self.assertEqual((summary["requested_runs"], summary["run_count"],
+                          summary["completed_runs"], summary["passing_suites"]), (10, 1, 0, 0))
+
+    def test_assertion_pass_in_red_suite_is_not_a_green_suite(self):
+        path = verify_held_patch.verify(self.item_id, 10, "known assertion", repo=self.repo,
+            runner=[sys.executable, "-c", "import sys; print('  ✓ known assertion'); "
+                    "print('Results: 2 PASSED, 1 FAILED'); sys.exit(1)"])
+        summary = verification_evidence.attach(self._card(), path, os.path.join(self.repo, "hq/data"))
+        self.assertEqual((summary["requested_runs"], summary["completed_runs"],
+                          summary["assertion_passes"], summary["passing_suites"]), (10, 1, 1, 0))
+
+    def test_opt_in_continues_target_passes_through_red_suites(self):
+        path = verify_held_patch.verify(self.item_id, 3, "known assertion", repo=self.repo,
+            runner=[sys.executable, "-c", "import sys; print('  ✓ known assertion'); "
+                    "print('Results: 2 PASSED, 1 FAILED'); sys.exit(1)"],
+            continue_on_unrelated_failure=True)
+        summary = verification_evidence.attach(self._card(), path, os.path.join(self.repo, "hq/data"))
+        self.assertEqual((summary["requested_runs"], summary["completed_runs"],
+                          summary["assertion_passes"], summary["passing_suites"]), (3, 3, 3, 0))
+        with patch.object(sys, "argv", ["verify_held_patch.py", self.item_id, "--runs", "3",
+                                        "--assertion", "known assertion"]), \
+             patch.object(verify_held_patch, "verify", return_value=path):
+            self.assertEqual(verify_held_patch.main(), 1)
 
     def test_refuses_changed_patch(self):
         with open(os.path.join(self.repo, "hq/data/patches", self.item_id + ".patch"), "a") as sink:

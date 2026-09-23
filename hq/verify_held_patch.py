@@ -8,6 +8,7 @@ Example: python3 hq/verify_held_patch.py WORK_ID --runs 10 \
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import re
@@ -21,6 +22,7 @@ from datetime import datetime, timezone
 import drain
 import roots
 import work
+import verification_evidence
 
 
 RESULT = re.compile(r"Results:\s*(\d+) PASSED,\s*(\d+) FAILED")
@@ -71,7 +73,8 @@ def _save_evidence(path, evidence):
     os.replace(pending, path)
 
 
-def verify(item_id, runs, assertion, repo=None, output_root=None, runner=None, data_root=None):
+def verify(item_id, runs, assertion, repo=None, output_root=None, runner=None, data_root=None,
+           continue_on_unrelated_failure=False):
     """Return evidence path, preserving every completed and incomplete attempt."""
     # New cards use eleven hex characters after w; older imported cards also
     # have readable alphanumeric IDs. Validate the path, not a guessed length.
@@ -142,6 +145,7 @@ def verify(item_id, runs, assertion, repo=None, output_root=None, runner=None, d
             with open(import_log, encoding="utf-8") as source:
                 import_output = source.read()
             evidence["import"] = {"exit_code": import_code, "log": "import.log",
+                                  "log_sha256": hashlib.sha256(import_output.encode()).hexdigest(),
                                   "ok": import_code == 0 and "SCRIPT ERROR:" not in import_output}
             _save_evidence(evidence_path, evidence)
             if not evidence["import"]["ok"]:
@@ -178,7 +182,7 @@ def verify(item_id, runs, assertion, repo=None, output_root=None, runner=None, d
                    "passed": int(matches[0].group(1)) if completed else None,
                    "failed": int(matches[0].group(2)) if completed else None,
                    "assertion": "fail" if failed_assertion else "pass" if passed_assertion else "unknown",
-                   "log": log_name}
+                   "log": log_name, "log_sha256": hashlib.sha256(output.encode()).hexdigest()}
             evidence["runs"].append(row)
             if completed:
                 evidence["completed_runs"] += 1
@@ -188,7 +192,14 @@ def verify(item_id, runs, assertion, repo=None, output_root=None, runner=None, d
             print(f"Integration run {number}/{runs}: "
                   f"{'complete' if completed else 'incomplete'}, exit {code}, "
                   f"assertion {row['assertion']}; log {log_path}", flush=True)
-            if not completed or code != 0 or row["failed"] != 0 or row["assertion"] != "pass":
+            # An unrelated failed assertion can be useful when measuring a
+            # flaky target repeatedly. Keep the red suite in the manifest;
+            # this option never makes the verifier's final verdict green.
+            unrelated_failure = (continue_on_unrelated_failure and completed and
+                                 code == 1 and row["failed"] > 0 and
+                                 row["assertion"] == "pass")
+            if (not completed or code != 0 or row["failed"] != 0 or
+                    row["assertion"] != "pass") and not unrelated_failure:
                 print("Stopping after unsuccessful run; no further runs will start.", flush=True)
                 break
         return evidence_path
@@ -202,9 +213,13 @@ def main():
     parser.add_argument("item_id")
     parser.add_argument("--runs", type=int, required=True)
     parser.add_argument("--assertion", required=True)
+    parser.add_argument("--attach", action="store_true", help="attach validated evidence to the current card")
+    parser.add_argument("--continue-on-unrelated-failure", action="store_true",
+                        help="keep measuring the assertion after a completed red suite where it passed")
     args = parser.parse_args()
     try:
-        path = verify(args.item_id, args.runs, args.assertion)
+        path = verify(args.item_id, args.runs, args.assertion,
+                      continue_on_unrelated_failure=args.continue_on_unrelated_failure)
     except KeyboardInterrupt:
         print("Verification interrupted; completed evidence remains in the printed directory.",
               file=sys.stderr)
@@ -214,6 +229,19 @@ def main():
         return 1
     with open(path, encoding="utf-8") as source:
         evidence = json.load(source)
+    if args.attach:
+        card_path = os.path.join(roots.ROOTS["data"], "work", args.item_id + ".json")
+        try:
+            with open(card_path, encoding="utf-8") as source:
+                card = json.load(source)
+            card.setdefault("_revision", 0)
+            verification_evidence.attach(card, path, roots.ROOTS["data"])
+            work.WORK = os.path.dirname(card_path)
+            work.save_item(card)
+            print("Attached to current work card")
+        except (OSError, ValueError, work.RecordConflict) as exc:
+            print(f"Evidence kept but not attached: {exc}", file=sys.stderr)
+            return 1
     print(f"Evidence: {path}")
     print(f"Completed {evidence['completed_runs']}/{evidence['requested_runs']}; "
           f"assertion {evidence['assertion_passes']} pass, {evidence['assertion_failures']} fail")

@@ -101,6 +101,27 @@ class CheckerExecutionEvidence(unittest.TestCase):
                     "Scenario W passed 10/10 repeated integration runs.", self.manifest())
         self.assertEqual(check["verdict"], "fail")
 
+    def test_durable_external_evidence_reaches_brief_review_and_check_id(self):
+        external = {"id": "manifest-id", "candidate_tree": "tree", "patch_id": "patch",
+                    "assertion": "even though the sim washed it dry at the tap",
+                    "requested_runs": 10, "completed_runs": 10, "passing_suites": 10,
+                    "assertion_passes": 10, "passing_assertions": 10, "assertion_failures": 0}
+        item = {"id": "w123", "title": "Weather", "owner": "grace", "ask": "Repair it",
+                "first_action": "Check the dry tap"}
+        with unittest.mock.patch.object(drain.verification_evidence, "lookup", return_value=external):
+            brief = drain.task_prompt(item, {"employees": []})
+        self.assertIn("manifest-id", brief)
+        prompt = drain.check_prompt(item, CLAIM, "diff", external_evidence=external)
+        self.assertIn('"passing_suites": 10', prompt)
+        evidence = {"completed_integration_runs": 0, "scenario_w_passes": 0,
+                    "external_verification": external}
+        self.assertEqual(drain.enforce_execution_claims(dict(PASS), CLAIM, evidence), PASS)
+        rec = {"result": CLAIM, "patch": "diff", "candidate": {"tree": "tree"},
+               "execution_evidence": evidence, "external_verification": external}
+        before = drain.check_evidence_id(rec)
+        rec["external_verification"] = {**external, "id": "different"}
+        self.assertNotEqual(drain.check_evidence_id(rec), before)
+
 
 if __name__ == "__main__":
     unittest.main()

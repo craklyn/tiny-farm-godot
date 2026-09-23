@@ -47,6 +47,7 @@ timer take the same lock.
 import execution
 import integration
 import roots
+import verification_evidence
 
 import argparse
 import concurrent.futures
@@ -417,6 +418,10 @@ def task_prompt(item, org, resumed="", continuing=False, turns=WORKER_TURNS,
     said = (f"\n\nWHAT DANIEL HAS SAID ABOUT THIS ON THE CARD — the most recent word on it, "
             f"and it overrides the brief wherever they disagree:\n\n{convo}\n") if convo else ""
     revising = work.revision_brief(item)
+    external = verification_evidence.lookup(item, roots.ROOTS["data"])
+    verification_brief = ("\nVALIDATED HELD-CANDIDATE VERIFICATION (same recorded attempt, tree and patch):\n"
+                          + json.dumps(external, sort_keys=True) +
+                          "\nThese runs describe that candidate only. If your edit changes its tree, repeat the checks.\n") if external else ""
     if revising:
         revising += ("\nYour earlier changes are already in your worktree"
                      + (" — applied and committed as \"earlier attempt\", so `git diff` "
@@ -428,7 +433,7 @@ def task_prompt(item, org, resumed="", continuing=False, turns=WORKER_TURNS,
 What Daniel asked for: {item.get('ask', '')}
 
 The next step, which is yours to take now: {item.get('first_action', '')}
-{said}{prior_checks(item)}{prior_session(item)}{revising}{resume_brief(item, continuing, turns)}{action_dispatch.reconcile_brief(action or {}, blocker)}
+{said}{prior_checks(item)}{prior_session(item)}{verification_brief}{revising}{resume_brief(item, continuing, turns)}{action_dispatch.reconcile_brief(action or {}, blocker)}
 Include outcome: {{"status": "complete|blocked|unfinished", "reason": "concrete reason"}} in the final WHAT FOLLOWS JSON object. Use items: [] rather than NONE.
 Do the work in your worktree. Then reply with the deliverable Daniel reads: what
 you changed, what it now does, and anything you found that he should know.
@@ -459,7 +464,7 @@ Be specific and be brief. Findings are for the person who has to act on them.
 You answer with raw JSON and nothing else."""
 
 
-def check_prompt(item, result, diff, org=None, execution_evidence=None):
+def check_prompt(item, result, diff, org=None, execution_evidence=None, external_evidence=None):
     revising = ""
     if item.get("revising"):
         prior = (item.get("prior_results") or [{}])[-1].get("result") or ""
@@ -478,6 +483,8 @@ THE EARLIER RESULT HE WAS READING:
 """
     evidence = json.dumps(execution_evidence or {"status": "no completed owner command evidence"},
                           ensure_ascii=False, sort_keys=True)
+    external = json.dumps(external_evidence or {"status": "no validated external verification"},
+                          ensure_ascii=False, sort_keys=True)
     return f"""THE ITEM: {item['title']}
 What Daniel asked for: {item.get('ask', '')}
 The step that was theirs to take: {item.get('first_action', '')}
@@ -488,10 +495,12 @@ WHAT THEY SAID THEY DID:
 
 OWNER EXECUTION EVIDENCE (recorded by HQ's session adapter, not the owner's reply):
 {evidence}
+VALIDATED EXTERNAL VERIFICATION (only for this exact candidate tree and patch):
+{external}
 The record names this review's run, attempt and candidate tree. A command's
 output proves only what that command reported at that point in the session;
 inspect the candidate diff and do not assume a later edit was tested. The full
-stream is at log_path. Claims without completed command results are unverified.
+stream is at log_path. Claims need completed command results or validated external evidence.
 
 THE DIFF THEY PRODUCED:
 {diff[:60000] if diff else '(no files changed)'}
@@ -627,6 +636,11 @@ def enforce_execution_claims(check, result, evidence):
             claims.append((int(match.group(2)), "scenario_w_passes", "Scenario W passes"))
     for expected, key, label in claims:
         actual = int((evidence or {}).get(key) or 0)
+        external = (evidence or {}).get("external_verification") or {}
+        if key == "completed_integration_runs":
+            actual += int(external.get("passing_suites") or 0)
+        elif key == "scenario_w_passes" and external.get("assertion") == "even though the sim washed it dry at the tap":
+            actual += int(external.get("assertion_passes") or 0)
         if actual >= expected:
             continue
         check["verdict"] = "fail"
@@ -643,6 +657,8 @@ def check_evidence_id(rec):
     parts = [rec.get("result"), rec.get("patch", ""), rec.get("candidate")]
     if rec.get("execution_evidence") is not None:
         parts.append(rec["execution_evidence"])
+    if rec.get("external_verification") is not None:
+        parts.append(rec["external_verification"])
     return work.evidence_id(parts)
 
 
@@ -1119,11 +1135,18 @@ def do_item(item, org, run_id, log, action=None):
             os.path.join(WORKERS, RUN_ID or "byhand", f"{item['id']}-drain-work.jsonl"),
             run=RUN_ID or "byhand", attempt_id=rec["attempt_id"],
             candidate=rec["candidate"])
+        external = verification_evidence.lookup(item, roots.ROOTS["data"])
+        if external and (external["candidate_tree"] != rec["candidate"]["tree"] or
+                         external["patch_id"] != work.evidence_id(rec["patch"])):
+            external = None
+        rec["external_verification"] = external
+        if external:
+            rec["execution_evidence"]["external_verification"] = external
         # The chief of staff reads the diff, on his own seat's model.
         record_phase(run_id, item, "reviewing", "The chief of staff is reading the proposed change.")
         cmodel = server.seat_model(org, "claude")
         ctext, cusage, cerr = run_cli(check_prompt(item, text, rec["patch"], org,
-                                                  rec["execution_evidence"]), CHECK_SYSTEM,
+                                                  rec["execution_evidence"], external), CHECK_SYSTEM,
                                       "Read,Glob,Grep", cmodel, tree, CHECK_TIMEOUT,
                                       CHECK_TURNS, "drain-check", "claude", item["id"], rec["attempt_id"])
         if cusage:
