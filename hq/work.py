@@ -379,7 +379,7 @@ def capture_exchange(to_id, message, reply, origin=None):
 
 
 def _now_iso():
-    return datetime.datetime.now().isoformat(timespec="minutes")
+    return datetime.datetime.now().astimezone().isoformat(timespec="seconds")
 
 
 def _roster_line(org):

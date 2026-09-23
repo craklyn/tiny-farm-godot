@@ -80,6 +80,21 @@ ctx.ownerOf = () => ({ name: 'Rin' });
   assert.match(heldCard, /original result is still here/i);
   assert.match(heldCard, /Nothing starts automatically/);
   assert.doesNotMatch(heldCard, /data-act=|data-send=|class="w-reply|scheduled run|attempt is queued|starts in a moment/);
+  const timelineCard = actualWorkCard({ id: 'timeline', title: 'Verify the gallery', level: 'task', tier: 1,
+    state: 'waiting_session', owner: 'rin', result: 'The gallery entry is ready.',
+    effective: { state: 'repair_needed', label: 'Adam asked Rin to verify the result in HQ',
+      at: '2026-09-22T16:37:36-07:00', record_is_behind: true },
+    timeline: [
+      { id: 'comment', kind: 'comment', actor: 'daniel', at: '2026-09-19T23:48:00-07:00', body: 'Where is it?' },
+      { id: 'review', kind: 'review_finding', actor: 'claude', at: '2026-09-22T16:37:36-07:00',
+        summary: 'The page was not opened.', session: { run: 'run', name: 'review' } },
+    ] }, { employees: [{ id: 'rin', name: 'Rin' }, { id: 'claude', name: 'Adam' }] },
+    { tiers: { '1': { name: 'Do it, show the diff' } } }).html;
+  assert.match(timelineCard, /Adam asked Rin to verify the result in HQ/);
+  assert.match(timelineCard, /The page was not opened/);
+  assert.match(timelineCard, /Open review/);
+  assert.match(timelineCard, /data-time="2026-09-22T16:37:36-07:00"/);
+  assert.match(timelineCard, /HQ recovered its latest record/);
   const studio = sections.find(el => el.html.includes('You answered — waiting on the studio'));
   assert.deepEqual(studio.children.map(el => el.html), ['q-pending']);
   assert.match(studio.html, /studio's move now/);

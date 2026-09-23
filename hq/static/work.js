@@ -68,6 +68,31 @@ function ownerOf(org, id) {
   return (org.employees || []).find(e => e.id === id) || { name: String(id || "someone"), emoji: "•", title: "" };
 }
 
+function compactTime(raw) {
+  if (!raw) return "Time not recorded";
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return "Time not recorded";
+  const now = new Date();
+  const sameDay = date.getFullYear() === now.getFullYear()
+    && date.getMonth() === now.getMonth() && date.getDate() === now.getDate();
+  return new Intl.DateTimeFormat(undefined, sameDay
+    ? {hour: "numeric", minute: "2-digit"}
+    : {month: "short", day: "numeric", hour: "numeric", minute: "2-digit"}).format(date);
+}
+
+function exactTime(raw) {
+  if (!raw) return "Time not recorded";
+  const date = new Date(raw);
+  if (Number.isNaN(date.getTime())) return "Time not recorded";
+  return new Intl.DateTimeFormat(undefined, {dateStyle: "full", timeStyle: "long"}).format(date);
+}
+
+function timeControl(raw) {
+  const exact = exactTime(raw);
+  return `<button type="button" class="w-time" data-time="${esc(raw || "")}" title="${esc(exact)}"
+    aria-label="${esc(exact)}">${esc(compactTime(raw))}</button>`;
+}
+
 /* What a button does, spelled out before he presses it -----------------------
    His rule, 2026-09-03: "I don't know what happens if I accept this… it would
    be better if it already knows what it would build if this is accepted and can
@@ -375,6 +400,30 @@ function amendNote(it, org) {
    reading. Responding happens here instead, and the exchange is read for work
    exactly like a chat, so what it commits to still gets filed. */
 function convoBlock(it, org) {
+  if (Array.isArray(it.timeline)) {
+    const row = event => {
+      const who = event.actor === "daniel" ? "You" : event.actor === "system"
+        ? "HQ" : ownerOf(org, event.actor).name.split(" ")[0];
+      const link = event.session
+        ? ` <a class="plain w-session-link" href="#/chat/bullpen?item=${encodeURIComponent(it.id)}&session=${encodeURIComponent(event.session.run + "/" + event.session.name)}">${event.kind.startsWith("review") ? "Open review" : "Open session"}</a>` : "";
+      const move = event.move === "revise" ? `<span class="w-move w-move-revise">revising the result</span>` : "";
+      const body = event.kind === "comment" ? (event.actor === "daniel" ? `<p>${esc(event.body)}</p>` : md(event.body || ""))
+        : `<p>${esc(event.kind === "work_finished" ? `${who} returned a result.`
+          : event.kind === "work_started" ? `${who} is working on this.`
+          : event.summary || "")}${link}</p>`;
+      return `<div class="w-msg w-event w-event-${esc(event.kind || "event")}">
+        <div class="w-msg-w">${esc(who)} ${move}<span class="w-msg-time">${timeControl(event.at)}</span></div>
+        <div class="w-msg-b">${body}</div></div>`;
+    };
+    const events = it.timeline;
+    const unresolved = new Set(["review_finding", "run_interrupted", "work_started", "review_started"]);
+    let cut = Math.max(0, events.length - 5);
+    const firstUnresolved = events.findIndex(event => unresolved.has(event.kind));
+    if (firstUnresolved >= 0) cut = Math.min(cut, firstUnresolved);
+    return `<div class="w-convo w-timeline">
+      ${cut ? `<details class="w-earlier"><summary>Earlier history (${cut})</summary>${events.slice(0, cut).map(row).join("")}</details>` : ""}
+      ${events.slice(cut).map(row).join("")}</div>`;
+  }
   const msgs = it.conversation || [];
   if (!msgs.length && !it.awaiting_reply) return "";
   // Long conversations fold to the last exchange: the older turns are context
@@ -393,7 +442,7 @@ function convoBlock(it, org) {
       : m.move === "follow-up" ? `<span class="w-move w-move-follow">filed${filed ? ": " + filed : " as new work"}</span>`
       : m.move === "answer" ? `<span class="w-move">answered</span>` : "";
     return `<div class="w-msg${you ? " w-msg-you" : ""}">
-      <div class="w-msg-w">${esc(name)}${withWord ? ` <span class="w-move">${esc(withWord)}</span>` : ""}${move}</div>
+      <div class="w-msg-w">${esc(name)}${withWord ? ` <span class="w-move">${esc(withWord)}</span>` : ""}${move}<span class="w-msg-time">${timeControl(m.at)}</span></div>
       <div class="w-msg-b">${you ? `<p>${esc(m.text)}</p>` : md(m.text)}</div>
     </div>`;
   };
@@ -677,11 +726,12 @@ function workCard(it, org, pol) {
             title="Who ${esc(who.name.split(" ")[0])} is, what they own, and what else they are carrying">${esc(who.emoji)} ${esc(who.name)}</button></span>
         </div>
         <h3>${esc(FINISHED.includes(it.state) ? reviewTitle(it) : it.title)}</h3>
-        <div class="w-wants">${esc(wantsLine(it, org))}${busy ? `<span class="w-dots"><i></i><i></i><i></i></span>` : ""}</div>
+        <div class="w-wants">${esc((it.effective || {}).label || wantsLine(it, org))}${busy ? `<span class="w-dots"><i></i><i></i><i></i></span>` : ""}${it.effective && it.effective.at ? ` · ${timeControl(it.effective.at)}` : ""}</div>
       </div>
     </div>
     <div class="w-body">
       ${againLine(it, org)}
+      ${it.effective && it.effective.record_is_behind ? `<div class="w-recovered">The session ended before this card finished updating. HQ recovered its latest record.</div>` : ""}
       ${dec ? `<div class="w-decision">
         <div class="w-decision-h">The decision this work came from — the card you ruled on</div>
       </div>` : ""}
@@ -784,6 +834,12 @@ async function renderWork(focusId = workFocusId()) {
   delete cache["/api/queue"];
   const [snap, queue, entData, looks, attention] = await Promise.all([
     workSnap(), api("/api/queue"), api("/api/entities"), api("/api/looks"), api("/api/waiting-on-you")]);
+  const expanded = openSet();
+  if (focusId) expanded.add(focusId);
+  await Promise.all(snap.items.filter(item => expanded.has(item.id)).map(async item => {
+    const detail = await fetch("/api/work/" + encodeURIComponent(item.id)).then(response => response.json());
+    if (!detail.error) Object.assign(item, {timeline: detail.timeline, effective: detail.effective});
+  }));
   const attentionUnavailable = attention.available === false;
   const readyIds = new Set((attentionUnavailable ? [] : attention.ready || []).map(row => row.source_id));
   const attentionReasons = new Map((attention.items || []).map(row => [row.source_id, row.reason]));
@@ -984,9 +1040,15 @@ async function renderWork(focusId = workFocusId()) {
       const set = openSet();
       const el = card(id);
       if (set.has(id)) { set.delete(id); el.classList.remove("w-open"); }
-      else { set.add(id); el.classList.add("w-open"); }
+      else { set.add(id); saveOpen(set); renderWork(focusId); return; }
       el.querySelector(".w-caret").textContent = set.has(id) ? "▾" : "▸";
       saveOpen(set);
+      return;
+    }
+    if (d.time !== undefined) {
+      const exact = exactTime(d.time);
+      ev.target.textContent = ev.target.dataset.expanded === "1" ? compactTime(d.time) : exact;
+      ev.target.dataset.expanded = ev.target.dataset.expanded === "1" ? "0" : "1";
       return;
     }
     if (d.more) {

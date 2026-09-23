@@ -121,12 +121,18 @@ function wkWantedItem() {
   return m ? decodeURIComponent(m[1]) : "";
 }
 
+function wkWantedSession() {
+  const m = /[?&]session=([^&]+)/.exec(location.hash || "");
+  return m ? decodeURIComponent(m[1]) : "";
+}
+
 async function renderWorkers() {
   let snap, execution;
   try { [snap, execution] = await Promise.all([
     fetch("/api/workers").then(r => r.json()), fetch("/api/execution").then(r => r.json())]); }
   catch (e) { $view.innerHTML = `<div class="card">HQ could not read the sessions: ${esc(e.message)}</div>`; return; }
   const wanted = wkWantedItem();
+  const wantedSession = wkWantedSession();
   const sessions = (snap.sessions || []).filter(x => !wanted || x.item === wanted);
   const running = sessions.filter(s => s.state === "running");
   const earlier = sessions.filter(s => s.state !== "running");
@@ -197,6 +203,11 @@ async function renderWorkers() {
       if (s && !d.dataset.filled) { d.dataset.filled = "1"; wkFill(panel, s); }
     });
   });
+  if (wantedSession) {
+    const panel = $view.querySelector(`.wk-panel[data-key="${CSS.escape(wantedSession)}"]`);
+    const details = panel && panel.querySelector("details");
+    if (details) { details.open = true; details.scrollIntoView({block: "center"}); }
+  }
 
   if (wkPoll) clearInterval(wkPoll);
   wkPoll = setInterval(async () => {

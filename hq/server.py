@@ -2151,6 +2151,9 @@ TOKEN_WINDOW_HOURS = 5.0     # the subscription window; what runs dry is this
 WORKERS_DIR = (os.path.join(os.environ["HQ_TEST_SCRATCH"], "workers")
                if os.environ.get("HQ_TEST_SCRATCH")
                else os.path.join(DATA, "runs", "workers"))
+TRANSACTIONS_DIR = (os.path.join(os.environ["HQ_TEST_SCRATCH"], "transactions")
+                    if os.environ.get("HQ_TEST_SCRATCH")
+                    else os.path.join(DATA, "runs", "transactions"))
 _EXECUTION_QUEUE_CACHE = {"work_stamp": None, "data": None}
 
 
@@ -2467,6 +2470,126 @@ def worker_events(run, name, after=0):
     except OSError:
         return {"lines": [], "total": 0, "missing": True}
     return {"lines": lines, "total": total}
+
+
+def _item_sessions(item_id):
+    """All durable sessions for one card; unlike the bullpen, never age out."""
+    found = []
+    if not os.path.isdir(WORKERS_DIR):
+        return found
+    for run in sorted(os.listdir(WORKERS_DIR)):
+        directory = os.path.join(WORKERS_DIR, run)
+        if not os.path.isdir(directory):
+            continue
+        for name in sorted(os.listdir(directory)):
+            if not name.endswith(".json"):
+                continue
+            meta = load_json(os.path.join(directory, name)) or {}
+            if meta.get("item") != item_id:
+                continue
+            stem = name[:-5]
+            running = not meta.get("finished") and _pid_alive(meta.get("pid"))
+            found.append({**meta, "run": run, "name": stem,
+                          "state": "running" if running else
+                                   ("finished" if meta.get("finished") else "stopped")})
+    found.sort(key=lambda row: row.get("finished") or row.get("started") or "")
+    return found
+
+
+def _latest_transaction(item_id):
+    latest = None
+    if not os.path.isdir(TRANSACTIONS_DIR):
+        return None
+    for run in sorted(os.listdir(TRANSACTIONS_DIR)):
+        path = os.path.join(TRANSACTIONS_DIR, run, item_id + ".json")
+        if not os.path.isfile(path):
+            continue
+        try:
+            row = load_json(path)
+        except Exception:
+            continue
+        if latest is None or str(row.get("at") or "") > str(latest.get("at") or ""):
+            latest = row
+    return latest
+
+
+def work_detail(item_id):
+    """One work record plus its evidence-derived status and readable history."""
+    if not re.fullmatch(r"w[0-9a-f]{6,32}", item_id or ""):
+        return {"error": "bad id"}
+    try:
+        item = work.load_item(item_id)
+    except Exception:
+        return {"error": "no such item"}
+    timeline = []
+    for index, message in enumerate(item.get("conversation") or []):
+        timeline.append({"id": f"conversation:{index}", "kind": "comment",
+                         "actor": message.get("role") or "", "at": message.get("at"),
+                         "body": message.get("text") or "", "move": message.get("move") or ""})
+    sessions = _item_sessions(item_id)
+    review_findings = []
+    for session in sessions:
+        phase = session.get("phase")
+        at = session.get("finished") or session.get("started")
+        link = {"run": session["run"], "name": session["name"]}
+        if phase == "drain-work":
+            timeline.append({"id": f"{session['run']}:{session['name']}:finished",
+                             "kind": "work_started" if session["state"] == "running" else "work_finished",
+                             "actor": session.get("seat") or "", "at": at,
+                             "summary": "The owner is working on this." if session["state"] == "running"
+                                        else "The owner returned a result.", "session": link})
+        elif phase == "drain-check":
+            lines = worker_events(session["run"], session["name"]).get("lines") or []
+            findings = [line for line in lines if line.get("kind") == "finding"]
+            if findings:
+                for number, finding in enumerate(findings):
+                    text = re.sub(r"^Review finding:\s*", "", finding.get("text") or "")
+                    event = {"id": f"{session['run']}:{session['name']}:finding:{number}",
+                             "kind": "review_finding", "actor": session.get("seat") or "claude",
+                             "at": at, "summary": text, "session": link}
+                    timeline.append(event)
+                    review_findings.append(event)
+            else:
+                timeline.append({"id": f"{session['run']}:{session['name']}:finished",
+                                 "kind": "review_started" if session["state"] == "running" else "review_finished",
+                                 "actor": session.get("seat") or "claude", "at": at,
+                                 "summary": "The result is being reviewed." if session["state"] == "running"
+                                            else "The review finished.", "session": link})
+    transaction = _latest_transaction(item_id)
+    owner_name = (_person_name(item.get("owner") or "") or "the owner").split(" ")[0]
+    reviewer_name = _person_name("claude").split(" ")[0] if _person_name("claude") else "Adam"
+    active = next((row for row in reversed(sessions) if row["state"] == "running"), None)
+    effective = {"state": item.get("state") or "", "label": "", "at": "",
+                 "source": "work_record", "record_is_behind": False}
+    if active:
+        checking = active.get("phase") == "drain-check"
+        effective.update({"state": "reviewing" if checking else "working",
+                          "label": "Adam is reviewing the result" if checking else "The owner is working on this",
+                          "at": active.get("started") or "", "source": "session"})
+    elif review_findings and not item.get("check"):
+        latest = review_findings[-1]
+        effective.update({"state": "repair_needed", "label": f"{reviewer_name} asked {owner_name} to repair the result",
+                          "at": latest.get("at") or "", "source": "session", "record_is_behind": True})
+    elif transaction and transaction.get("phase") not in ("written_back",):
+        rec = transaction.get("record") or {}
+        if rec.get("check") and (rec["check"].get("findings") or rec["check"].get("verdict") != "pass"):
+            effective.update({"state": "repair_needed", "label": f"{reviewer_name} asked {owner_name} to repair the result",
+                              "at": transaction.get("at") or "", "source": "transaction",
+                              "record_is_behind": True})
+        elif not _pid_alive(transaction.get("pid")):
+            effective.update({"state": "interrupted", "label": "The session stopped before this card finished updating",
+                              "at": transaction.get("at") or "", "source": "transaction",
+                              "record_is_behind": True})
+    elif item.get("started") and not drain_state() and sessions:
+        effective.update({"state": "interrupted", "label": "The session stopped before this card finished updating",
+                          "at": (sessions[-1].get("finished") or sessions[-1].get("started") or ""),
+                          "source": "session", "record_is_behind": True})
+    if effective["record_is_behind"]:
+        timeline.append({"id": "record-behind", "kind": "run_interrupted", "actor": "system",
+                         "at": effective["at"],
+                         "summary": "The session ended before this card finished updating. HQ recovered its latest record."})
+    timeline.sort(key=lambda event: (str(event.get("at") or ""), event.get("id") or ""))
+    return {"item": item, "effective": effective, "timeline": timeline}
 
 
 def usage_from_cli(doc):
@@ -6362,6 +6485,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, queue_snapshot())
             if path == "/api/waiting-on-you":
                 return self._send(200, waiting_on_you())
+            if path.startswith("/api/work/"):
+                return self._send(200, work_detail(unquote(path[len("/api/work/"):])) )
             if path.startswith("/api/work"):
                 return self._send(200, work.api_get(path))
             if path == "/api/health":
@@ -6503,6 +6628,17 @@ def sanitize_runs():
                 json.dump(doc, fh)
 
 
+def _transaction_recovery_thread():
+    """Let dead drains finish their bookkeeping without involving a model."""
+    while True:
+        try:
+            subprocess.run([sys.executable, os.path.join(HQ_DIR, "drain.py"), "--recover-only"],
+                           cwd=REPO, capture_output=True, text=True, timeout=30)
+        except (OSError, subprocess.SubprocessError):
+            pass
+        time.sleep(60)
+
+
 def main():
     # Consistency checks resolve goal routes through the work store. Bind that
     # store first or every valid work reference looks absent at startup.
@@ -6525,6 +6661,7 @@ def main():
     # on him overnight, and the only reading that can settle that is the one
     # taken at the end of the day.
     threading.Thread(target=_queue_night_thread, daemon=True).start()
+    threading.Thread(target=_transaction_recovery_thread, daemon=True).start()
     work.start()
     server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
     print(f"Tiny Farm HQ on http://localhost:{PORT}")

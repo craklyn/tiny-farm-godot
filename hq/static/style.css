@@ -1620,3 +1620,12 @@ a.tool-card b { display: block; margin-bottom: 4px; }
 .wk-log .l.warning,.wk-log .l.note{color:#d8b45a}.wk-log .l.recovered{color:#7bc47f}
 .wk-log .l.done,.wk-log .l.start{font-weight:600}
 .wk-empty{padding:14px}
+.w-time{border:0;background:transparent;color:var(--muted);padding:0 2px;font:inherit;font-weight:400;cursor:pointer;text-transform:none;letter-spacing:0}
+.w-time:hover,.w-time:focus{color:var(--text);text-decoration:underline;outline:none}
+.w-msg-time{margin-left:7px;font-weight:400}
+.w-timeline .w-event{position:relative;padding-left:16px}
+.w-timeline .w-event::before{content:"";position:absolute;left:1px;top:8px;width:6px;height:6px;border-radius:50%;background:var(--line)}
+.w-timeline .w-event-review_finding::before,.w-timeline .w-event-run_interrupted::before{background:#ef6f61}
+.w-timeline .w-event-review_finding{border-left-color:#ef6f61}
+.w-session-link{margin-left:8px;white-space:nowrap}
+.w-recovered{margin:9px 0;padding:9px 11px;border-left:3px solid #d8b45a;background:rgba(216,180,90,.08);color:var(--text);font-size:13px}

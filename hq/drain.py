@@ -86,6 +86,8 @@ WORKERS = (os.path.join(TEST_SCRATCH, "workers") if TEST_SCRATCH
            else os.path.join(REPO, "hq", "data", "runs", "workers"))
 DRAIN_STATE = (os.path.join(TEST_SCRATCH, "drain.json") if TEST_SCRATCH
                else os.path.join(REPO, "hq", "data", "runs", "drain.json"))
+TRANSACTIONS = (os.path.join(TEST_SCRATCH, "transactions") if TEST_SCRATCH
+                else os.path.join(REPO, "hq", "data", "runs", "transactions"))
 RUN_ID = ""
 
 
@@ -104,6 +106,24 @@ def record_phase(run_id, item=None, phase="idle", detail=""):
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(doc, f)
     os.replace(tmp, DRAIN_STATE)
+
+
+def checkpoint(item, rec, phase):
+    """Persist the attempt before the next fallible phase begins.
+
+    Session streams keep the prose; this record keeps the joins and verdict
+    needed to recover a card without paying for either model call again.
+    """
+    run = RUN_ID or rec.get("run") or "byhand"
+    directory = os.path.join(TRANSACTIONS, run)
+    os.makedirs(directory, exist_ok=True)
+    path = os.path.join(directory, item["id"] + ".json")
+    doc = {"version": 1, "run": run, "item": item["id"], "pid": os.getpid(),
+           "phase": phase, "at": work._now_iso(), "record": rec}
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as target:
+        json.dump(doc, target)
+    os.replace(tmp, path)
 # A worker's turn budget. 60 is enough for most items; a sim item that has to
 # write four tests on top of the code is not, and a worker cut off mid-edit
 # costs a whole second attempt. DRAIN_TURNS=120 in the environment raises it for
@@ -528,7 +548,8 @@ def _last_assistant_text(lines):
     return text.strip()
 
 
-def run_cli(prompt, system, tools, model, cwd, timeout, turns, phase, seat, item_id):
+def run_cli(prompt, system, tools, model, cwd, timeout, turns, phase, seat, item_id,
+            attempt_id=""):
     """One model session, streamed to disk as it runs.
 
     Every event the CLI emits is appended to the session's file the moment it
@@ -541,7 +562,7 @@ def run_cli(prompt, system, tools, model, cwd, timeout, turns, phase, seat, item
         return "", None, "HELD"
     started = time.time()
     events_path, meta_path = _session_paths(phase, item_id)
-    meta = {"item": item_id, "seat": seat, **execution.resolve_model(model),
+    meta = {"item": item_id, "attempt_id": attempt_id, "seat": seat, **execution.resolve_model(model),
             "phase": phase, "cwd": cwd, "turns": turns, "timeout": timeout,
             "run": RUN_ID, "started": time.strftime("%Y-%m-%dT%H:%M:%S"),
             "started_ts": started, "pid": None, "finished": None, "usage": None}
@@ -781,6 +802,7 @@ def do_item(item, org, run_id, log):
     rec = {"id": item["id"], "attempt_id": work.uuid.uuid4().hex, "seat": seat, **execution.resolve_model(model), "usage": [],
            "patch": "", "stat": "", "files": [], "result": "", "check": None,
            "error": "", "limited": False, "resume": ""}
+    checkpoint(item, rec, "started")
     # A card queued again after running out of turns carries the budget for
     # this attempt; everything else gets the standing one.
     turns = int((item.get("resume") or {}).get("turns") or 0) or WORKER_TURNS
@@ -813,7 +835,7 @@ def do_item(item, org, run_id, log):
                                    seat_prompt(org, seat, thinking),
                                    READ_TOOLS if thinking else WRITE_TOOLS,
                                    model, tree, WORKER_TIMEOUT,
-                                   turns, "drain-work", seat, item["id"])
+                                   turns, "drain-work", seat, item["id"], rec["attempt_id"])
         if usage:
             rec["usage"].append(dict(usage, phase="drain-work", seat=seat))
         if err == "HELD":
@@ -826,6 +848,7 @@ def do_item(item, org, run_id, log):
             return rec
         rec["result"] = text
         rec["error"] = err
+        checkpoint(item, rec, "worker_finished")
         # What the drain lands is what the real tree does not have yet. After a
         # revision of an attempt that already landed, that is this pass alone;
         # after a revision of a held attempt, it is both passes together.
@@ -853,7 +876,7 @@ def do_item(item, org, run_id, log):
         cmodel = server.seat_model(org, "claude")
         ctext, cusage, cerr = run_cli(check_prompt(item, text, rec["patch"], org), CHECK_SYSTEM,
                                       "Read,Glob,Grep", cmodel, tree, CHECK_TIMEOUT,
-                                      CHECK_TURNS, "drain-check", "claude", item["id"])
+                                      CHECK_TURNS, "drain-check", "claude", item["id"], rec["attempt_id"])
         if cusage:
             rec["usage"].append(dict(cusage, phase="drain-check", seat="claude"))
         if cerr == "HELD":
@@ -864,9 +887,11 @@ def do_item(item, org, run_id, log):
         rec["check"] = parse_check(ctext) if ctext else None
         if rec["check"] and not cerr:
             rec["check_evidence"] = work.evidence_id([rec["result"], rec["patch"], rec["candidate"]])
+        checkpoint(item, rec, "review_finished")
         if rec["files"] and rec["check"] and not cerr:
             record_phase(run_id, item, "checking_candidate", "The proposed change is running its tests.")
             rec["candidate_suites"] = run_suites(cwd=tree)
+            checkpoint(item, rec, "candidate_tested")
         rec["candidate_unchanged"] = sh(["git", "diff", "--quiet", rec["candidate"]["tree"], "--"], cwd=tree).returncode == 0
         rec["candidate_test_evidence"] = work.evidence_id([rec["candidate"], rec.get("candidate_suites")])
         if rec["check"] is None and not rec["limited"]:
@@ -879,6 +904,7 @@ def do_item(item, org, run_id, log):
                             "escalation_reason": None, "read": False}
     except Exception as e:
         rec["error"] = f"{type(e).__name__}: {e}"[:400]
+        checkpoint(item, rec, "interrupted")
     finally:
         if tree:
             drop_worktree(tree)
@@ -1762,11 +1788,14 @@ def run_verified_batch(pool, org, run_id, log, *, no_suites=False):
             record_phase(run_id, item, "applying", "The reviewed change is being applied to the repository.")
             ok, why = apply_patch(rec["patch"], rec["files"])
         rec["applied"], rec["why_not"] = ok, "" if ok else why
+        checkpoint(item, rec, "applied" if ok else "reviewed")
         suites = None
         if ok and not no_suites:
             rec["tree_evidence"] = tree_evidence(rec["files"])
             record_phase(run_id, item, "verifying", "The applied change is running both game test suites.")
             suites = run_suites()
+            rec["suites"] = suites
+            checkpoint(item, rec, "verified")
         rec["test_evidence"] = work.evidence_id([rec.get("patch", ""), suites])
         fresh = work.load_item(item["id"])
         if fresh.get("_revision", 0) != item.get("_revision", 0):
@@ -1775,11 +1804,76 @@ def run_verified_batch(pool, org, run_id, log, *, no_suites=False):
         try:
             record_phase(run_id, item, "recording", "The result and its evidence are being recorded.")
             done.append(write_back(fresh, rec, ok, rec["why_not"], suites, org))
+            checkpoint(item, rec, "written_back")
         except work.RecordConflict:
             rec["held"], rec["error"] = True, "the work card changed before completion was saved; reassessment is required"
             continue
         log(f"finished {item['id']} · {done[-1]['state']}")
     return records, done
+
+
+def recover_interrupted_transactions(org):
+    """Finish bookkeeping from a dead drain without rerunning a model.
+
+    A live drain owns its transaction. Once its PID is gone, the checkpoint is
+    the newest durable evidence and may safely repair the card exactly once.
+    """
+    recovered = 0
+    if not os.path.isdir(TRANSACTIONS):
+        return recovered
+    for run in sorted(os.listdir(TRANSACTIONS)):
+        directory = os.path.join(TRANSACTIONS, run)
+        if not os.path.isdir(directory):
+            continue
+        for name in sorted(os.listdir(directory)):
+            if not name.endswith(".json"):
+                continue
+            path = os.path.join(directory, name)
+            try:
+                with open(path, encoding="utf-8") as source:
+                    tx = json.load(source)
+            except (OSError, ValueError):
+                continue
+            if tx.get("phase") == "written_back":
+                continue
+            try:
+                os.kill(int(tx.get("pid") or 0), 0)
+                continue
+            except (OSError, TypeError, ValueError):
+                pass
+            rec = tx.get("record") or {}
+            item_id = tx.get("item") or ""
+            try:
+                item = work.load_item(item_id)
+            except Exception:
+                continue
+            if item.get("last_recorded_attempt") == rec.get("attempt_id"):
+                tx["phase"] = "written_back"
+            elif rec.get("check"):
+                rec.setdefault("applied", False)
+                rec.setdefault("why_not", "the build session stopped before recording its review")
+                try:
+                    write_back(item, rec, bool(rec["applied"]), rec["why_not"],
+                               rec.get("suites"), org)
+                    tx["phase"] = "written_back"
+                    recovered += 1
+                except work.RecordConflict:
+                    continue
+            else:
+                # There is no reviewed result to publish. Make the existing
+                # card honest and let its normal queue retry the work.
+                if item.get("started"):
+                    item["started"] = ""
+                    if item.get("state") == "doing":
+                        item["state"] = "waiting_session"
+                    work.save_item(item)
+                tx["phase"] = "interrupted"
+            tx["at"] = work._now_iso()
+            tmp = path + ".tmp"
+            with open(tmp, "w", encoding="utf-8") as target:
+                json.dump(tx, target)
+            os.replace(tmp, path)
+    return recovered
 
 
 def main():
@@ -1800,6 +1894,8 @@ def main():
                     help="re-apply held patches from hq/data/patches/, without running any model")
     ap.add_argument("--repair", action="store_true",
                     help="rewrite any card whose result is a raw CLI envelope, and nothing else")
+    ap.add_argument("--recover-only", action="store_true",
+                    help="record interrupted attempts from durable checkpoints and run no work")
     ap.add_argument("--no-suites", action="store_true", help="skip the suites (they run by default "
                                                             "when a patch touches the game)")
     ap.add_argument("--unattended", action="store_true",
@@ -1829,6 +1925,11 @@ def main():
         if lock is None:
             print("Another drain is running; not starting a second one.")
             return 0
+
+    recovered = recover_interrupted_transactions(org) if lock else 0
+    if args.recover_only:
+        print(f"Recovered {recovered} interrupted attempt(s).")
+        return 0
 
     if args.apply:
         want = set(args.ids)
