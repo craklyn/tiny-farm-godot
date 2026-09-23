@@ -169,7 +169,7 @@ func _work_run() -> Dictionary:
 		# A generous day's work over the plot: clear/till/plant/water/harvest.
 		gs.energy = 1000000
 		gs.watering_can_charges = 1000000
-		gs.seeds["wheat"] = 1000000
+		gs.pouch["wheat"] = 1000000
 		for ty in range(PLOT_Y0, PLOT_Y1):
 			# Serpentine, not row-major: a worker walks the rows and turns at the
 			# end of one, it does not walk back to the near edge to start the

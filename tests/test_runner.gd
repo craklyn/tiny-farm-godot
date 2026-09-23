@@ -224,6 +224,9 @@ func _init() -> void:
 	test_chicken_coop()
 	test_coop_interior()
 	test_robot_usefulness()
+	test_one_pouch()
+	test_carry_cap()
+	test_save_v5_migration()
 
 	print("")
 	print(String("=").repeat(60))
@@ -350,8 +353,8 @@ func test_player() -> void:
 	GameState.max_energy = Tools.DAY_UNITS
 	GameState.energy = Tools.DAY_UNITS
 	GameState.gold = 0
-	GameState.seeds = { "wheat": 5 }
-	GameState.crops = {}
+	GameState.pouch = { "wheat": 5 }
+	GameState.bin_reserve = {}
 	GameState.shipping_bin = {}
 	GameState.harvest_counts = {}
 	GameState.max_watering_can_charges = 8
@@ -362,7 +365,7 @@ func test_player() -> void:
 	_assert(GameState.day == 1, "Initial day is 1")
 	_assert(GameState.energy == 600, "Initial energy is a full day — 600 fine units (T-29)")
 	_assert(GameState.gold == 0, "Initial gold is 0")
-	_assert(GameState.seeds.get("wheat", 0) == 5, "Start with 5 wheat seeds")
+	_assert(GameState.pouch.get("wheat", 0) == 5, "Start with 5 wheat seeds")
 	_assert(GameState.watering_can_charges == 8, "Watering can starts at 8")
 	
 	GameState.energy = 450  # T-29: what 15/20 used to be, at the same fraction
@@ -388,25 +391,38 @@ func test_player() -> void:
 	
 	GameState.gold = 100
 	GameState.harvest_counts = { "wheat": 0, "tomato": 0 }
+	# Wheat is the crop the farm is given and it is off the shelf (S-18/S-19/S-20): cutting
+	# one gives the seed for the next, so there is no wheat packet to buy and her
+	# money is untouched by asking for one.
 	var bought = GameState.buy_seed("wheat")
-	_assert(bought, "Can buy wheat seeds")
-	_assert(GameState.gold == 95, "Gold decreased by 5 (wheat seed price)")
-	_assert(GameState.seeds.get("wheat", 0) == 6, "Wheat seeds increased to 6")
-	
+	_assert(not bought, "The shop does not sell the crop she already has")
+	_assert(GameState.gold == 100, "and asking for one costs her nothing")
+	_assert(GameState.pouch.get("wheat", 0) == 5, "and puts nothing in her pouch")
+
 	var bought_tomato = GameState.buy_seed("tomato")
 	_assert(not bought_tomato, "Can't buy locked tomato seeds")
-	
+
 	GameState.harvest_counts["wheat"] = 1
 	bought_tomato = GameState.buy_seed("tomato")
 	_assert(bought_tomato, "Can buy tomato after unlock")
-	_assert(GameState.gold == 85, "Gold decreased by 10 (tomato seed price)")
-	
-	GameState.crops = { "wheat": 3, "tomato": 0 }
+	_assert(GameState.gold == 90, "Gold decreased by 10 (tomato seed price)")
+
+	# The bin reserves these three units for later planting.
+	GameState.pouch["wheat"] = 3
+	GameState.pouch["tomato"] = 0
 	GameState.gold = 0
 	var sold = GameState.sell_crops_to_bin()
-	_assert(sold, "Sold crops")
-	_assert(GameState.crops.get("wheat", 0) == 0, "Crops emptied after selling")
-	_assert(GameState.gold == 45, "Gold = 3 wheats x 15g = 45g")
+	_assert(sold.ok, "Deposited crops")
+	_assert(GameState.pouch.get("wheat", 0) == 0,
+		"the deposited units leave her pouch")
+	_assert(int(GameState.bin_reserve.wheat) == 3 and GameState.gold == 0,
+		"the first three wheat are reserved without a sale")
+
+	# And a pouch down at the line has nothing to sell — the sale is refused
+	# rather than paying nothing, so the bin can answer "already done".
+	GameState.gold = 0
+	_assert(not GameState.sell_crops_to_bin().ok, "an empty pouch has no deposit to make")
+	_assert(GameState.gold == 0, "and pays nothing")
 	
 	GameState.energy = 150  # T-29: a quarter left, as 5/20 was
 	GameState.watering_can_charges = 2
@@ -484,8 +500,8 @@ func test_integration() -> void:
 	GameState.max_energy = Tools.DAY_UNITS  # T-29: 600 fine units to the day
 	GameState.energy = Tools.DAY_UNITS
 	GameState.gold = 0
-	GameState.seeds = { "wheat": 5 }
-	GameState.crops = {}
+	GameState.pouch = { "wheat": 5 }
+	GameState.bin_reserve = {}
 	GameState.shipping_bin = {}
 	GameState.harvest_counts = {}
 	GameState.max_watering_can_charges = 8
@@ -499,8 +515,8 @@ func test_integration() -> void:
 	
 	GameState.selected_tool = 5 # Seeds
 	_assert(Tools.get_action(5, "tilled") == "plant", "Seeds action on tilled = plant")
-	GameState.seeds["wheat"] -= 1
-	_assert(GameState.seeds["wheat"] == 4, "4 wheat seeds remaining")
+	GameState.pouch["wheat"] -= 1
+	_assert(GameState.pouch["wheat"] == 4, "4 wheat seeds remaining")
 	
 	GameState.selected_tool = 4 # Watering Can
 	_assert(Tools.get_action(4, "seeded") == "water", "WateringCan on seeded = water")
@@ -528,22 +544,30 @@ func test_integration() -> void:
 	GameState.selected_tool = 0 # Hands
 	_assert(Tools.get_action(0, "ready") == "harvest", "Hands on ready = harvest")
 	GameState.energy -= Tools.get_energy_cost("harvest")
-	GameState.crops["wheat"] = GameState.crops.get("wheat", 0) + 1
+	GameState.pouch["wheat"] = GameState.pouch.get("wheat", 0) + 3
 	GameState.harvest_counts["wheat"] = GameState.harvest_counts.get("wheat", 0) + 1
-	_assert(GameState.crops["wheat"] == 1, "1 wheat in inventory")
-	
+	# **Back where the seed came from** (S-18/S-19/S-20). She started the cycle with five,
+	# sowed one, and the plant she just cut is the fifth wheat in her pouch again
+	# — the whole change in one line: the farm paid for its own next row without
+	# a coin.
+	_assert(GameState.pouch["wheat"] == 7, "the cut wheat gives three units in the pouch")
+
 	_assert(CropDefs.is_seed_unlocked("tomato", GameState.harvest_counts), "Tomato unlocked after first wheat harvest")
-	
+
 	var sold = GameState.sell_crops_to_bin()
-	_assert(sold, "Sold crops to bin")
-	_assert(GameState.crops.get("wheat", 0) == 0, "Wheats moved to bin")
-	
-	_assert(GameState.gold == 15, "Earned 15g from wheat")
-	
+	_assert(sold.ok, "Deposited crops to bin")
+	_assert(GameState.pouch.get("wheat", 0) == 0,
+		"the bin takes what stands above the keep line and leaves her a row to sow")
+
+	_assert(GameState.gold == 0 and int(GameState.bin_reserve.wheat) == 7,
+		"the first seven wheat enter reserve without earning gold")
+
+	_assert(not GameState.buy_seed("tomato"), "a reserve-only deposit earns no packet money")
+	GameState.gold = 10
 	var bought = GameState.buy_seed("tomato")
 	_assert(bought, "Bought tomato seeds")
-	_assert(GameState.seeds.get("tomato", 0) == 1, "1 tomato seed")
-	_assert(GameState.gold == 5, "5g remaining")
+	_assert(GameState.pouch.get("tomato", 0) == 1, "1 tomato seed")
+	_assert(GameState.gold == 0, "the tomato packet costs its ten gold")
 	
 	GameState.energy = 0
 	_assert(GameState.energy < Tools.get_energy_cost("till"), "Not enough energy to till")
@@ -605,7 +629,7 @@ func test_action_router() -> void:
 
 	GameState.selected_tool = 0
 	GameState.selected_seed_type = "wheat"
-	GameState.seeds = { "wheat": 1 }
+	GameState.pouch = { "wheat": 1 }
 	# T-29: "she has energy" is a full day now, not 20 units — 20 would be less
 	# than one till and every resolve below would answer no_energy instead.
 	GameState.energy = Tools.DAY_UNITS
@@ -631,7 +655,7 @@ func test_action_router() -> void:
 
 	t.objects[0][1] = "shipping_bin"
 	var r4 = ActionRouter.resolve(t, GameState, Vector2i(1, 0))
-	_assert(r4.get("action", "") == "sell", "ActionRouter resolves sell on shipping_bin")
+	_assert(r4.get("action", "") == "open_bin", "ActionRouter opens the bin menu")
 
 func test_input_bleed() -> void:
 	print("\n--- Input Bleed Tests ---")
@@ -754,7 +778,7 @@ func test_rain_wets_fresh_soil() -> void:
 	world.generate()
 	GameState.energy = Tools.DAY_UNITS
 	GameState.max_energy = Tools.DAY_UNITS
-	GameState.seeds = { "wheat": 2 }
+	GameState.pouch = { "wheat": 2 }
 	GameState.weather = "rainy"
 
 	var t := Vector2i(5, 5)
@@ -787,8 +811,8 @@ func test_sim_actions() -> void:
 	GameState.energy = Tools.DAY_UNITS  # T-29
 	GameState.max_energy = Tools.DAY_UNITS
 	GameState.watering_can_charges = 8
-	GameState.seeds = { "wheat": 2 }
-	GameState.crops = {}
+	GameState.pouch = { "wheat": 2 }
+	GameState.bin_reserve = {}
 	GameState.harvest_counts = {}
 	GameState.shipping_bin = {}
 	GameState.gold = 0
@@ -805,7 +829,7 @@ func test_sim_actions() -> void:
 
 	r = world.apply_action({ "verb": "plant", "target": t, "seed_type": "wheat", "actor": "player" }, GameState)
 	_assert(r.ok and world.get_tile(t.x, t.y).state == "seeded", "plant action seeds tile")
-	_assert(GameState.seeds["wheat"] == 1, "plant consumes a seed")
+	_assert(GameState.pouch["wheat"] == 1, "plant consumes a seed")
 
 	r = world.apply_action({ "verb": "water", "target": t, "actor": "player" }, GameState)
 	_assert(r.ok and world.get_tile(t.x, t.y).watered_today, "water action waters tile")
@@ -819,11 +843,21 @@ func test_sim_actions() -> void:
 
 	r = world.apply_action({ "verb": "harvest", "target": t, "actor": "player" }, GameState)
 	_assert(r.ok and r.get("crop_type", "") == "wheat", "harvest returns crop type")
-	_assert(GameState.crops.get("wheat", 0) == 1, "harvest adds crop to inventory")
+	# Back into the one pouch she sowed from (S-18/S-19/S-20): two to begin with, one sown,
+	# and the cut plant makes two again.
+	_assert(GameState.pouch.get("wheat", 0) == 4, "harvest adds three plantable units to the pouch")
 	_assert(world.get_tile(t.x, t.y).state == "cleared", "harvest clears tile")
 
+	# The first delivery enters reserve and pays nothing.
 	r = world.apply_action({ "verb": "sell", "target": t, "actor": "player" }, GameState)
-	_assert(r.ok and GameState.gold == 15, "sell pays wheat price")
+	_assert(r.ok and int(r.reserved.wheat) == 4 and GameState.gold == 0,
+		"depositing four wheat stores four without a sale")
+
+	GameState.pouch["wheat"] = 7
+	r = world.apply_action({ "verb": "sell", "target": t, "actor": "player" }, GameState)
+	_assert(r.ok and int(r.reserved.wheat) == 6 and int(r.sold.wheat) == 1
+		and GameState.gold == 15, "reserve fills to ten and the eleventh wheat sells")
+	_assert(GameState.pouch["wheat"] == 0, "deposit empties the carried stack")
 
 	# Entity verbs
 	world.tiles[t.y][t.x] = { "state": "growing", "crop_type": "wheat", "growth_stage": 1, "watered_today": false }
@@ -892,7 +926,8 @@ func test_replay() -> void:
 	_assert(hr.get("ok", false) and hr.get("crop_type", "") == "wheat", "scripted session harvests wheat")
 	_replay_do(world, rlog, { "verb": "collect", "target": Vector2i(7, 3), "actor": "player" })
 	_replay_do(world, rlog, { "verb": "sell", "actor": "player" })
-	_assert(GameState.gold == 25, "scripted session earned wheat (15) + egg (10) gold")
+	_assert(GameState.gold == 10 and int(GameState.bin_reserve.wheat) == 6,
+		"the scripted session reserves wheat and sells its egg for ten gold")
 	var live_snap := _replay_snapshot(world)
 
 	var rlog2 := ReplayLog.from_json(rlog.to_json())
@@ -1156,7 +1191,10 @@ func test_replay_from_save() -> void:
 	]
 	for a in actions:
 		_replay_do(world2, rlog, a)
-	_assert(GameState.gold == 15, "continue session harvested and sold wheat")
+	# Five in the pouch to start, one sown, one cut back in — and the bin takes
+	# the two that stand above the keep line (S-18/S-19/S-20).
+	_assert(GameState.gold == 0 and int(GameState.bin_reserve.wheat) == 7,
+		"continued session places its wheat in reserve before any sale")
 	var live_snap := _replay_snapshot(world2)
 
 	# Replay the continued session from the log's embedded base save
@@ -1720,7 +1758,7 @@ func test_approach_ignores_inventory() -> void:
 	world.set_tile_state(t.x, t.y, "tilled")
 
 	# With seeds, planting resolves and the tile is workable.
-	GameState.seeds["wheat"] = 5
+	GameState.pouch["wheat"] = 5
 	GameState.selected_seed_type = "wheat"
 	_assert(not ActionRouter.resolve(farm, GameState, t, t, false, null).is_empty(),
 		"planting resolves while she has seeds")
@@ -1728,7 +1766,7 @@ func test_approach_ignores_inventory() -> void:
 
 	# Out of seeds, resolve correctly refuses — but the tile must still count as
 	# workable, or she walks on top of it instead of up to it.
-	GameState.seeds["wheat"] = 0
+	GameState.pouch["wheat"] = 0
 	_assert(ActionRouter.resolve(farm, GameState, t, t, false, null).is_empty(),
 		"planting does not resolve with an empty pouch")
 	_assert(ActionRouter.is_workable(farm, t),
@@ -2006,7 +2044,7 @@ func test_blocked_reason() -> void:
 	farm.sim.tiles[t.y][t.x]["state"] = "tilled"
 	_assert(ActionRouter.blocked_reason(farm, GameState, t) == "",
 		"a tilled tile with seeds in hand is not blocked")
-	GameState.seeds["wheat"] = 0
+	GameState.pouch["wheat"] = 0
 	_assert(ActionRouter.blocked_reason(farm, GameState, t) == "no_seeds",
 		"a tilled tile with an empty pouch says so — the exact trace case")
 	_assert(ActionRouter.resolve(farm, GameState, t, t).is_empty(),
@@ -2066,14 +2104,20 @@ func test_benign_failures() -> void:
 
 	# Sell: an empty basket is not a mistake.
 	GameState.reset()
-	GameState.crops = { "wheat": 0, "tomato": 0 }
+	GameState.pouch["wheat"] = 0
+	GameState.pouch["tomato"] = 0
 	var s2 := world.apply_action({ "verb": "sell", "actor": "player" }, GameState)
 	_assert(not s2.get("ok", true), "selling nothing does not succeed")
 	_assert(s2.get("reason", "") == "nothing_to_sell", "and now says why")
-	GameState.crops["wheat"] = 2
+	GameState.pouch["wheat"] = 0
+	var s2b := world.apply_action({ "verb": "sell", "actor": "player" }, GameState)
+	_assert(not s2b.get("ok", true) and s2b.get("reason", "") == "nothing_to_sell",
+		"and a pouch down at the keep line is the same benign answer, not a refusal")
+	GameState.pouch["wheat"] = 0 + 2
 	var s3 := world.apply_action({ "verb": "sell", "actor": "player" }, GameState)
 	_assert(s3.get("ok", false), "selling a real crop still works")
-	_assert(GameState.gold > 0, "and pays out")
+	_assert(int(GameState.bin_reserve.wheat) == 2 and GameState.gold == 0,
+		"and fills the reserve before paying gold")
 
 	# The distinction that matters: these must not be answered as refusals.
 	# Wobbling at a full watering can teaches that a normal state is a
@@ -2094,7 +2138,7 @@ func test_seed_selection_trap() -> void:
 	# stock, so owning nothing matched nothing and it returned silently.
 	GameState.reset()
 	GameState.harvest_counts = { "wheat": 1, "tomato": 0 }  # unlock tomato
-	GameState.seeds = { "wheat": 0, "tomato": 0, "scarecrow": 0 }
+	GameState.pouch = { "wheat": 0, "tomato": 0, "scarecrow": 0 }
 	GameState.selected_seed_type = "scarecrow"
 	GameState.cycle_seed_type()
 	_assert(GameState.selected_seed_type != "scarecrow",
@@ -2106,7 +2150,7 @@ func test_seed_selection_trap() -> void:
 	# Stock is still preferred over an empty type.
 	GameState.reset()
 	GameState.harvest_counts = { "wheat": 1 }
-	GameState.seeds = { "wheat": 0, "tomato": 3, "scarecrow": 0 }
+	GameState.pouch = { "wheat": 0, "tomato": 3, "scarecrow": 0 }
 	GameState.selected_seed_type = "wheat"
 	GameState.cycle_seed_type()
 	_assert(GameState.selected_seed_type == "tomato",
@@ -2115,19 +2159,20 @@ func test_seed_selection_trap() -> void:
 	# The trap underneath the report: buying while empty-handed must select what
 	# was bought, or resolve() reports "no seeds" to someone holding seeds.
 	GameState.reset()
-	GameState.seeds = { "wheat": 0, "tomato": 0, "scarecrow": 0 }
+	GameState.pouch = { "wheat": 0, "tomato": 0, "scarecrow": 0 }
+	GameState.harvest_counts = { "wheat": 1 }   # tomato unlocked; wheat is off the shelf (S-18/S-19/S-20)
 	GameState.selected_seed_type = "scarecrow"
 	GameState.gold = 100
-	_assert(GameState.buy_seed("wheat"), "buying wheat succeeds")
-	_assert(GameState.selected_seed_type == "wheat",
+	_assert(GameState.buy_seed("tomato"), "buying a tomato succeeds")
+	_assert(GameState.selected_seed_type == "tomato",
 		"and she is now holding it, not the scarecrow she ran out of")
 
-	_assert(GameState.seeds.get(GameState.selected_seed_type, 0) > 0,
+	_assert(GameState.pouch.get(GameState.selected_seed_type, 0) > 0,
 		"the selected type has stock, so a tilled tile can no longer answer 'no seeds'")
 
 	# But a purchase must not hijack a selection she is still using.
 	GameState.reset()
-	GameState.seeds = { "wheat": 5, "tomato": 0, "scarecrow": 0 }
+	GameState.pouch = { "wheat": 5, "tomato": 0, "scarecrow": 0 }
 	GameState.selected_seed_type = "wheat"
 	GameState.gold = 100
 	_assert(GameState.buy_seed("scarecrow"), "buying a scarecrow succeeds")
@@ -2265,7 +2310,7 @@ func test_crow_schedule() -> void:
 	_assert(GameState.actions_today == n1, "a refused action does not tick it")
 
 	var n2: int = GameState.actions_today
-	GameState.crops["wheat"] = 1
+	GameState.pouch["wheat"] = 1
 	world.apply_action({ "verb": "sell", "actor": "player" }, GameState)
 	_assert(GameState.actions_today == n2, "nor does an errand at the bin")
 
@@ -3296,12 +3341,16 @@ func test_satisfied_states() -> void:
 	# --- the bin, with an empty basket ---------------------------------------
 	var bin := Vector2i(4, 1)
 	_assert(farm.get_object(bin.x, bin.y) == "shipping_bin", "the bin is where the layout puts it")
-	GameState.crops = { "wheat": 0, "tomato": 0 }
-	_assert(ActionRouter.satisfied_reason(farm, GameState, bin) == "basket_empty",
-		"an empty basket at the bin answers 'already done'")
-	GameState.crops["wheat"] = 1
+	GameState.pouch["wheat"] = 0
+	GameState.pouch["tomato"] = 0
 	_assert(ActionRouter.satisfied_reason(farm, GameState, bin) == "",
-		"a full basket has a sale to make")
+		"an empty pouch still lets the player open the bin")
+	GameState.pouch["wheat"] = 0
+	_assert(ActionRouter.satisfied_reason(farm, GameState, bin) == "",
+		"the bin menu remains available after a deposit")
+	GameState.pouch["wheat"] = 0 + 1
+	_assert(ActionRouter.satisfied_reason(farm, GameState, bin) == "",
+		"one crop over the line has a sale to make")
 
 	# The cot is never "satisfied" — sleeping is always available (S-7).
 	_assert(ActionRouter.satisfied_reason(farm, GameState, Vector2i(2, 1)) == "",
@@ -3328,7 +3377,7 @@ func test_satisfied_states() -> void:
 	var emitted: Dictionary = {}
 	GameState.reset()
 	farm.sim.tiles[t.y][t.x]["state"] = "tilled"
-	GameState.seeds["wheat"] = 0
+	GameState.pouch["wheat"] = 0
 	emitted[ActionRouter.blocked_reason(farm, GameState, t)] = true
 	GameState.reset()
 	farm.sim.tiles[t.y][t.x]["state"] = "cleared"
@@ -3846,7 +3895,7 @@ func test_cold_open() -> void:
 	# Her work is not charged to the player. She spends her own energy, not hers.
 	_assert(gs.energy == energy_before,
 		"the neighbour's labour costs the player nothing (and the sleeps refill anyway)")
-	_assert(gs.seeds.get("wheat", 0) == 5, "and she plants her own seed, not the player's")
+	_assert(gs.pouch.get("wheat", 0) == 5, "and she plants her own seed, not the player's")
 	# She is a registered actor while her scene is live (M2.5 WI-2) with a meter of
 	# her own; opening the gate is her leaving, so it takes her out of the world
 	# as well as off the farm. Her meter is exercised in test_actor_registry and
@@ -4677,24 +4726,28 @@ func test_economy_teaching() -> void:
 	var box := Vector2i(8, 1)
 	_assert(world.get_object(bin.x, bin.y) == "shipping_bin", "the bin is where the layout puts it")
 
-	# Nothing owed, nothing needed: silence.
-	gs.crops = { "wheat": 0, "tomato": 0 }
+	# Nothing owed, nothing needed: silence. Five wheat is under the keep line's
+	# reach — a pouch with nothing to sell (S-18/S-19/S-20).
 	gs.watering_can_charges = gs.max_watering_can_charges
-	gs.seeds = { "wheat": 5, "tomato": 0 }
+	gs.pouch = { "wheat": 0, "tomato": 0 }
 	_assert(TeachingFocus.economy_beat(world, gs).is_empty(),
 		"a farmer with nothing to sell, water or buy is not nagged")
 
-	# --- sell: the basket fills up -------------------------------------------
-	gs.crops["wheat"] = TeachingFocus.SELL_BEAT_CROPS - 1
+	# --- sell: the pouch fills up --------------------------------------------
+	# The threshold is counted in what the bin would take, so the keep line rides
+	# under it: she has to be that many crops *over* a row's worth before the
+	# errand is real (S-18/S-19/S-20).
+	gs.pouch["wheat"] = 0 + TeachingFocus.SELL_BEAT_CROPS - 1
 	_assert(TeachingFocus.economy_beat(world, gs).is_empty(),
 		"one crop short of the threshold is still silence")
-	gs.crops["wheat"] = TeachingFocus.SELL_BEAT_CROPS
+	gs.pouch["wheat"] = 0 + TeachingFocus.SELL_BEAT_CROPS
 	_assert(_only(TeachingFocus.economy_beat(world, gs)) == bin,
 		"a full enough basket points at the bin")
 	# Selling once retires it for good, and the counter is what remembers.
 	world.apply_action({ "verb": "sell", "actor": "player" }, gs)
-	_assert(gs.total_shipped > 0, "selling accrues the counter through the sim gateway")
-	gs.crops["wheat"] = 99
+	_assert(gs.bin_deposits > 0 and gs.total_shipped == 0,
+		"a reserve-only bin deposit is recorded without counting a sale")
+	gs.pouch["wheat"] = 99
 	_assert(TeachingFocus.economy_beat(world, gs).is_empty(),
 		"and the bin is never highlighted again, however full the basket gets")
 
@@ -4709,16 +4762,29 @@ func test_economy_teaching() -> void:
 		"and the well is never highlighted again")
 
 	# --- buy: the pouch empties ----------------------------------------------
-	gs.seeds = { "wheat": 0, "tomato": 0 }
+	gs.pouch = { "wheat": 0, "tomato": 0 }
 	gs.gold = 0
 	_assert(TeachingFocus.economy_beat(world, gs).is_empty(),
 		"an empty pouch with no money points at NOTHING — never send her to a shop she cannot buy from")
-	gs.gold = 5
+	# The cheapest packet the shelf will actually sell *this* farm. Wheat is off
+	# the shelf since S-18/S-19/S-20, so the price the beat waits for is no longer a
+	# constant: on a farm that has never cut a wheat the tomato is locked and the
+	# cheapest thing left is the scarecrow, and once she has cut one it is the
+	# tomato. Either way it is what she could walk up and buy.
+	_assert(TeachingFocus.cheapest_seed({}) == int(CropDefs.TYPES["scarecrow"].seed_price),
+		"an unearned shelf is priced at the only packet on it")
+	gs.harvest_counts["wheat"] = 1
+	_assert(TeachingFocus.cheapest_seed(gs.harvest_counts) == int(CropDefs.TYPES["tomato"].seed_price),
+		"and one harvest behind her, at the tomato she has just unlocked")
+	gs.gold = TeachingFocus.cheapest_seed(gs.harvest_counts) - 1
+	_assert(TeachingFocus.economy_beat(world, gs).is_empty(),
+		"a penny short of the cheapest packet is still silence")
+	gs.gold = TeachingFocus.cheapest_seed(gs.harvest_counts)
 	_assert(_only(TeachingFocus.economy_beat(world, gs)) == box,
 		"an empty pouch and the price of a seed points at the seed box")
-	world.apply_action({ "verb": "buy_seed", "seed_type": "wheat", "actor": "player" }, gs)
+	world.apply_action({ "verb": "buy_seed", "seed_type": "tomato", "actor": "player" }, gs)
 	_assert(gs.seeds_bought == 1, "buying accrues its counter")
-	gs.seeds = { "wheat": 0, "tomato": 0 }
+	gs.pouch = { "wheat": 0, "tomato": 0 }
 	gs.gold = 500
 	_assert(TeachingFocus.economy_beat(world, gs).is_empty(),
 		"and the seed box is never highlighted again")
@@ -4731,7 +4797,7 @@ func test_economy_teaching() -> void:
 	SimRng.reseed(1212)
 	w2.generate()
 	ColdOpen.run(w2, w2, gs2)
-	gs2.crops["wheat"] = TeachingFocus.SELL_BEAT_CROPS
+	gs2.pouch["wheat"] = 0 + TeachingFocus.SELL_BEAT_CROPS
 	_assert(not TeachingFocus.economy_beat(w2, gs2).is_empty(),
 		"the sell beat would fire on its own")
 	var during_vignette: Array[Vector2i] = TeachingFocus.targets(w2, gs2, Vector2i(15, 4))
@@ -5547,7 +5613,7 @@ func _count_objects(world: SimWorld, kind: String) -> int:
 func _crow_ready_session(seed_value: int) -> LiveSession:
 	var s := LiveSession.new(seed_value)
 	ColdOpen.run(s.world, s.world, s.gs)
-	s.gs.seeds["wheat"] = 500
+	s.gs.pouch["wheat"] = 500
 	s.gs.watering_can_charges = 500
 	s.gs.energy = 500
 	s.gs.harvest_counts["wheat"] = 3
@@ -6321,7 +6387,7 @@ func test_scent() -> void:
 	var plot := WorldLayout.spawn()
 	var soil := Vector2i(plot.x + 1, plot.y)
 	GameState.watering_can_charges = 8
-	GameState.seeds["wheat"] = 5
+	GameState.pouch["wheat"] = 5
 	world.apply_action({ "verb": "till", "target": soil, "actor": "player" }, GameState)
 	world.apply_action({ "verb": "plant", "target": soil, "seed_type": "wheat", "actor": "player" }, GameState)
 	world.scent.deposit(Scent.TRAIL, soil, 60.0, world.clock.tick)
@@ -6698,12 +6764,15 @@ func test_pea() -> void:
 	world.generate()
 	var plot := Vector2i(20, 10)
 	world.set_tile_state(plot.x, plot.y, "cleared")
-	GameState.seeds["pea"] = 1
+	# Peas and nothing else in the pouch, one over the keep line, so what the bin
+	# pays at the end of this walk is the pea's own price and not a wheat's.
+	GameState.pouch = { "pea": 0 + 1 }
 	GameState.gold = 0
 	_assert(world.apply_action({ "verb": "till", "target": plot, "actor": "player" }, GameState).get("ok", false)
 			and world.apply_action({ "verb": "plant", "target": plot, "seed_type": "pea", "actor": "player" }, GameState).get("ok", false),
 		"she tills and plants a pea with the verbs she already had")
-	_assert(world.get_crop_type(plot.x, plot.y) == "pea" and GameState.seeds["pea"] == 0,
+	_assert(world.get_crop_type(plot.x, plot.y) == "pea"
+			and GameState.pouch["pea"] == 0,
 		"the tile holds a pea and the seed left her pocket")
 	for _day in 3:
 		world.apply_action({ "verb": "water", "target": plot, "actor": "player" }, GameState)
@@ -6714,12 +6783,13 @@ func test_pea() -> void:
 	var harvested := world.apply_action({ "verb": "harvest", "target": plot, "actor": "player" }, GameState)
 	_assert(harvested.get("ok", false) and String(harvested.get("crop_type", "")) == "pea",
 		"harvesting one gives back a pea")
-	_assert(int(GameState.crops.get("pea", 0)) == 1 and int(GameState.harvest_counts.get("pea", 0)) == 1,
-		"which lands in her basket and in the counts the milestones read")
+	_assert(int(GameState.pouch.get("pea", 0)) == 3
+			and int(GameState.harvest_counts.get("pea", 0)) == 1,
+		"three plantable peas land in her pouch; the harvest tally rises once")
 	var gold_before: int = GameState.gold
-	_assert(GameState.sell_crops_to_bin(), "and it sells")
-	_assert(GameState.gold == gold_before + int(pea.sell_price),
-		"at its own price (%dg), through the economy every other crop uses" % int(pea.sell_price))
+	_assert(GameState.sell_crops_to_bin().ok, "and she deposits them")
+	_assert(GameState.gold == gold_before and int(GameState.bin_reserve.pea) == 3,
+		"the first three peas enter their own reserve before any sale")
 
 
 # --- M2.5 WI-5 -----------------------------------------------------------------
@@ -7174,6 +7244,10 @@ func test_ants() -> void:
 
 	# --- the scout: a trail is written by walking home ------------------------
 	var raid := _ant_session(4242)
+	# Her pouch is emptied of wheat first, so what it holds at the end of the
+	# visit is exactly what the pest handed her — which is nothing (S-18/S-19/S-20 put her
+	# seed and her harvest in one place, and a starting handful would mask this).
+	raid.gs.pouch["wheat"] = 0
 	_release_scout(raid)
 	_assert(raid.world.scent.cell_count(Scent.TRAIL) == 0,
 		"a searching scout marks nothing — the trail is the *way back*, not the walk out")
@@ -7202,7 +7276,7 @@ func test_ants() -> void:
 		"the nest end was written last, so the field's slope runs the wrong way for a follower")
 
 	# --- the column: it forms, it eats one each, it goes home -----------------
-	_assert(raid.gs.crops.get("wheat", 0) == 0,
+	_assert(raid.gs.pouch.get("wheat", 0) == 0,
 		"nothing the ants took reached the player's basket — a raid is a loss, not a harvest")
 	_assert(raid.world.count_planted() <= 4 - 1, "the row lost plants to the column")
 	_assert(4 - raid.world.count_planted() <= SimWorld.ANT_COLUMN_SIZE,
@@ -7407,7 +7481,7 @@ func test_ants() -> void:
 			tap_farm.objects[ty].append("")
 			tap_farm.tiles[ty].append({ "state": "growing", "crop_type": "wheat",
 				"growth_stage": 1, "watered_today": true })
-	GameState.seeds = { "wheat": 1 }
+	GameState.pouch = { "wheat": 1 }
 	GameState.energy = Tools.DAY_UNITS  # T-29: a full day, so the stomp is affordable
 	GameState.watering_can_charges = 8
 	var on_a_crop := Vector2i(6, 6)
@@ -7614,6 +7688,10 @@ func test_grazers() -> void:
 
 	# --- the mechanic: it finds the row, takes its fill, and leaves -----------
 	var visit := _meadow_session(4242)
+	# Her pouch is emptied of wheat first, so what it holds at the end of the
+	# visit is exactly what the pest handed her — which is nothing (S-18/S-19/S-20 put her
+	# seed and her harvest in one place, and a starting handful would mask this).
+	visit.gs.pouch["wheat"] = 0
 	var dawn := visit.world.count_planted()
 	_release_grazer(visit, SpeciesDefs.RABBIT, Vector2i(5, 9))
 	_assert(_tick_until_gone(visit, SpeciesDefs.RABBIT),
@@ -7621,7 +7699,7 @@ func test_grazers() -> void:
 	_assert(dawn - visit.world.count_planted() == SimWorld.GRAZER_BITES,
 		"taking exactly its fill — %d bites, which is what bounds a visit"
 			% SimWorld.GRAZER_BITES)
-	_assert(visit.gs.crops.get("wheat", 0) == 0,
+	_assert(visit.gs.pouch.get("wheat", 0) == 0,
 		"and nothing it took reached the player's basket: a visit is a loss, not a harvest")
 	visit.done()
 
@@ -8153,6 +8231,10 @@ func test_mole() -> void:
 	# steals what was planted. Both go through the same verb on the same gateway,
 	# and `eat_crop` on a `seeded` tile has always meant exactly this.
 	var theft := _meadow_session(4242)
+	# Her pouch is emptied of wheat first, so what it holds at the end of the
+	# visit is exactly what the pest handed her — which is nothing (S-18/S-19/S-20 put her
+	# seed and her harvest in one place, and a starting handful would mask this).
+	theft.gs.pouch["wheat"] = 0
 	_sow(theft, [Vector2i(10, SEED_ROW_Y), Vector2i(12, SEED_ROW_Y),
 		Vector2i(14, SEED_ROW_Y), Vector2i(16, SEED_ROW_Y)])
 	var seeds_before := _seeded_count(theft.world)
@@ -8165,7 +8247,7 @@ func test_mole() -> void:
 			% SimWorld.MOLE_STEALS)
 	_assert(theft.world.count_planted() - _seeded_count(theft.world) == crops_before,
 		"and **not one growing crop**: it came for seed, and the row of wheat is untouched")
-	_assert(theft.gs.crops.get("wheat", 0) == 0,
+	_assert(theft.gs.pouch.get("wheat", 0) == 0,
 		"nothing it took reached the player's basket: a visit is a loss, not a harvest")
 	theft.done()
 
@@ -8661,7 +8743,7 @@ func _bot_yard(seed_value: int, with_crops: bool = false) -> LiveSession:
 	s.world.set_actor_pos(SimWorld.ACTOR_PLAYER, BOT_HER_TILE)
 	s.gs.energy = 500
 	s.gs.watering_can_charges = 500
-	s.gs.seeds["wheat"] = 500
+	s.gs.pouch["wheat"] = 500
 	return s
 
 
@@ -8765,7 +8847,7 @@ func _benchmark_day(world: SimWorld, gs, actor_id: String) -> int:
 	var applied := 0
 	gs.energy = 1000000
 	gs.watering_can_charges = 1000000
-	gs.seeds["wheat"] = 1000000
+	gs.pouch["wheat"] = 1000000
 	for ty in range(4, 12):
 		for tx in range(12, 22):
 			var st: String = world.get_tile(tx, ty).get("state", "")
@@ -9199,7 +9281,7 @@ func test_cot_halo() -> void:
 
 	GameState.selected_tool = 3          # hoe
 	GameState.selected_seed_type = "wheat"
-	GameState.seeds = { "wheat": 0 }     # so cleared soil means "till", never "plant"
+	GameState.pouch = { "wheat": 0 }     # so cleared soil means "till", never "plant"
 	GameState.energy = Tools.DAY_UNITS   # T-29: "with energy" is a full day now
 	GameState.watering_can_charges = 8
 
@@ -9265,7 +9347,7 @@ func test_cot_halo() -> void:
 		"two objects are haloed today: the bed, and the front door that leads to it")
 
 	GameState.energy = Tools.DAY_UNITS  # T-29
-	GameState.seeds = { "wheat": 5 }
+	GameState.pouch = { "wheat": 5 }
 	t.free()
 
 
@@ -9896,14 +9978,15 @@ func test_station_presentation() -> void:
 	farm_node.sim.tiles[crop_t.y][crop_t.x]["crop_type"] = "wheat"
 	farm_node.sim.tiles[crop_t.y][crop_t.x]["watered_today"] = true
 	GameState.watering_can_charges = GameState.max_watering_can_charges
-	GameState.crops = { "wheat": 0, "tomato": 0 }
+	GameState.pouch["wheat"] = 0
+	GameState.pouch["tomato"] = 0
 	var codes: Array[String] = []
 	for probe in [crop_t, Vector2i(6, 1), Vector2i(4, 1)]:
 		var code: String = ActionRouter.satisfied_reason(farm_node, GameState, probe)
 		if code != "" and not codes.has(code):
 			codes.append(code)
-	_assert(codes.size() == 3,
-		"the router still gives exactly three already-done answers (%s)" % ", ".join(codes))
+	_assert(codes.size() == 2 and not codes.has("basket_empty"),
+		"the router gives two already-done answers and leaves the bin open (%s)" % ", ".join(codes))
 	var nouns_ok := true
 	for code in codes:
 		if StationPresentation.noun_for(code) == "" \
@@ -9926,7 +10009,7 @@ func test_station_presentation() -> void:
 	# Before the handover, nothing at all: the neighbour is the show, and a hint
 	# on a farm that is not hers yet is a hint on a tile whose tap does nothing.
 	StationPresentation.set_discovery(StationPresentation.DISCOVERY_PIP)
-	gs.crops["wheat"] = 2
+	gs.pouch["wheat"] = 2
 	_assert(StationPresentation.pips(world, gs).is_empty(),
 		"during the cold open the stations say nothing — guard 0, shared with the highlight")
 
@@ -9934,7 +10017,8 @@ func test_station_presentation() -> void:
 		"actor": "neighbour" }, gs)
 	gs.day = gs.takeover_day + 5   # past the vignette, which owns the highlight outright
 
-	gs.crops = { "wheat": 0, "tomato": 0 }
+	gs.pouch["wheat"] = 0
+	gs.pouch["tomato"] = 0
 	gs.watering_can_charges = gs.max_watering_can_charges
 	gs.gold = 0
 	_assert(StationPresentation.pips(world, gs).is_empty(),
@@ -9943,7 +10027,7 @@ func test_station_presentation() -> void:
 	# The bin, at *relevance* rather than at need. This is the whole of T-28's
 	# discovery gap: T-11's beat waits for three crops, and a first crop is
 	# already something to sell.
-	gs.crops["wheat"] = 1
+	gs.pouch["wheat"] = 0 + 1
 	var p1 := StationPresentation.pips(world, gs)
 	_assert(p1.size() == 1 and p1[0]["at"] == bin
 			and p1[0]["glyph"] == StationPresentation.GLYPH_COIN,
@@ -9962,7 +10046,7 @@ func test_station_presentation() -> void:
 
 	# Where they meet, the directive cue wins and the ambient one gets out of the
 	# way. One glowing thing at a time, extended to cover the quiet thing too.
-	gs.crops["wheat"] = TeachingFocus.SELL_BEAT_CROPS
+	gs.pouch["wheat"] = 0 + TeachingFocus.SELL_BEAT_CROPS
 	gs.clear_counts["clear_weed"] = 1   # the parcel's lesson is done; the errand can be heard
 	_assert(TeachingFocus.targets(world, gs).has(bin),
 		"at three crops, with no lesson outranking it, the highlight takes the bin")
@@ -9976,7 +10060,7 @@ func test_station_presentation() -> void:
 
 	world.apply_action({ "verb": "sell", "actor": "player" }, gs)
 	gs.gold = 0        # the sale's coins would otherwise light the seed box next
-	gs.crops["wheat"] = 9
+	gs.pouch["wheat"] = 9
 	var p3 := StationPresentation.pips(world, gs)
 	for pip in p3:
 		_assert(pip["at"] != bin, "selling once retires the bin's pip for good")
@@ -9997,25 +10081,31 @@ func test_station_presentation() -> void:
 
 	# The seed box: relevance is money, and never a shop that will refuse her.
 	gs.watering_can_charges = gs.max_watering_can_charges
-	gs.gold = TeachingFocus.cheapest_seed() - 1
+	# Priced at what this farm could actually buy: wheat left the shelf with S-18/S-19/S-20
+	# and a tomato is locked until she has cut one, so the packet the box is
+	# costed at follows her harvests.
+	gs.harvest_counts["wheat"] = 1
+	gs.gold = TeachingFocus.cheapest_seed(gs.harvest_counts) - 1
 	_assert(StationPresentation.pips(world, gs).is_empty(),
 		"a pocket one coin short of a seed points at nothing — never send her to a shop that will refuse her")
-	gs.gold = TeachingFocus.cheapest_seed()
+	gs.gold = TeachingFocus.cheapest_seed(gs.harvest_counts)
 	var p5 := StationPresentation.pips(world, gs)
 	_assert(p5.size() == 1 and p5[0]["at"] == box
 			and p5[0]["glyph"] == StationPresentation.GLYPH_PACKET,
 		"the price of one seed floats a packet over the box, pouch full or not")
-	world.apply_action({ "verb": "buy_seed", "seed_type": "wheat", "actor": "player" }, gs)
+	world.apply_action({ "verb": "buy_seed", "seed_type": "tomato", "actor": "player" }, gs)
 	gs.gold = 500
 	for pip in StationPresentation.pips(world, gs):
 		_assert(pip["at"] != box, "and buying once retires it")
 
 	# The other treatments do not leak into this one.
-	gs.crops = { "wheat": 0, "tomato": 0 }
+	gs.pouch["wheat"] = 0
+	gs.pouch["tomato"] = 0
 	gs.total_shipped = 0
+	gs.bin_deposits = 0
 	gs.cans_refilled = 0
 	gs.seeds_bought = 0
-	gs.crops["wheat"] = 3
+	gs.pouch["wheat"] = 0 + 3
 	StationPresentation.set_discovery(StationPresentation.DISCOVERY_OFF)
 	_assert(StationPresentation.pips(world, gs).is_empty()
 			and StationPresentation.glint_candidates(world, gs).is_empty(),
@@ -10716,7 +10806,7 @@ func test_machines() -> void:
 		"and it costs exactly the catalogue price (%dg)" % MachineDefs.price_of("bot_mk2"))
 	_assert(GameState.machines.get("bot_mk2", 0) == 1,
 		"the robot is in the crate, not in the seed pouch")
-	_assert(GameState.seeds.get("bot_mk2", 0) == 0,
+	_assert(GameState.pouch.get("bot_mk2", 0) == 0,
 		"...and the seed pouch is untouched — a machine is not a seed")
 	_assert(GameState.selected_seed_type == "bot_mk2" and GameState.holding_machine(),
 		"buying one takes hold of it: the next tap is meant to be the placement")
@@ -11166,6 +11256,9 @@ func test_machine_economy() -> void:
 	print("\n--- What a machine's hands are for: her seed box, one crop, the bin (v0.2.1 WI-9a) Tests ---")
 
 	var s := _bot_yard(3131)
+	# An empty pouch to start: this test is about where a cut crop *lands*, and a
+	# standing pile of wheat would hide the answer.
+	s.gs.pouch["wheat"] = 0
 	var ripe := Vector2i(12, 10)
 	var second_ripe := Vector2i(13, 10)
 	s.world.set_tile_state(ripe.x, ripe.y, "ready", "wheat")
@@ -11183,10 +11276,11 @@ func test_machine_economy() -> void:
 	var cut := s.act({ "verb": "harvest", "target": ripe, "actor": "picker" })
 	_assert(cut.get("ok", false) and String(cut.get("crop_type", "")) == "wheat",
 		"it harvests the square it stands on, and the gateway names the crop (%s)" % str(cut))
-	_assert(String(picker.get("carrying", "")) == "wheat",
-		"the wheat is in its hands (%s)" % String(picker.get("carrying", "")))
-	_assert(int(s.gs.crops.get("wheat", 0)) == 0,
-		"and not in her basket, which is the whole of the rule (%d)" % int(s.gs.crops.get("wheat", 0)))
+	_assert(String(picker.get("carrying", "")) == "wheat"
+		and int(picker.get("carrying_count", 0)) == 3,
+		"all three wheat units are in its hands (%s)" % str(picker))
+	_assert(int(s.gs.pouch.get("wheat", 0)) == 0,
+		"and not in her basket, which is the whole of the rule (%d)" % int(s.gs.pouch.get("wheat", 0)))
 	_assert(String(s.world.get_tile(ripe.x, ripe.y).get("state", "")) == "cleared",
 		"the square is cut either way — a machine's harvest is a harvest")
 	_assert(s.world.energy_of("picker") == meter - Tools.get_energy_cost("harvest"),
@@ -11210,29 +11304,29 @@ func test_machine_economy() -> void:
 	var her_ripe := Vector2i(14, 10)
 	s.world.set_tile_state(her_ripe.x, her_ripe.y, "ready", "wheat")
 	_assert(s.act({ "verb": "harvest", "target": her_ripe, "actor": "player" }).get("ok", false)
-			and int(s.gs.crops.get("wheat", 0)) == 1,
-		"her own harvest still goes into her basket")
+			and int(s.gs.pouch.get("wheat", 0)) == 3,
+		"her own harvest puts three units in her pouch")
 	var their_ripe := Vector2i(15, 10)
 	s.world.set_tile_state(their_ripe.x, their_ripe.y, "ready", "wheat")
 	_assert(s.act({ "verb": "harvest", "target": their_ripe,
 				"actor": SimWorld.ACTOR_NEIGHBOUR }).get("ok", false)
-			and int(s.gs.crops.get("wheat", 0)) == 2
+			and int(s.gs.pouch.get("wheat", 0)) == 6
 			and String(s.world.actor(SimWorld.ACTOR_NEIGHBOUR)["extra"].get("carrying", "")) == "",
 		"and so does the neighbour's — a person is not a machine (%d in the basket)"
-			% int(s.gs.crops.get("wheat", 0)))
+			% int(s.gs.pouch.get("wheat", 0)))
 
 	# --- 4. a machine sows from her box, and is refused when it is empty -------
 	var soil := [Vector2i(12, 11), Vector2i(13, 11), Vector2i(14, 11)]
 	for t in soil:
 		s.world.set_tile_state(t.x, t.y, "tilled")
-	s.gs.seeds["wheat"] = 2
+	s.gs.pouch["wheat"] = 2
 	_assert(s.act({ "verb": "plant", "target": soil[0], "actor": "picker",
 				"seed_type": "wheat" }).get("ok", false)
-			and int(s.gs.seeds["wheat"]) == 1
+			and int(s.gs.pouch["wheat"]) == 1
 			and String(s.world.get_tile(soil[0].x, soil[0].y).get("state", "")) == "seeded",
-		"a machine's seed comes out of her box (%d left)" % int(s.gs.seeds["wheat"]))
+		"a machine's seed comes out of her box (%d left)" % int(s.gs.pouch["wheat"]))
 	_assert(s.act({ "verb": "plant", "target": soil[1], "actor": "picker",
-				"seed_type": "wheat" }).get("ok", false) and int(s.gs.seeds["wheat"]) == 0,
+				"seed_type": "wheat" }).get("ok", false) and int(s.gs.pouch["wheat"]) == 0,
 		"and the second one empties it")
 	var no_seed := s.act({ "verb": "plant", "target": soil[2], "actor": "picker",
 		"seed_type": "wheat" })
@@ -11245,7 +11339,7 @@ func test_machine_economy() -> void:
 	# reason the rule is asked of the species and not of "anybody but her".
 	_assert(s.act({ "verb": "plant", "target": soil[2], "actor": SimWorld.ACTOR_NEIGHBOUR,
 				"seed_type": "wheat" }).get("ok", false)
-			and int(s.gs.seeds["wheat"]) == 0
+			and int(s.gs.pouch["wheat"]) == 0
 			and String(s.world.get_tile(soil[2].x, soil[2].y).get("state", "")) == "seeded",
 		"a person plants from their own pocket, with her box still empty")
 
@@ -11255,10 +11349,11 @@ func test_machine_economy() -> void:
 	var sold := s.act({ "verb": "sell", "actor": "picker" })
 	var paid := int(sold.get("gold", -1))
 	_assert(sold.get("ok", false) and String(sold.get("crop_type", "")) == "wheat"
-			and paid == int(CropDefs.TYPES["wheat"]["sell_price"]),
-		"selling the crop it carries pays the wheat's own price (%s)" % str(sold))
-	_assert(int(s.gs.gold) == gold + paid and int(s.gs.total_shipped) == shipped + 1,
-		"into her gold, and counted as one crop shipped")
+			and int(sold.get("reserved", -1)) == 3 and int(sold.get("sold", -1)) == 0,
+		"the machine delivers all three units into reserve (%s)" % str(sold))
+	_assert(int(s.gs.gold) == gold and int(s.gs.total_shipped) == shipped
+			and int(s.gs.bin_reserve.wheat) == 3,
+		"reserve-only delivery changes neither gold nor shipped count")
 	_assert(String(picker.get("carrying", "")) == "",
 		"and its hands are empty again")
 	var empty_handed := s.act({ "verb": "sell", "actor": "picker" })
@@ -11268,20 +11363,24 @@ func test_machine_economy() -> void:
 
 	# **One price, two sellers**, asked the only way that cannot drift: her own
 	# basket is emptied of one wheat and the gold moves by the same number.
-	s.gs.crops["wheat"] = 1
+	s.gs.pouch["wheat"] = 0 + 1
 	gold = int(s.gs.gold)
 	shipped = int(s.gs.total_shipped)
 	_assert(s.act({ "verb": "sell", "actor": "player" }).get("ok", false)
-			and int(s.gs.gold) == gold + paid and int(s.gs.total_shipped) == shipped + 1,
-		"one wheat out of her basket pays exactly what the machine's did (%d)" % paid)
-	s.gs.crops["wheat"] = 2
-	s.gs.crops["tomato"] = 1
+			and int(s.gs.gold) == gold and int(s.gs.total_shipped) == shipped
+			and int(s.gs.bin_reserve.wheat) == 4,
+		"her wheat joins the same reserve after the machine's delivery")
+	# And one tap still clears every kind at once — down to the keep line on each,
+	# which is the only thing S-18/S-19/S-20 changed about her sale.
+	s.gs.pouch["wheat"] = 0 + 2
+	s.gs.pouch["tomato"] = 0 + 1
 	gold = int(s.gs.gold)
 	_assert(s.act({ "verb": "sell", "actor": "player" }).get("ok", false)
-			and int(s.gs.crops["wheat"]) == 0 and int(s.gs.crops["tomato"]) == 0
-			and int(s.gs.gold) == gold + 2 * int(CropDefs.TYPES["wheat"]["sell_price"])
-				+ int(CropDefs.TYPES["tomato"]["sell_price"]),
-		"and her sell still empties the whole basket in one tap, unchanged")
+			and int(s.gs.pouch["wheat"]) == 0
+			and int(s.gs.pouch["tomato"]) == 0
+			and int(s.gs.bin_reserve.wheat) == 6
+			and int(s.gs.bin_reserve.tomato) == 1 and int(s.gs.gold) == gold,
+		"one deposit stores each crop species in its own reserve")
 
 	# --- 6. what it is holding survives the disk ------------------------------
 	# A word, not an object: `carrying` is a String, which is the only kind of
@@ -11409,14 +11508,14 @@ func test_observation() -> void:
 	# anything to sow", not how many.
 	_assert(is_equal_approx(float(v[4]), 1.0),
 		"a full box reads 1 — the fixture leaves her 500 seeds and twenty is plenty")
-	s.gs.seeds["wheat"] = 5
+	s.gs.pouch["wheat"] = 5
 	_assert(is_equal_approx(float(Observation.build(s.world, "obs_bot", full, s.gs)[4]), 0.25),
 		"five of the twenty reads a quarter")
-	s.gs.seeds["wheat"] = 0
+	s.gs.pouch["wheat"] = 0
 	_assert(is_equal_approx(float(Observation.build(s.world, "obs_bot", full, s.gs)[4]), 0.0)
 			and is_equal_approx(float(Observation.build(s.world, "obs_bot", full)[4]), 0.0),
 		"an empty box reads 0, and so does a build with no stores handed to it at all")
-	s.gs.seeds["wheat"] = 500
+	s.gs.pouch["wheat"] = 500
 
 	# The way to the bin: an offset, not a place. The farm's own bin is up at the
 	# top of the map, well outside anything a radius-2 robot can see, which is the
@@ -12443,14 +12542,14 @@ func test_learning_robot_day() -> void:
 	reaper_yard.world.set_tile_state(ripe.x, ripe.y, "ready", "wheat")
 	var reaper := _mk3_place(reaper_yard, ripe)
 	var rex: Dictionary = reaper_yard.world.actor(reaper)["extra"]
-	var basket_before: int = int(reaper_yard.gs.crops.get("wheat", 0))
+	var basket_before: int = int(reaper_yard.gs.pouch.get("wheat", 0))
 	_mk3_make_certain(rex, BotBrain.LEARN_HARVEST)
 	_assert(_mk3_asked(reaper_yard, reaper, SimClock.RATE) == 1
 			and String(rex["carrying"]) == "wheat"
 			and is_equal_approx(float(rex["score"]), 1.0),
 		"cutting a ripe square is worth 1 and the wheat is in the machine's hands (%s)"
 			% String(rex["carrying"]))
-	_assert(int(reaper_yard.gs.crops.get("wheat", 0)) == basket_before
+	_assert(int(reaper_yard.gs.pouch.get("wheat", 0)) == basket_before
 			and String(reaper_yard.world.get_tile(ripe.x, ripe.y).get("state", "")) == "cleared",
 		"her basket is untouched, and the square it cut is bare ground again")
 	var full_score: float = float(rex["score"])
@@ -12477,10 +12576,10 @@ func test_learning_robot_day() -> void:
 			and is_equal_approx(float(rex["score"]) - full_score, 10.0),
 		"a crop carried to the bin and sold is worth 10 — the biggest row on the farm (%s)"
 			% str(float(rex["score"]) - full_score))
-	_assert(String(rex["carrying"]) == "" and int(reaper_yard.gs.gold) > purse
-			and int(reaper_yard.gs.total_shipped) > shipped_before,
-		"its hands are empty, her purse is %d heavier, and the farm's shipped count moved"
-			% (int(reaper_yard.gs.gold) - purse))
+	_assert(String(rex["carrying"]) == "" and int(reaper_yard.gs.gold) == purse
+			and int(reaper_yard.gs.total_shipped) == shipped_before
+			and int(reaper_yard.gs.bin_reserve.get("wheat", 0)) == 3,
+		"its three carried units enter reserve and its hands become empty")
 	var sold_score: float = float(rex["score"])
 	_assert(_mk3_asked(reaper_yard, reaper, SimClock.RATE) == 0
 			and is_equal_approx(float(rex["score"]), sold_score),
@@ -15590,3 +15689,185 @@ func test_coop_interior() -> void:
 	_assert(world.has_actor("chicken") and world.actor_pos("chicken") == spot,
 		"and the hen is standing where the hut was, rather than in the crate")
 	_assert(GameState.machines.get("coop", 0) == 1, "with the hut back in the crate")
+
+
+func test_one_pouch() -> void:
+	print("\n--- Three plantable units and a separate shipping reserve ---")
+	GameState.reset()
+	SimRng.reseed(113116)
+	var world := SimWorld.new()
+	world.generate()
+	_assert(GameState.pouch == {"wheat": 5, "tomato": 0}, "a new farm carries five wheat units")
+	_assert(CropDefs.is_plantable("wheat") and CropDefs.is_plantable("tomato")
+		and not CropDefs.is_plantable("egg") and not CropDefs.is_plantable("scarecrow"),
+		"only crop species can be replanted")
+	for species in ["wheat", "tomato"]:
+		var plot := Vector2i(20, 10)
+		world.set_tile_state(plot.x, plot.y, "tilled")
+		if species == "tomato":
+			GameState.pouch["tomato"] = 1
+		var before := int(GameState.pouch[species])
+		var planted := world.apply_action({"actor": "player", "verb": "plant",
+			"target": plot, "seed_type": species}, GameState)
+		_assert(planted.ok and int(GameState.pouch[species]) == before - 1,
+			"planting %s spends one carried unit" % species)
+		world.set_tile_state(plot.x, plot.y, "ready", species)
+		var harvested := world.apply_action({"actor": "player", "verb": "harvest",
+			"target": plot}, GameState)
+		_assert(harvested.ok and int(GameState.pouch[species]) == before + 2,
+			"harvesting %s yields three plantable units" % species)
+	GameState.pouch = {"wheat": 5, "tomato": 0}
+	var first := world.apply_action({"actor": "player", "verb": "sell"}, GameState)
+	_assert(first.ok and int(first.reserved.wheat) == 5 and int(first.sold.wheat) == 0
+		and GameState.gold == 0 and int(GameState.bin_reserve.wheat) == 5,
+		"five wheat fill reserve and sell none")
+	GameState.pouch["wheat"] = 8
+	var second := world.apply_action({"actor": "player", "verb": "sell"}, GameState)
+	_assert(second.ok and int(second.reserved.wheat) == 5 and int(second.sold.wheat) == 3
+		and int(GameState.bin_reserve.wheat) == 10 and GameState.gold == 45,
+		"eight more reserve five and sell three")
+	var machine: Dictionary = GameState.sell_one_crop("wheat")
+	_assert(machine.ok and machine.reserved == 0 and machine.sold == 1
+		and GameState.gold == 60, "another delivery sells one")
+	GameState.items["egg"] = 2
+	var eggs := world.apply_action({"actor": "player", "verb": "sell"}, GameState)
+	_assert(eggs.ok and int(eggs.sold.egg) == 2 and GameState.gold == 80
+		and not GameState.bin_reserve.has("egg"), "eggs keep their sale behavior outside reserve")
+	GameState.pouch["tomato"] = 4
+	var tomatoes := world.apply_action({"actor": "player", "verb": "sell"}, GameState)
+	_assert(tomatoes.ok and int(GameState.bin_reserve.tomato) == 4
+		and int(GameState.bin_reserve.wheat) == 10 and GameState.gold == 80,
+		"tomato fills its own reserve without changing wheat or gold")
+	var clock_before: int = GameState.actions_today
+	var energy_before: int = GameState.energy
+	GameState.pouch["wheat"] = 10
+	var no_room := world.apply_action({"actor": "player", "verb": "withdraw_seed",
+		"params": {"crop_type": "wheat"}}, GameState)
+	_assert(not no_room.ok and int(GameState.bin_reserve.wheat) == 10
+		and int(GameState.pouch.wheat) == 10,
+		"a full stack cannot withdraw or change either balance")
+	GameState.pouch["wheat"] = 0
+	var taken := world.apply_action({"actor": "player", "verb": "withdraw_seed",
+		"params": {"crop_type": "wheat"}}, GameState)
+	_assert(taken.ok and taken.moved == 10 and int(GameState.pouch.wheat) == 10
+		and int(GameState.bin_reserve.wheat) == 0, "withdrawal fills the carried stack")
+	_assert(GameState.actions_today == clock_before and GameState.energy == energy_before,
+		"bin errands spend no action time or energy")
+
+
+func test_carry_cap() -> void:
+	print("\n--- Per-species carrying cap and atomic harvest ---")
+	GameState.reset()
+	SimRng.reseed(113)
+	var world := SimWorld.new()
+	world.generate()
+	var plot := Vector2i(20, 10)
+	world.set_tile_state(plot.x, plot.y, "ready", "wheat")
+	GameState.pouch = {"wheat": 8, "tomato": 10}
+	var energy_before: int = GameState.energy
+	var rng_before: int = SimRng.rng.state
+	var refused := world.apply_action({"actor": "player", "verb": "harvest",
+		"target": plot}, GameState)
+	_assert(not refused.ok and refused.reason == "pouch_full"
+		and world.get_tile(plot.x, plot.y).state == "ready"
+		and GameState.energy == energy_before and int(GameState.pouch.wheat) == 8,
+		"8 of 10 refuses a three-unit harvest without changing the crop or energy")
+	_assert(SimRng.rng.state == rng_before, "full-pouch refusal consumes no RNG")
+	GameState.pouch["wheat"] = 7
+	var accepted := world.apply_action({"actor": "player", "verb": "harvest",
+		"target": plot}, GameState)
+	_assert(accepted.ok and int(GameState.pouch.wheat) == 10,
+		"7 of 10 reaches the wheat cap exactly, independent of tomato's full stack")
+	GameState.gold = 100
+	GameState.harvest_counts["wheat"] = 1
+	var gold_before: int = GameState.gold
+	var buy := world.apply_action({"actor": "player", "verb": "buy_seed",
+		"seed_type": "tomato"}, GameState)
+	_assert(not buy.ok and GameState.gold == gold_before,
+		"a full tomato stack refuses a purchase before gold changes")
+	MachineDefs.TYPES["test_silo"] = {"object": "silo_fixture", "crop_capacity": 40}
+	MachineDefs.ORDER.append("test_silo")
+	world.set_object(21, 10, "silo_fixture")
+	_assert(world.carry_cap("wheat") == 40 and world.carry_cap("tomato") == 40,
+		"a placed silo fixture raises each species cap to forty")
+	MachineDefs.ORDER.erase("test_silo")
+	MachineDefs.TYPES.erase("test_silo")
+
+
+func test_save_v5_migration() -> void:
+	print("\n--- Legacy stock, pending sale, and bin replay ---")
+	GameState.reset()
+	SimRng.reseed(515)
+	var world := SimWorld.new()
+	world.generate()
+	BotBrain.deploy(world, "legacy_picker", BotBrain.CONFIG_IDLE, Vector2i(20, 10))
+	var legacy_hands: Dictionary = world.actor("legacy_picker")["extra"]
+	legacy_hands["carrying"] = "wheat"
+	legacy_hands.erase("carrying_count")
+	var old := SaveGame.capture(world, GameState)
+	old["version"] = 4
+	old.state.erase("pouch")
+	old.state.erase("items")
+	old.state.erase("bin_reserve")
+	old.state.erase("last_bin_delivery")
+	old.state["seeds"] = {"wheat": 9, "tomato": 1, "scarecrow": 2}
+	old.state["crops"] = {"wheat": 7, "egg": 3}
+	old.state["shipping_bin"] = {"wheat": 2}
+	var migrated := SaveGame.migrate(old)
+	_assert(int(migrated.world.actors.legacy_picker.extra.carrying_count) == 1,
+		"a v4 machine hand migrates as one carried unit")
+	_assert(migrated.version == 5 and int(migrated.state.pouch.wheat) == 16
+		and int(migrated.state.items.egg) == 3 and int(migrated.state.items.scarecrow) == 2,
+		"v4 stock sums plantable units without clipping and preserves noncrop items")
+	var restored := SimWorld.new()
+	GameState.reset()
+	_assert(SaveGame.restore(old, restored, GameState), "v4 farm restores into v5")
+	_assert(int(GameState.pouch.wheat) == 16 and GameState.bin_reserve.is_empty(),
+		"over-cap carried stock survives; new reserve starts empty")
+	var plot := Vector2i(20, 10)
+	restored.set_tile_state(plot.x, plot.y, "ready", "wheat")
+	var blocked := restored.apply_action({"actor": "player", "verb": "harvest",
+		"target": plot}, GameState)
+	_assert(not blocked.ok and blocked.reason == "pouch_full", "an over-cap save cannot grow its stack")
+	var gold_before: int = GameState.gold
+	restored.apply_action({"actor": "world", "verb": "sleep", "weather": "sunny"}, GameState)
+	_assert(GameState.gold == gold_before + 30 and int(GameState.shipping_bin.wheat) == 0,
+		"the legacy pending bin sale still pays at sleep")
+	var old_delivery := restored.apply_action({"actor": "legacy_picker", "verb": "sell"}, GameState)
+	_assert(old_delivery.ok and old_delivery.reserved == 1 and old_delivery.sold == 0
+		and int(GameState.bin_reserve.wheat) == 1
+		and int(restored.actor("legacy_picker")["extra"].carrying_count) == 0,
+		"the restored one-unit machine hand delivers exactly one unit")
+	# The new bin path is replayable across an autosave boundary, including the
+	# withdrawal that makes the deposited unit plantable again.
+	GameState.reset()
+	SimRng.reseed(516)
+	var fresh := SimWorld.new()
+	fresh.generate()
+	var soil := Vector2i(20, 10)
+	fresh.set_tile_state(soil.x, soil.y, "tilled")
+	var base: Dictionary = JSON.parse_string(JSON.stringify(SaveGame.capture(fresh, GameState)))
+	var log := ReplayLog.new()
+	log.start_from_save(base, fresh.gen_seed)
+	var deposited := _replay_do(fresh, log, {"actor": "player", "verb": "sell"})
+	_assert(deposited.ok and int(GameState.bin_reserve.wheat) == 5
+		and int(GameState.pouch.wheat) == 0, "deposit moves the five units to reserve")
+	var withdrawn := _replay_do(fresh, log, {"actor": "player", "verb": "withdraw_seed",
+		"params": {"crop_type": "wheat"}})
+	_assert(withdrawn.ok and withdrawn.moved == 5 and int(GameState.pouch.wheat) == 5,
+		"withdrawal returns the reserved units to the pouch")
+	var planted := _replay_do(fresh, log, {"actor": "player", "verb": "plant",
+		"target": soil, "seed_type": "wheat"})
+	_assert(planted.ok and int(GameState.pouch.wheat) == 4
+		and String(fresh.get_tile(soil.x, soil.y).state) == "seeded",
+		"the returned units can be planted")
+	var live_canonical := SaveGame.capture_canonical(fresh, GameState)
+	var final_save: Dictionary = JSON.parse_string(JSON.stringify(SaveGame.capture(fresh, GameState)))
+	var loaded := SimWorld.new()
+	GameState.reset()
+	_assert(SaveGame.restore(final_save, loaded, GameState),
+		"deposit, withdrawal, and planting survive a v5 save/load")
+	_assert(SaveGame.capture_canonical(loaded, GameState) == live_canonical,
+		"loaded v5 stock and planted tile match the live farm")
+	_assert(SaveGame.replay_matches(log, final_save),
+		"deposit, withdrawal, and planting replay to the saved farm")

@@ -49,8 +49,9 @@ const CONFIG_LABELS := {
 	"idle": "Wait here",
 }
 
-var active_menu: String = ""  # "", "pause", "shop", "inventory", "machine", "workbench", "window"
+var active_menu: String = ""  # "", "pause", "shop", "bin", "inventory", "machine", "workbench", "window"
 var selected_option: int = 0
+var bin_options: Array[Dictionary] = []
 
 # **What number the next row on a panel gets.** `_select_current_option` reads a
 # tap back as a position in a list — `shop_items[n]`, `machine_options[n]` — so
@@ -584,35 +585,63 @@ func _rebuild_options() -> void:
 			shop_title_icon.visible = false
 			gold_icon.visible = false
 
-			# Seeds section
-			var seeds_header := Label.new()
-			seeds_header.text = "Seeds:"
-			seeds_header.add_theme_color_override("font_color", Color(0.7, 0.9, 0.6))
-			options_container.add_child(seeds_header)
+			# **One list, because there is one pouch** (S-18/S-19/S-20). This screen used to
+			# have a Seeds half and a Harvested Crops half, which is exactly the
+			# split the change removed: a cut wheat is the seed for the next one,
+			# so showing it twice would be showing two things that are one.
+			var pouch_header := Label.new()
+			pouch_header.text = "Pouch:"
+			pouch_header.add_theme_color_override("font_color", Color(0.7, 0.9, 0.6))
+			options_container.add_child(pouch_header)
 			for crop_name in CropDefs.ORDER:
+				if not CropDefs.is_plantable(crop_name):
+					continue
 				var def: Dictionary = CropDefs.TYPES[crop_name]
-				var count: int = GameState.seeds.get(crop_name, 0)
+				var count: int = GameState.pouch.get(crop_name, 0)
 				var lbl := Label.new()
 				lbl.text = "  %s: %d" % [def.name, count]
 				lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.75))
 				options_container.add_child(lbl)
-
-			# Crops section
-			var crops_header := Label.new()
-			crops_header.text = "\nHarvested Crops:"
-			crops_header.add_theme_color_override("font_color", Color(0.9, 0.7, 0.4))
-			options_container.add_child(crops_header)
-			for crop_name in CropDefs.ORDER:
-				var def: Dictionary = CropDefs.TYPES[crop_name]
-				var count: int = GameState.crops.get(crop_name, 0)
-				var lbl := Label.new()
-				lbl.text = "  %s: %d" % [def.name, count]
-				lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.75))
-				options_container.add_child(lbl)
-
+			for item_name in ["egg", "scarecrow"]:
+				var amount := int(GameState.items.get(item_name, 0))
+				if amount > 0:
+					var item_label := Label.new()
+					item_label.text = "%s: %d" % [CropDefs.TYPES[item_name].name, amount]
+					options_container.add_child(item_label)
 
 			_add_option("\nClose", true)
-			menu_panel.size = Vector2(300, 340)
+			menu_panel.size = Vector2(300, 260)
+
+		"bin":
+			title_label.text = "Shipping bin"
+			gold_display.visible = false
+			shop_title_icon.visible = false
+			gold_icon.visible = false
+			bin_options.clear()
+			bin_options.append({"kind": "deposit"})
+			_add_option("Deposit what I carry", GameState.sellable_total() > 0)
+			for crop_name in CropDefs.TYPES.keys():
+				if not CropDefs.is_plantable(String(crop_name)):
+					continue
+				var stored := int(GameState.bin_reserve.get(crop_name, 0))
+				bin_options.append({"kind": "withdraw", "crop_type": crop_name})
+				_add_option("Take %s (%d stored)" % [CropDefs.TYPES[crop_name].name, stored],
+					stored > 0 and int(GameState.pouch.get(crop_name, 0)) < farm.sim.carry_cap(String(crop_name)))
+			var last: Dictionary = GameState.last_bin_delivery
+			if not last.is_empty():
+				var sold: Dictionary = last.get("sold", {})
+				var pieces: Array[String] = []
+				for crop_name in sold:
+					if int(sold[crop_name]) > 0:
+						var label := String(CropDefs.TYPES.get(crop_name, {}).get("name", crop_name)).to_lower()
+						pieces.append("sold %d %s" % [int(sold[crop_name]),
+							"eggs" if String(crop_name) == "egg" else label + " units"])
+				var summary := Label.new()
+				summary.text = "Last deposit: " + (", ".join(pieces) if not pieces.is_empty() else "nothing sold")
+				options_container.add_child(summary)
+			bin_options.append({"kind": "close"})
+			_add_option("Close", true)
+			menu_panel.size = Vector2(_fit_panel_width(320.0), _fit_panel_height())
 
 	# Shrink the container to its contents: left at its declared 300px it extends
 	# past the panel and can swallow taps aimed at the world below it.
@@ -981,6 +1010,20 @@ func _focus_current() -> void:
 
 func _select_current_option() -> void:
 	match active_menu:
+		"bin":
+			if selected_option >= bin_options.size():
+				return
+			var choice: Dictionary = bin_options[selected_option]
+			if choice.kind == "close":
+				close_menu()
+				return
+			var action := {"actor": "player", "verb": "sell"}
+			if choice.kind == "withdraw":
+				action = {"actor": "player", "verb": "withdraw_seed",
+					"params": {"crop_type": String(choice.crop_type)}}
+			var result: Dictionary = farm.apply_action(action, GameState)
+			if result.get("ok", false):
+				_rebuild_options()
 		"window":
 			# The action button while she is looking out is "done looking" — the
 			# view has nothing to select, and a keyboard or a gamepad needs a way
@@ -1144,6 +1187,13 @@ func _build_shop_items() -> void:
 	shop_items.clear()
 	for crop_name in CropDefs.ORDER:
 		var def: Dictionary = CropDefs.TYPES[crop_name]
+		# **No card for a crop she already has** (S-18/S-19/S-20). Wheat is the crop the
+		# farm is given, and cutting one gives the seed for the next, so a wheat
+		# packet on the shelf would be selling her a thing she cannot run out of.
+		# The gateway refuses the same purchase (`GameState.buy_seed`), which is
+		# what keeps a bot off a shelf the player cannot see.
+		if not CropDefs.is_on_shelf(crop_name):
+			continue
 		var unlocked := CropDefs.is_seed_unlocked(crop_name, GameState.harvest_counts)
 		var affordable: bool = GameState.gold >= def.seed_price and unlocked
 		shop_items.append({
@@ -1154,7 +1204,7 @@ func _build_shop_items() -> void:
 			"unlocked": unlocked,
 			"affordable": affordable,
 			"icon": crop_icon(int(def.icon_col)),
-			"owned": GameState.seeds.get(crop_name, 0)
+			"owned": GameState.held_count(crop_name)
 		})
 	for machine_key in MachineDefs.ORDER:
 		var mdef: Dictionary = MachineDefs.TYPES[machine_key]

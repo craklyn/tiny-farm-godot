@@ -143,16 +143,16 @@ static func economy_beat(world: SimWorld, gs, player_t: Vector2i = Vector2i(-1, 
 		return out
 	var rows := VignetteState.page_rows(world, player_t)
 
-	var basket := 0
-	for count in gs.crops.values():
-		basket += int(count)
-	if basket >= SELL_BEAT_CROPS and int(gs.total_shipped) == 0:
+	# A bin errand can reserve units without paying gold (S-18/S-19/S-20), and that still
+	# teaches her where to store the crop she is carrying.
+	if gs.sellable_total() >= SELL_BEAT_CROPS and int(gs.bin_deposits) == 0:
 		return _find_object(world, "shipping_bin", rows)
 
 	if int(gs.cans_refilled) == 0 and int(gs.watering_can_charges) <= 0:
 		return _find_object(world, "well", rows)
 
-	if int(gs.seeds_bought) == 0 and _pouch_empty(gs) and gs.gold >= cheapest_seed():
+	if int(gs.seeds_bought) == 0 and _pouch_empty(gs) \
+			and gs.gold >= cheapest_seed(gs.harvest_counts):
 		return _find_object(world, "seed_box", rows)
 
 	return out
@@ -163,20 +163,29 @@ const SELL_BEAT_CROPS := 3
 
 
 static func _pouch_empty(gs) -> bool:
-	for count in gs.seeds.values():
-		if int(count) > 0:
-			return false
-	return true
+	# Empty **of sowable things**: an egg in noncrop inventory is not a reason
+	# to skip walking her to the seed box.
+	return gs.sowable_total() <= 0
 
 
 # Public since T-28, for the same reason: "never point at a shop that will
 # refuse her" is a rule about pointing, not a rule about highlights, so the
 # ambient pip has to be able to ask the same question.
-static func cheapest_seed() -> int:
+#
+# **What the shelf actually stocks, for this farm** (S-18/S-19/S-20). Two things narrowed
+# it. The shop no longer sells wheat — the crop the farm is given feeds itself —
+# so costing the box at wheat's five would send her to a shelf where nothing is
+# that cheap. And a packet she has not earned is not for sale either: with wheat
+# gone, the cheapest row on an unearned shelf is a *locked* tomato, and walking
+# her to it is precisely the refusal this function exists to prevent. Passing
+# nothing asks the shelf a farm with no harvests behind it would see.
+static func cheapest_seed(harvest_counts: Dictionary = {}) -> int:
 	var best := -1
 	for crop_name in CropDefs.ORDER:
 		var def: Dictionary = CropDefs.TYPES.get(crop_name, {})
-		if not def.has("seed_price"):
+		if not CropDefs.is_on_shelf(crop_name):
+			continue
+		if not CropDefs.is_seed_unlocked(crop_name, harvest_counts):
 			continue
 		var price := int(def.seed_price)
 		if best < 0 or price < best:

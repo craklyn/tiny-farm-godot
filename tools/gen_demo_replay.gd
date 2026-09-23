@@ -75,7 +75,7 @@ func _init() -> void:
 		"every planted tile was watered the day it was planted (%d dry)" % _unwatered(world))
 	_check(_notches(world) == 0,
 		"the worked plot is contiguous — no bare grass notches (%d)" % _notches(world))
-	_check(gs.seeds.get("wheat", 0) > 0, "the seed pouch never hit zero mid-pass")
+	_check(gs.pouch.get("wheat", 0) > 0, "the seed pouch never hit zero mid-pass")
 	_check(log.entries.size() >= 20, "the session is long enough to watch (%d actions)" % log.entries.size())
 
 	# --- Self-check: does it reproduce what it recorded? ---------------------
@@ -165,7 +165,7 @@ func _wants(verb: String, state: String, gs) -> bool:
 		"till":
 			return state == "cleared"
 		"plant":
-			return state == "tilled" and gs.seeds.get("wheat", 0) > 1
+			return state == "tilled" and gs.pouch.get("wheat", 0) > 1
 		"water":
 			return state == "seeded" or state == "growing"
 		"harvest":

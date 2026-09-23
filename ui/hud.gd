@@ -820,9 +820,9 @@ func _update_state_chips() -> void:
 		crop_counts_label.visible = not full_b
 
 	basket_chip.visible = full_b
-	var basket := 0
-	for count in GameState.crops.values():
-		basket += int(count)
+	# What the bin would take (S-18/S-19/S-20), so the chip, the pip out in the yard and
+	# the bin's own answer all count the same thing.
+	var basket: int = GameState.sellable_total()
 	# Empty is the state this treatment exists to show, so it is the loud one:
 	# the basket goes grey and stays visibly unfilled. Q-46(a)'s vocabulary —
 	# darkened means "not there" — reused rather than reinvented.
@@ -1017,10 +1017,14 @@ func _update_hud() -> void:
 		else:
 			seed_info_label.visible = false
 
-	# Harvested-crop counts
+	# What is in the pouch — one number per crop since S-18/S-19/S-20 merged the seed
+	# pouch and the crop basket, because a harvested wheat and a wheat seed are
+	# now the same thing.
 	var parts: PackedStringArray = []
 	for crop_name in CropDefs.ORDER:
-		var count: int = GameState.crops.get(crop_name, 0)
+		if not CropDefs.is_plantable(crop_name):
+			continue
+		var count: int = GameState.pouch.get(crop_name, 0)
 		var abbrev: String = crop_name.substr(0, 2).capitalize()
 		parts.append("%s:%d" % [abbrev, count])
 	crop_counts_label.text = "  ".join(parts)

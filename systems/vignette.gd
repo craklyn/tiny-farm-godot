@@ -73,10 +73,9 @@ static func _dry_crops(world: SimWorld, rows: Vector2i) -> Array[Vector2i]:
 
 
 static func _has_seeds(gs) -> bool:
-	for c in gs.seeds.values():
-		if int(c) > 0:
-			return true
-	return false
+	# Sowable things only. An egg in noncrop inventory is no reason to suggest
+	# that she can plant another square.
+	return gs.sowable_total() > 0
 
 
 # The beats, as an array of tiles — an array because day 2's whole point is that

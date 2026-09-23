@@ -115,7 +115,7 @@ static func measure(with_robot: bool) -> Dictionary:
 	# part of the day this is comparing (see the header).
 	gs.set_energy(gs.max_energy)
 	gs.watering_can_charges = gs.max_watering_can_charges
-	gs.seeds[CROP] = NEW_ROW_LEN
+	gs.pouch[CROP] = NEW_ROW_LEN
 
 	# --- her day, verb for verb the same on both farms ----------------------
 	var by_her := 0

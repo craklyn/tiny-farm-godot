@@ -13,6 +13,12 @@ static var TYPES: Dictionary = {
 		"stages": 4,
 		"unlock_requirement": null,
 		"icon_col": 0,
+		# **The crop she already has** (S-18/S-19/S-20, 2026-09-23). A harvested plant is
+		# the seed for the next one, so the farm she is given feeds itself and
+		# needs no money to keep running — which is what a starter crop means and
+		# why this one is not on the shop's shelf. `seed_price` stays, because the
+		# `buy_seed` verb and every replay that recorded one still have to parse.
+		"starter": true,
 	},
 	"tomato": {
 		"name": "Tomato",
@@ -72,8 +78,8 @@ static var TYPES: Dictionary = {
 	},
 }
 
-# Display order — and, because every shop, HUD and seed-picker path iterates it,
-# the list of what the player can actually buy. The **pea is deliberately absent**
+# Display order for the HUD and seed picker, and the shop's candidate rows;
+# `is_on_shelf` hides the starter wheat. The **pea is deliberately absent**
 # (Q-55/M2.5 WI-10): the crop ships, the shop does not sell it yet, and adding it
 # here is the one-line change that debuts it when the designer says so.
 static var ORDER: Array[String] = ["wheat", "tomato", "scarecrow"]
@@ -98,6 +104,34 @@ static func get_visual_stage(crop_type: String, growth_stage: int) -> int:
 	if progress < 0.5:
 		return 1  # sprout
 	return 2  # mid-growth
+
+
+# Is this a thing the `plant` verb can put in the ground? An egg is not, and
+# since the inventory also holds eggs and scarecrows (S-18/S-19/S-20), everything that
+# asks "has she anything to sow" has to ask it here rather than counting items.
+static func is_plantable(seed_type: String) -> bool:
+	var def: Dictionary = TYPES.get(seed_type, {})
+	return def.has("days_to_grow") and not bool(def.get("is_object", false))
+
+
+# Is this a thing the shipping bin pays for? A scarecrow is not; it stays in
+# noncrop inventory when a deposit takes carried crops and eggs.
+static func is_sellable(crop_type: String) -> bool:
+	return TYPES.get(crop_type, {}).has("sell_price")
+
+
+# A crop the farm is given rather than bought (S-18/S-19/S-20). Harvest returns its seed,
+# so the shop does not sell one — see `is_on_shelf`.
+static func is_starter(seed_type: String) -> bool:
+	return bool(TYPES.get(seed_type, {}).get("starter", false))
+
+
+# Does the seed shelf stock this? **The one definition**, read by the shop that
+# draws the cards and by the gateway that takes the money, so a bot can never buy
+# a packet the player cannot see on the shelf (S-3, ground rule 1).
+static func is_on_shelf(seed_type: String) -> bool:
+	return ORDER.has(seed_type) and TYPES.get(seed_type, {}).has("seed_price") \
+		and not is_starter(seed_type)
 
 
 static func is_seed_unlocked(seed_type: String, harvest_counts: Dictionary) -> bool:

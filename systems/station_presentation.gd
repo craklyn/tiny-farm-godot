@@ -217,7 +217,7 @@ static func used(gs, kind: String) -> bool:
 		return true  # no state to read: say nothing rather than guess
 	match kind:
 		BIN:
-			return int(gs.total_shipped) > 0
+			return int(gs.bin_deposits) > 0
 		WELL:
 			return int(gs.cans_refilled) > 0
 		BOX:
@@ -228,12 +228,12 @@ static func used(gs, kind: String) -> bool:
 # Is this station **the answer** to what she is holding right now?
 #
 # Deliberately looser than T-11's beat thresholds, and that difference is the
-# design. The beat fires at *need* — three crops in the basket, a can at zero, an
+# design. The beat fires at *need* — three carried crop units, a can at zero, an
 # empty pouch — because a directive highlight interrupting a lesson is a cost you
 # only pay for something urgent. A pip is ambient and costs nothing to ignore, so
 # it may arrive at *relevance*: the first crop, the first sip of water, the first
 # coin. That gap is where problem 1 lives — see `pips()`.
-const PIP_SELL_CROPS := 1     # [Playtest] one crop is already something to sell
+const PIP_SELL_CROPS := 1     # [Playtest] one carried unit is enough to visit the bin
 
 
 static func relevant(gs, kind: String) -> bool:
@@ -241,16 +241,15 @@ static func relevant(gs, kind: String) -> bool:
 		return false
 	match kind:
 		BIN:
-			var basket := 0
-			for count in gs.crops.values():
-				basket += int(count)
-			return basket >= PIP_SELL_CROPS
+			# A carried crop or egg gives the bin something to take (S-18/S-19/S-20),
+			# whether it lands in reserve or sells immediately.
+			return gs.sellable_total() >= PIP_SELL_CROPS
 		WELL:
 			return int(gs.watering_can_charges) < int(gs.max_watering_can_charges)
 		BOX:
 			# Never point at a shop that will refuse her — T-11's rule, and it
 			# binds an ambient pip exactly as hard as it binds a highlight.
-			return int(gs.gold) >= TeachingFocus.cheapest_seed()
+			return int(gs.gold) >= TeachingFocus.cheapest_seed(gs.harvest_counts)
 	return false
 
 

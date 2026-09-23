@@ -128,6 +128,7 @@ func _run_scenarios() -> void:
 	await _scenario_ax_she_can_get_back_out_of_the_coop()
 	await _scenario_ak_she_puts_up_a_fence()
 	await _scenario_al_a_ripe_crop_carries()
+	await _scenario_az_a_full_pouch_leaves_the_crop()
 	await _scenario_am_the_mark_three_shows_its_practice()
 	await _scenario_an_the_workbench_opens_from_the_yard()
 	await _scenario_ao_the_window_looks_out()
@@ -372,14 +373,14 @@ func _scenario_c() -> void:
 	# 2. Plant
 	GameState.selected_tool = 5 # Seeds
 	GameState.selected_seed_type = "wheat"
-	GameState.seeds["wheat"] = 5
+	GameState.pouch["wheat"] = 5
 	Input.action_press("action")
 	await _wait_for_action()
 	Input.action_release("action")
 	
 	tile = farm.get_tile(6, 5)
 	_assert(tile.state == "seeded", "Ground planted to 'seeded'")
-	_assert(GameState.seeds["wheat"] == 4, "Seed consumed")
+	_assert(GameState.pouch["wheat"] == 4, "Seed consumed")
 	
 	# 3. Water
 	GameState.selected_tool = 4 # Watering Can
@@ -436,19 +437,58 @@ func _scenario_e() -> void:
 	Input.action_release("action")
 	
 	_assert(farm.get_tile(6, 5).state == "cleared", "Harvested tile returned to 'cleared'")
-	_assert(GameState.crops["wheat"] == 1, "Harvested crop in inventory")
+	# Four remained after planting; this harvest adds three.
+	_assert(GameState.pouch["wheat"] == 7, "Harvested crop adds three plantable units")
 	
 	# Move to shipping bin (assumed at tx=4, ty=1)
 	player.pos = Vector2(4.5 * 16.0, 2.5 * 16.0)
 	player.facing = "up"
 	
-	var gold_before = GameState.gold
+	var gold_before: int = GameState.gold
 	Input.action_press("action")
 	await _wait_for_action()
 	Input.action_release("action")
-	
-	_assert(GameState.crops["wheat"] == 0, "Crop removed from inventory on bin interact")
-	_assert(GameState.gold == gold_before + 15, "Gold increased by wheat sell price (15g)")
+	var menu_open := await _wait_until(
+		func(): return main_scene.menus.active_menu == "bin", 120)
+	_assert(menu_open, "the bin tap opens its deposit and take menu")
+	if menu_open:
+		_press_row(main_scene.menus.options_container, 0)
+		main_scene.menus.close_menu()
+	# These seven units enter the reserve before anything sells.
+	_assert(GameState.pouch["wheat"] == 0,
+		"deposit moves carried units out of the pouch")
+	_assert(int(GameState.bin_reserve.get("wheat", 0)) == 7 and GameState.gold == gold_before,
+		"the bin reserves seven wheat without paying gold")
+	# Return with an empty pouch, take the reserve through the panel, then sow it
+	# through the same simulated tile input the rest of the suite uses.
+	InputManager.click_tile = Vector2i(4, 1)
+	InputManager.has_click = true
+	var reopened := await _wait_until(
+		func(): return main_scene.menus.active_menu == "bin", 120)
+	_assert(reopened, "the bin opens with an empty pouch so stock can be taken")
+	if reopened:
+		_press_row(main_scene.menus.options_container, 1)  # Wheat reserve
+		main_scene.menus.close_menu()
+	_assert(int(GameState.pouch.get("wheat", 0)) == 7
+		and int(GameState.bin_reserve.get("wheat", 0)) == 0,
+		"taking wheat moves all seven units from reserve to the pouch")
+	var sow := Vector2i(11, 8)
+	_stage_tile(sow.x, sow.y, "tilled")
+	player.pos = Vector2(11.5 * 16.0, 9.5 * 16.0)
+	player.path.clear()
+	player.pending_action = {}
+	GameState.selected_seed_type = "wheat"
+	await get_tree().process_frame
+	InputManager.click_tile = sow
+	InputManager.has_click = true
+	var sown := await _wait_until(
+		func(): return String(farm.get_tile(sow.x, sow.y).state) == "seeded", 200)
+	_assert(sown and int(GameState.pouch.get("wheat", 0)) == 6,
+		"a tile tap plants one of the units taken from the bin")
+	# The tile changes at the strike, before the planting animation releases its
+	# action lock. Later scenarios need a finished player action, not just a
+	# changed square.
+	await _wait_until(func(): return not player.is_acting, 120)
 
 
 func _scenario_f() -> void:
@@ -784,17 +824,20 @@ func _scenario_i_third_state() -> void:
 
 	# 4. the bin, with an empty basket
 	var mark2: int = farm.trace.entries.size()
-	GameState.crops = { "wheat": 0, "tomato": 0 }
+	GameState.pouch["wheat"] = 0
+	GameState.pouch["tomato"] = 0
 	player.pos = Vector2(4.5 * 16.0, 2.5 * 16.0)
 	player.path.clear()
 	player.pending_action = {}
 	await get_tree().process_frame
 	InputManager.click_tile = Vector2i(4, 1)
 	InputManager.has_click = true
-	var bin_ack := await _wait_until(
-		func(): return _last_tap_outcome(mark2) == "satisfied", 200)
-	_assert(bin_ack, "tapping the bin with an empty basket is answered 'satisfied'")
-	_assert(_last_tap_reason(mark2) == "basket_empty", "and says which good state it was in")
+	var bin_open := await _wait_until(
+		func(): return main_scene.menus.active_menu == "bin", 200)
+	_assert(bin_open, "tapping the bin with an empty pouch opens its menu")
+	_assert(_last_tap_outcome(mark2) != "refused", "the empty pouch is not a refusal")
+	if bin_open:
+		main_scene.menus.close_menu()
 
 	# 5. and a real refusal still refuses — the third state must not swallow the
 	#    second. An empty pouch on a tilled tile is the 2026-08-27 silent-refusal
@@ -802,8 +845,8 @@ func _scenario_i_third_state() -> void:
 	var mark3: int = farm.trace.entries.size()
 	_stage_tile(11, 8, "cleared")
 	_stage_tile(12, 8, "tilled")
-	GameState.seeds["wheat"] = 0
-	GameState.seeds["tomato"] = 0
+	GameState.pouch["wheat"] = 0
+	GameState.pouch["tomato"] = 0
 	GameState.selected_seed_type = "wheat"
 	player.pos = Vector2(11.5 * 16.0, 8.5 * 16.0)
 	player.path.clear()
@@ -819,8 +862,8 @@ func _scenario_i_third_state() -> void:
 	_assert(farm.REFUSE_ICONS.has(_last_tap_reason(mark3)),
 		"and that code has a picture to show her")
 
-	GameState.seeds["wheat"] = 5
-	GameState.crops = { "wheat": 0, "tomato": 0 }
+	GameState.pouch["wheat"] = 5
+	GameState.pouch["tomato"] = 0
 
 
 func _last_tap_outcome(since: int) -> String:
@@ -1218,22 +1261,44 @@ func _scenario_j_wordless_shop() -> void:
 	# the shelf became a grid, every row's number came out wrong and both of these
 	# still passed while nothing on the real panel worked. A row is only wired up
 	# if pressing *its own button* does what the row says it does.
-	var before: int = GameState.seeds.get("wheat", 0)
+	# **Which rows are pressed is read off the shelf, not counted by hand.** Since
+	# S-18/S-19/S-20 took the wheat packet off it, row 0 is whatever the shelf now starts
+	# with, and a hard-coded 0 would be testing a shelf that no longer exists.
+	# `held_count` is asked rather than a dictionary, because the shelf mixes
+	# seeds (the pouch) with machines (the crate).
+	var held_before := String(GameState.selected_seed_type)
+	var buyable: Array[int] = []
+	for i in menus.shop_items.size():
+		var it: Dictionary = menus.shop_items[i]
+		if bool(it.get("unlocked", false)) and int(it.price) <= GameState.gold:
+			buyable.append(i)
+	_assert(buyable.size() >= 2, "at least two things on the shelf are unlocked and affordable")
+	var first_row: int = buyable[0]
+	var first_key := String(menus.shop_items[first_row].seed_type)
+	var before: int = GameState.held_count(first_key)
 	var bought_gold: int = GameState.gold
-	_press_row(menus.options_container, 0)
+	_press_row(menus.options_container, first_row)
 	await get_tree().create_timer(0.3).timeout
-	_assert(GameState.seeds.get("wheat", 0) == before + 1, "pressing a card buys that seed")
+	_assert(GameState.held_count(first_key) == before + 1,
+		"pressing a card buys that thing (%s)" % first_key)
 	_assert(GameState.gold < bought_gold, "and still costs gold")
 	_assert(GameState.seeds_bought >= 1, "and accrues T-11's counter")
 
-	# And the card she presses is the thing she gets — the second row of a
-	# two-column shelf is the third thing on it, not the second.
-	var third: Dictionary = menus.shop_items[2]
-	var had: int = GameState.seeds.get(String(third.seed_type), 0)
-	_press_row(menus.options_container, 2)
+	# And the card she presses is the thing she gets — a later row of a
+	# two-column shelf is its own item, not the one beside it.
+	var later_row: int = buyable[1]
+	var later: Dictionary = menus.shop_items[later_row]
+	var had: int = GameState.held_count(String(later.seed_type))
+	_press_row(menus.options_container, later_row)
 	await get_tree().create_timer(0.3).timeout
-	_assert(GameState.seeds.get(String(third.seed_type), 0) == had + 1,
-		"and pressing the third card buys the third thing on the shelf (%s)" % third.seed_type)
+	_assert(GameState.held_count(String(later.seed_type)) == had + 1,
+		"and pressing a later card buys that row's own thing (%s)" % later.seed_type)
+
+	# **Put her hand back where it was.** Buying a machine always takes hold of it
+	# (`GameState.buy_machine`, deliberate — nobody buys a robot to keep it in a
+	# box), and every scenario after this one shares this GameState: a coop left
+	# in her hand changes what a tap on bare ground means.
+	GameState.selected_seed_type = held_before
 
 	# The ✕ closes it — the row under the shelf, pressed like she presses it.
 	_press_row(menus.options_container, menus.shop_items.size())
@@ -1244,8 +1309,8 @@ func _scenario_j_wordless_shop() -> void:
 
 func _live_fingerprint() -> String:
 	var g = GameState
-	return "%d|%d|%d|%d|%s|%s|%d" % [g.day, g.gold, g.energy, g.watering_can_charges,
-		JSON.stringify(g.seeds), JSON.stringify(g.crops), g.total_shipped]
+	return "%d|%d|%d|%d|%s|%d" % [g.day, g.gold, g.energy, g.watering_can_charges,
+		JSON.stringify(g.pouch), g.total_shipped]
 
 
 func _scenario_k_attract() -> void:
@@ -2084,7 +2149,7 @@ func _scenario_w_the_cot_presents_itself() -> void:
 	var beside := cot + Vector2i(1, 1)         # (3,2) — where she stood while doing it
 	_stage_tile(below.x, below.y, "cleared")
 	_stage_tile(beside.x, beside.y, "cleared")
-	GameState.seeds["wheat"] = 0               # so cleared soil means "till", never "plant"
+	GameState.pouch["wheat"] = 0               # so cleared soil means "till", never "plant"
 
 	# A wet, unripe crop to watch through the transition. Reported from play
 	# 2026-09-01: "when you go to sleep, the ground re-renders as dry BEFORE the
@@ -2205,7 +2270,7 @@ func _scenario_w_the_cot_presents_itself() -> void:
 	_assert(not _last_tap_entry(mark3).has("halo"),
 		"nothing was rescued — the tapped tile wins whenever it produces a real change")
 
-	GameState.seeds["wheat"] = 5
+	GameState.pouch["wheat"] = 5
 	for p in [GameState.save_path, GameState.replay_path, GameState.trace_path]:
 		if FileAccess.file_exists(p):
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
@@ -2272,7 +2337,7 @@ func _scenario_x_three_looks_for_the_cot() -> void:
 		return
 	var below := cot + Vector2i(0, 1)
 	_stage_tile(below.x, below.y, "cleared")
-	GameState.seeds["wheat"] = 0
+	GameState.pouch["wheat"] = 0
 
 	# **The switch is gone** (2026-09-08). Every look question the lab carried has
 	# been ruled, so the pause menu is back to the two lines a player has, and
@@ -2355,7 +2420,7 @@ func _scenario_x_three_looks_for_the_cot() -> void:
 	main_scene._apply_cot_treatment()
 	_assert(CotPresentation.treatment == CotPresentation.GLOW,
 		"and the build's default, restored, is A — the box stays the designer's to tick")
-	GameState.seeds["wheat"] = 5
+	GameState.pouch["wheat"] = 5
 	for p in [GameState.save_path, GameState.replay_path, GameState.trace_path]:
 		if FileAccess.file_exists(p):
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
@@ -2377,7 +2442,7 @@ func _scenario_y_acorns_are_pickable() -> void:
 	_stage_tile(stand.x, stand.y, "cleared")
 	_stage_tile(nut.x, nut.y, "cleared")
 	farm.sim.set_object(nut.x, nut.y, "acorn")
-	GameState.seeds["wheat"] = 0        # so cleared soil means "till", never "plant"
+	GameState.pouch["wheat"] = 0        # so cleared soil means "till", never "plant"
 	GameState.selected_tool = 3         # hoe in hand: the tap could have meant "till"
 	GameState.set_energy(GameState.max_energy)
 	player.pos = Vector2(stand.x * 16 + 8.0, stand.y * 16 + 8.0)
@@ -2399,7 +2464,7 @@ func _scenario_y_acorns_are_pickable() -> void:
 		"the crow's stock is one shorter (%d)" % farm.sim.count_acorns())
 	_assert(_refusals_since(mark) == 0, "and nothing was refused along the way")
 
-	GameState.seeds["wheat"] = 5
+	GameState.pouch["wheat"] = 5
 
 
 # Her walk has finished for the purposes of a wait: she is standing beside the
@@ -2530,7 +2595,7 @@ func _scenario_z_a_bed_button() -> void:
 	GameState.set_energy(GameState.max_energy)
 	var elsewhere := Vector2i(8, 7)
 	_stage_tile(elsewhere.x, elsewhere.y, "cleared")
-	GameState.seeds["wheat"] = 0        # nothing to plant there: a pure walk order
+	GameState.pouch["wheat"] = 0        # nothing to plant there: a pure walk order
 	GameState.selected_tool = 0
 	player.pos = Vector2(start.x * 16 + 8.0, start.y * 16 + 8.0)
 	player.path.clear()
@@ -2555,7 +2620,7 @@ func _scenario_z_a_bed_button() -> void:
 		"and she walks to where the finger said instead of to bed")
 	_assert(GameState.day == day_mid, "and the day did not turn")
 
-	GameState.seeds["wheat"] = 5
+	GameState.pouch["wheat"] = 5
 	for p in [GameState.save_path, GameState.replay_path, GameState.trace_path]:
 		if FileAccess.file_exists(p):
 			DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
@@ -2784,10 +2849,13 @@ func _scenario_ab_the_stations_present_themselves() -> void:
 	GameState.set_energy(GameState.max_energy)
 	GameState.gold = 0
 	GameState.total_shipped = 0
+	GameState.bin_deposits = 0
 	GameState.cans_refilled = 0
 	GameState.seeds_bought = 0
 	GameState.watering_can_charges = GameState.max_watering_can_charges
-	GameState.crops = { "wheat": 1, "tomato": 0 }
+	# One carried crop gives the bin a deposit to advertise.
+	GameState.pouch["wheat"] = 0 + 1
+	GameState.pouch["tomato"] = 0
 	var bin := StationPresentation.find_station(farm.sim, StationPresentation.BIN)
 	_assert(bin.x >= 0, "the bin is on the map at %s" % bin)
 
@@ -2836,7 +2904,8 @@ func _scenario_ab_the_stations_present_themselves() -> void:
 			StationPresentation.DISCOVERY_PIP]:
 		StationPresentation.set_discovery(d2)
 		main_scene._apply_station_treatment()
-		GameState.crops = { "wheat": 1, "tomato": 0 }
+		GameState.pouch["wheat"] = 0 + 1
+		GameState.pouch["tomato"] = 0
 		GameState.total_shipped = 0
 		player.pos = Vector2(bin.x * 16 + 8.0, (bin.y + 1) * 16 + 8.0)
 		player.path.clear()
@@ -2844,9 +2913,16 @@ func _scenario_ab_the_stations_present_themselves() -> void:
 		await get_tree().process_frame
 		InputManager.click_tile = bin
 		InputManager.has_click = true
-		var sold := await _wait_until(func(): return int(GameState.total_shipped) > 0, 200)
-		_assert(sold, "%s: a tap on the bin still sells, at the tap (D-8)"
+		var open := await _wait_until(
+			func(): return main_scene.menus.active_menu == "bin", 200)
+		_assert(open, "%s: the bin tap still opens its menu"
 			% StationPresentation.discovery_name(d2))
+		if open:
+			var before_deposits: int = GameState.bin_deposits
+			_press_row(main_scene.menus.options_container, 0)
+			_assert(GameState.bin_deposits == before_deposits + 1,
+				"%s: pressing Deposit sends a sim action" % StationPresentation.discovery_name(d2))
+			main_scene.menus.close_menu()
 
 	# --- the already-done treatments -----------------------------------------
 	_stage_tile(11, 8, "cleared")
@@ -2885,7 +2961,8 @@ func _scenario_ab_the_stations_present_themselves() -> void:
 	# --- treatment B's HUD, which is the half that is not on a tile ----------
 	var hud = main_scene.hud
 	StationPresentation.set_satisfied(StationPresentation.SATISFIED_CHIP)
-	GameState.crops = { "wheat": 0, "tomato": 0 }
+	GameState.pouch["wheat"] = 0
+	GameState.pouch["tomato"] = 0
 	GameState.watering_can_charges = GameState.max_watering_can_charges
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -2902,7 +2979,8 @@ func _scenario_ab_the_stations_present_themselves() -> void:
 	_assert(hud.can_gauge_fill.size.y >= HUD_GAUGE_FULL,
 		"a full can reads full (%.0fpx)" % hud.can_gauge_fill.size.y)
 
-	GameState.crops = { "wheat": 2, "tomato": 0 }
+	GameState.pouch["wheat"] = 0 + 2
+	GameState.pouch["tomato"] = 0
 	GameState.watering_can_charges = 0
 	await get_tree().process_frame
 	await get_tree().process_frame
@@ -2926,7 +3004,8 @@ func _scenario_ab_the_stations_present_themselves() -> void:
 		"and switching back keeps the can chip (Q-78) while the basket half reverts")
 
 	# --- put everything back --------------------------------------------------
-	GameState.crops = { "wheat": 0, "tomato": 0 }
+	GameState.pouch["wheat"] = 0
+	GameState.pouch["tomato"] = 0
 	GameState.watering_can_charges = GameState.max_watering_can_charges
 	StationPresentation.set_discovery(was_d)
 	StationPresentation.set_satisfied(was_s)
@@ -3198,7 +3277,10 @@ func _scenario_ad_two_hud_findings() -> void:
 	# egg is carried to the bin, never held for placing, so it has no card face.
 	for seed_name in CropDefs.ORDER:
 		GameState.selected_seed_type = seed_name
-		GameState.seeds[seed_name] = 12
+		if CropDefs.is_plantable(seed_name):
+			GameState.pouch[seed_name] = 12
+		else:
+			GameState.items[seed_name] = 12
 		hud._update_hud()
 		_assert(hud.seed_pill_label.text == "x12",
 			"the card face is a count, not a name (%s)" % seed_name)
@@ -3206,7 +3288,7 @@ func _scenario_ad_two_hud_findings() -> void:
 			"and %s still has its picture" % seed_name)
 
 	GameState.selected_seed_type = "wheat"
-	GameState.seeds["wheat"] = 5
+	GameState.pouch["wheat"] = 5
 	hud._update_hud()
 	_assert(hud.seed_pill_label.text == "x5", "the count follows the pouch")
 
@@ -4576,7 +4658,8 @@ func _scenario_al_a_ripe_crop_carries() -> void:
 	_stage_tile(target.x, target.y, "ready", "wheat")
 	farm.sim.get_tile(target.x, target.y).growth_stage = \
 		CropDefs.TYPES["wheat"]["days_to_grow"]
-	GameState.crops = { "wheat": 0, "tomato": 0 }
+	GameState.pouch["wheat"] = 0
+	GameState.pouch["tomato"] = 0
 	GameState.set_energy(GameState.max_energy)
 	player.pos = Vector2(6.5 * 16.0, 10.5 * 16.0)
 	player.path.clear()
@@ -4585,7 +4668,7 @@ func _scenario_al_a_ripe_crop_carries() -> void:
 	InputManager.click_tile = target
 	InputManager.has_click = true
 	var picked := await _wait_until(
-		func(): return int(GameState.crops.get("wheat", 0)) > 0, 240)
+		func(): return int(GameState.pouch.get("wheat", 0)) > 0, 240)
 	_assert(picked, "a tap on a ripe crop still picks it, at the tap (D-8)")
 	_assert(String(farm.sim.get_tile(target.x, target.y).get("state", "")) != "ready",
 		"and the square stops being ripe, so the sim moved and not just the picture")
@@ -7025,3 +7108,67 @@ func _scenario_ax_she_can_get_back_out_of_the_coop() -> void:
 	GameState.save_path = real_paths[0]
 	GameState.replay_path = real_paths[1]
 	GameState.trace_path = real_paths[2]
+
+
+func _scenario_az_a_full_pouch_leaves_the_crop() -> void:
+	# S-18/S-19/S-20: her pouch has a limit, and cutting a crop she has no room for is
+	# refused. Asserted here, through the real main scene and a real tap, because
+	# a unit test on the gateway says nothing about whether a child's finger can
+	# reach the refusal — the router has to route the tap to a harvest, the
+	# gateway has to say no, and the square has to be ripe afterwards.
+	#
+	# This is the first refusal that ever lands on **harvest**, the reward verb,
+	# which is why it is worth a scenario of its own.
+	print("\n--- Scenario AZ: a full pouch leaves the wheat standing (S-18/S-19/S-20) ---")
+
+	var cap: int = farm.sim.carry_cap("wheat")
+	var target := Vector2i(7, 10)
+	_stage_tile(target.x, target.y, "ready", "wheat")
+	farm.sim.get_tile(target.x, target.y).growth_stage = \
+		CropDefs.TYPES["wheat"]["days_to_grow"]
+	GameState.pouch["wheat"] = cap
+	GameState.selected_tool = 0
+	GameState.set_energy(GameState.max_energy)
+	player.pos = Vector2(7.5 * 16.0, 11.5 * 16.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+
+	var mark: int = farm.trace.entries.size()
+	InputManager.click_tile = target
+	InputManager.has_click = true
+	var refused := await _wait_until(
+		func(): return _refusals_since(mark) > 0, 240)
+	_assert(refused, "the tap reaches the gateway and comes back a no")
+	_assert(_full_pouch_refusal_since(mark),
+		"and the trace names it: a harvest refused because the pouch is full")
+	_assert(String(farm.sim.get_tile(target.x, target.y).get("state", "")) == "ready",
+		"**the wheat is still standing** — a refused harvest does not cut the square")
+	_assert(int(GameState.pouch.get("wheat", 0)) == cap,
+		"and she is carrying exactly what she was carrying")
+
+	# A harvest yields three units atomically. With room for all three, the same
+	# finger on the same square takes it; with only one or two spaces, it stays.
+	GameState.pouch["wheat"] = cap - 3
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	InputManager.click_tile = target
+	InputManager.has_click = true
+	var picked := await _wait_until(
+		func(): return int(GameState.pouch.get("wheat", 0)) == cap, 240)
+	_assert(picked, "with room for all three units the tap picks it")
+	_assert(String(farm.sim.get_tile(target.x, target.y).get("state", "")) != "ready",
+		"and the square is cut this time")
+
+	GameState.pouch["wheat"] = 5
+
+
+# Did a harvest get refused for a full pouch since this point in the trace?
+func _full_pouch_refusal_since(since: int) -> bool:
+	for i in range(since, farm.trace.entries.size()):
+		var e: Dictionary = farm.trace.entries[i]
+		if String(e.get("kind", "")) == "act" and String(e.get("verb", "")) == "harvest" \
+				and not e.get("ok", true) and String(e.get("why", "")) == "pouch_full":
+			return true
+	return false
