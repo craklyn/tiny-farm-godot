@@ -56,7 +56,7 @@ merge or reset is part of this method. [^cherry]
 | `2d699fe` | Integration waits for movement and placement | Reconciled as `9529228`; 1,010 integration assertions passed with fresh save data. |
 | `b1887f5` | Shared animation-file reader for watering and night | Reconciled as `9b9c299`; 2,943 unit and 1,009 integration assertions passed, plus gateway |
 | `9a9b4ad`, `13f13bd` | Remove the retired obstacle atlas from the HQ map and playtest view | Reconciled as `e93714a`; every old atlas cell matches its individual replacement, the chip generator reproduces its sheets, and game and HQ suites pass. |
-| `dbe3529`, `2d0a4ea` | Ground-sheet sprite editor changes, including a restore after concurrent edits | TK — isolate the editor behavior and rerun its failed candidate. |
+| `dbe3529`, `2d0a4ea` | Ground-sheet sprite editor changes, including a restore after concurrent edits | Reconciled as `9e46edd`; the editor now shows and saves the nine cells the renderer uses. HQ 45/45 and both game suites passed. |
 | `df5fc46` | Earned robot unlocks | Already represented by `35714f2` and later mainline code; the shared branch uses the older seed/crop save schema and cannot supply this patch directly. |
 
 The card for the shared animation reader was copied to the isolated checkout
@@ -95,7 +95,7 @@ generator left all three chip sheets byte-identical. Current tests passed:
 | Save build history | The focused change is on `main` as `4357f42`, with a green GitHub Actions rerun. | Code already present; the later HQ card record is reconciled as `9a9ce71`. |
 | Store-page rewrite [^store] | `ITCH_PAGE.md` is claimed by an accepted card, but the draft says the unreleased v0.2.2 text is live. | TK — compare copy with actual release state before landing. |
 | White-edge sprite processing [^white] | The helper and four synthetic checks exist in `tools/asset_pipeline/`, but the two builders import only `key_background`; neither invokes the new removal or final check. | Incomplete; wire and verify before landing. |
-| Ground-sheet sprite editor [^ground] | A checked card is in `for_review`; its original candidate failed a suite. | TK — isolate the ground-sheet change from unrelated sound and obstacle edits, then rerun. |
+| Ground-sheet sprite editor [^ground] | The original card said to copy the center cell over all nine, but the current renderer selects all nine by tile position. | Reconciled against current behavior; the card retains its stale earlier claim and records the corrected result. |
 | Five playtest sessions [^playtests] | Each replay is distinct; all fifteen files parse as JSON lines and match the shared checkout by SHA-256. | Preserved as `9dc003b`, with the older-version note in `playtests/README.md`; the blocked card now records the successful recovery. |
 | Rulings, HQ ledger, art, experiments | 71 modified work cards, 23 new work cards, plus untracked assets. | TK — reconcile decisions and records by owner; preserve raw evidence. |
 
@@ -105,7 +105,8 @@ generator left all three chip sheets byte-identical. Current tests passed:
     `tools/asset_pipeline/postprocess.py`,
     `tools/asset_pipeline/check_postprocess.py`, and the two
     `assets/raw/*/build_*.py` scripts in the shared checkout.
-[^ground]: `hq/data/work/wf6c0837f914.json` and `git show dbe3529`.
+[^ground]: `hq/data/work/wf6c0837f914.json`, `git show dbe3529`,
+    `git show 9e46edd`, and `world/farm.gd`'s `tx % GROUND_VARIANTS` draw path.
 [^playtests]: `git show 9dc003b`, `playtests/README.md`, and
     `hq/data/work/w9b3289d1a04.json` in the isolated checkout. The five
     session folders are named in that card.

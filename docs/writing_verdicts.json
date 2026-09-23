@@ -85,6 +85,9 @@
   "07304682335f7381fa4b": {
    "verdict": "ok"
   },
+  "0746ef255d2387a1c522": {
+   "verdict": "ok"
+  },
   "0766dfc7a27ea5b326b0": {
    "verdict": "ok"
   },
@@ -663,6 +666,9 @@
    "verdict": "ok"
   },
   "27af847bb8ef677ae5ca": {
+   "verdict": "ok"
+  },
+  "27e03bde95dcb867185d": {
    "verdict": "ok"
   },
   "2823400c3c0bce0f1884": {
@@ -2080,6 +2086,9 @@
   "7ccb03375da65eb23f99": {
    "verdict": "ok"
   },
+  "7ce88793d25bdd43ceab": {
+   "verdict": "ok"
+  },
   "7d2f28cdfc3a5db7811e": {
    "verdict": "ok"
   },
@@ -2509,6 +2518,12 @@
   },
   "98160cafeca6990177c4": {
    "verdict": "ok"
+  },
+  "9861a6dcfaf30bd33532": {
+   "instead": "Show and edit all nine pictures used to make the farm's ground",
+   "quote": "ground pictures the farm repeats",
+   "verdict": "decode",
+   "why": "The reader has to work out that these are the nine pictures used repeatedly to make the farm's ground."
   },
   "98bfab9353f6ef329ded": {
    "verdict": "ok"
@@ -3391,6 +3406,12 @@
   },
   "cdec7e0234a110b006c1": {
    "verdict": "ok"
+  },
+  "cdee280a22efc65ad174": {
+   "instead": "Show and edit every square of ground in the farm",
+   "quote": "ground cell",
+   "verdict": "decode",
+   "why": "A stranger may not know that this means one square of ground in the farm map."
   },
   "cdf49db80682a1c70333": {
    "verdict": "ok"
