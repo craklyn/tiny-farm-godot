@@ -63,6 +63,10 @@ var machines: Dictionary
 # gateway so a replay earns it identically, saved additively, default 0.
 var machines_bought: int
 
+# The world's starting fence becomes hers after her first successful purchase of
+# fencing. Crate stock alone cannot answer this: she may lay or use every post.
+var fence_purchased: bool
+
 # **What the crate remembers** (Q-98, ruled 2026-09-10: "pick up is just
 # repositioning, it shouldn't factory reset the robot"). Machine key → the `extra`
 # of each boxed machine that had something worth keeping, newest last; `place`
@@ -203,6 +207,7 @@ func reset() -> void:
 	acorns = 0
 	machines = {}
 	machines_bought = 0
+	fence_purchased = false
 	boxed = {}
 	tools_owned = {
 		"hands": true, "hoe": true, "watering_can": true, "seeds": true,
@@ -409,6 +414,8 @@ func buy_machine(key: String) -> bool:
 	# is an errand rather than a decision (Q-92). Everything else is one.
 	machines[key] = machines.get(key, 0) + int(def.get("bundle", 1))
 	machines_bought += 1
+	if key == "fence":
+		fence_purchased = true
 	selected_seed_type = key
 	gold_changed.emit(gold)
 	return true

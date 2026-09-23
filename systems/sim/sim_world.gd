@@ -2569,7 +2569,7 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 					return { "ok": true, "collected": COOP_ITEM, "anchor": coop_anchor,
 						"count": taken_up.size() }
 			# **And her fences come back up** (Q-92). A post she built is always
-			# hers; the starting fence becomes hers when fencing is unlocked. Before
+			# hers; the starting fence becomes hers on her first fence purchase. Before
 			# then it remains the cold open's first lock. Hedges are never fencing
 			# stock and remain the boundary that says "not yet".
 			#
@@ -2579,7 +2579,7 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			var fence_state := String(get_tile(target.x, target.y).get("state", ""))
 			var can_take_fence: bool = fence_state == WorldLayout.FENCE_BUILT \
 				or (fence_state == WorldLayout.FENCE and gs != null \
-					and gs.is_unlocked("fence"))
+					and gs.fence_purchased)
 			if can_take_fence:
 				set_tile_state(target.x, target.y, "cleared")
 				gs.machines["fence"] = int(gs.machines.get("fence", 0)) + 1

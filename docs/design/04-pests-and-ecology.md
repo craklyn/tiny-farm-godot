@@ -61,12 +61,14 @@ ten at the seed box, one post per tap on bare ground, taken back up by tapping i
 refunded — so a run she regrets costs her nothing, which is what makes a long line safe to
 try. Drawn with the game's own fence cell, because the **hedge** is the word for "not yours
 yet" and the fence already means "yours"; hers is a separate tile state only so the world's
-own boundaries stay hers to look at rather than to dismantle until fencing is available.
+own boundaries stay hers to look at rather than to dismantle until she buys fencing.
 
-**Ruled 2026-09-10 (Q-92, on the dashboard): the starting fence is hers too, once fencing is
-unlocked.** Until then it stays what it is today — the boundary of the cold open, which she
-cannot dismantle. After the unlock, tapping a fence the world laid picks it up into her crate
-like one she built, and she can lay it again wherever a fence may go. Hedges are untouched:
+**Ruled 2026-09-10 (Q-92, on the dashboard), clarified 2026-09-23: the starting fence is hers
+once she buys her first fence bundle.** Fencing is on the shop shelf from the start; merely
+seeing it there does not unlock the starting fence. Until purchase it stays the boundary of
+the cold open, which she cannot dismantle. After purchase, tapping a fence the world laid
+picks it up into her crate like one she built, and she can lay it again wherever a fence may
+go. Hedges are untouched:
 they remain the lock on land she has not earned. Converting home turf to farmland and back is
 a later update (D-15).
 

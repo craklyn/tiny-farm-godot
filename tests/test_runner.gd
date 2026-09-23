@@ -14246,6 +14246,32 @@ func test_fencing() -> void:
 	SimRng.reseed(92)
 	var w := SimWorld.new()
 	w.generate()
+	var theirs := Vector2i(-1, -1)
+	var hedge := Vector2i(-1, -1)
+	for ty in range(0, 20):
+		for tx in range(0, 32):
+			if String(w.get_tile(tx, ty).get("state", "")) == WorldLayout.FENCE:
+				theirs = Vector2i(tx, ty)
+			if String(w.get_tile(tx, ty).get("state", "")) == WorldLayout.HEDGE:
+				hedge = Vector2i(tx, ty)
+			if theirs.x >= 0 and hedge.x >= 0: break
+		if theirs.x >= 0 and hedge.x >= 0: break
+	_assert(theirs.x >= 0, "the farm has a fence of the world's own (%s)" % theirs)
+	_assert(hedge.x >= 0, "and a hedge that still means not yet (%s)" % hedge)
+	w.set_actor_pos(SimWorld.ACTOR_PLAYER, theirs + Vector2i(-1, 0))
+	var farm = load("res://world/farm.gd").new()
+	farm.sim = w
+	_assert(gs.is_unlocked("fence") and not gs.fence_purchased,
+		"fencing is on the shelf, but she has not bought any")
+	_assert(ActionRouter.resolve(farm, gs, theirs, w.actor_pos(SimWorld.ACTOR_PLAYER)).is_empty(),
+		"before purchase, tapping the starting fence is refused by the router")
+	var untouched: Dictionary = w.apply_action({ "verb": "collect", "target": theirs,
+		"actor": "player" }, gs)
+	_assert(not untouched.get("ok", false)
+		and String(w.get_tile(theirs.x, theirs.y).get("state", "")) == WorldLayout.FENCE,
+		"the gateway keeps the starting fence standing before purchase (%s)" % untouched)
+	_assert(not gs.buy_machine("fence") and not gs.fence_purchased,
+		"a failed purchase cannot unlock the starting fence")
 
 	# Somewhere bare, beside her, and not the yard.
 	var here := Vector2i(6, 10)
@@ -14258,6 +14284,7 @@ func test_fencing() -> void:
 	gs.gold = 200
 	var before_gold: int = gs.gold
 	_assert(gs.buy_machine("fence"), "she buys a card of fencing at the seed box")
+	_assert(gs.fence_purchased, "her first successful purchase unlocks the starting fence")
 	_assert(gs.gold == before_gold - MachineDefs.price_of("fence"), "and pays for it")
 	_assert(gs.machines.get("fence", 0) == 10,
 		"a card is ten posts — a fence is a run, not an object (%d)" % gs.machines.get("fence", 0))
@@ -14320,47 +14347,18 @@ func test_fencing() -> void:
 	_assert(gs.machines.get("fence", 0) == 10,
 		"and the post is back in the crate — a run she regrets costs her nothing")
 
-	# The starting fence is the cold open's first lock until fencing is unlocked.
-	# Use the catalogue's real requirement shape here so both the router and the
-	# gateway are tested against the same question the shop asks.
-	var theirs := Vector2i(-1, -1)
-	var hedge := Vector2i(-1, -1)
-	for ty in range(0, 20):
-		for tx in range(0, 32):
-			if String(w.get_tile(tx, ty).get("state", "")) == WorldLayout.FENCE:
-				theirs = Vector2i(tx, ty)
-			if String(w.get_tile(tx, ty).get("state", "")) == WorldLayout.HEDGE:
-				hedge = Vector2i(tx, ty)
-			if theirs.x >= 0 and hedge.x >= 0: break
-		if theirs.x >= 0 and hedge.x >= 0: break
-	_assert(theirs.x >= 0, "the farm has a fence of the world's own (%s)" % theirs)
-	_assert(hedge.x >= 0, "and a hedge that still means not yet (%s)" % hedge)
-	var fence_def: Dictionary = MachineDefs.TYPES["fence"]
-	var old_requirement = fence_def.get("unlock_requirement")
-	fence_def["unlock_requirement"] = { "crop": "tomato", "count": 1 }
-	gs.harvest_counts["tomato"] = 0
+	# Even when she has laid or picked up every bought post, the purchase holds.
+	gs.machines["fence"] = 0
 	w.set_actor_pos(SimWorld.ACTOR_PLAYER, theirs + Vector2i(-1, 0))
-	var farm = load("res://world/farm.gd").new()
-	farm.sim = w
-	_assert(ActionRouter.resolve(farm, gs, theirs, w.actor_pos(SimWorld.ACTOR_PLAYER)).is_empty(),
-		"before the unlock, tapping the starting fence is still refused by the router")
-	var steal: Dictionary = w.apply_action({ "verb": "collect", "target": theirs,
-		"actor": "player" }, gs)
-	_assert(not steal.get("ok", false),
-		"and the gateway keeps the cold open's first lock standing (%s)" % steal)
-	_assert(String(w.get_tile(theirs.x, theirs.y).get("state", "")) == WorldLayout.FENCE,
-		"and it is still standing")
-
-	gs.harvest_counts["tomato"] = 1
 	var intent: Dictionary = ActionRouter.resolve(
 		farm, gs, theirs, w.actor_pos(SimWorld.ACTOR_PLAYER))
 	_assert(intent.get("action", "") == "collect",
-		"after the unlock, tapping the starting fence resolves to the same collect verb")
+		"after purchase, tapping the starting fence resolves to the same collect verb")
 	var crate_before := int(gs.machines.get("fence", 0))
 	var take: Dictionary = w.apply_action({ "verb": "collect", "target": theirs,
 		"actor": "player" }, gs)
 	_assert(take.get("ok", false) and take.get("collected", "") == "fence",
-		"the unlocked starting fence can be taken up (%s)" % take)
+		"the purchased starting fence can be taken up (%s)" % take)
 	_assert(String(w.get_tile(theirs.x, theirs.y).get("state", "")) == "cleared",
 		"and leaves the same bare ground as a taken built fence")
 	_assert(int(gs.machines.get("fence", 0)) == crate_before + 1,
@@ -14375,25 +14373,58 @@ func test_fencing() -> void:
 		and String(w.get_tile(hedge.x, hedge.y).get("state", "")) == WorldLayout.HEDGE,
 		"and the gateway still refuses the hedge (%s)" % clipped)
 	farm.free()
-	fence_def["unlock_requirement"] = old_requirement
+
+	gs.machines["fence"] = 0
+	var saved := SaveGame.capture(w, gs)
+	var restored_gs = load("res://systems/game_state.gd").new()
+	var restored_world := SimWorld.new()
+	_assert(SaveGame.restore(saved, restored_world, restored_gs)
+		and restored_gs.fence_purchased,
+		"purchase survives a save even if her crate was emptied")
+	var legacy: Dictionary = saved.duplicate(true)
+	legacy["state"].erase("fence_purchased")
+	legacy["state"]["machines"]["fence"] = 1
+	var legacy_gs = load("res://systems/game_state.gd").new()
+	var legacy_world := SimWorld.new()
+	_assert(SaveGame.restore(legacy, legacy_world, legacy_gs)
+		and legacy_gs.fence_purchased,
+		"an old save with bought fencing in the crate retains access")
+	w.set_tile_state(spot.x, spot.y, WorldLayout.FENCE_BUILT)
+	var legacy_built: Dictionary = SaveGame.capture(w, gs)
+	legacy_built["state"].erase("fence_purchased")
+	var built_gs = load("res://systems/game_state.gd").new()
+	var built_world := SimWorld.new()
+	_assert(SaveGame.restore(legacy_built, built_world, built_gs)
+		and built_gs.fence_purchased,
+		"an old save with all bought posts laid still retains access")
+	var legacy_unbought: Dictionary = saved.duplicate(true)
+	legacy_unbought["state"].erase("fence_purchased")
+	var unbought_gs = load("res://systems/game_state.gd").new()
+	var unbought_world := SimWorld.new()
+	_assert(SaveGame.restore(legacy_unbought, unbought_world, unbought_gs)
+		and not unbought_gs.fence_purchased,
+		"an old save without evidence of a purchase keeps the starting fence locked")
 
 	# A take-and-relay session is ordinary collect/build data: no new replay
 	# shape, and applying it from the same starting save lands on the same farm.
 	var replay_gs = load("res://systems/game_state.gd").new()
 	replay_gs.reset()
-	# Capture the actual unlocked state in the replay base save.
-	replay_gs.harvest_counts["tomato"] = 1
+	replay_gs.gold = 200
 	var replay_world := SimWorld.new()
 	SimRng.reseed(9202)
 	replay_world.generate()
 	replay_world.set_actor_pos(SimWorld.ACTOR_PLAYER, theirs + Vector2i(-1, 0))
-	fence_def["unlock_requirement"] = { "crop": "tomato", "count": 1 }
 	var base := SaveGame.capture(replay_world, replay_gs)
 	var log := ReplayLog.new()
 	log.start_from_save(base, replay_world.gen_seed)
+	var buy_action := { "verb": "buy_machine", "item": "fence", "actor": "player" }
+	var buy_result: Dictionary = replay_world.apply_action(buy_action, replay_gs)
+	_assert(buy_result.get("ok", false) and replay_gs.fence_purchased,
+		"the replay fixture buys fencing through the gateway")
+	log.record(buy_action, buy_result)
 	var take_action := { "verb": "collect", "target": theirs, "actor": "player" }
 	var take_result: Dictionary = replay_world.apply_action(take_action, replay_gs)
-	_assert(take_result.get("ok", false), "the replay fixture takes the unlocked starting post")
+	_assert(take_result.get("ok", false), "the replay fixture takes the purchased starting post")
 	log.record(take_action, take_result)
 	var relay_action := { "verb": "build", "target": theirs, "item": "fence", "actor": "player" }
 	var relay_result: Dictionary = replay_world.apply_action(relay_action, replay_gs)
@@ -14406,7 +14437,6 @@ func test_fencing() -> void:
 	_assert(round_trip.apply_to(replayed_world, replayed_gs)
 		and SaveGame.capture_canonical(replayed_world, replayed_gs) == live,
 		"taking and relaying the starting fence round-trips through the replay")
-	fence_def["unlock_requirement"] = old_requirement
 
 
 func test_the_door() -> void:

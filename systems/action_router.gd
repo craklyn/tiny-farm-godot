@@ -221,13 +221,13 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 		})
 
 	# 1c-ii. Her fences answer before the ground does (Q-92). That includes the
-	# starting fence once fencing is on her shelf; until then it is still the cold
+	# starting fence once she buys her first fence bundle; until then it is the cold
 	# open's first lock. Hedges remain the boundary that says "not yet".
 	var fence_state := "" if world == null else String(
 		world.get_tile(tx, ty).get("state", ""))
 	var can_take_fence: bool = fence_state == WorldLayout.FENCE_BUILT \
 		or (fence_state == WorldLayout.FENCE and gs != null \
-			and gs.is_unlocked("fence"))
+			and gs.fence_purchased)
 	if can_take_fence:
 		if not is_drag and player_t != null:
 			var pt0: Vector2i = player_t

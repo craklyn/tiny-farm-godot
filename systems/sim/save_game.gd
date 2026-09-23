@@ -134,6 +134,7 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 			# save written before this release means, and no VERSION bump.
 			"boxed": _copy_boxed(gs.boxed),
 			"machines_bought": gs.machines_bought,
+			"fence_purchased": gs.fence_purchased,
 			"tools_owned": gs.tools_owned.duplicate(),
 			"takeover_day": gs.takeover_day,
 			"clear_counts": gs.clear_counts.duplicate(),
@@ -367,6 +368,19 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 	gs.machines = _int_values(s.get("machines", {}))  # absent ⇒ crate empty
 	gs.boxed = _restore_boxed(s.get("boxed", {}))  # Q-98; absent ⇒ it remembers nothing
 	gs.machines_bought = int(s.get("machines_bought", 0))
+	gs.fence_purchased = bool(s.get("fence_purchased", false))
+	# Older saves have no purchase flag. An unspent post or player-built fence
+	# proves a purchase happened; otherwise the starting fence stays locked.
+	if not s.has("fence_purchased") and not gs.fence_purchased:
+		gs.fence_purchased = int(gs.machines.get("fence", 0)) > 0
+		if not gs.fence_purchased:
+			for row in world.tiles:
+				for tile in row:
+					if String(tile.get("state", "")) == WorldLayout.FENCE_BUILT:
+						gs.fence_purchased = true
+						break
+				if gs.fence_purchased:
+					break
 	var owned: Dictionary = {}
 	for t in Tools.LIST:
 		owned[t.key] = true

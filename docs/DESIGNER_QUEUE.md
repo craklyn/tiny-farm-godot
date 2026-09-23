@@ -352,7 +352,9 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   the game already has, and make it interactive.** **Added 2026-09-10 on the dashboard:** *"Starting fence should
   become removable and replaceable after fencing is unlocked. We should eventually let players
   change home turf to farming land and vice versa, but that'll be a future update."* The first
-  half is implemented in the sim and router; the second is D-15 in the decision log. *"We already have fences that look
+  half is implemented in the sim and router, clarified 2026-09-23: the first successful
+  purchase of fence items is the moment, not the shelf unlock. The second is D-15 in the
+  decision log. *"We already have fences that look
   different than game boundary... we should continue to use that fence, and make it
   interactive."* He is right, and more precisely right than the question assumed: the
   **hedge** is the lock vocabulary (it bounds the parcels she has not unlocked) and the
@@ -362,8 +364,9 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   art cost is zero.
   **What survives from the design unchanged:** her fence still needs its own *state*
   (`fence_built`, drawn with the existing fence cell), because the router has to tell "yours,
-  takeable" from "the world's, refuse" — the cold open's fence between two yards is
-  load-bearing for the first lock, and she must not be able to dismantle it. Same picture,
+  takeable" from "the world's, refuse until first purchase" — the cold open's fence between
+  two yards is load-bearing for the first lock, and she must not be able to dismantle it
+  before buying fencing. Same picture,
   different word. Also unchanged: a `build` verb rather than `place` (a fence is terrain,
   not an actor); stock in the crate, refunded on take-back; ground level and a drag; worth
   only against rabbits. Ready to build on request — no open questions left.
