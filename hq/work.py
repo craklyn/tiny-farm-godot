@@ -275,6 +275,9 @@ def validate_revision(item):
 def save_item(item):
     """Compare-and-swap the durable revision; never merge a stale whole record."""
     with mutation_lock():
+        # A response projection is not durable workflow state, even if a
+        # caller round-trips a record fetched from an API.
+        item.pop("workflow_view", None)
         path = _item_path(item["id"])
         actual = validate_revision(item)
         # Repository work stays in the build lane even if a producer files it as doing.
@@ -650,6 +653,274 @@ def _parse_follows(tail, org, fallback_owner):
 
 def evidence_id(value):
     return hashlib.sha256(json.dumps(value, sort_keys=True, default=str).encode()).hexdigest()
+
+
+WORKFLOW_VERSION = 1
+ACTION_LEASE_SECONDS = 30 * 60
+TERMINAL_STATES = frozenset(("landed", "accepted", "dropped", "done"))
+
+
+def _iso_seconds(value):
+    if not value:
+        return 0.0
+    try:
+        return datetime.datetime.fromisoformat(str(value).replace("Z", "+00:00")).timestamp()
+    except (TypeError, ValueError, OverflowError):
+        return 0.0
+
+
+def action_key(item_id, kind, input_id=""):
+    """A stable identity for one action on one immutable input."""
+    return "act_" + hashlib.sha256(f"{item_id}\0{kind}\0{input_id}".encode()).hexdigest()[:20]
+
+
+def _workflow(item):
+    workflow = item.setdefault("workflow", {"version": WORKFLOW_VERSION, "actions": [],
+                                             "blockers": [], "candidates": [],
+                                             "verifications": [], "integrations": []})
+    if workflow.get("version") != WORKFLOW_VERSION:
+        raise ValueError("Unknown work workflow version")
+    for key in ("actions", "blockers", "candidates", "verifications", "integrations"):
+        workflow.setdefault(key, [])
+    return workflow
+
+
+def ensure_action(item, kind, *, input_id="", owner=None, summary="", priority="ordinary",
+                  created_at=None, wake=None):
+    """Persist an action once. Call only from an explicit transition, never a GET."""
+    with mutation_lock():
+        fresh = load_item(item["id"])
+        workflow = _workflow(fresh)
+        ident = action_key(fresh["id"], kind, input_id)
+        action = next((a for a in workflow["actions"] if a.get("id") == ident), None)
+        if action is None:
+            action = {"id": ident, "type": kind, "input_id": input_id,
+                      "owner": owner or fresh.get("owner") or "claude",
+                      "summary": summary, "priority": priority,
+                      "created_at": created_at or _now_iso(), "state": "open"}
+            if wake:
+                action["wake"] = wake
+            workflow["actions"].append(action)
+            save_item(fresh)
+        item.clear()
+        item.update(fresh)
+        return dict(action)
+
+
+def ensure_blocker(item, kind, *, input_id="", owner=None, reason="", files=(),
+                   action_id="", wake=None):
+    """Record a stable cause without refreshing its first-seen timestamp."""
+    with mutation_lock():
+        fresh = load_item(item["id"])
+        workflow = _workflow(fresh)
+        ident = "blk_" + hashlib.sha256(f"{fresh['id']}\0{kind}\0{input_id}".encode()).hexdigest()[:20]
+        blocker = next((b for b in workflow["blockers"] if b.get("id") == ident), None)
+        if blocker is None:
+            blocker = {"id": ident, "type": kind, "input_id": input_id,
+                       "owner": owner or fresh.get("owner") or "claude",
+                       "reason": reason, "files": sorted(set(files)),
+                       "action_id": action_id, "observed_at": _now_iso(), "state": "open"}
+            if wake:
+                blocker["wake"] = wake
+            workflow["blockers"].append(blocker)
+            save_item(fresh)
+        item.clear()
+        item.update(fresh)
+        return dict(blocker)
+
+
+def claim_action(item, action_id, claim_id, *, now=None, lease_seconds=ACTION_LEASE_SECONDS):
+    """Idempotent claim; an expired lease can be recovered by a new claimant."""
+    with mutation_lock():
+        fresh = load_item(item["id"])
+        action = next((a for a in _workflow(fresh)["actions"] if a.get("id") == action_id), None)
+        if action is None:
+            raise KeyError(action_id)
+        instant = time.time() if now is None else float(now)
+        claim = action.get("claim") or {}
+        if claim.get("id") == claim_id and claim.get("expires_at", 0) > instant:
+            item.clear(); item.update(fresh)
+            return dict(action)
+        if claim.get("expires_at", 0) > instant or action.get("state") == "done":
+            return None
+        action["claim"] = {"id": claim_id, "claimed_at": instant,
+                           "expires_at": instant + lease_seconds}
+        action["state"] = "running"
+        save_item(fresh)
+        item.clear(); item.update(fresh)
+        return dict(action)
+
+
+def finish_action(item, action_id, claim_id, *, state="done"):
+    if state not in ("done", "open", "blocked"):
+        raise ValueError("Invalid action state")
+    with mutation_lock():
+        fresh = load_item(item["id"])
+        action = next((a for a in _workflow(fresh)["actions"] if a.get("id") == action_id), None)
+        if action is None:
+            raise KeyError(action_id)
+        if action.get("state") == state and not action.get("claim"):
+            item.clear(); item.update(fresh)
+            return dict(action)
+        if (action.get("claim") or {}).get("id") != claim_id:
+            raise RecordConflict(item["id"], claim_id, (action.get("claim") or {}).get("id"))
+        action["state"] = state
+        action.pop("claim", None)
+        action["finished_at" if state == "done" else "updated_at"] = _now_iso()
+        save_item(fresh)
+        item.clear(); item.update(fresh)
+        return dict(action)
+
+
+def work_view(item, repo_facts=None, now=None):
+    """Pure canonical work/eligibility projection for cards, queue and dashboard.
+
+    repo_facts may contain blocked_files, cost_reason, active_session and head.
+    No filesystem or clock reads occur when `now` is supplied.
+    """
+    facts = repo_facts or {}
+    instant = time.time() if now is None else float(now)
+    workflow = item.get("workflow") or {}
+    actions = [dict(action) for action in workflow.get("actions") or []]
+    active_actions = [a for a in actions if a.get("state") != "done"]
+    blocked_files = sorted(set(facts.get("blocked_files") or []))
+    repair = str(item.get("repair_hold") or "")
+    cost_reason = str(facts.get("cost_reason") or "")
+    waiting = item.get("waiting_for") or {}
+    pending = item.get("pending_landing") or item.get("pending_followups")
+    patch = (item.get("attempt_outcome") or {}).get("patch_id") or ""
+    candidate = (item.get("attempt_outcome") or {}).get("candidate") or {}
+    input_id = patch or candidate.get("tree") or str(item.get("last_recorded_attempt") or "legacy")
+    terminal = item.get("state") in TERMINAL_STATES
+    blocker = None
+    if blocked_files:
+        blocker = {"type": "code_conflict", "reason": facts.get("tree_reason") or
+                   "The candidate overlaps uncommitted repository files.",
+                   "files": blocked_files, "owner": item.get("owner") or "claude"}
+    elif repair:
+        blocker = {"type": "missing_evidence", "reason": repair, "files": [],
+                   "owner": item.get("owner") or "claude"}
+    elif cost_reason:
+        blocker = {"type": "capacity", "reason": cost_reason, "files": [],
+                   "owner": item.get("owner") or "claude"}
+    elif pending:
+        blocker = {"type": "recovery", "reason": "An interrupted transaction needs recovery.",
+                   "files": [], "owner": "claude"}
+    elif item.get("started") and not facts.get("active_session"):
+        blocker = {"type": "recovery", "reason": "The previous session no longer has a live claim.",
+                   "files": [], "owner": "claude"}
+    elif waiting.get("reason") and facts.get("waiting_for_valid", True):
+        blocker = {"type": "dependency", "reason": waiting["reason"],
+                   "files": waiting.get("files") or [], "owner": item.get("owner") or "claude"}
+    persisted_open = next((b for b in reversed(workflow.get("blockers") or [])
+                           if b.get("state") == "open"), None)
+    if blocker and persisted_open and persisted_open.get("type") == blocker["type"]:
+        blocker = {**persisted_open, **blocker}
+    elif not blocker and persisted_open:
+        blocker = dict(persisted_open)
+    if not terminal and not active_actions:
+        if blocker and blocker["type"] in ("code_conflict", "missing_evidence", "dependency"):
+            kind = "reconcile"
+            summary = "Reconcile the candidate with current main and obtain fresh review and tests."
+            priority = "reconciliation"
+        elif blocker and blocker["type"] == "recovery":
+            kind, summary, priority = "recover", "Recover the interrupted transaction.", "reconciliation"
+        elif item.get("state") in ("for_review", "needs_approval"):
+            kind, summary, priority = "decide", "Review the prepared result or decision.", "decision"
+        elif item.get("state") == "prepping":
+            kind, summary, priority = "prepare", "Prepare the question for Daniel.", "ordinary"
+        elif item.get("state") == "owed":
+            kind, summary, priority = "reply", "Answer the card's outstanding question.", "ordinary"
+        else:
+            kind = "build"
+            summary = item.get("first_action") or "Continue the work."
+            priority = "urgent" if item.get("urgent") else "retry" if item.get("resume") else "ordinary"
+        active_actions = [{"id": action_key(item["id"], kind, input_id), "type": kind,
+                           "input_id": input_id, "owner": ("daniel" if kind == "decide" else item.get("owner") or "claude"),
+                           "summary": summary, "priority": priority,
+                           "created_at": item.get("finished") or item.get("created") or "",
+                           "state": "open", "virtual": True}]
+    if not terminal and blocker and blocker["type"] in ("code_conflict", "missing_evidence", "dependency") \
+            and not any(a.get("type") == "reconcile" for a in active_actions):
+        active_actions.append({"id": action_key(item["id"], "reconcile", input_id),
+                               "type": "reconcile", "input_id": input_id,
+                               "owner": item.get("owner") or "claude",
+                               "summary": "Reconcile the candidate with current main and obtain fresh review and tests.",
+                               "priority": "reconciliation", "created_at": item.get("finished") or item.get("created") or "",
+                               "state": "open", "virtual": True})
+    if not terminal and blocker and blocker["type"] == "recovery" \
+            and not any(a.get("type") == "recover" for a in active_actions):
+        active_actions.append({"id": action_key(item["id"], "recover", input_id),
+                               "type": "recover", "input_id": input_id, "owner": "claude",
+                               "summary": "Recover the interrupted transaction before another build.",
+                               "priority": "reconciliation", "created_at": item.get("started") or item.get("created") or "",
+                               "state": "open", "virtual": True})
+    if facts.get("active_session") and not terminal:
+        if not active_actions:
+            active_actions = [{"id": action_key(item["id"], "build", input_id),
+                               "type": "build", "input_id": input_id,
+                               "owner": item.get("owner") or "claude", "summary": "The owner is working.",
+                               "priority": "ordinary", "created_at": item.get("started") or "",
+                               "state": "open", "virtual": True}]
+        active_actions[0]["state"] = "running"
+        active_actions[0]["claim"] = {"id": str(facts["active_session"]),
+                                      "expires_at": instant + 1}
+    for action in active_actions:
+        claim = action.get("claim") or {}
+        lease_live = claim.get("expires_at", 0) > instant
+        running = lease_live and bool(facts.get("active_session")) and action.get("state") == "running"
+        action["availability"] = ("running" if running else "waiting_event" if lease_live else "waiting_event" if
+                                  action.get("type") == "decide" else "blocked" if
+                                  action.get("state") == "blocked" or
+                                  (blocker and action.get("type") == "build") or
+                                  (blocker and blocker["type"] == "capacity") else "runnable")
+        if claim and not running:
+            action["lease_expired"] = not lease_live
+        action["age_seconds"] = max(0, int(instant - _iso_seconds(action.get("created_at")))) if _iso_seconds(action.get("created_at")) else 0
+        action["priority_reason"] = ("Main or a release gate is at risk." if action.get("priority") == "urgent" else
+                                     "Finishes reviewed work before new starts." if action.get("priority") == "reconciliation" else
+                                     "An earlier attempt has reusable work." if action.get("priority") == "retry" else
+                                     "Ordinary work ages ahead of newer work.")
+    priority_order = {"urgent": 0, "reconciliation": 1, "retry": 2, "ordinary": 3, "decision": 4}
+    active_actions.sort(key=lambda a: (priority_order.get(a.get("priority"), 3),
+                                       str(a.get("created_at") or ""), a.get("id") or ""))
+    next_action = next((a for a in active_actions if a["availability"] == "running"), None)
+    if next_action is None:
+        next_action = next((a for a in active_actions if a["availability"] == "runnable"), None)
+    if next_action is None and active_actions:
+        next_action = active_actions[0]
+    if terminal:
+        phase = item.get("state")
+    elif next_action and next_action["availability"] == "running":
+        phase = "working"
+    elif next_action and next_action["type"] in ("reconcile", "recover"):
+        phase = "reconciliation"
+    elif item.get("state") == "for_review":
+        phase = "review"
+    elif item.get("state") == "prepping":
+        phase = "preparation"
+    elif item.get("state") == "owed":
+        phase = "reply"
+    elif item.get("state") == "needs_approval":
+        phase = "decision"
+    else:
+        phase = "ready"
+    availability = "terminal" if terminal else (next_action or {}).get("availability") or "waiting_event"
+    latest = max((str(a.get("finished_at") or a.get("updated_at") or a.get("created_at") or "") for a in actions), default="")
+    last_moved = max(latest, str(item.get("finished") or ""), str(item.get("started") or ""), str(item.get("created") or ""))
+    completed = item.get("completion") or {}
+    landed_sha = completed.get("sha") or (item.get("landed") or {}).get("sha") or ""
+    ci = workflow.get("ci") or {}
+    shipped = {"landed_sha": landed_sha,
+               "ci_confirmed": bool(landed_sha and ci.get("confirmed") and ci.get("commit_sha") == landed_sha)}
+    candidate_status = ("landed" if shipped["landed_sha"] else
+                        "stale" if candidate.get("base") and facts.get("head") and candidate["base"] != facts["head"] else
+                        "held" if blocker else "reviewed" if (item.get("check") or {}).get("verdict") == "pass" else
+                        "unverified" if candidate else "none")
+    return {"version": WORKFLOW_VERSION, "phase": phase, "availability": availability,
+            "next_action": next_action, "actions": active_actions, "blocker": blocker,
+            "last_moved": last_moved, "candidate_status": candidate_status,
+            "shipped_evidence": shipped}
 
 
 def attempt_outcome(text, error="", limited=False):
@@ -1958,6 +2229,12 @@ def _in_his_list(item):
 
 def snapshot():
     got = items()
+    import drain
+    head_result = drain.sh(["git", "rev-parse", "main"], cwd=drain.REPO, timeout=10)
+    head = head_result.stdout.strip() if head_result.returncode == 0 else ""
+    active = HOST.drain_state() if hasattr(HOST, "drain_state") else None
+    for item in got:
+        item["workflow_view"] = drain.project_work(item, head=head, active=active)
     return {
         "policy": policy(),
         "items": got,
@@ -1980,8 +2257,8 @@ def snapshot():
         # deadline, rather than starting its own when the card happened to load.
         "now": time.time(),
         "reply_seconds": reply_seconds(),
-        "in_progress": sum(1 for i in got if i["state"] == "doing"),
-        "queued": sum(1 for i in got if i["state"] == "waiting_session"),
+        "in_progress": sum(1 for i in got if i["workflow_view"]["availability"] == "running"),
+        "queued": sum(1 for i in got if i["workflow_view"]["availability"] == "runnable"),
         # What the company's unattended work has cost lately. It shares one
         # allotment with him, so a result he is reading should be able to say
         # what producing it spent, and the page should say what the whole of it
@@ -2131,7 +2408,7 @@ def instruction_fingerprint(item):
         "attempts", "done_by", "diff", "suites", "usage", "spent", "resume", "attempt_outcome",
         "completion", "pending_landing", "pending_followups", "closed", "landed", "finished",
         "revising", "revisions", "spawned", "last_recorded_attempt", "repair_hold", "landing_recovery",
-        "owner_memory"}
+        "owner_memory", "workflow", "workflow_view", "waiting_for"}
     return evidence_id({key: value for key, value in item.items() if key not in outcome_fields})
 
 

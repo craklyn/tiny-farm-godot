@@ -687,10 +687,35 @@ def save_patch(item_id, patch):
     if not patch.strip():
         return ""
     os.makedirs(PATCHES, exist_ok=True)
+    # The legacy name is a pointer to the latest attempt. Keep each input to
+    # review/integration reconstructable even after a later attempt replaces it.
+    digest = work.hashlib.sha256(patch.encode("utf-8")).hexdigest()
+    archive = os.path.join(PATCHES, "candidates")
+    os.makedirs(archive, exist_ok=True)
+    immutable = os.path.join(archive, digest + ".patch")
+    if not os.path.exists(immutable):
+        tmp = immutable + "." + uuid.uuid4().hex + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as f:
+            f.write(patch)
+        try:
+            os.link(tmp, immutable)
+        except FileExistsError:
+            pass
+        finally:
+            os.unlink(tmp)
     path = os.path.join(PATCHES, item_id + ".patch")
-    with open(path, "w", encoding="utf-8") as f:
+    tmp = path + "." + uuid.uuid4().hex + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
         f.write(patch)
+    os.replace(tmp, path)
     return path
+
+
+def patch_artifact(patch):
+    if not patch or not patch.strip():
+        return None
+    digest = work.hashlib.sha256(patch.encode("utf-8")).hexdigest()
+    return {"id": digest, "path": os.path.join(PATCHES, "candidates", digest + ".patch")}
 
 
 def resume_held_patch(item, tree, thinking):
@@ -858,6 +883,7 @@ def do_item(item, org, run_id, log):
         else:
             rec["patch"], rec["stat"], rec["files"] = worktree_patch(tree)
         save_patch(item["id"], rec["patch"])
+        rec["patch_artifact"] = patch_artifact(rec["patch"])
         # An attempt the drain will try again is not read: nobody acts on a
         # check of half-done work, and the check is a call on the chief of
         # staff's model that the retry would only repeat.
@@ -1114,42 +1140,20 @@ def _item_spend(item_id):
 
 
 def _parked_by_cost(item):
-    spent, attempts = _item_spend(item["id"])
+    spent, _attempts = _item_spend(item["id"])
     # A card whose brief was rewritten after it was parked carries its own cap,
     # set by whoever rewrote it, so the rewrite is tried once more.
     cap = float(item.get("cost_cap_usd") or ITEM_COST_CAP_USD)
-    if spent <= cap:
-        return False
-    note = {"reason": (f"this has already cost ${spent:.0f} across {attempts} attempts without a result, "
-                       f"more than the ${cap:.0f} it may spend on its own; "
-                       f"it needs a smaller brief before it is tried again"),
-            "spent_usd": round(spent, 2), "attempts": attempts, "at": work._now_iso()}
-    old = item.get("waiting_for") or {}
-    if (old.get("spent_usd"), old.get("attempts")) != (note["spent_usd"], note["attempts"]):
-        item["waiting_for"] = note
-        work.save_item(item)
-    return True
+    return spent > cap
 
 
 def _parked_by_tree(item):
-    """True when the item's held patch cannot land until a neighbour commits.
-    Stamps the card so the queue says what it is waiting for, and clears the
-    stamp the moment the way is free."""
+    """Pure check: a held patch overlaps an uncommitted file."""
     patch = load_patch(item["id"])
     if not patch:
         return False
     files = (item.get("diff") or {}).get("files") or _patch_paths(patch)
-    blocked = _held_by_tree(files)
-    if blocked:
-        note = {"files": blocked[:8], "reason": _tree_reason(blocked), "at": work._now_iso()}
-        if item.get("waiting_for") != note:
-            item["waiting_for"] = note
-            work.save_item(item)
-        return True
-    if item.get("waiting_for"):
-        item.pop("waiting_for", None)
-        work.save_item(item)
-    return False
+    return bool(_held_by_tree(files))
 
 
 def apply_patch(patch, files):
@@ -1599,6 +1603,15 @@ def _write_back(item, rec, applied, why_not, suites, org):
                                     "candidate": rec.get("candidate"),
                                     "candidate_tests": rec.get("candidate_suites"),
                                     "candidate_test_evidence": rec.get("candidate_test_evidence")})
+    if rec.get("patch_artifact") and rec.get("candidate"):
+        workflow = work._workflow(item)
+        ident = work.evidence_id([rec["patch_artifact"]["id"], rec["candidate"]])
+        if not any(c.get("id") == ident for c in workflow["candidates"]):
+            workflow["candidates"].append({"id": ident, "attempt_id": item["attempt_outcome"]["id"],
+                                            "base": rec["candidate"].get("base"),
+                                            "tree": rec["candidate"].get("tree"),
+                                            "files": list(rec.get("files") or []),
+                                            "patch": rec["patch_artifact"]})
     if item.get("check"):
         item["check"]["attempt_id"] = item["attempt_outcome"]["id"]
     proposals = [{"source": "owner", "text": note} for note in owner_notes]
@@ -1679,68 +1692,104 @@ def queued(include_thinking=False):
     return out
 
 
+def project_work(item, *, head=None, active=None, now=None):
+    """Resolve external facts once, then use the pure work projection."""
+    if head is None:
+        got = sh(["git", "rev-parse", "main"], cwd=REPO, timeout=10)
+        head = got.stdout.strip() if got.returncode == 0 else ""
+    if active is None:
+        active = server.drain_state()
+    patch = load_patch(item["id"]) if not (item.get("diff") or {}).get("applied") else ""
+    files = (item.get("diff") or {}).get("files") or _patch_paths(patch)
+    blocked = _held_by_tree(files) if patch else []
+    spent, attempts = _item_spend(item["id"]) if item.get("state") in ("waiting_session", "for_review") else (0, 0)
+    cap = float(item.get("cost_cap_usd") or ITEM_COST_CAP_USD)
+    cost_reason = (f"this has already cost ${spent:.0f} across {attempts} attempts without a result, "
+                   f"more than the ${cap:.0f} it may spend on its own; it needs a smaller brief"
+                   if spent > cap else "")
+    waiting = item.get("waiting_for") or {}
+    waiting_valid = not ((waiting.get("files") and not blocked) or
+                         ("spent_usd" in waiting and not cost_reason))
+    return work.work_view(item, {"blocked_files": blocked, "tree_reason": _tree_reason(blocked) if blocked else "",
+                                 "cost_reason": cost_reason, "active_session":
+                                 (active or {}).get("run") if (active or {}).get("item") == item["id"] else None,
+                                 "head": head, "waiting_for_valid": waiting_valid}, now=now)
+
+
+def _queue_entries(include_thinking=False):
+    """The only eligibility calculation used by scheduling and every queue read."""
+    got = work.items()
+    head_result = sh(["git", "rev-parse", "main"], cwd=REPO, timeout=10)
+    head = head_result.stdout.strip() if head_result.returncode == 0 else ""
+    active = server.drain_state()
+    now = time.time()
+    entries = []
+    for item in got:
+        if item.get("state") in work.TERMINAL_STATES:
+            continue
+        if item.get("state") not in ("waiting_session", "for_review") and not (
+                include_thinking and item.get("state") == "doing"):
+            continue
+        view = project_work(item, head=head, active=active, now=now)
+        action = view["next_action"]
+        if action and action.get("type") != "decide":
+            entries.append((item, view, action))
+    rank = {"urgent": 0, "reconciliation": 1, "retry": 2, "ordinary": 3}
+    entries.sort(key=lambda entry: (rank.get(entry[2].get("priority"), 3),
+                                    _as_created(entry[0]), entry[0]["id"]))
+    return entries
+
+
+def _as_created(item):
+    try:
+        return float(item.get("created_ts") or 0)
+    except (TypeError, ValueError):
+        return 0.0
+
+
+def classified_actions(include_thinking=False):
+    """All runnable studio actions, including recovery, with their work item."""
+    return [(item, action) for item, _view, action in _queue_entries(include_thinking)
+            if action["availability"] == "runnable"]
+
+
 def classified_queue(include_thinking=False):
-    """The drain's exact candidates and exclusions, in the order it will use."""
-    all_items = work.items()
-    out = [i for i in all_items
-           if i.get("state") == "waiting_session" and not i.get("started")]
-    held = []
-    # A retry whose held patch waits on another session's uncommitted file is
-    # not picked up: it would cost a worker and be held again for the same
-    # reason. The card says what it waits for (`waiting_for`).
-    candidates = []
-    for item in out:
-        reason = ""
-        if _parked_by_tree(item):
-            reason = (item.get("waiting_for") or {}).get("reason") or "another change is in the way"
-        elif _parked_by_cost(item):
-            reason = (item.get("waiting_for") or {}).get("reason") or "the automatic cost limit was reached"
-        elif item.get("repair_hold"):
-            reason = str(item["repair_hold"])
-        elif item.get("pending_landing"):
-            reason = "the recorded commit attempt is being recovered"
-        elif item.get("pending_followups"):
-            reason = "the result's follow-up work is still being recorded"
-        if reason:
-            held.append((item, reason))
-        else:
-            candidates.append(item)
-    out = candidates
-    # An item that has already cost more than its cap across attempts without
-    # landing is not tried again on its own: it needs a smaller brief, and
-    # the card says so.
-    if include_thinking:
-        out += [i for i in all_items
-                if i.get("state") == "doing" and not i.get("started")]
-    # A card the drain is trying again is work already half paid for; it goes
-    # first. A machine-detected release blocker goes next rather than waiting
-    # behind routine work while main stays red.
-    out.sort(key=lambda i: (0 if i.get("resume") else
-                            1 if i.get("urgent") else 2))
+    """Legacy build-worker selector over the canonical action projection."""
+    out, held = [], []
+    for item, view, action in _queue_entries(include_thinking):
+        if item.get("state") not in ("waiting_session", "doing"):
+            continue
+        if action["type"] == "build" and action["availability"] == "runnable" and not item.get("started"):
+            out.append(item)
+        elif view["blocker"] or action["availability"] == "blocked":
+            held.append((item, (view["blocker"] or {}).get("reason") or action.get("summary") or "held"))
     return out, held
 
 
 def queue_view():
-    """JSON-safe, human-facing projection of the same queue `queued()` drains."""
-    eligible, held = classified_queue()
-
-    def row(item, *, position=None, reason=""):
-        priority = "retry" if item.get("resume") else "urgent" if item.get("urgent") else "ordinary"
-        why = ("An earlier attempt left useful work, so the scheduler finishes it first."
-               if priority == "retry" else
-               "This blocks a release or the build on main."
-               if priority == "urgent" else
-               "Ordinary work runs newest first after retries and urgent work.")
-        return {"id": item["id"], "title": item.get("title", "Untitled"),
-                "owner": item.get("owner", ""), "created": item.get("created", ""),
-                "position": position, "priority": priority, "why": why,
-                "reason": reason}
-
-    working = [row(item) for item in work.items()
-               if item.get("state") in ("waiting_session", "doing") and item.get("started")]
-    return {"working": working,
-            "eligible": [row(item, position=n) for n, item in enumerate(eligible, 1)],
-            "held": [row(item, reason=reason) for item, reason in held]}
+    """Action rows and held outcomes from the scheduler's one projection."""
+    working, eligible, held = [], [], []
+    for item, view, action in _queue_entries():
+        base = {"id": action["id"] if action["type"] != "build" else item["id"],
+                "work_id": item["id"], "title": item.get("title", "Untitled"),
+                "owner": action["owner"], "created": item.get("created", ""),
+                "action_id": action["id"], "action_type": action["type"],
+                "priority": action.get("priority"), "why": action.get("priority_reason"),
+                "age_seconds": action.get("age_seconds"), "workflow_view": view}
+        if action["availability"] == "running":
+            working.append({**base, "position": None, "reason": ""})
+        elif action["availability"] == "runnable":
+            eligible.append({**base, "position": len(eligible) + 1, "reason": ""})
+        else:
+            held.append({**base, "id": item["id"], "position": None,
+                         "reason": (view["blocker"] or {}).get("reason") or action.get("summary") or "held"})
+        # A blocked implementation and its runnable reconciliation are two
+        # distinct actions. Show both without offering the old build again.
+        if view["blocker"] and action["type"] in ("reconcile", "recover") and action["availability"] == "runnable":
+            held.append({**base, "id": item["id"], "action_id": work.action_key(item["id"], "build", action.get("input_id", "")),
+                         "action_type": "build", "position": None,
+                         "reason": view["blocker"]["reason"]})
+    return {"working": working, "eligible": eligible, "held": held}
 
 
 def cost_summary(bill):
@@ -1904,7 +1953,7 @@ def main():
                          "is dry or mostly spent")
     args = ap.parse_args()
 
-    work.bind(server)
+    work.bind(server, sanitize=not (args.list or args.list_json or args.dry_run or args.brief))
     org = server.load_org()
     # Recovery is local bookkeeping and must run even while models are paused.
     if not (args.list or args.list_json or args.dry_run or args.brief):

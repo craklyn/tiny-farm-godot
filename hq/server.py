@@ -2154,9 +2154,6 @@ WORKERS_DIR = (os.path.join(os.environ["HQ_TEST_SCRATCH"], "workers")
 TRANSACTIONS_DIR = (os.path.join(os.environ["HQ_TEST_SCRATCH"], "transactions")
                     if os.environ.get("HQ_TEST_SCRATCH")
                     else os.path.join(DATA, "runs", "transactions"))
-_EXECUTION_QUEUE_CACHE = {"work_stamp": None, "data": None}
-
-
 def drain_state():
     """The non-model phase of the current drain, if its process is still alive."""
     try:
@@ -2167,23 +2164,12 @@ def drain_state():
 
 
 def execution_queue_snapshot():
-    """Read the drain's own order; reuse it only while every work record is unchanged."""
-    work_dir = os.path.join(DATA, "work")
-    try:
-        work_stamp = max((os.stat(os.path.join(work_dir, name)).st_mtime_ns
-                          for name in os.listdir(work_dir) if name.endswith(".json")), default=0)
-    except OSError:
-        work_stamp = None
-    if (_EXECUTION_QUEUE_CACHE["data"] is not None
-            and _EXECUTION_QUEUE_CACHE["work_stamp"] == work_stamp):
-        return _EXECUTION_QUEUE_CACHE["data"]
+    """Read fresh Git and card facts; dirty edits need not change card mtimes."""
     got = subprocess.run([sys.executable, os.path.join(HQ_DIR, "drain.py"), "--list-json"],
                          cwd=REPO, capture_output=True, text=True, timeout=10)
     if got.returncode:
         raise RuntimeError((got.stderr or "The task queue could not be read.")[:300])
-    data = json.loads(got.stdout)
-    _EXECUTION_QUEUE_CACHE.update({"work_stamp": work_stamp, "data": data})
-    return data
+    return json.loads(got.stdout)
 
 
 def execution_control_snapshot():
@@ -2524,6 +2510,8 @@ def work_detail(item_id):
         item = work.load_item(item_id)
     except Exception:
         return {"error": "no such item"}
+    import drain
+    item["workflow_view"] = drain.project_work(item)
     timeline = []
     for index, message in enumerate(item.get("conversation") or []):
         timeline.append({"id": f"conversation:{index}", "kind": "comment",

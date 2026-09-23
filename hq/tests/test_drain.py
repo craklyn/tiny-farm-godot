@@ -118,8 +118,9 @@ def main():
         print("the dashboard sees the exact drain order and its holds")
         card(id="w0000000000f6", created_ts=12.0, repair_hold="the checker needs a smaller repair")
         view = drain.queue_view()
-        check([row["id"] for row in view["eligible"]] == [i["id"] for i in drain.queued()],
-              "the visible positions are the scheduler's positions")
+        check([row["id"] for row in view["eligible"] if row["action_type"] == "build"]
+              == [i["id"] for i in drain.queued()],
+              "visible build positions are the build worker's positions")
         held = next(row for row in view["held"] if row["id"] == "w0000000000f6")
         check(held["reason"] == "the checker needs a smaller repair",
               "excluded work carries the reason it cannot start")
@@ -127,8 +128,10 @@ def main():
         view = drain.queue_view()
         check("w0000000000a1" not in [row["id"] for row in view["eligible"]],
               "a claimed card is not still offered as eligible")
-        check("w0000000000a1" in [row["id"] for row in view["working"]],
-              "the claimed card is shown as working now")
+        check("w0000000000a1" not in [row["id"] for row in view["working"]]
+              and any(row["work_id"] == "w0000000000a1" and row["action_type"] == "recover"
+                      for row in view["eligible"]),
+              "a stale started stamp creates recovery, never a false live session")
 
         print("the second run-out is tried once more; the third goes to him")
         it = drain.write_back(it, rec(), False, "held for another attempt", None, org)
