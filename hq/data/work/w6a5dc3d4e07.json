@@ -7,13 +7,21 @@
   "tier_reason": "filed by hand",
   "ask": "Q-87 is ruled: the robot's job menu speaks in paired sprites, not words. Once Yuki's three cells exist, the menu shows them and the phase-1 loop is wordless again.",
   "first_action": "Find where the three job labels are built in the machine menu and replace each with its paired sprite, keeping the tap targets the size they are now.",
-  "state": "waiting_session",
+  "state": "landed",
   "thread": "sam",
   "source": "chat",
   "source_message": "Q-87 is ruled: the robot's job menu speaks in paired sprites, not words. Once Yuki's three cells exist, the menu shows them and the phase-1 loop is wordless again.",
-  "result": "",
+  "result": "The Mark II machine menu now shows three paired pictures for Chase birds, Follow me and Circle me. Follow has a gold arrow toward the farmer, and Circle has a gold ring around her. The selected-setting marker and 52-pixel-high tap targets remain. A real game capture shows the pictures on the menu, and the main checkout passed 2,874 unit and 981 integration checks. The off switch, Pick up and other machine controls still use words. Main commit 3352b4c contains the menu, revised atlas, design note and test changes.",
   "started": "",
   "attempts": 0,
   "created": "2026-09-04T10:14",
-  "created_ts": 1788542079.0417202
+  "created_ts": 1788542079.0417202,
+  "landed": {
+    "at": "2026-09-23T17:39:07+00:00",
+    "by": "Codex interactive",
+    "sha": "3352b4c",
+    "note": "Three Mark II job rows use the paired icons; main suites passed."
+  },
+  "closed": "2026-09-23T17:39:07+00:00",
+  "_revision": 1
 }
