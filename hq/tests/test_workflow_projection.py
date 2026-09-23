@@ -10,6 +10,7 @@ from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import drain
+import integration
 import server
 import work
 from test_drain import fake_host
@@ -87,6 +88,19 @@ class WorkflowProjection(unittest.TestCase):
         self.assertEqual(view["blocker"]["type"], "missing_evidence")
         self.assertIn(item["id"], [row["work_id"] for row in drain.queue_view()["eligible"]])
 
+    def test_dirty_user_branch_after_handoff_does_not_block_clean_main(self):
+        item = self.card()
+        drain.save_patch(item["id"], "diff --git a/sample.txt b/sample.txt\n--- a/sample.txt\n+++ b/sample.txt\n@@ -1 +1 @@\n-base\n+new\n")
+        (self.repo / "sample.txt").write_text("someone else's uncommitted edit\n")
+        self.assertEqual(integration.handoff_main(str(self.repo), "codex/user-fixture",
+                                                  confirmed_idle=True), (True, ""))
+        view = drain.project_work(item)
+        self.assertIsNone(view["blocker"])
+        self.assertEqual(view["next_action"]["type"], "build")
+        self.assertIn(item["id"], [row["work_id"] for row in drain.queue_view()["eligible"]])
+        self.assertEqual((self.repo / "sample.txt").read_text(),
+                         "someone else's uncommitted edit\n")
+
     def test_action_id_claim_and_blocker_are_idempotent(self):
         item = self.card()
         first = work.ensure_action(item, "reconcile", input_id="candidate-a", summary="Rebase")
@@ -135,6 +149,16 @@ class WorkflowProjection(unittest.TestCase):
         self.assertEqual(Path(older["path"]).read_text(), first)
         self.assertEqual(Path(newer["path"]).read_text(), second)
         self.assertEqual(drain.load_patch("w111111111111"), second)
+
+    def test_immutable_candidate_body_must_match_its_reviewed_record(self):
+        patch_text = "diff --git a/a b/a\nreviewed body\n"
+        drain.save_patch("w111111111111", patch_text)
+        reference = drain.patch_artifact(patch_text)
+        self.assertEqual(drain.checked_patch({"patch": patch_text,
+                                              "patch_artifact": reference}), patch_text)
+        Path(reference["path"]).write_text("changed after review\n")
+        with self.assertRaises(ValueError):
+            drain.checked_patch({"patch": patch_text, "patch_artifact": reference})
 
     def test_ordinary_work_ages_ahead_of_newer_start(self):
         self.card("w111111111111", created_ts=1)

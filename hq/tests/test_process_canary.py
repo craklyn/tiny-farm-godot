@@ -21,6 +21,7 @@ from unittest.mock import patch
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import drain
 import execution
+import integration
 import server
 import work
 
@@ -66,6 +67,8 @@ class ProcessCanary(unittest.TestCase):
         run(["git", "add", "README.md"], self.repo)
         run(["git", "commit", "-qm", "Canary base"], self.repo)
         self.base = run(["git", "rev-parse", "HEAD"], self.repo)
+        self.assertEqual(integration.handoff_main(str(self.repo), "codex/canary-user",
+                                                  confirmed_idle=True), (True, ""))
 
         (self.data / "org.json").write_text(json.dumps(ORG), encoding="utf-8")
         self.policy = self.root / "execution_policy.json"
@@ -164,11 +167,11 @@ class ProcessCanary(unittest.TestCase):
         def fake_suites(cwd=None):
             suite_cwd = str(Path(cwd or drain.REPO).resolve())
             suite_calls.append(suite_cwd)
-            if suite_cwd == str(self.repo.resolve()):
+            if Path(suite_cwd).name.startswith("integration-"):
                 # The candidate is applied and facing the landing checks, but
                 # it has not earned a commit or a durable lesson yet.
                 self.assertFalse(memory_path.exists())
-                self.assertEqual(run(["git", "rev-parse", "HEAD"], self.repo), self.base)
+                self.assertEqual(run(["git", "rev-parse", "main"], self.repo), self.base)
                 landing_suite_saw_no_memory.append(True)
             return json.loads(json.dumps(green))
 
@@ -185,7 +188,7 @@ class ProcessCanary(unittest.TestCase):
             self.assertEqual(first["prior_checks"][-1]["findings"][0]["what"], FINDING)
             self.assertFalse(first_records[item_id]["applied"])
             self.assertFalse(memory_path.exists())
-            self.assertEqual(run(["git", "rev-parse", "HEAD"], self.repo), self.base)
+            self.assertEqual(run(["git", "rev-parse", "main"], self.repo), self.base)
 
             # Rebind exactly as an HQ restart does, then select the persisted card.
             work.bind(server)
@@ -196,15 +199,16 @@ class ProcessCanary(unittest.TestCase):
 
         rec = second_records[item_id]
         final = work.load_item(item_id)  # persisted boundary after landing
-        head = run(["git", "rev-parse", "HEAD"], self.repo)
-        tree = run(["git", "rev-parse", "HEAD^{tree}"], self.repo)
+        head = run(["git", "rev-parse", "main"], self.repo)
+        tree = run(["git", "rev-parse", "main^{tree}"], self.repo)
 
         self.assertEqual(owner_n, 2)
         self.assertEqual(checker_n, 2)
         self.assertIn(FINDING, worker_prompts[1])
         self.assertIn("artifact.txt:1", worker_prompts[1])
         self.assertIn("Replace draft=yes with stable=yes.", worker_prompts[1])
-        self.assertEqual((self.repo / "artifact.txt").read_text(encoding="utf-8"), "stable=yes\n")
+        self.assertEqual(run(["git", "show", "main:artifact.txt"], self.repo), "stable=yes")
+        self.assertFalse((self.repo / "artifact.txt").exists())
         self.assertEqual(rec["candidate"]["tree"], tree)
         self.assertTrue(rec["candidate_unchanged"])
         self.assertEqual(rec["candidate_suites"], green)
@@ -214,6 +218,10 @@ class ProcessCanary(unittest.TestCase):
         self.assertEqual(second_done[0]["completion"]["sha"], head)
         self.assertEqual(final["state"], "landed")
         self.assertEqual(final["completion"]["sha"], head)
+        self.assertEqual(len(final["workflow"]["integrations"]), 1)
+        self.assertEqual(final["workflow"]["integrations"][0]["commit"], head)
+        self.assertEqual(final["workflow"]["integrations"][0]["state"], "landed_local")
+        self.assertEqual(final["workflow"]["integrations"][0]["origin"]["push"], "not_attempted")
         self.assertTrue(final["owner_memory"]["committed"])
         memory = memory_path.read_text(encoding="utf-8")
         self.assertIn(OWNER_LESSON, memory)

@@ -1,13 +1,11 @@
-"""Tiny Farm HQ — the drain: the studio working its own queue.
+"""Tiny Farm HQ — isolated worker, checker, and clean integration lane.
 
-Tier 1 is "do it, show the diff". Until now the second half of that sentence had
-no machinery behind it: a tier-1 item was filed, marked `waiting_session`, and
-then waited for a human to notice. Twenty-two of them accumulated, which made a
-pillar reporting "N things are ours to fix" a claim that work was in hand when
-nothing was touching it. A queue nothing drains is a design problem wearing a
-to-do list.
-
-So this is the drain, and it is the same shape the pilot ran by hand on 2026-09-03:
+Tier-1 workers edit only private Git worktrees. The checker reads the diff.
+The integration lane rebuilds the reviewed candidate in a detached worktree
+at local main, tests that exact prospective tree, and atomically advances
+local main from the expected parent. It never edits the user's checkout or
+pushes a remote ref. A candidate that cannot pass receives an owned recovery
+action; the shared-checkout --apply path is retired.
 
     worker   the seat that owns the item, on that seat's default model from
              org.json, holding only its own context — its org record, its own
@@ -17,14 +15,8 @@ So this is the drain, and it is the same shape the pilot ran by hand on 2026-09-
     checker  the chief of staff, reading the diff against the brief. The pilot's
              most useful result came from here: a worker's overclaim and a card's
              false premise were both caught by the seat that files the work.
-    apply    patches that survive the check land on the working tree, one at a
-             time. A patch that no longer applies is recorded as needing another
-             pass rather than forced.
-    prove    both suites, once, if any applied patch touched the game.
-
-Nothing is committed. The item goes back to `for_review` with the diff, the
-check, the suites and the bill, and Daniel approves the result — which is the
-studio's rule, not a limitation of this file.
+    integrate  commit only the exact checked prospective tree on local main.
+    prove      both suites run on that prospective tree before its commit.
 
 One failure never reaches him as a result: a worker that used every turn it
 was given and left edits behind. That is a budget this file set wrong, so the
@@ -53,6 +45,7 @@ the last measured ceiling. Only one drain runs at a time; a manual run and the
 timer take the same lock.
 """
 import execution
+import integration
 
 import argparse
 import concurrent.futures
@@ -650,7 +643,7 @@ def make_worktree(run_id, item_id):
     path = os.path.join(WORKTREES, run_id, item_id)
     os.makedirs(os.path.dirname(path), exist_ok=True)
     with _WT_LOCK:
-        sh(["git", "worktree", "add", "--detach", path, "HEAD"], check=True, timeout=600)
+        sh(["git", "worktree", "add", "--detach", path, "main"], check=True, timeout=600)
     return path
 
 
@@ -716,6 +709,23 @@ def patch_artifact(patch):
         return None
     digest = work.hashlib.sha256(patch.encode("utf-8")).hexdigest()
     return {"id": digest, "path": os.path.join(PATCHES, "candidates", digest + ".patch")}
+
+
+def checked_patch(rec):
+    """Prefer the immutable candidate body; refuse altered or missing archives."""
+    artifact = rec.get("patch_artifact")
+    patch = rec.get("patch") or ""
+    if not artifact:
+        return patch
+    digest = artifact.get("id") or ""
+    expected = os.path.realpath(os.path.join(PATCHES, "candidates", digest + ".patch"))
+    if artifact.get("path") != expected or not re.fullmatch(r"[0-9a-f]{64}", digest):
+        raise ValueError("Invalid immutable candidate patch reference")
+    with open(expected, encoding="utf-8") as source:
+        archived = source.read()
+    if work.hashlib.sha256(archived.encode()).hexdigest() != digest or archived != patch:
+        raise ValueError("Immutable candidate patch differs from the checked record")
+    return archived
 
 
 def resume_held_patch(item, tree, thinking):
@@ -981,74 +991,6 @@ def parse_check(raw):
     }
 
 
-# Files Godot regenerates whenever anything opens the project. A worker that
-# ran the suites leaves these behind, they have nothing to do with the item, and
-# one of them colliding with an untracked copy in the real tree held three
-# otherwise-good patches on the first drain. They may be dropped from a patch;
-# nothing else may.
-EDITOR_NOISE = re.compile(r"(^|/)\.godot/|\.uid$|\.import$")
-
-
-def _failed_paths(stderr):
-    """The paths git named when it refused. Only editor noise is ever dropped —
-    a substantive file that will not apply is a hold, not something to skip."""
-    out = []
-    for m in re.finditer(r"^error: ([^:\n]+):", stderr or "", re.M):
-        path = m.group(1).strip()
-        if EDITOR_NOISE.search(path):
-            out.append(path)
-    return sorted(set(out))
-
-
-def _snapshot(files):
-    """The exact bytes of the files a patch is about to touch."""
-    shot = {}
-    for f in files or []:
-        full = os.path.join(REPO, f)
-        try:
-            with open(full, "rb") as fh:
-                shot[f] = fh.read()
-        except OSError:
-            shot[f] = None            # did not exist; putting it back means removing it
-    return shot
-
-
-def _restore(shot):
-    """Put those exact bytes back, and nothing else.
-
-    The first draft of this used `git checkout --merge -- <paths>`, which
-    restores from the INDEX — so when one item's patch failed, it silently threw
-    away the working-tree changes two earlier items had already applied to the
-    same file. A visual-regression job registered by one seat vanished that way
-    and was only noticed because the goal pointing at it had nothing to read.
-    Recovery has to mean "undo what I just did", never "reset this file"."""
-    for f, data in (shot or {}).items():
-        full = os.path.join(REPO, f)
-        try:
-            if data is None:
-                if os.path.exists(full):
-                    os.remove(full)
-            else:
-                os.makedirs(os.path.dirname(full), exist_ok=True)
-                with open(full, "wb") as fh:
-                    fh.write(data)
-        except OSError:
-            pass
-
-
-def _drop_generated(patch):
-    """The patch without its changes to files every run rewrites anyway."""
-    import re as _re
-    parts = _re.split(r"(?=^diff --git )", patch or "", flags=_re.M)
-    keep = []
-    for part in parts:
-        m = _re.match(r"^diff --git a/(\S+)", part)
-        if m and _is_generated(m.group(1)):
-            continue
-        keep.append(part)
-    return "".join(keep)
-
-
 def _patch_paths(patch):
     """The paths a patch touches, from its own headers."""
     return sorted({m.group(1) for m in re.finditer(r"^\+\+\+ b/(.+)$", patch or "", re.M)})
@@ -1056,8 +998,8 @@ def _patch_paths(patch):
 
 # Files every run rewrites on its own: the writing check's ledger of what it has
 # read, and the engine's regenerated sidecars. They are always dirty in somebody's
-# tree, and holding a whole patch because of one of them holds it forever — so a
-# patch's changes to them are dropped and the rest goes in.
+# tree. Legacy overlap classification ignores them; the clean integration lane
+# still requires every reviewed candidate byte, including generated sidecars.
 GENERATED = ("docs/writing_verdicts.json",)
 GENERATED_SUFFIXES = (".uid", ".import")
 
@@ -1157,65 +1099,8 @@ def _parked_by_tree(item):
 
 
 def apply_patch(patch, files):
-    """Onto the real working tree, one item at a time.
-
-    Plain apply first, because it never touches the index: Daniel and other
-    sessions work in this tree, and a drain that stages or reverts files it was
-    not given is a drain that eats somebody's in-flight work. Only when a patch
-    no longer applies cleanly — a neighbour changed the same file — is --3way
-    tried, and then only the patch's own paths are unstaged afterwards, so the
-    tree is left exactly as shaped as it was found."""
-    if not patch.strip():
-        return True, "nothing to apply"
-    patch = _drop_generated(patch)
-    if not patch.strip():
-        return True, "nothing to apply"
-    files = [f for f in (files or _patch_paths(patch)) if not _is_generated(f)]
-    blocked = _held_by_tree(files)
-    if blocked:
-        return False, _tree_reason(blocked)
-    before = _snapshot(files)
-    plain = subprocess.run(["git", "apply", "--whitespace=nowarn", "-"], cwd=REPO,
-                           input=patch, capture_output=True, text=True, timeout=180)
-    if plain.returncode == 0:
-        return True, ""
-    three = subprocess.run(["git", "apply", "--3way", "--whitespace=nowarn", "-"], cwd=REPO,
-                           input=patch, capture_output=True, text=True, timeout=180)
-    if three.returncode == 0:
-        if files:
-            subprocess.run(["git", "restore", "--staged", "--"] + files, cwd=REPO,
-                           capture_output=True, text=True, timeout=120)
-        return True, ""
-    # One retry, with Godot's regenerated files dropped. Nothing substantive is
-    # ever excluded: if the patch still will not apply, that is a real conflict.
-    noise = _failed_paths(three.stderr) or _failed_paths(plain.stderr)
-    if noise:
-        again = subprocess.run(
-            ["git", "apply", "--3way", "--whitespace=nowarn"]
-            + [f"--exclude={n}" for n in noise] + ["-"],
-            cwd=REPO, input=patch, capture_output=True, text=True, timeout=180)
-        if again.returncode == 0:
-            keep = [f for f in (files or []) if f not in noise]
-            if keep:
-                subprocess.run(["git", "restore", "--staged", "--"] + keep, cwd=REPO,
-                               capture_output=True, text=True, timeout=120)
-            return True, ""
-    # A real conflict. Put back exactly the bytes that were there before this
-    # patch was tried — not the index's idea of them.
-    _restore(before)
-    return False, _held_reason(three.stderr or plain.stderr or "")
-
-
-def _held_reason(stderr):
-    """One sentence Daniel can read, not a wall of git output. The paths are
-    what matter — they say whose change is in the way."""
-    paths = sorted({m.group(1).strip() for m in
-                    re.finditer(r"^error: ([^:\n]+):", stderr or "", re.M)})
-    if not paths:
-        return "the patch no longer applies to the tree as it stands"
-    shown = ", ".join(paths[:3]) + (f" and {len(paths) - 3} more" if len(paths) > 3 else "")
-    return (f"the patch no longer applies — {shown} "
-            f"{'has' if len(paths) == 1 else 'have'} changed since it was written")
+    """Retired shared-checkout path. Never land a patch through this function."""
+    raise RuntimeError("Shared-checkout patch application is retired; use prepare_integration.")
 
 
 def run_suites(cwd=REPO):
@@ -1303,6 +1188,27 @@ def committed_candidate(repo, sha, transaction):
             and git_blobs(repo, parents[1], files) == candidate["base_files"])
 
 
+def record_landed_integration(item, transaction, sha):
+    """Persist local landing separately from a push or CI confirmation."""
+    workflow = work._workflow(item)
+    ident = work.evidence_id([transaction["attempt_id"], sha])
+    if not any(row.get("id") == ident for row in workflow["integrations"]):
+        workflow["integrations"].append({"id": ident, "attempt_id": transaction["attempt_id"],
+                                          "candidate_tree": transaction["candidate"]["tree"],
+                                          "parent": transaction["parent"], "commit": sha,
+                                          "state": "landed_local", "at": work._now_iso(),
+                                          "origin": integration.origin_tracking(server.REPO)})
+    for action in workflow["actions"]:
+        if action.get("state") != "done" and action.get("type") in ("reconcile", "recover", "handoff"):
+            action["state"] = "done"
+            action.pop("claim", None)
+            action["finished_at"] = work._now_iso()
+    for blocker in workflow["blockers"]:
+        if blocker.get("state") == "open":
+            blocker["state"] = "resolved"
+            blocker["resolved_at"] = work._now_iso()
+
+
 def recover_pending_landing(item):
     """Resolve a durable transaction from Git history without rerunning an agent."""
     tx = item.get("pending_landing")
@@ -1313,37 +1219,74 @@ def recover_pending_landing(item):
         item["landing_recovery"] = {**tx, "reason": item["repair_hold"]}
         item.pop("pending_landing", None)
         work.save_item(item)
+        if tx.get("version") == 2:
+            record_integration_blocker(item, tx, "missing_evidence", item["repair_hold"])
         return False
     found = sh(["git", "log", "--all", "--format=%H", "--fixed-strings", "--grep=HQ-Attempt: " + tx["attempt_id"]],
                cwd=server.REPO, check=True).stdout.splitlines()
+    # A crash after detached commit but before the main ref update leaves the
+    # commit reachable from this worktree's HEAD, not necessarily --all.
+    checkout = tx.get("checkout")
+    if checkout and os.path.isdir(checkout):
+        got = sh(["git", "rev-parse", "HEAD"], cwd=checkout)
+        if got.returncode == 0:
+            found.append(got.stdout.strip())
+    found = list(dict.fromkeys(found))
     matches = [sha for sha in found if ("HQ-Attempt: " + tx["attempt_id"]) in
                sh(["git", "show", "-s", "--format=%B", sha], cwd=server.REPO, check=True).stdout.splitlines()]
     if len(matches) == 1 and committed_candidate(server.REPO, matches[0], tx):
+        head = integration.main_head(server.REPO)
+        if tx.get("version") == 1 and sh(["git", "merge-base", "--is-ancestor",
+                                           matches[0], "refs/heads/main"], cwd=server.REPO).returncode != 0:
+            item["repair_hold"] = "The legacy commit is not local main; reconcile its exact files before closing this card."
+            item["landing_recovery"] = {**tx, "reason": item["repair_hold"]}
+            item.pop("pending_landing", None)
+            work.save_item(item)
+            return False
+        if tx.get("version") == 2 and head == tx["parent"]:
+            if not integration.advance_main(server.REPO, matches[0], tx["parent"]):
+                head = integration.main_head(server.REPO)
+            else:
+                head = matches[0]
+        if tx.get("version") == 2 and head != matches[0]:
+            item["repair_hold"] = "Local main moved before the checked commit could be recovered."
+            item["landing_recovery"] = {**tx, "reason": item["repair_hold"]}
+            item.pop("pending_landing", None)
+            work.save_item(item)
+            record_integration_blocker(item, tx, "stale_base", item["repair_hold"])
+            return False
         item["attempt_outcome"]["landing_verified"] = True
         item["pending_landing"]["resolved"] = "committed"
+        if tx.get("version") == 2:
+            record_landed_integration(item, tx, matches[0])
         work.land_item(item, "drain-recovery", sha=matches[0])
         item.pop("pending_landing", None)
         work.save_item(item)
+        if tx.get("version") == 2 and checkout and os.path.isdir(checkout):
+            integration.remove_candidate(server.REPO, checkout, WORKTREES)
         return True
     item["state"] = "for_review"
     item["attempt_outcome"]["landing_verified"] = False
     if matches:
         reason = "The commit differs from the checked candidate; the owner must inspect it."
     else:
-        head = sh(["git", "rev-parse", "HEAD"], cwd=server.REPO, check=True).stdout.strip()
+        head = integration.main_head(server.REPO)
         reason = ("The commit did not happen; the checked changes remain available for the operator."
                   if head == tx["parent"] else "Repository history changed before the commit could be recovered.")
     item["repair_hold"] = reason
     item["landing_recovery"] = {**tx, "matches": matches, "reason": reason}
     item.pop("pending_landing", None)
     work.save_item(item)
+    if tx.get("version") == 2:
+        record_integration_blocker(item, tx, "missing_evidence", reason)
     return True
 
 
-def tree_evidence(files):
+def tree_evidence(files, repo=None):
+    repo = repo or server.REPO
     values = []
     for name in sorted(files):
-        path = os.path.join(server.REPO, name)
+        path = os.path.join(repo, name)
         try:
             with open(path, "rb") as source:
                 values.append([name, work.hashlib.sha256(source.read()).hexdigest()])
@@ -1352,7 +1295,7 @@ def tree_evidence(files):
     return work.evidence_id(values)
 
 
-def meets_landing_bar(item, rec, applied, suites):
+def meets_landing_bar(item, rec, applied, suites, *, repo=None):
     """Whether this finished card may go in without Daniel reading it, and if
     not, the sentence that says why (S-16, docs/QUEUE_TO_ZERO.md §4).
 
@@ -1360,6 +1303,7 @@ def meets_landing_bar(item, rec, applied, suites):
     the work is revertable, the test suites ran green over exactly this diff,
     the chief of staff read the diff and found nothing, and nothing in the diff
     is of a kind that reverting would not undo."""
+    repo = repo or server.REPO
     files = list(rec.get("files") or [])
     outcome = work.attempt_outcome(rec.get("result", ""), rec.get("error"), rec.get("limited"))
     if outcome["status"] != "complete":
@@ -1376,7 +1320,7 @@ def meets_landing_bar(item, rec, applied, suites):
         candidate_suites = rec.get("candidate_suites") or {}
         if any(not (candidate_suites.get(name) or {}).get("ok") for name in ("unit", "integration")):
             return False, "the checked candidate did not pass both test suites"
-        if git_blobs(server.REPO, "", files) != candidate.get("files"):
+        if git_blobs(repo, "", files) != candidate.get("files"):
             return False, "the applied files differ from the checked candidate"
     tier = _checked_tier(item, rec)
     if tier == 0 and files:
@@ -1393,7 +1337,7 @@ def meets_landing_bar(item, rec, applied, suites):
     if not (tier == 0 and not files):
         if not applied:
             return False, "the change it wrote could not be applied to the repository"
-        if rec.get("tree_evidence") != tree_evidence(files):
+        if rec.get("tree_evidence") != tree_evidence(files, repo=repo):
             return False, "the files changed after the tests ran"
         if rec.get("test_evidence") != work.evidence_id([rec.get("patch", ""), suites]):
             return False, "the tests do not describe this diff"
@@ -1428,35 +1372,45 @@ def meets_landing_bar(item, rec, applied, suites):
     return True, ""
 
 
-def land(item, rec):
-    """Commit exactly the files this card changed. Never `git add -A`: other
-    sessions work in this same tree, and a landing that swept up somebody
-    else's half-finished file would be a second person's work committed under
-    a title that does not describe it. Returns the commit, or "" and why not."""
+def land(item, rec, *, repo=None):
+    """Commit the exact checked prospective tree in a detached clean checkout.
+
+    The drain lock supplies the single writer. A compare-and-swap of local
+    main is the only publishing operation; origin/main is never pushed here.
+    """
     files = [f for f in (rec.get("files") or []) if f]
     if not files:
         return "", "there was nothing to commit"
-    parent = sh(["git", "rev-parse", "HEAD"], cwd=server.REPO).stdout.strip()
+    if not repo or os.path.realpath(repo) == os.path.realpath(server.REPO):
+        return "", "clean integration checkout is unavailable; the shared checkout is never a landing target"
+    ready, reason = integration.handoff_status(server.REPO)
+    if not ready:
+        return "", reason
+    parent = integration.main_head(server.REPO)
     candidate = rec["candidate"]
     if (parent != candidate.get("base")
-            or git_blobs(server.REPO, "", files) != candidate["files"]
-            or git_blobs(server.REPO, parent, files) != candidate["base_files"]):
+            or sh(["git", "rev-parse", "HEAD"], cwd=repo).stdout.strip() != parent
+            or git_blobs(repo, "", files) != candidate["files"]
+            or git_blobs(repo, parent, files) != candidate["base_files"]):
         return "", "the repository changed after the candidate was checked"
-    item["pending_landing"] = {"version": 1, "attempt_id": item["attempt_outcome"]["id"],
+    item["pending_landing"] = {"version": 2, "attempt_id": item["attempt_outcome"]["id"],
                                "parent": parent, "files": files, "candidate": candidate,
-                               "scope_id": work.instruction_fingerprint(item)}
+                               "scope_id": work.instruction_fingerprint(item), "checkout": repo}
     work.save_item(item)
-    add = sh(["git", "add", "--"] + files, cwd=server.REPO)
+    add = sh(["git", "add", "--"] + files, cwd=repo)
     if add.returncode != 0:
         return "", (add.stderr or add.stdout or "git add failed").strip()[:200]
-    made = sh(["git", "commit", "-m", item["title"], "-m", "HQ-Attempt: " + item["attempt_outcome"]["id"], "--"] + files, cwd=server.REPO)
+    if sh(["git", "write-tree"], cwd=repo).stdout.strip() != candidate["tree"]:
+        return "", "the staged prospective tree differs from the reviewed candidate"
+    made = sh(["git", "commit", "-m", item["title"], "-m", "HQ-Attempt: " + item["attempt_outcome"]["id"], "--"] + files, cwd=repo)
     if made.returncode != 0:
-        sh(["git", "restore", "--staged", "--"] + files, cwd=server.REPO)
         return "", (made.stderr or made.stdout or "git commit failed").strip()[:200]
-    got = sh(["git", "rev-parse", "HEAD"], cwd=server.REPO)
+    got = sh(["git", "rev-parse", "HEAD"], cwd=repo)
     sha = got.stdout.strip()
     if not committed_candidate(server.REPO, sha, item["pending_landing"]):
         return "", "the committed files differ from the checked candidate"
+    if not integration.advance_main(server.REPO, sha, parent):
+        return "", "local main moved after verification; the candidate needs a new base"
     return sha, ""
 
 
@@ -1537,7 +1491,11 @@ def _write_back(item, rec, applied, why_not, suites, org):
     # rubber-stamp is work he should never have been shown, so the default is
     # that it lands; what sends it to him is a named reason, written on the card
     # so the next person can see which of the four things stopped it.
-    landed_ok, why_not_landed = meets_landing_bar(item, rec, applied, suites)
+    integration_repo = rec.get("integration_checkout")
+    landed_ok, why_not_landed = meets_landing_bar(
+        item, rec, applied, suites, repo=integration_repo)
+    if landed_ok and rec.get("files") and not integration_repo:
+        landed_ok, why_not_landed = False, "clean integration checkout is unavailable"
     sha = ""
     item["diff"] = {"stat": rec["stat"], "files": rec["files"][:40],
                     "applied": applied, "why_not": why_not,
@@ -1619,12 +1577,14 @@ def _write_back(item, rec, applied, why_not, suites, org):
         proposals.append({"source": "checker", "text": checker_lesson["text"]})
     work.replace_owner_memory(item, item["attempt_outcome"]["id"], proposals)
     if landed_ok and (rec.get("files") or []):
-        sha, trouble = land(item, rec)
+        sha, trouble = land(item, rec, repo=integration_repo)
         if not sha:
             landed_ok, why_not_landed = False, trouble
     item["attempt_outcome"]["landing_verified"] = landed_ok
     item["diff"]["why_not_landed"] = why_not_landed
     if landed_ok:
+        if sha and item.get("pending_landing", {}).get("version") == 2:
+            record_landed_integration(item, item["pending_landing"], sha)
         work.land_item(item, "drain", sha=sha)
         item.pop("pending_landing", None)
     else:
@@ -1701,7 +1661,12 @@ def project_work(item, *, head=None, active=None, now=None):
         active = server.drain_state()
     patch = load_patch(item["id"]) if not (item.get("diff") or {}).get("applied") else ""
     files = (item.get("diff") or {}).get("files") or _patch_paths(patch)
-    blocked = _held_by_tree(files) if patch else []
+    # Dirty bytes in a separate user branch are not part of prospective main.
+    # Before the handoff they do block the old shared checkout; afterward the
+    # integration lane never writes that checkout and must not inherit its hold.
+    main_holder = integration.main_checkout(REPO)
+    blocked = _held_by_tree(files) if patch and main_holder and \
+        os.path.realpath(main_holder) == os.path.realpath(REPO) else []
     spent, attempts = _item_spend(item["id"]) if item.get("state") in ("waiting_session", "for_review") else (0, 0)
     cap = float(item.get("cost_cap_usd") or ITEM_COST_CAP_USD)
     cost_reason = (f"this has already cost ${spent:.0f} across {attempts} attempts without a result, "
@@ -1806,25 +1771,141 @@ def cost_summary(bill):
             "is a size, not a bill")
 
 
+def prepare_integration(rec):
+    """Reconstruct the reviewed candidate on local main, without user-tree writes.
+
+    A changed base is not automatically rebased: that would produce a new tree
+    whose old checker verdict and candidate tests do not describe it.
+    """
+    candidate = rec.get("candidate") or {}
+    try:
+        patch = checked_patch(rec)
+    except (ValueError, OSError) as exc:
+        return "", "missing_evidence", str(exc)
+    parent = integration.main_head(server.REPO)
+    if candidate.get("base") != parent:
+        return "", "stale_base", "Local main changed; obtain a new candidate, review, and tests."
+    try:
+        tree = integration.candidate_checkout(server.REPO, WORKTREES,
+                                              rec.get("attempt_id") or "", parent)
+    except (RuntimeError, ValueError) as exc:
+        return "", "tooling", str(exc)
+    applied = subprocess.run(["git", "apply", "--check"], cwd=tree,
+                             input=patch, capture_output=True,
+                             text=True, timeout=180)
+    if applied.returncode:
+        return tree, "code_conflict", (applied.stderr or applied.stdout or
+                                        "The reviewed patch no longer applies to local main.").strip()[:500]
+    applied = subprocess.run(["git", "apply"], cwd=tree,
+                             input=patch, capture_output=True,
+                             text=True, timeout=180)
+    if applied.returncode:
+        return tree, "code_conflict", (applied.stderr or applied.stdout or
+                                        "The reviewed patch could not be applied.").strip()[:500]
+    files = list(rec.get("files") or [])
+    staged = sh(["git", "add", "--"] + files, cwd=tree)
+    if staged.returncode:
+        return tree, "missing_evidence", (staged.stderr or staged.stdout or
+                                           "The candidate paths could not be staged.").strip()[:500]
+    actual_tree = sh(["git", "write-tree"], cwd=tree).stdout.strip()
+    actual_files = set(sh(["git", "diff", "--cached", "--name-only"], cwd=tree).stdout.splitlines())
+    if actual_tree != candidate.get("tree") or actual_files != set(files):
+        return tree, "missing_evidence", "The reconstructed tree differs from the reviewed candidate."
+    if git_blobs(tree, "", files) != candidate.get("files"):
+        return tree, "missing_evidence", "The reconstructed file blobs differ from the reviewed candidate."
+    return tree, "", ""
+
+
+def record_integration_blocker(item, rec, kind, reason):
+    """One owned recovery action per immutable candidate, never a blind retry."""
+    candidate = rec.get("candidate") or {}
+    input_id = work.evidence_id([rec.get("attempt_id"), candidate.get("base"),
+                                 candidate.get("tree"), rec.get("patch_artifact")])
+    action = work.ensure_action(item, "reconcile", input_id=input_id,
+                                owner=item.get("owner") or "claude",
+                                summary="Rebuild this candidate on current main, then obtain fresh review and both suites.",
+                                priority="reconciliation")
+    work.ensure_blocker(item, kind, input_id=input_id,
+                        owner=item.get("owner") or "claude", reason=reason,
+                        files=rec.get("files") or [], action_id=action["id"])
+    with work.mutation_lock():
+        fresh = work.load_item(item["id"])
+        changed = False
+        for older in work._workflow(fresh)["actions"]:
+            if (older.get("id") != action["id"] and older.get("type") == "reconcile"
+                    and older.get("state") == "open"):
+                older["state"], older["finished_at"] = "done", work._now_iso()
+                changed = True
+        for older in work._workflow(fresh)["blockers"]:
+            if older.get("action_id") != action["id"] and older.get("state") == "open":
+                older["state"], older["resolved_at"] = "resolved", work._now_iso()
+                changed = True
+        if changed:
+            work.save_item(fresh)
+        item.clear(); item.update(fresh)
+
+
+def record_handoff_blocker(item, reason):
+    """A process action, not another costly owner build attempt."""
+    action = work.ensure_action(item, "handoff", input_id=integration.main_head(server.REPO),
+                                owner="claude", priority="reconciliation",
+                                summary="Confirm the checkout is idle and transfer its dirty files to a named branch.")
+    work.ensure_blocker(item, "tooling", input_id=action["input_id"], owner="claude",
+                        reason=reason, action_id=action["id"],
+                        wake="The primary checkout is confirmed idle.")
+
+
+def resolve_handoff_action(item):
+    with work.mutation_lock():
+        fresh = work.load_item(item["id"])
+        workflow = fresh.get("workflow") or {}
+        handoffs = set()
+        changed = False
+        for action in workflow.get("actions") or []:
+            if action.get("type") == "handoff" and action.get("state") == "open":
+                action["state"], action["finished_at"] = "done", work._now_iso()
+                handoffs.add(action["id"])
+                changed = True
+        for blocker in workflow.get("blockers") or []:
+            if blocker.get("action_id") in handoffs and blocker.get("state") == "open":
+                blocker["state"], blocker["resolved_at"] = "resolved", work._now_iso()
+                changed = True
+        if changed:
+            work.save_item(fresh)
+        item.clear(); item.update(fresh)
+
+
 def run_verified_batch(pool, org, run_id, log, *, no_suites=False):
     """Finish one candidate before creating the next, retaining exact parent identity."""
     records, done = {}, []
     for selected in pool:
         item = work.load_item(selected["id"])
+        if int(item.get("tier") or 0) >= 1:
+            ready, reason = integration.handoff_status(server.REPO)
+            if not ready:
+                rec = {"id": item["id"], "held": True, "error": reason,
+                       "usage": [], "check": None, "applied": False}
+                records[item["id"]] = rec
+                record_handoff_blocker(item, reason)
+                continue
+            resolve_handoff_action(item)
         record_phase(run_id, item, "starting", "The task queue is preparing its isolated checkout.")
         rec = do_item(item, org, run_id, log)
         records[item["id"]] = rec
         if rec.get("held") or rec.get("limited"):
             continue
         ok, why = False, "the check said it should not land as it stands"
+        blocker_kind = ""
+        integration_repo = ""
         fresh = work.load_item(item["id"])
         if fresh.get("_revision", 0) != item.get("_revision", 0):
             rec["held"], rec["error"] = True, "the work card changed during execution; the result needs reassessment"
             continue
         candidate = rec.get("candidate") or {}
-        head = sh(["git", "rev-parse", "HEAD"], cwd=server.REPO).stdout.strip()
+        head = integration.main_head(server.REPO)
         if candidate and candidate.get("base") != head:
             why = "the candidate is stale; repository history changed before application"
+            blocker_kind = "stale_base"
         elif rec.get("resume"):
             why = "held for another attempt — " + rec["resume"]
         elif not rec.get("patch", "").strip():
@@ -1834,28 +1915,51 @@ def run_verified_batch(pool, org, run_id, log, *, no_suites=False):
               and (rec.get("check") or {}).get("complete") is True
               and not (rec.get("check") or {}).get("findings")
               and rec.get("candidate_unchanged") is True):
-            record_phase(run_id, item, "applying", "The reviewed change is being applied to the repository.")
-            ok, why = apply_patch(rec["patch"], rec["files"])
+            record_phase(run_id, item, "applying", "The reviewed change is being prepared on local main.")
+            integration_repo, blocker_kind, why = prepare_integration(rec)
+            ok = not blocker_kind
+            if ok:
+                rec["integration_checkout"] = integration_repo
         rec["applied"], rec["why_not"] = ok, "" if ok else why
         checkpoint(item, rec, "applied" if ok else "reviewed")
         suites = None
         if ok and not no_suites:
-            rec["tree_evidence"] = tree_evidence(rec["files"])
-            record_phase(run_id, item, "verifying", "The applied change is running both game test suites.")
-            suites = run_suites()
+            rec["tree_evidence"] = tree_evidence(rec["files"], repo=integration_repo)
+            record_phase(run_id, item, "verifying", "The exact prospective main tree is running both game test suites.")
+            suites = run_suites(cwd=integration_repo)
             rec["suites"] = suites
             checkpoint(item, rec, "verified")
+            # A test or hook that changed tracked files invalidates the tested
+            # tree, even if the named candidate files still happen to match.
+            if sh(["git", "diff", "--quiet"], cwd=integration_repo).returncode != 0 or \
+                    sh(["git", "ls-files", "--others", "--exclude-standard"], cwd=integration_repo).stdout.strip() or \
+                    sh(["git", "write-tree"], cwd=integration_repo).stdout.strip() != candidate.get("tree"):
+                ok, blocker_kind = False, "missing_evidence"
+                why = "The prospective tree changed while its tests ran."
+                rec["applied"], rec["why_not"] = False, why
         rec["test_evidence"] = work.evidence_id([rec.get("patch", ""), suites])
         fresh = work.load_item(item["id"])
         if fresh.get("_revision", 0) != item.get("_revision", 0):
             rec["held"], rec["error"] = True, "the work card changed during validation; reassessment is required"
+            if integration_repo:
+                integration.remove_candidate(server.REPO, integration_repo, WORKTREES)
             continue
         try:
             record_phase(run_id, item, "recording", "The result and its evidence are being recorded.")
             done.append(write_back(fresh, rec, ok, rec["why_not"], suites, org))
             checkpoint(item, rec, "written_back")
+            if blocker_kind:
+                record_integration_blocker(done[-1], rec, blocker_kind, why)
+            elif done[-1].get("state") != "landed" and rec.get("files") and ok:
+                record_integration_blocker(done[-1], rec, "missing_evidence",
+                                           (done[-1].get("diff") or {}).get("why_not_landed") or
+                                           "The candidate needs new landing evidence.")
+            if integration_repo and os.path.isdir(integration_repo) and not done[-1].get("pending_landing"):
+                integration.remove_candidate(server.REPO, integration_repo, WORKTREES)
         except work.RecordConflict:
             rec["held"], rec["error"] = True, "the work card changed before completion was saved; reassessment is required"
+            if integration_repo and not work.load_item(item["id"]).get("pending_landing"):
+                integration.remove_candidate(server.REPO, integration_repo, WORKTREES)
             continue
         log(f"finished {item['id']} · {done[-1]['state']}")
     return records, done
@@ -1902,8 +2006,12 @@ def recover_interrupted_transactions(org):
                 rec.setdefault("applied", False)
                 rec.setdefault("why_not", "the build session stopped before recording its review")
                 try:
-                    write_back(item, rec, bool(rec["applied"]), rec["why_not"],
-                               rec.get("suites"), org)
+                    finished = write_back(item, rec, bool(rec["applied"]), rec["why_not"],
+                                          rec.get("suites"), org)
+                    if rec.get("files") and finished.get("state") != "landed":
+                        record_integration_blocker(finished, rec, "missing_evidence",
+                                                   (finished.get("diff") or {}).get("why_not_landed") or
+                                                   "Interrupted verification needs a new checked candidate.")
                     tx["phase"] = "written_back"
                     recovered += 1
                 except work.RecordConflict:
@@ -1940,7 +2048,7 @@ def main():
                          "and run nothing")
     ap.add_argument("--dry-run", action="store_true", help="say what would run")
     ap.add_argument("--apply", action="store_true",
-                    help="re-apply held patches from hq/data/patches/, without running any model")
+                    help="retired: unsafe shared-checkout patch application is refused")
     ap.add_argument("--repair", action="store_true",
                     help="rewrite any card whose result is a raw CLI envelope, and nothing else")
     ap.add_argument("--recover-only", action="store_true",
@@ -1952,6 +2060,10 @@ def main():
                          f"{UNATTENDED_JOBS} seats, and nothing at all when the token window "
                          "is dry or mostly spent")
     args = ap.parse_args()
+
+    if args.apply:
+        print("--apply is retired: it writes into the shared checkout. Use the clean integration lane and a reviewed reconciliation action.")
+        return 2
 
     work.bind(server, sanitize=not (args.list or args.list_json or args.dry_run or args.brief))
     org = server.load_org()
@@ -1978,25 +2090,6 @@ def main():
     recovered = recover_interrupted_transactions(org) if lock else 0
     if args.recover_only:
         print(f"Recovered {recovered} interrupted attempt(s).")
-        return 0
-
-    if args.apply:
-        want = set(args.ids)
-        n = 0
-        for it in work.items():
-            if want and it["id"] not in want:
-                continue
-            if (it.get("diff") or {}).get("applied") or not load_patch(it["id"]):
-                continue
-            patch = load_patch(it["id"])
-            ok, why = apply_patch(patch, (it.get("diff") or {}).get("files") or [])
-            print(f"  {'applied ' if ok else 'still held'} {it['id']}  {why or it['title'][:50]}")
-            if ok:
-                it.setdefault("diff", {})["applied"] = True
-                it["diff"]["why_not"] = ""
-                work.save_item(it)
-                n += 1
-        print(f"{n} held patch(es) applied.")
         return 0
 
     if args.repair:
@@ -2068,12 +2161,12 @@ def main():
            and records[i["id"]]["check"].get("escalates")]
     went_in = [i for i in done if i.get("state") == "landed"]
     print(f"\nDrained in {int(time.time() - started) // 60} min. "
-          f"{sum(1 for r in records.values() if r.get('applied'))} of {len(pool)} applied to "
-          f"the tree; {len(went_in)} committed without Daniel, "
-          f"{sum(1 for i in done if i.get('state') == 'for_review')} waiting for him.")
+          f"{sum(1 for r in records.values() if r.get('applied'))} of {len(pool)} prepared "
+          f"on a clean prospective tree; {len(went_in)} committed to local main, "
+          f"{sum(1 for i in done if i.get('state') == 'for_review')} held for review or recovery.")
     for i in done:
         if i.get("state") == "for_review":
-            print(f"  to Daniel: {i['id']}  {(i.get('diff') or {}).get('why_not_landed') or '—'}")
+            print(f"  held: {i['id']}  {(i.get('diff') or {}).get('why_not_landed') or '—'}")
     print(f"Cost: {bill['calls']} model calls, {bill['tokens']:,} tokens "
           f"({cost_summary(bill)}).")
     if esc:

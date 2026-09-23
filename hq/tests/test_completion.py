@@ -118,6 +118,7 @@ class Completion(unittest.TestCase):
     def test_applied_diff_evidence_and_failed_commit(self):
         self.card['tier'] = 1
         r = record(files=['sample.txt'], patch='test patch')
+        r['integration_checkout'] = self.tmp.name  # The commit boundary is mocked here.
         suites = {'unit':{'ok':True},'integration':{'ok':True}}
         with patch.object(server, 'REPO', self.tmp.name):
             Path(self.tmp.name,'sample.txt').write_text('tested')
@@ -136,7 +137,7 @@ class Completion(unittest.TestCase):
             self.assertNotIn('completion',got)
             self.assertEqual(got['diff']['why_not_landed'],'commit failed')
             r['attempt_id'] = 'new-attempt'
-            def commit(current, attempt):
+            def commit(current, attempt, **_kwargs):
                 self.assertEqual(current['result'],'The requested reading is finished.')
                 self.assertEqual(current['follow_ups'],[])
                 self.assertEqual(current['check']['attempt_id'],'new-attempt')
