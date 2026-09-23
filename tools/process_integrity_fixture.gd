@@ -21,6 +21,10 @@ func _init() -> void:
 		"status_failure":
 			print("Results: FAILED")
 			hang()
+		"script_error_green":
+			print("SCRIPT ERROR: Compile Error: Identifier not found: AudioManager")
+			print("Results: 1 PASSED, 0 FAILED")
+			finish(0, "a partial suite must not count as green")
 		_:
 			finish(2, "unknown fixture mode")
 

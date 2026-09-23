@@ -33,6 +33,12 @@ def _result_from_line(line: str) -> tuple[int, int] | None:
     return None
 
 
+def _script_error(line: str) -> bool:
+    """Godot can print a script failure yet exit zero after a partial test count."""
+    stripped = line.lstrip()
+    return stripped.startswith("SCRIPT ERROR:") or stripped.startswith("ERROR: Failed to load script")
+
+
 def _stop(proc: subprocess.Popen[str]) -> None:
     proc.terminate()
     try:
@@ -46,6 +52,7 @@ def run(command: list[str], timeout: float, result_grace: float) -> int:
     started = time.monotonic()
     result_deadline = None
     result = None
+    saw_script_error = False
     with tempfile.TemporaryDirectory(prefix="tiny-farm-godot-test-") as user_data:
         env = os.environ.copy()
         env["XDG_DATA_HOME"] = user_data
@@ -79,7 +86,7 @@ def run(command: list[str], timeout: float, result_grace: float) -> int:
                     flush=True,
                 )
                 _stop(proc)
-                return 1 if failed else 0
+                return 1 if failed or saw_script_error else 0
             wait = min(0.1, timeout - (now - started))
             if result_deadline is not None:
                 wait = min(wait, result_deadline - now)
@@ -88,6 +95,7 @@ def run(command: list[str], timeout: float, result_grace: float) -> int:
                 if not line:
                     continue
                 print(line, end="", flush=True)
+                saw_script_error = saw_script_error or _script_error(line)
                 parsed = _result_from_line(line)
                 if parsed is not None:
                     result = parsed
@@ -95,6 +103,7 @@ def run(command: list[str], timeout: float, result_grace: float) -> int:
 
         for line in proc.stdout:
             print(line, end="", flush=True)
+            saw_script_error = saw_script_error or _script_error(line)
             parsed = _result_from_line(line)
             if parsed is not None:
                 result = parsed
@@ -104,6 +113,10 @@ def run(command: list[str], timeout: float, result_grace: float) -> int:
             print("ERROR: Godot check exited without a Results line", file=sys.stderr, flush=True)
             return 1
         if result is not None and result[1] > 0:
+            return 1
+        if saw_script_error:
+            print("ERROR: Godot reported a script error despite a green result line",
+                  file=sys.stderr, flush=True)
             return 1
         return code
 

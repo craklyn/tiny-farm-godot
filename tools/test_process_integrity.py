@@ -88,6 +88,13 @@ class ProcessIntegrityTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertLess(time.monotonic() - started, 3)
 
+    def test_script_error_overrules_green_partial_count(self) -> None:
+        result = subprocess.run(
+            command("script_error_green"), cwd=ROOT, capture_output=True, text=True, timeout=5
+        )
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertIn("SCRIPT ERROR:", result.stdout + result.stderr)
+
 
 if __name__ == "__main__":
     unittest.main(verbosity=2)
