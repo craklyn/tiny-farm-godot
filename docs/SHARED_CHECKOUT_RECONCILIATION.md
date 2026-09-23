@@ -5,15 +5,15 @@ Investigation · Tiny Farm
 - Date: 2026-09-23
 - Status: LIVING
 - Last updated: 2026-09-23
-- Repo/location: `/home/daniel/dev/tiny-farm-godot` (`codex/shared-work-20260922`)
+- Repo/location: `/home/daniel/dev/tiny-farm-godot` (`main`)
 
 ## Background
 
 Parallel work left the Local checkout on a divergent branch with committed and
-uncommitted changes. New work can start from the clean `main` checkout, but the
-shared checkout cannot be reset until its distinct work and records have been
-accounted for. The rule for this reconciliation is to move one verified result
-at a time onto current `main`, preserving the source checkout throughout.
+uncommitted changes. The default Local checkout is now on `main`. The old
+branch remains available, and its remaining tracked and untracked changes
+are preserved in a named local stash. Verified results moved to `main` one
+at a time; the archived remainder is still to be reviewed by owner.
 
 ## Context and questions
 
@@ -42,13 +42,15 @@ nine with patches not matched by Git on `main`. Patch equivalence alone is
 not a product verdict: the branch-only commits are compared against current
 files and their HQ cards. Each candidate is applied to an isolated checkout
 at `/tmp/tiny-farm-reconcile-main`, checked, then committed there. No bulk
-merge or reset is part of this method. [^cherry]
+merge or reset was used to import the divergent branch. Its remaining dirty
+state was preserved with `git stash push --include-untracked` before switching
+the default checkout to `main`. [^cherry]
 
 [^cherry]: `git cherry main HEAD` in the shared checkout, 2026-09-23.
 
 ## Findings
 
-### Branch-only commits — RUNNING
+### Branch-only commits — DONE
 
 | Commit | Change | Disposition |
 | --- | --- | --- |
@@ -115,11 +117,28 @@ generator left all three chip sheets byte-identical. Current tests passed:
 
 ## Conclusion and next steps
 
-The checkout contains recoverable work. The first distinct branch change is
-verified against current `main`; the white-edge item shows why an HQ state or a
-plausible helper file cannot by itself establish completion. Continue with
-the remaining candidates in small groups. Keep the shared checkout and its
-snapshot until every source path and untracked artifact has a disposition.
+The default checkout is clean on local `main` at `f29b367` before this report
+update. Its final isolated-data run passed 2,943 unit and 1,010 integration
+checks, the gateway check passed, and HQ passed 45 of 45 files after the pending
+decisions were restored. The first remote batch at `91c958f` passed GitHub CI.
+Local `main` is twelve commits ahead of `origin/main` before this report update.
+The push is held because automatic approval review rejected exporting five
+playtest folders (fifteen files, about 1.54 MB) to GitHub without Daniel's
+specific approval. No alternate upload was attempted. [^final]
+
+The old branch's 230 dirty entries are in the named local stash “shared-work
+reconciliation hold 2026-09-23”; the old branch and the two `/tmp` snapshots
+also remain. Q-109 is integrated. Q-108's revised view request, Q-111's
+release-automation choice, and Q-92's lighter-fence-art choice remain pending;
+Q-108 and Q-111 submissions were restored to live HQ. A few new HQ review
+records arrived during cleanup and were committed separately. The white-edge
+item shows why a card's state or plausible helper file does not prove its work
+is complete.
+
+[^final]: `/tmp/tiny-farm-final-main-unit-isolated.log`,
+    `/tmp/tiny-farm-final-main-integration.log`,
+    `/tmp/tiny-farm-hq-pending-rulings.log`, `git status --short`, and
+    `git rev-list --left-right --count origin/main...main` on 2026-09-23.
 
 1. **DONE:** All nine branch-only commits have a disposition: their result is
    already on `main`, or the distinct work has been recovered and tested.
@@ -127,5 +146,7 @@ snapshot until every source path and untracked artifact has a disposition.
    distinguish accepted copy from a published release.
 3. **TK:** Reconcile rulings and HQ records, then classify raw assets,
    experiments, playtest evidence, and generated sidecars.
-4. **TK:** After verification, align the Local checkout with `main` and
-   confirm a clean status. Only then retire the shared branch and snapshot.
+4. **DONE locally:** The default Local checkout is on `main` with a clean
+   working tree. Keep the old branch, stash, and snapshots until all archived
+   work has a disposition; push the verified local commits after Daniel's
+   approval for the playtest-file export.
