@@ -205,14 +205,15 @@ def main():
               and len(q905_tasks) == 2 and len(ruling("Q-905")["earlier"]) == 1,
               "a lost response followed by edited feedback records a new revision")
 
-        print("the Q-109 sources still disagree")
+        print("Q-109's recorded ruling agrees with the queue and card")
         with open(os.path.join(server.REPO, "hq", "data", "decisions", "Q-109.json"), encoding="utf-8") as f:
             q109 = json.load(f)
         with open(os.path.join(server.REPO, "docs", "DESIGNER_QUEUE.md"), encoding="utf-8") as f:
             queue_doc = f.read()
-        curated_recommendation = next(o["key"] for o in q109["options"] if "(Recommended)" in o["label"])
-        check(curated_recommendation == "b" and "Q-109" in queue_doc and "**Recommendation: (d)**" in queue_doc,
-              "Q-109's curated card recommends b while the design queue recommends d; neither source was rewritten")
+        chosen = next(o["key"] for o in q109["options"] if "(Chosen)" in o["label"])
+        check(chosen == q109["ruled"]["option"] == "d" and
+              "**Chosen: (d)**" in queue_doc,
+              "Q-109's curated card and design queue record the chosen per-building rule")
     finally:
         server.DATA = was
         server.work.WORK = was_work

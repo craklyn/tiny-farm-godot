@@ -1044,8 +1044,9 @@ the layout the game has now, filed as work, and worth fixing whatever happens to
 
 **Why provisional.** Nothing is built, and two questions that change how it feels are open
 (Q-108, the treatment of the yard seen through the walls at ×2 — a question about grain now
-that it is no longer one about geometry; Q-109, whether the farmhouse's ratio holds for the
-coop). **Trigger:** revisit when the first interior is playable and can be looked at — the
+that it is no longer one about geometry). Q-109 was ruled 2026-09-21: each building may
+use its own whole-number room multiplier; the coop's exact size awaits its playable room.
+**Trigger:** revisit when the first interior is playable and can be looked at — the
 whole of this entry is about how something looks and none of it has been seen.
 
 ### D-16. ~~When interiors move from one grid to a grid per space~~ — closed 2026-09-15

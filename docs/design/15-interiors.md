@@ -508,7 +508,9 @@ drawn open from outside, which is art and taste, not camera work, and sits with 
 - **Q-108** — the treatment of the yard seen through the walls at ×2: haze, desaturation,
   how hard the walls cut. A question about grain, now that it is no longer a question about
   geometry.
-- **Q-109** — whether the farmhouse's ratio holds for the coop and everything after it.
+- **Q-109, ruled 2026-09-21** — each building may have its own whole-number room
+  multiplier. The farmhouse keeps its provisional dimensions. Size the coop when its
+  room becomes playable; a single multiplier need not fit both buildings.
 
 **Not designed, and load-bearing.** Three of these would have to be guessed at to start
 building, which is what makes this chapter a design and not a specification:

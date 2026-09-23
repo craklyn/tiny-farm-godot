@@ -131,7 +131,9 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   to be worth walking to. Bears on `design/04`; follows Q-110.
   Card: `hq/data/decisions/Q-112.json`.
 
-- **Q-109** How much room a room gets — **Ruling**, now narrowed. The farmhouse is
+- ~~**Q-109** How much room a room gets~~ — **Ruled 2026-09-21: (d), choose the
+  room multiplier per building.** The farmhouse keeps its provisional room size;
+  the coop's exact dimensions belong to its playable interior work. The farmhouse is
   provisionally answered (3×2 outside, 6×3 inside); what is left is whether that number holds
   for the coop and everything after it. Drawn panels of both buildings at ×2, ×3 and ×4, with
   the game's own art at the size the game draws it — a 16×32 bed takes two whole tiles
@@ -140,7 +142,7 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   Q-108's registered options every step up is paid for out of the window. Options: **(a) ×2**,
   **(b) ×3**, **(c) ×4**, **(d) a number per building**, **(e) the farmhouse's own answer
   everywhere** — doubled across, half again down, which makes the coop 4×3.
-  **Recommendation: (d)**, now that the farmhouse has its own answer: a hen house never has to
+  **Chosen: (d)**, now that the farmhouse has its own answer: a hen house never has to
   be as big as a home, and nothing in P-18 wants one number for all of them. Card:
   `hq/data/decisions/Q-109.json`.
 

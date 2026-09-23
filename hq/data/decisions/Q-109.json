@@ -11,7 +11,7 @@
   },
   {
    "key": "b",
-   "label": "Three times (Recommended)",
+   "label": "Three times",
    "detail": "A 9x6 farmhouse room and a 6x6 coop. Both are comfortably furnishable and the house lands just under the 10x7 room the player has today, so nothing about today's room gets worse. The view out under Q-108(a) is roughly one tile a side, which is where that option starts to look thin."
   },
   {
@@ -21,7 +21,7 @@
   },
   {
    "key": "d",
-   "label": "Per building, not one number",
+   "label": "Per building, not one number (Chosen)",
    "detail": "Let each building carry its own multiplier: the farmhouse at three, the coop at two, a future barn at four. Nothing in P-18 requires one number for all of them, and it means a hen house never has to be as big as a home. The price is that there is no single answer to how small the view out of the window becomes, so Q-108's treatment has to hold up across the whole range."
   },
   {
@@ -61,6 +61,11 @@
    "caption": "The coop (2x2 outside) at two, three and four times, with the hen in it."
   }
  ],
- "ruled": null,
+ "ruled": {
+  "date": "2026-09-21",
+  "option": "d",
+  "summary": "Use a multiplier chosen per building. The farmhouse keeps its provisional room dimensions; the coop may use a different multiplier. The coop and later buildings still need playable interiors before their exact dimensions are final.",
+  "written_up": "docs/design/15-interiors.md"
+ },
  "subject": "The rooms inside the home"
 }
