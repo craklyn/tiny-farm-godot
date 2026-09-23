@@ -3,6 +3,7 @@
 
 import json
 import os
+import signal
 import subprocess
 import sys
 import tempfile
@@ -30,6 +31,20 @@ class SuiteTests(unittest.TestCase):
             self.assertEqual(code, 124)
             with open(log_path) as source:
                 self.assertIn("verification timed out", source.read())
+
+    def test_timeout_kills_group_after_wrapper_leader_exits(self):
+        with tempfile.TemporaryDirectory() as temp:
+            leader = unittest.mock.Mock(pid=12345)
+            leader.wait.side_effect = [subprocess.TimeoutExpired("check", 1), 0]
+            leader.poll.return_value = 0  # leader exited on TERM; child may remain
+            with patch.object(verify_held_patch.subprocess, "Popen", return_value=leader), \
+                 patch.object(verify_held_patch.os, "killpg") as kill_group:
+                code = verify_held_patch._run_logged(["fake"], temp,
+                    os.path.join(temp, "run.log"), timeout=1)
+            self.assertEqual(code, 124)
+            self.assertEqual(kill_group.call_args_list,
+                             [unittest.mock.call(12345, signal.SIGTERM),
+                              unittest.mock.call(12345, signal.SIGKILL)])
 
     def test_wrapper_isolates_data_and_rejects_missing_result(self):
         wrapper = os.path.join(os.path.dirname(HQ), "tools/run_godot_test.py")

@@ -38,11 +38,22 @@ def _run_logged(args, cwd, log_path, timeout):
             return proc.wait(timeout=timeout)
         except (subprocess.TimeoutExpired, KeyboardInterrupt) as exc:
             code = 130 if isinstance(exc, KeyboardInterrupt) else 124
-            os.killpg(proc.pid, signal.SIGTERM)
+            try:
+                os.killpg(proc.pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
             try:
                 proc.wait(timeout=3)
             except subprocess.TimeoutExpired:
+                pass
+            # The wrapper leader can exit on TERM while Godot remains alive in
+            # its process group. KILL the group regardless of the leader's
+            # wait result; a vanished group is an ordinary race, not an error.
+            try:
                 os.killpg(proc.pid, signal.SIGKILL)
+            except ProcessLookupError:
+                pass
+            if proc.poll() is None:
                 proc.wait()
             sink.write(f"\nERROR: verification {'interrupted' if code == 130 else 'timed out'}\n")
             sink.flush()
