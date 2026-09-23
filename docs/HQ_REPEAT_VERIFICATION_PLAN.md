@@ -66,3 +66,16 @@ Owner: Chief of Staff
 - 2026-09-22: read-only survey and adversarial plan review completed; the plan
   now accounts for the unfinished prior outcome, a stale candidate base,
   missing-result parsing, and worker-queue reentry risk.
+- 2026-09-22: isolated suite runner and evidence-only command landed locally.
+  The first real canary exposed a missing Godot import and slow, incomplete
+  runs; import preflight, per-run progress, durable partial evidence, fail-fast,
+  and process-group cleanup are now covered by 14 focused tests. Ten completed
+  integration runs on Grace's unchanged saved candidate each passed Scenario W
+  (969 passed, zero failed per run); evidence is under
+  `hq/data/runs/verification/w0f78d0a7d2d-nitaquqf/`.
+- 2026-09-22: the card is held for Adam, not requeued to Grace or put before
+  Daniel. Its patch still overlaps unsaved save-lineage edits in the shared
+  checkout. Reconcile those edits, then rerun tests and independent review on
+  the exact combined candidate before landing; the ten passes above do not
+  prove that combined change. Pushing local commits to origin was blocked by
+  the environment's external-write approval rule.
