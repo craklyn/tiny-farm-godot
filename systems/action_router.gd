@@ -220,11 +220,15 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 			"walk_to": false, "seed_type": "",
 		})
 
-	# 1c-ii. A fence she built answers before the ground does (Q-92). Tapping one
-	# takes it back up — the egg's verb, on the thing she made — and the world's
-	# own fences and hedges fall through to nothing, because they are the boundary
-	# that says "not yet" and she must not be able to dismantle the cold open.
-	if world != null and String(world.get_tile(tx, ty).get("state", "")) == WorldLayout.FENCE_BUILT:
+	# 1c-ii. Her fences answer before the ground does (Q-92). That includes the
+	# starting fence once fencing is on her shelf; until then it is still the cold
+	# open's first lock. Hedges remain the boundary that says "not yet".
+	var fence_state := "" if world == null else String(
+		world.get_tile(tx, ty).get("state", ""))
+	var can_take_fence: bool = fence_state == WorldLayout.FENCE_BUILT \
+		or (fence_state == WorldLayout.FENCE and gs != null \
+			and gs.is_unlocked("fence"))
+	if can_take_fence:
 		if not is_drag and player_t != null:
 			var pt0: Vector2i = player_t
 			if absi(pt0.x - tx) + absi(pt0.y - ty) > 1:

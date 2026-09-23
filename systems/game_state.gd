@@ -391,13 +391,17 @@ func buy_seed(seed_type: String) -> bool:
 # nobody buys a robot to keep it in a box — and the very next tap she makes is
 # meant to be the placement. Getting back to seeds is one press of the cycle
 # control, which now rings through her machines too (`held_order`).
+func is_unlocked(key: String) -> bool:
+	return MachineDefs.is_unlocked(key, harvest_counts)
+
+
 func buy_machine(key: String) -> bool:
 	var def: Dictionary = MachineDefs.TYPES.get(key, {})
 	if def.is_empty():
 		return false
 	if gold < int(def.price):
 		return false
-	if not MachineDefs.is_unlocked(key, harvest_counts):
+	if not is_unlocked(key):
 		return false
 	gold -= int(def.price)
 	# A card can be a bundle. Fencing is sold ten posts at a time because a fence

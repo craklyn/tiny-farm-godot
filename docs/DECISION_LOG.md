@@ -1370,7 +1370,7 @@ Raised 2026-09-10 by the designer inside his Q-92 ruling on the dashboard: *"We 
 eventually let players change home turf to farming land and vice versa, but that'll be a
 future update."* Today the yard (`WorldLayout.YARD`) and the field are laid at worldgen and
 never change kind; the starting fence that separates them is, by the same ruling, becoming
-removable and replaceable once fencing is unlocked (filed on the sim seat). **Deferred.**
+removable and replaceable once fencing is unlocked (implemented in the sim and router). **Deferred.**
 Trigger: the first update after the starting fence is removable, or the first design that
 needs the yard to grow — whichever comes first. Open questions for that day: what a yard
 square becomes when it is farmed (tilled ground? cleared?), what a field square becomes when

@@ -61,7 +61,7 @@ ten at the seed box, one post per tap on bare ground, taken back up by tapping i
 refunded — so a run she regrets costs her nothing, which is what makes a long line safe to
 try. Drawn with the game's own fence cell, because the **hedge** is the word for "not yours
 yet" and the fence already means "yours"; hers is a separate tile state only so the world's
-own boundaries stay hers to look at rather than to dismantle.
+own boundaries stay hers to look at rather than to dismantle until fencing is available.
 
 **Ruled 2026-09-10 (Q-92, on the dashboard): the starting fence is hers too, once fencing is
 unlocked.** Until then it stays what it is today — the boundary of the cold open, which she

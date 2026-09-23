@@ -14320,24 +14320,93 @@ func test_fencing() -> void:
 	_assert(gs.machines.get("fence", 0) == 10,
 		"and the post is back in the crate — a run she regrets costs her nothing")
 
-	# **The world's own boundary is not hers to pull up.** The cold open is built
-	# on a fence between two yards; a player who could collect one could dismantle
-	# the game's first lock. Same picture, different word, and this is the test
-	# that the word is doing its job.
+	# The starting fence is the cold open's first lock until fencing is unlocked.
+	# Use the catalogue's real requirement shape here so both the router and the
+	# gateway are tested against the same question the shop asks.
 	var theirs := Vector2i(-1, -1)
+	var hedge := Vector2i(-1, -1)
 	for ty in range(0, 20):
 		for tx in range(0, 32):
 			if String(w.get_tile(tx, ty).get("state", "")) == WorldLayout.FENCE:
 				theirs = Vector2i(tx, ty)
-				break
-		if theirs.x >= 0: break
+			if String(w.get_tile(tx, ty).get("state", "")) == WorldLayout.HEDGE:
+				hedge = Vector2i(tx, ty)
+			if theirs.x >= 0 and hedge.x >= 0: break
+		if theirs.x >= 0 and hedge.x >= 0: break
 	_assert(theirs.x >= 0, "the farm has a fence of the world's own (%s)" % theirs)
+	_assert(hedge.x >= 0, "and a hedge that still means not yet (%s)" % hedge)
+	var fence_def: Dictionary = MachineDefs.TYPES["fence"]
+	var old_requirement = fence_def.get("unlock_requirement")
+	fence_def["unlock_requirement"] = { "crop": "tomato", "count": 1 }
+	gs.harvest_counts["tomato"] = 0
+	w.set_actor_pos(SimWorld.ACTOR_PLAYER, theirs + Vector2i(-1, 0))
+	var farm = load("res://world/farm.gd").new()
+	farm.sim = w
+	_assert(ActionRouter.resolve(farm, gs, theirs, w.actor_pos(SimWorld.ACTOR_PLAYER)).is_empty(),
+		"before the unlock, tapping the starting fence is still refused by the router")
 	var steal: Dictionary = w.apply_action({ "verb": "collect", "target": theirs,
 		"actor": "player" }, gs)
 	_assert(not steal.get("ok", false),
-		"which she cannot pick up, however much it looks like hers (%s)" % steal)
+		"and the gateway keeps the cold open's first lock standing (%s)" % steal)
 	_assert(String(w.get_tile(theirs.x, theirs.y).get("state", "")) == WorldLayout.FENCE,
 		"and it is still standing")
+
+	gs.harvest_counts["tomato"] = 1
+	var intent: Dictionary = ActionRouter.resolve(
+		farm, gs, theirs, w.actor_pos(SimWorld.ACTOR_PLAYER))
+	_assert(intent.get("action", "") == "collect",
+		"after the unlock, tapping the starting fence resolves to the same collect verb")
+	var crate_before := int(gs.machines.get("fence", 0))
+	var take: Dictionary = w.apply_action({ "verb": "collect", "target": theirs,
+		"actor": "player" }, gs)
+	_assert(take.get("ok", false) and take.get("collected", "") == "fence",
+		"the unlocked starting fence can be taken up (%s)" % take)
+	_assert(String(w.get_tile(theirs.x, theirs.y).get("state", "")) == "cleared",
+		"and leaves the same bare ground as a taken built fence")
+	_assert(int(gs.machines.get("fence", 0)) == crate_before + 1,
+		"with its post credited to the crate")
+
+	w.set_actor_pos(SimWorld.ACTOR_PLAYER, hedge + Vector2i(-1, 0))
+	_assert(ActionRouter.resolve(farm, gs, hedge, w.actor_pos(SimWorld.ACTOR_PLAYER)).is_empty(),
+		"an unlocked fence does not make a hedge answer a tap")
+	var clipped: Dictionary = w.apply_action({ "verb": "collect", "target": hedge,
+		"actor": "player" }, gs)
+	_assert(not clipped.get("ok", false)
+		and String(w.get_tile(hedge.x, hedge.y).get("state", "")) == WorldLayout.HEDGE,
+		"and the gateway still refuses the hedge (%s)" % clipped)
+	farm.free()
+	fence_def["unlock_requirement"] = old_requirement
+
+	# A take-and-relay session is ordinary collect/build data: no new replay
+	# shape, and applying it from the same starting save lands on the same farm.
+	var replay_gs = load("res://systems/game_state.gd").new()
+	replay_gs.reset()
+	# Capture the actual unlocked state in the replay base save.
+	replay_gs.harvest_counts["tomato"] = 1
+	var replay_world := SimWorld.new()
+	SimRng.reseed(9202)
+	replay_world.generate()
+	replay_world.set_actor_pos(SimWorld.ACTOR_PLAYER, theirs + Vector2i(-1, 0))
+	fence_def["unlock_requirement"] = { "crop": "tomato", "count": 1 }
+	var base := SaveGame.capture(replay_world, replay_gs)
+	var log := ReplayLog.new()
+	log.start_from_save(base, replay_world.gen_seed)
+	var take_action := { "verb": "collect", "target": theirs, "actor": "player" }
+	var take_result: Dictionary = replay_world.apply_action(take_action, replay_gs)
+	_assert(take_result.get("ok", false), "the replay fixture takes the unlocked starting post")
+	log.record(take_action, take_result)
+	var relay_action := { "verb": "build", "target": theirs, "item": "fence", "actor": "player" }
+	var relay_result: Dictionary = replay_world.apply_action(relay_action, replay_gs)
+	_assert(relay_result.get("ok", false), "and lays that post again")
+	log.record(relay_action, relay_result)
+	var live := SaveGame.capture_canonical(replay_world, replay_gs)
+	var replayed_world := SimWorld.new()
+	var replayed_gs = load("res://systems/game_state.gd").new()
+	var round_trip := ReplayLog.from_json(log.to_json())
+	_assert(round_trip.apply_to(replayed_world, replayed_gs)
+		and SaveGame.capture_canonical(replayed_world, replayed_gs) == live,
+		"taking and relaying the starting fence round-trips through the replay")
+	fence_def["unlock_requirement"] = old_requirement
 
 
 func test_the_door() -> void:
@@ -15484,4 +15553,3 @@ func test_coop_interior() -> void:
 	_assert(world.has_actor("chicken") and world.actor_pos("chicken") == spot,
 		"and the hen is standing where the hut was, rather than in the crate")
 	_assert(GameState.machines.get("coop", 0) == 1, "with the hut back in the crate")
-

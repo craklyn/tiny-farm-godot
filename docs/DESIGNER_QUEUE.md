@@ -352,7 +352,7 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   the game already has, and make it interactive.** **Added 2026-09-10 on the dashboard:** *"Starting fence should
   become removable and replaceable after fencing is unlocked. We should eventually let players
   change home turf to farming land and vice versa, but that'll be a future update."* The first
-  half is filed as work on the sim seat; the second is D-15 in the decision log. *"We already have fences that look
+  half is implemented in the sim and router; the second is D-15 in the decision log. *"We already have fences that look
   different than game boundary... we should continue to use that fence, and make it
   interactive."* He is right, and more precisely right than the question assumed: the
   **hedge** is the lock vocabulary (it bounds the parcels she has not unlocked) and the

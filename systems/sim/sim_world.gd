@@ -2568,17 +2568,19 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 					gs.machines[COOP_ITEM] = int(gs.machines.get(COOP_ITEM, 0)) + taken_up.size()
 					return { "ok": true, "collected": COOP_ITEM, "anchor": coop_anchor,
 						"count": taken_up.size() }
-			# **And a fence she built comes back up** (Q-92). Only hers: the
-			# world's own fences and hedges are the boundary that says "not yet",
-			# and the cold open is built on one — a player who could pull those up
-			# could dismantle the game's first lock. The states differ for exactly
-			# this test, which is why hers has its own word despite sharing a
-			# picture.
+			# **And her fences come back up** (Q-92). A post she built is always
+			# hers; the starting fence becomes hers when fencing is unlocked. Before
+			# then it remains the cold open's first lock. Hedges are never fencing
+			# stock and remain the boundary that says "not yet".
 			#
 			# Free and instant, like the egg. Being able to undo a long run of
 			# posts one square at a time is what makes fencing safe to try, and a
 			# refund is what stops a mistake costing her the gold as well.
-			if String(get_tile(target.x, target.y).get("state", "")) == WorldLayout.FENCE_BUILT:
+			var fence_state := String(get_tile(target.x, target.y).get("state", ""))
+			var can_take_fence: bool = fence_state == WorldLayout.FENCE_BUILT \
+				or (fence_state == WorldLayout.FENCE and gs != null \
+					and gs.is_unlocked("fence"))
+			if can_take_fence:
 				set_tile_state(target.x, target.y, "cleared")
 				gs.machines["fence"] = int(gs.machines.get("fence", 0)) + 1
 				return { "ok": true, "collected": "fence" }
