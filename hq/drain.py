@@ -500,6 +500,7 @@ Reply with raw JSON, no fence and no prose:
 {{"verdict": "pass|concerns|fail", "complete": true,
  "summary": "one sentence Daniel can read: what landed, and what to watch",
  "findings": [{{"what": "the problem in one line", "where": "file or file:line", "fix": "what to do about it"}}],
+ "unrelated_generated_files": [],
  "lesson_for_owner": null,
  "escalates": null,
  "escalation_reason": null}}
@@ -508,6 +509,9 @@ When the review itself establishes a reusable rule for the owner, replace
 lesson_for_owner with {{"text": "the durable lesson"}}. This is the only place
 for that lesson; do not hide memory instructions in summary or findings. Leave
 it null when the review established no durable lesson.
+List docs/writing_verdicts.json in unrelated_generated_files only when you
+specifically found it in this diff, found it unrelated to the requested work,
+and recorded a finding that asks to remove it. Otherwise leave the list empty.
 
 Set complete true only when the entire requested result is finished, not blocked or a partial attempt.
 "pass" means it did what was asked and you found nothing worth his time. "concerns"
@@ -882,9 +886,33 @@ def resume_held_patch(item, tree, thinking):
         subprocess.run(["git", "checkout", "--", "."], cwd=tree, capture_output=True, timeout=120)
         subprocess.run(["git", "clean", "-fd"], cwd=tree, capture_output=True, timeout=120)
         return ""
+    _remove_reviewed_generated_file(item, tree, patch)
     stat = subprocess.run(["git", "diff", "--stat"], cwd=tree, capture_output=True,
                           text=True, timeout=120).stdout.strip().splitlines()
-    return stat[-1].strip() if stat else "applied"
+    return stat[-1].strip() if stat else ("applied" if _tree_dirty(tree) else "")
+
+
+def _remove_reviewed_generated_file(item, tree, patch):
+    """Undo only a generated path the last reviewer explicitly rejected.
+
+    The held patch and its immutable archive remain untouched. This changes the
+    retry worktree, so its next cumulative patch is a new reviewed candidate.
+    """
+    prior = (item.get("prior_checks") or [])[-1:]
+    check = prior[0] if prior else {}
+    path = "docs/writing_verdicts.json"
+    if (check.get("verdict") not in ("concerns", "fail")
+            or path not in (check.get("unrelated_generated_files") or [])
+            or path not in _patch_paths(patch)):
+        return False
+    findings = check.get("findings") or []
+    if not any(re.fullmatch(re.escape(path) + r"(?::\d+)?", f.get("where") or "")
+               and re.search(r"\b(remove|drop|revert|exclude)\b", f.get("fix") or "", re.I)
+               for f in findings if isinstance(f, dict)):
+        return False
+    sh(["git", "restore", "--source=HEAD", "--staged", "--worktree", "--", path],
+       cwd=tree, check=True, timeout=120)
+    return True
 
 
 def load_patch(item_id):
@@ -1162,6 +1190,9 @@ def parse_check(raw):
         if isinstance(f, dict) and f.get("what"):
             findings.append({k: str(f.get(k) or "")[:400] for k in ("what", "where", "fix")})
     reason = str(doc.get("escalation_reason") or "").lower().strip()
+    unrelated = doc.get("unrelated_generated_files")
+    unrelated = (["docs/writing_verdicts.json"] if isinstance(unrelated, list)
+                 and "docs/writing_verdicts.json" in unrelated else [])
     return {
         # This record came from a read that actually happened, which is one of
         # the four things work has to have before it may land without Daniel.
@@ -1170,6 +1201,7 @@ def parse_check(raw):
         "verdict": verdict if verdict in ("pass", "concerns", "fail") else "concerns",
         "summary": str(doc.get("summary") or "")[:600],
         "findings": findings,
+        "unrelated_generated_files": unrelated,
         "lesson_for_owner": lesson,
         "escalates": str(doc.get("escalates") or "").strip()[:600] or None,
         "escalation_reason": reason if reason in
@@ -1530,15 +1562,15 @@ def meets_landing_bar(item, rec, applied, suites, *, repo=None):
     is of a kind that reverting would not undo."""
     repo = repo or server.REPO
     files = list(rec.get("files") or [])
-    outcome = work.attempt_outcome(rec.get("result", ""), rec.get("error"), rec.get("limited"))
-    if outcome["status"] != "complete":
-        return False, outcome["reason"] or "the attempt did not finish"
     if rec.get("check_evidence") != check_evidence_id(rec):
         return False, "the check does not describe this result and diff"
     check = rec.get("check") or {}
     if check.get("read") is True and check.get("verdict") in ("concerns", "fail"):
         return False, ("the read of it raised something you should see" if check["verdict"] == "concerns"
                        else "the read of it says this should not go in as it stands")
+    outcome = work.attempt_outcome(rec.get("result", ""), rec.get("error"), rec.get("limited"))
+    if outcome["status"] != "complete":
+        return False, outcome["reason"] or "the attempt did not finish"
 
     candidate = rec.get("candidate") or {}
     if not candidate.get("tree") or rec.get("candidate_unchanged") is not True:

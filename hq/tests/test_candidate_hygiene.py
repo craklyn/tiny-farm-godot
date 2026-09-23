@@ -5,6 +5,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import drain
@@ -86,6 +87,44 @@ class CandidateHygiene(unittest.TestCase):
         self.assertTrue(drain.restore_test_generated(str(self.repo), tree))
         self.assertEqual((self.repo / "docs/writing_verdicts.json").read_text(), authored)
         self.assertTrue(drain.candidate_unchanged(str(self.repo), tree))
+
+    def test_reviewed_unrelated_verdict_is_removed_only_from_retry(self):
+        (self.repo / "game.gd").write_text("held patch\n")
+        (self.repo / "docs/writing_verdicts.json").write_text('{"verdicts": {"synthetic": {}}}\n')
+        held = git(self.repo, "diff", "--binary") + "\n"
+        with patch.object(drain, "PATCHES", str(Path(self.temp.name) / "patches")):
+            drain.save_patch("w0123456789ab", held)
+            original = drain.patch_artifact(held)
+            self.assertEqual(Path(original["path"]).read_text(), held)
+            git(self.repo, "restore", "--", "game.gd", "docs/writing_verdicts.json")
+
+            item = {"id": "w0123456789ab", "revising": True,
+                    "diff": {"applied": False}, "prior_checks": [{
+                        "verdict": "fail", "unrelated_generated_files": ["docs/writing_verdicts.json"],
+                        "findings": [{"where": "docs/writing_verdicts.json", "fix": "Remove this unrelated ledger."}]}]}
+            self.assertTrue(drain.resume_held_patch(item, str(self.repo), False))
+            self.assertEqual((self.repo / "docs/writing_verdicts.json").read_text(),
+                             '{"verdicts": {}}\n')
+            self.assertTrue(drain.resume_for_revision(item, str(self.repo), False)[0])
+            revised, _stat, files = drain.cumulative_patch(str(self.repo), self.base)
+            self.assertEqual(files, ["game.gd"])
+            self.assertNotIn("writing_verdicts", revised)
+            drain.save_patch(item["id"], revised)
+            self.assertNotEqual(drain.patch_artifact(revised), original)
+            self.assertEqual(Path(original["path"]).read_text(), held)
+
+    def test_unreviewed_generated_file_remains_in_held_patch(self):
+        (self.repo / "docs/writing_verdicts.json").write_text("authored change\n")
+        held = git(self.repo, "diff", "--binary") + "\n"
+        with patch.object(drain, "PATCHES", str(Path(self.temp.name) / "patches")):
+            drain.save_patch("w0123456789ab", held)
+            git(self.repo, "restore", "--", "docs/writing_verdicts.json")
+            for prior in ([], [{"verdict": "fail", "unrelated_generated_files": ["docs/writing_verdicts.json"],
+                               "findings": [{"where": "docs/writing_verdicts.json", "fix": "Check this."}]}]):
+                item = {"id": "w0123456789ab", "prior_checks": prior}
+                self.assertTrue(drain.resume_held_patch(item, str(self.repo), False))
+                self.assertEqual((self.repo / "docs/writing_verdicts.json").read_text(), "authored change\n")
+                git(self.repo, "restore", "--", "docs/writing_verdicts.json")
 
 
 if __name__ == "__main__":

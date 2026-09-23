@@ -1027,7 +1027,9 @@ def queue_one_repair(item):
     if check.get("verdict") not in ("concerns", "fail") and not check.get("findings"):
         return False
     if attempt.get("status") in ("blocked", "unknown") or check.get("escalates"):
-        item["repair_hold"] = attempt.get("reason") or "The owner needs a dependency or decision before continuing."
+        item["repair_hold"] = ((item.get("diff") or {}).get("why_not_landed")
+                               if check.get("read") is True and check.get("verdict") == "fail"
+                               else None) or attempt.get("reason") or "The owner needs a dependency or decision before continuing."
         return False
     if item.get("automatic_repairs", 0) >= 1:
         item["repair_hold"] = "The repair still needs verification; the owner must resolve the remaining findings."

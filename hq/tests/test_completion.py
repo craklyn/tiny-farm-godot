@@ -105,6 +105,15 @@ class Completion(unittest.TestCase):
         self.assertEqual(got['diff']['why_not_landed'],
                          'the read of it says this should not go in as it stands')
 
+    def test_checker_failure_outweighs_disproved_owner_blocker(self):
+        r = record(result=result('blocked'), check={
+            'verdict': 'fail', 'read': True, 'complete': False,
+            'findings': [{'what': 'The missing dependency is already present.'}]})
+        got = drain.write_back(self.card, r, False, '', None, ORG)
+        self.assertEqual(got['diff']['why_not_landed'],
+                         'the read of it says this should not go in as it stands')
+        self.assertEqual(got['repair_hold'], got['diff']['why_not_landed'])
+
     def test_one_repair_then_hold(self):
         r = record(check={'verdict':'concerns','read':True,'complete':False,'findings':[{'what':'missing answer'}]})
         got = drain.write_back(self.card, r, False, '', None, ORG)
