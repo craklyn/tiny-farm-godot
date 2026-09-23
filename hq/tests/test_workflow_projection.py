@@ -109,6 +109,11 @@ class WorkflowProjection(unittest.TestCase):
         self.assertEqual(work.claim_action(item, first["id"], "claim-b", now=111)["claim"]["id"], "claim-b")
         work.finish_action(item, first["id"], "claim-b")
         self.assertIsNone(work.claim_action(item, first["id"], "claim-c", now=112))
+        view = work.work_view(item, now=112)
+        self.assertEqual(next(a for a in view["actions"]
+                              if a["id"] == first["id"])["availability"], "terminal")
+        self.assertEqual(view["next_action"]["type"], "recover")
+        self.assertEqual(len({a["id"] for a in view["actions"]}), len(view["actions"]))
         self.assertEqual(len(item["workflow"]["actions"]), 1)
         self.assertEqual(len(item["workflow"]["blockers"]), 1)
 

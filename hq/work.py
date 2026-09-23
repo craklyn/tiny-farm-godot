@@ -790,7 +790,10 @@ def work_view(item, repo_facts=None, now=None):
     pending = item.get("pending_landing") or item.get("pending_followups")
     patch = (item.get("attempt_outcome") or {}).get("patch_id") or ""
     candidate = (item.get("attempt_outcome") or {}).get("candidate") or {}
-    input_id = patch or candidate.get("tree") or str(item.get("last_recorded_attempt") or "legacy")
+    input_id = (patch or candidate.get("tree") or
+                ((workflow.get("candidates") or [{}])[-1].get("id")) or
+                ((actions or [{}])[-1].get("input_id")) or
+                str(item.get("last_recorded_attempt") or "legacy"))
     terminal = item.get("state") in TERMINAL_STATES
     blocker = None
     if blocked_files:
@@ -818,8 +821,9 @@ def work_view(item, repo_facts=None, now=None):
         blocker = {**persisted_open, **blocker}
     elif not blocker and persisted_open:
         blocker = dict(persisted_open)
+    stalled_transition = False
     if not terminal and not active_actions:
-        if blocker and blocker["type"] in ("code_conflict", "missing_evidence", "dependency"):
+        if blocker and blocker["type"] in ("code_conflict", "stale_base", "missing_evidence", "dependency"):
             kind = "reconcile"
             summary = "Reconcile the candidate with current main and obtain fresh review and tests."
             priority = "reconciliation"
@@ -835,20 +839,34 @@ def work_view(item, repo_facts=None, now=None):
             kind = "build"
             summary = item.get("first_action") or "Continue the work."
             priority = "urgent" if item.get("urgent") else "retry" if item.get("resume") else "ordinary"
-        active_actions = [{"id": action_key(item["id"], kind, input_id), "type": kind,
+        proposed_id = action_key(item["id"], kind, input_id)
+        if any(a.get("id") == proposed_id for a in actions):
+            # A completed action cannot be claimed again under its old ID.
+            # Recover the missing card transition once, without inventing an
+            # infinite sequence of nominally new attempts.
+            kind, summary, priority, input_id = (
+                "recover", "Recover the completed action's missing card transition.",
+                "reconciliation", proposed_id)
+            proposed_id = action_key(item["id"], kind, input_id)
+            if any(a.get("id") == proposed_id for a in actions):
+                stalled_transition = True
+                blocker = {"type": "recovery", "reason": "A completed recovery did not advance this card; inspect its transaction.",
+                           "owner": "claude", "files": [], "wake": "operator review"}
+        if not stalled_transition:
+            active_actions = [{"id": proposed_id, "type": kind,
                            "input_id": input_id, "owner": ("daniel" if kind == "decide" else item.get("owner") or "claude"),
                            "summary": summary, "priority": priority,
                            "created_at": item.get("finished") or item.get("created") or "",
                            "state": "open", "virtual": True}]
-    if not terminal and blocker and blocker["type"] in ("code_conflict", "missing_evidence", "dependency") \
-            and not any(a.get("type") == "reconcile" for a in active_actions):
+    if not terminal and not stalled_transition and blocker and blocker["type"] in ("code_conflict", "stale_base", "missing_evidence", "dependency") \
+            and not any(a.get("type") in ("reconcile", "recover") for a in active_actions):
         active_actions.append({"id": action_key(item["id"], "reconcile", input_id),
                                "type": "reconcile", "input_id": input_id,
                                "owner": item.get("owner") or "claude",
                                "summary": "Reconcile the candidate with current main and obtain fresh review and tests.",
                                "priority": "reconciliation", "created_at": item.get("finished") or item.get("created") or "",
                                "state": "open", "virtual": True})
-    if not terminal and blocker and blocker["type"] == "recovery" \
+    if not terminal and not stalled_transition and blocker and blocker["type"] == "recovery" \
             and not any(a.get("type") == "recover" for a in active_actions):
         active_actions.append({"id": action_key(item["id"], "recover", input_id),
                                "type": "recover", "input_id": input_id, "owner": "claude",
@@ -884,6 +902,13 @@ def work_view(item, repo_facts=None, now=None):
     priority_order = {"urgent": 0, "reconciliation": 1, "retry": 2, "ordinary": 3, "decision": 4}
     active_actions.sort(key=lambda a: (priority_order.get(a.get("priority"), 3),
                                        str(a.get("created_at") or ""), a.get("id") or ""))
+    completed_actions = [a for a in actions if a.get("state") == "done"]
+    for action in completed_actions:
+        action["availability"] = "terminal"
+        action["age_seconds"] = 0
+    all_actions = sorted(active_actions + completed_actions,
+                         key=lambda a: (str(a.get("finished_at") or a.get("updated_at") or
+                                            a.get("created_at") or ""), a.get("id") or ""))
     next_action = next((a for a in active_actions if a["availability"] == "running"), None)
     if next_action is None:
         next_action = next((a for a in active_actions if a["availability"] == "runnable"), None)
@@ -918,7 +943,7 @@ def work_view(item, repo_facts=None, now=None):
                         "held" if blocker else "reviewed" if (item.get("check") or {}).get("verdict") == "pass" else
                         "unverified" if candidate else "none")
     return {"version": WORKFLOW_VERSION, "phase": phase, "availability": availability,
-            "next_action": next_action, "actions": active_actions, "blocker": blocker,
+            "next_action": next_action, "actions": all_actions, "blocker": blocker,
             "last_moved": last_moved, "candidate_status": candidate_status,
             "shipped_evidence": shipped}
 
