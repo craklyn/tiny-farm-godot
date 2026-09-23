@@ -49,7 +49,7 @@ class CheckerExecutionEvidence(unittest.TestCase):
         self.write([{"type": "assistant", "message": {"content": [
             {"type": "text", "text": CLAIM}]}}] + events("started-only")[:1])
         evidence = self.manifest()
-        check = drain.enforce_execution_claims(dict(PASS), CLAIM, evidence)
+        check = drain.enforce_execution_claims({**PASS, "findings": []}, CLAIM, evidence)
         self.assertEqual(evidence["completed_integration_runs"], 0)
         self.assertEqual(evidence["scenario_w_passes"], 0)
         self.assertEqual(check["verdict"], "fail")
@@ -121,6 +121,16 @@ class CheckerExecutionEvidence(unittest.TestCase):
         before = drain.check_evidence_id(rec)
         rec["external_verification"] = {**external, "id": "different"}
         self.assertNotEqual(drain.check_evidence_id(rec), before)
+
+    def test_overlapping_owner_and_external_runs_are_not_added(self):
+        external = {"assertion": "even though the sim washed it dry at the tap",
+                    "passing_suites": 5, "assertion_passes": 5}
+        evidence = {"completed_integration_runs": 5, "scenario_w_passes": 5,
+                    "external_verification": external}
+        check = drain.enforce_execution_claims({**PASS, "findings": []}, CLAIM, evidence)
+        self.assertEqual(check["verdict"], "fail")
+        self.assertEqual(len(check["findings"]), 2)
+        self.assertTrue(all("supports 5" in finding["what"] for finding in check["findings"]))
 
 
 if __name__ == "__main__":

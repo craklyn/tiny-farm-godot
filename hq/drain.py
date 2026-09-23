@@ -637,16 +637,19 @@ def enforce_execution_claims(check, result, evidence):
     for expected, key, label in claims:
         actual = int((evidence or {}).get(key) or 0)
         external = (evidence or {}).get("external_verification") or {}
+        # The owner's session may have recorded the same invocation as the
+        # attached manifest. Without shared run IDs, only the larger count is
+        # safe to credit toward one claim.
         if key == "completed_integration_runs":
-            actual += int(external.get("passing_suites") or 0)
+            actual = max(actual, int(external.get("passing_suites") or 0))
         elif key == "scenario_w_passes" and external.get("assertion") == "even though the sim washed it dry at the tap":
-            actual += int(external.get("assertion_passes") or 0)
+            actual = max(actual, int(external.get("assertion_passes") or 0))
         if actual >= expected:
             continue
         check["verdict"] = "fail"
         check["complete"] = False
         check.setdefault("findings", []).append({
-            "what": f"The reply claims {expected} {label}; this attempt records {actual} completed passing results.",
+            "what": f"The reply claims {expected} {label}; the evidence supports {actual} completed passing results.",
             "where": (evidence or {}).get("log_path") or "owner session log",
             "fix": "Provide completed command results for this attempt or correct the claim.",
         })
