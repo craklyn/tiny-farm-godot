@@ -1,0 +1,45 @@
+{
+  "id": "wbf056332f0a",
+  "completion_key": "bf056332f0ad0f834b095d73782afd8ccf08f39f1fd72723e17b17f1bfc8b558",
+  "parent": "w97ad146c93d",
+  "title": "Give the watering close-up and the overnight the same animation behavior",
+  "level": "task",
+  "owner": "jade",
+  "tier": 1,
+  "tier_reason": "Both files now hold identical manifest-and-sheet reading code, so a change to the export format has to be made twice and will be missed once.",
+  "ask": "Landed without Daniel: “Have the overnight animation reuse the watering close-up's frame loader instead of writing a second one”. Both files now hold identical manifest-and-sheet reading code, so a change to the export format has to be made twice and will be missed once.",
+  "first_action": "Move _load_anim_manifest and _load_anim_frames out of ui/hud.gd into one static helper script under effects/ (for example effects/anim_sheet.gd), have ui/hud.gd call it, and rewrite systems/day_cycle.gd's _load_anim_manifest and _frames_for_slug to call the same helper and keep only the dissolve dither and the per-slug cache locally; then run the unit and integration suites and the watering-inset and overnight-crow captures to confirm the frames are unchanged.",
+  "state": "landed",
+  "thread": "sam",
+  "source": "chat",
+  "source_message": "Landed without Daniel: “Have the overnight animation reuse the watering close-up's frame loader instead of writing a second one”.",
+  "result": "The watering close-up and story-night loops now read manifests and slice sheet frames through one helper. The overnight keeps its dissolve dither and frame cache. Unit: 2859 passed; integration: 976 passed in a temporary copy using the committed test runner because an unrelated working-tree edit has a parse error. Before/after watering, crow, and Day card captures are pixel-identical.",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-23T01:21:03-07:00",
+  "created_ts": 1790151663.9870732,
+  "_revision": 4,
+  "promised_by": "w97ad146c93d",
+  "promised": {
+    "card": "Have the overnight animation reuse the watering close-up's frame loader instead of writing a second one",
+    "title": "Give the watering close-up and the overnight one shared loop-frame reader",
+    "why": "Both files now hold identical manifest-and-sheet reading code, so a change to the export format has to be made twice and will be missed once."
+  },
+  "closed": "2026-09-23T11:04-07:00",
+  "landed": {
+    "at": "2026-09-23T11:04-07:00",
+    "by": "chief-of-staff",
+    "note": "Reconciled from the shared branch onto main after 2943 unit and 1009 integration checks, gateway check, and diff review.",
+    "sha": "9b9c299"
+  },
+  "reconciliation": {
+    "from_branch_commit": "b1887f5",
+    "onto_main_commit": "9b9c299",
+    "at": "2026-09-23",
+    "checks": [
+      "unit 2943 passed",
+      "integration 1009 passed",
+      "gateway passed"
+    ]
+  }
+}

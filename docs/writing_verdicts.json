@@ -638,6 +638,9 @@
    "verdict": "decode",
    "why": "\"Banks the sheet\" is not clear to someone who hasn't heard this term; the plain word is \"saves\"."
   },
+  "2600afb628029fc0ac5b": {
+   "verdict": "ok"
+  },
   "27310bee322cbc6bfaeb": {
    "verdict": "ok"
   },
@@ -1896,6 +1899,12 @@
   "757d3ef7c599d8b5d92a": {
    "verdict": "ok"
   },
+  "757ed520798dbf4228d6": {
+   "instead": "Give the watering close-up and the overnight the same animation behavior",
+   "quote": "the same code to play their animation loops",
+   "verdict": "decode",
+   "why": "It names the implementation instead of stating how the two features should behave."
+  },
   "75b0b56f20e6ec41822b": {
    "verdict": "ok"
   },
@@ -1995,6 +2004,12 @@
   },
   "7b3bd0c9c48107ea5cfc": {
    "verdict": "ok"
+  },
+  "7b40c3072634f3f18822": {
+   "instead": "Share the same animation files between the night and watering scenes",
+   "quote": "animation sheet loading",
+   "verdict": "second-look",
+   "why": "This uses an internal asset-loading term where a stranger needs the plain fact: the two scenes should use the same animation files."
   },
   "7b4e58a2842b5e0ad24e": {
    "verdict": "ok"
@@ -3787,6 +3802,9 @@
    "verdict": "ok"
   },
   "e880fe84a581a86714a3": {
+   "verdict": "ok"
+  },
+  "e8b255859f919ffbdd49": {
    "verdict": "ok"
   },
   "e8c093b03d059ec8b611": {
