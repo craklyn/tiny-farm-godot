@@ -418,15 +418,28 @@ follow-up is still under the original yes. Why: measured the same day, each verd
 filed 1.6 new verdicts on him (97 follow-ups on 61 cards, every one returning), so the queue
 could not converge on effort alone.
 
-### S-18. The player carries ten crops before storage, then forty with a grain silo
-**Ruled 2026-09-21 (Q-113, option b).** The planned crop-and-seed stock holds
-ten crop items on her person. A grain silo raises the capacity to forty. Both limits are
-`[Playtest]`: ten lets her replant the nine-tile starting plot without a capacity
-refusal on the first pass, while forty gives a larger farm room to stockpile.
-This ruling does **not** set the quantity the shipping bin keeps back, nor how many
-crops one planted seed produces. It also does not say whether the capacity counts
-across all crop kinds or separately for each kind. The one-pouch code has not shipped;
-those details must be reconciled before it does.
+### S-18. The player can carry ten plantable units of each crop species
+**Ruled 2026-09-21 and clarified 2026-09-23 (Q-113, option b).** The carried
+limit is ten wheat, ten tomato, and so on, independently. A future grain silo
+raises each species limit to forty; no grain silo is sold or placed in this
+prototype. Both limits are `[Playtest]`. A harvest that would add three units
+beyond its species limit leaves the crop ripe and spends no energy. Stock already
+above the limit in an old save remains intact and cannot increase until there
+is room.
+
+### S-19. Harvesting one crop gives three plantable units
+**Ruled 2026-09-23 (Q-115, option b).** Planting spends one carried unit;
+harvesting that crop gives three of the same species, whether a player or a
+machine harvests it. Three is `[Playtest]`. Eggs and scarecrows are separate
+items and are not plantable crop units.
+
+### S-20. The shipping bin reserves ten plantable units per species before selling
+**Ruled 2026-09-23 (Q-116, option a).** The bin stores up to ten units of each
+crop species, separately from what the player carries. A delivery fills that
+reserve first and sells only the excess. The player can deposit carried units
+or take reserved units at the bin; planting draws only from what she carries.
+The reserve persists through sleep. Ten is `[Playtest]`. Eggs still sell at
+their previous price and never enter the crop reserve.
 
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 

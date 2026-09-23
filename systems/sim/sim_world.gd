@@ -51,6 +51,12 @@ var layout: Dictionary = WorldLayout.WORLD
 # arrive on her first morning. See GameState.play_day().
 const CROW_MIN_DAY := 3
 const CROW_MIN_HARVESTS := 1
+# **This number now holds the farm up.** Since a harvested plant is the seed for
+# the next one and the starter crop is off the shop's shelf (S-18/S-19/S-20), a bird eating
+# the last thing growing would leave a farm that can never grow anything again.
+# No bird comes while fewer than this many squares are planted and each visit
+# takes one, so at least two plants always survive to be cut and sown again.
+# Lowering it below 2 reopens that dead end.
 const CROW_MIN_PLANTED := 3
 
 # T-20, ruled 2026-08-28: a crow gets exactly one chance per day.
@@ -1423,6 +1429,60 @@ func count_objects(kind: String) -> int:
 	return n
 
 
+# --- what she can carry (S-18/S-19/S-20) -------------------------------------------------
+#
+# **How much of one thing fits in the pouch.** The designer's rule is that early
+# on the only storage she has is what is on her — "not a large number, 5 or 10" —
+# and that a grain silo and the storage after it are what raise it, so that a
+# later farm can hold enough to stock its defences.
+#
+# **Derived, never stored.** A cap kept as a number in the save would eventually
+# disagree with the silo standing next to it: she puts one down, the save says 10,
+# and the building in front of her is a lie. So it is computed from what is
+# actually on the grid, every time it is asked.
+#
+# **Counted per kind of thing, not across the whole pouch.** A full stack of wheat
+# must not stop her picking a tomato. Which kind is asked about is the argument
+# below, and today every kind gets the same answer: no building names a crop it
+# stores, so a store raises the shelf for everything. A grain silo that lifts
+# grain alone is one field on that silo's row, read here, and nothing else moves.
+#
+# There is no phase term. The ask said "phase plus placed storage", and the two
+# turn out to be the same clause: the designer's standing rule is that a
+# capability attaches to the thing that grants it rather than to a phase number,
+# and his own example of a later phase *is* the silo. So a farm's capacity is its
+# buildings, and phase 1 is simply a farm with none of them.
+#
+# [Playtest] — Q-113 fixed the starting number and its future silo value.
+const ON_PERSON_CAP := 10
+
+
+# The cap for one crop species. A future storage row declares its resulting
+# capacity. There is no silo to buy in the current catalogue. [Playtest] Q-113.
+#
+# Nothing in the catalogue declares storage yet, so today no row is counted and
+# the whole-map scan in `count_objects` never runs — which is what keeps this off
+# the common path (the per-tile-per-frame guardrail). The first row that declares
+# `storage` is also the first one that needs that count cached.
+func carry_cap(_item: String = "") -> int:
+	var cap := ON_PERSON_CAP
+	for key in MachineDefs.ORDER:
+		var def: Dictionary = MachineDefs.TYPES.get(key, {})
+		var capacity: int = int(def.get("crop_capacity", 0))
+		if capacity > cap and count_objects(String(def.get("object", ""))) > 0:
+			cap = capacity
+	return cap
+
+
+# Is there room in her pouch for one more of this? The question `harvest` and
+# `collect` ask before they spend anything, so a refusal costs her nothing and
+# leaves the crop where it was.
+func pouch_has_room(gs, item: String, count: int = 1) -> bool:
+	if gs == null:
+		return false
+	return int(gs.pouch.get(item, 0)) + count <= carry_cap(item)
+
+
 func set_tile_state(tx: int, ty: int, new_state: String, crop_type: String = "") -> void:
 	var tile := get_tile(tx, ty)
 	if tile.is_empty():
@@ -1490,7 +1550,8 @@ const MILESTONE_VERBS := { "harvest": true, "collect": true, "sell": true, "slee
 # Verbs that do not advance the day's clock: sleep ends it, and the shop and bin
 # are errands rather than farm work. Everything else the player successfully does
 # is one tick of the action clock T-20 schedules crows against.
-const NON_WORK_VERBS := { "sleep": true, "sell": true, "buy_seed": true, "refill": true,
+const NON_WORK_VERBS := { "sleep": true, "sell": true, "withdraw_seed": true,
+		"buy_seed": true, "refill": true,
 		# The machine counter is the seed counter (2026-09-03), and turning a dial
 		# on a machine she already owns is a setting, not a stroke of work — it
 		# costs no energy and must not tick the clock the crows are scheduled
@@ -1617,7 +1678,7 @@ static func _is_player(actor: String) -> bool:
 # setting (`SpeciesDefs.BOT`) and a fourth mark would otherwise have to be
 # remembered here. The three gateway rules below that treat a machine differently
 # from a person — its harvest goes into its own hands, its seeds come out of her
-# box, its `sell` is the one crop it carries — all ask this and nothing else.
+# box, its `sell` is the counted crop in its hands — all ask this and nothing else.
 #
 # The distinction is a *design* one, not a technical one (`design/06`, Q-100): a
 # person who helps on the farm brings their own seed and puts what they cut into
@@ -2418,18 +2479,15 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 
 	match verb:
 		# -- special-object verbs (no energy cost, pre-M2 behavior) --
-		# These two are the only verbs whose failure means "there was nothing to
-		# do", not "you cannot do that". A full watering can and an empty basket
-		# are both perfectly fine states. Found in a real session (2026-08-28):
+		# A full watering can and an empty pouch are both perfectly fine states.
+		# Found in a real session (2026-08-28):
 		# eight taps on the well and nine on the shipping bin, every one refused
 		# with no reason at all — 17 of the session's 27 refusals.
 		"sell":
 			if gs == null: return _fail("no_state")
-			# **A machine sells the one crop in its hands** (v0.2.1 WI-9a, Q-100).
-			# Her `sell` empties the whole basket, because that is what a person
-			# does at the bin; a machine carries one crop at a time and brings it,
-			# so its `sell` is that crop at the same price her basket would have
-			# fetched (`GameState.crop_price` — one price, two sellers).
+			# A machine sells the counted units in its hands (v0.2.1 WI-9a,
+			# Q-100). Her `sell` deposits every carried crop; both deliveries fill
+			# reserve first and sell only the excess at the same unit price.
 			#
 			# **No proximity rule here, for either of them.** Standing close enough
 			# is the router's job for her tap and the brain's job for a machine's
@@ -2441,12 +2499,27 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				var carried := String(hands.get("carrying", ""))
 				if carried == "":
 					return _fail("nothing_carried")
+				var count := maxi(1, int(hands.get("carrying_count", 1)))
+				var delivery: Dictionary = gs.sell_one_crop(carried, count)
+				if not delivery.ok:
+					return delivery
 				hands["carrying"] = ""
-				return { "ok": true, "crop_type": carried,
-					"gold": gs.sell_one_crop(carried) }
-			if not gs.sell_crops_to_bin():
+				hands["carrying_count"] = 0
+				delivery["crop_type"] = carried
+				return delivery
+			var deposited: Dictionary = gs.sell_crops_to_bin()
+			if not deposited.ok:
 				return _fail("nothing_to_sell")
-			return { "ok": true }
+			return deposited
+		"withdraw_seed":
+			if gs == null: return _fail("no_state")
+			var crop_type := String(action.get("params", {}).get("crop_type", ""))
+			if not CropDefs.is_plantable(crop_type):
+				return _fail("not_plantable")
+			var moved: int = gs.withdraw_reserved_crop(crop_type, carry_cap(crop_type))
+			if moved <= 0:
+				return _fail("nothing_fits")
+			return { "ok": true, "crop_type": crop_type, "moved": moved }
 		"refill":
 			if gs == null: return _fail("no_state")
 			if not gs.refill_watering_can():
@@ -2454,7 +2527,14 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			return { "ok": true }
 		"buy_seed":
 			if gs == null: return _fail("no_state")
-			return { "ok": gs.buy_seed(action.get("seed_type", "")) }
+			# The pouch's cap binds the till too (S-18/S-19/S-20). Without this, the one
+			# place she can gain a seed without a square of ground is also the one
+			# place the cap does not apply, and "what she can carry" stops meaning
+			# anything.
+			var wanted := String(action.get("seed_type", ""))
+			if CropDefs.is_plantable(wanted) and not pouch_has_room(gs, wanted):
+				return _fail("pouch_full")
+			return { "ok": gs.buy_seed(wanted) }
 		# The placeholder acquisition rule (2026-09-03): everything the studio
 		# introduces to the farm is bought here until a richer story exists. A
 		# sibling of `buy_seed` rather than a generalisation of it, deliberately —
@@ -2477,12 +2557,15 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			var obj := get_object(target.x, target.y)
 			if obj == "egg":
 				set_object(target.x, target.y, "")
-				gs.crops["egg"] = gs.crops.get("egg", 0) + 1
+				gs.items["egg"] = gs.items.get("egg", 0) + 1
 				gs.harvest_counts["egg"] = gs.harvest_counts.get("egg", 0) + 1
 				return { "ok": true, "collected": "egg" }
 			if obj == "scarecrow":
+				# **No cap on picking one up.** Taking a scarecrow back is
+				# repositioning, not a gain (Q-98's rule), and a cap that refused it
+				# would strand her own scarecrow in a field she cannot clear.
 				set_object(target.x, target.y, "")
-				gs.seeds["scarecrow"] = gs.seeds.get("scarecrow", 0) + 1
+				gs.items["scarecrow"] = gs.items.get("scarecrow", 0) + 1
 				return { "ok": true, "collected": "scarecrow" }
 			# T-30 (Q-48): the same verb, on the acorn the crow was going to eat.
 			# **This is the ramp in her own hands** — the stock is finite and does
@@ -3219,8 +3302,23 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			if charged and gs.hard_energy and gs.energy < cost: return _fail("no_energy")
 			var seed_type: String = action.get("seed_type", "")
 			if charged and verb == "water" and gs.watering_can_charges <= 0: return _fail("no_water")
-			if (charged or is_machine) and verb == "plant" and gs.seeds.get(seed_type, 0) <= 0:
+			if (charged or is_machine) and verb == "plant" and gs.held_count(seed_type) <= 0:
 				return _fail("no_seeds")
+			# **A full pouch refuses the harvest and leaves the crop standing**
+			# (S-18/S-19/S-20, the designer's ruling on this change). Asked before the meter,
+			# like the machine's full hands below it: she is not tired, she is
+			# full, so nothing is spent and the ripe head stays on the square to be
+			# picked up when there is room. Deliberately *not* a crop dropped on
+			# the ground — items lying on tiles are a whole class of world state to
+			# save and replay, and this change is already spending the recorded
+			# corpus.
+			#
+			# A machine is exempt because its harvest never lands in her pouch at
+			# all; its own one-crop limit is the `carrying` refusal below.
+			if not is_machine and verb == "harvest":
+				var ripe := get_crop_type(target.x, target.y)
+				if ripe != "" and not pouch_has_room(gs, ripe, 3):
+					return _fail("pouch_full")
 			# **One crop at a time, and the refusal comes before the meter.** A
 			# machine with full hands is not tired, it is full: nothing is spent
 			# and no square is cut, so the crop it is already carrying stays the
@@ -3274,7 +3372,10 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 					# Hers and her machines' alike (Q-100). The neighbour brought
 					# their own, so nothing comes out of the box for them.
 					if charged or is_machine:
-						gs.seeds[seed_type] -= 1
+						if is_obj:
+							gs.items[seed_type] -= 1
+						else:
+							gs.pouch[seed_type] -= 1
 				"water":
 					water_tile(target.x, target.y)
 					# P-10's counterplay, with no new verb and no new UI: water on a
@@ -3294,16 +3395,20 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 					var crop_type := get_crop_type(target.x, target.y)
 					if crop_type != "":
 						# **A machine's harvest goes into its hands, not her
-						# basket** (v0.2.1 WI-9a, Q-100). Straight into `crops`
+						# basket** (v0.2.1 WI-9a, Q-100). Straight into her stock
 						# is what every actor used to do, and for a machine that
 						# would mean the crop is banked the instant it is cut —
 						# so the walk to the bin, which is the thing a Mark III is
-						# meant to learn, would be worth nothing. One crop at a
-						# time, and `sell` at the bin is what turns it into gold.
+						# meant to learn, would be worth nothing. It carries the whole
+						# three-unit harvest until delivery.
 						if is_machine:
 							_hands_of(actor)["carrying"] = crop_type
+							_hands_of(actor)["carrying_count"] = 3
 						else:
-							gs.crops[crop_type] = gs.crops.get(crop_type, 0) + 1
+							# Into the one pouch (S-18/S-19/S-20), which is also where `plant`
+							# now draws from — so cutting a wheat is what buys the
+							# next one.
+							gs.pouch[crop_type] = gs.pouch.get(crop_type, 0) + 3
 						# Counted whoever cut it: the question this feeds is "has
 						# this farm ever harvested one of these" (the shop's
 						# unlocks), and a machine she bought and pointed at her

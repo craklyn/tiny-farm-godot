@@ -422,12 +422,11 @@ static func build(world: SimWorld, actor_id: String, spec: Dictionary, gs = null
 # anything to sow, and *which* seed it sows is the brain's business (it takes the
 # one she has most of), not a thing to learn.
 static func _seed_stock(gs) -> float:
-	if gs == null or not ("seeds" in gs):
+	if gs == null or not ("pouch" in gs):
 		return 0.0
-	var total := 0.0
-	for count in gs.seeds.values():
-		total += float(count)
-	return minf(1.0, total / SEEDS_FULL)
+	# Sowable things only. Noncrop inventory can hold eggs, but an egg counted
+	# here would tell the robot there is something to sow when there is not.
+	return minf(1.0, float(gs.sowable_total()) / SEEDS_FULL)
 
 
 # Every tile a bird is standing on, keyed by row-major index. Birds are one tile

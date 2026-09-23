@@ -247,7 +247,7 @@ static func run(days := 7, farm_seed := SEED, learn := true) -> Dictionary:
 		# reason that has nothing to do with what the machine learned. Measured
 		# 2026-09-10: with a fixed box the sowing row drops from 7.8 points a day to
 		# 2.8 between the first three days and the last three, in *both* arms.
-		gs.seeds[CROP] = SEED_STOCK
+		gs.pouch[CROP] = SEED_STOCK
 		var birds := 0
 		# **A second of the day at a time, not the whole day at once**, so the day's
 		# action clock can move while it passes and the crow can keep its
@@ -421,7 +421,7 @@ static func _stage(world: SimWorld, gs) -> void:
 	# and the day is what decides whether a bird is allowed to visit at all — a
 	# farm on its first morning never sees one (T-2), so a week staged on day one
 	# could not reach two of the eight rows however well the robot played.
-	gs.seeds[CROP] = SEED_STOCK
+	gs.pouch[CROP] = SEED_STOCK
 	gs.day = START_DAY
 	gs.harvest_counts[CROP] = maxi(1, int(gs.harvest_counts.get(CROP, 0)))
 	# Anything already living here is walked out. Done before the robot arrives, so

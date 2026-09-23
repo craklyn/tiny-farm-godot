@@ -693,6 +693,9 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 	if action == "open_shop":
 		get_tree().get_first_node_in_group("Main").call_deferred("trigger_action", "open_shop")
 		return
+	if action == "open_bin":
+		get_tree().get_first_node_in_group("Main").call_deferred("trigger_action", "open_bin")
+		return
 	# A tap on a machine she owns opens its menu (2026-09-03). **Not a verb** —
 	# CLAUDE.md's line, and the reason this sits beside the shop rather than in
 	# the gateway: opening a panel changes nothing in the world, so nothing about

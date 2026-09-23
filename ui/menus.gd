@@ -50,8 +50,10 @@ const ROBOT_JOB_SHEET := preload("res://assets/sprites/generated/robot_job_icons
 const ROBOT_JOB_COLS := {"shoo": 0, "follow": 1, "circle": 2}
 const ROBOT_JOB_SIZE := Vector2(104, 32)
 
-var active_menu: String = ""  # "", "pause", "shop", "inventory", "machine", "workbench", "window"
+var active_menu: String = ""  # "", "pause", "shop", "bin", "inventory", "machine", "workbench", "window"
 var selected_option: int = 0
+var bin_options: Array[Dictionary] = []
+var shop_refused_seed: String = ""  # The full card whose last press was refused.
 
 # **What number the next row on a panel gets.** `_select_current_option` reads a
 # tap back as a position in a list — `shop_items[n]`, `machine_options[n]` — so
@@ -216,6 +218,7 @@ func _ready() -> void:
 func open_menu(menu_name: String) -> void:
 	active_menu = menu_name
 	selected_option = 0
+	shop_refused_seed = ""
 	dim_overlay.visible = true
 	menu_panel.visible = true
 	menu_panel.pivot_offset = menu_panel.size / 2.0
@@ -585,35 +588,63 @@ func _rebuild_options() -> void:
 			shop_title_icon.visible = false
 			gold_icon.visible = false
 
-			# Seeds section
-			var seeds_header := Label.new()
-			seeds_header.text = "Seeds:"
-			seeds_header.add_theme_color_override("font_color", Color(0.7, 0.9, 0.6))
-			options_container.add_child(seeds_header)
+			# **One list, because there is one pouch** (S-18/S-19/S-20). This screen used to
+			# have a Seeds half and a Harvested Crops half, which is exactly the
+			# split the change removed: a cut wheat is the seed for the next one,
+			# so showing it twice would be showing two things that are one.
+			var pouch_header := Label.new()
+			pouch_header.text = "Pouch:"
+			pouch_header.add_theme_color_override("font_color", Color(0.7, 0.9, 0.6))
+			options_container.add_child(pouch_header)
 			for crop_name in CropDefs.ORDER:
+				if not CropDefs.is_plantable(crop_name):
+					continue
 				var def: Dictionary = CropDefs.TYPES[crop_name]
-				var count: int = GameState.seeds.get(crop_name, 0)
+				var count: int = GameState.pouch.get(crop_name, 0)
 				var lbl := Label.new()
 				lbl.text = "  %s: %d" % [def.name, count]
 				lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.75))
 				options_container.add_child(lbl)
-
-			# Crops section
-			var crops_header := Label.new()
-			crops_header.text = "\nHarvested Crops:"
-			crops_header.add_theme_color_override("font_color", Color(0.9, 0.7, 0.4))
-			options_container.add_child(crops_header)
-			for crop_name in CropDefs.ORDER:
-				var def: Dictionary = CropDefs.TYPES[crop_name]
-				var count: int = GameState.crops.get(crop_name, 0)
-				var lbl := Label.new()
-				lbl.text = "  %s: %d" % [def.name, count]
-				lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.75))
-				options_container.add_child(lbl)
-
+			for item_name in ["egg", "scarecrow"]:
+				var amount := int(GameState.items.get(item_name, 0))
+				if amount > 0:
+					var item_label := Label.new()
+					item_label.text = "%s: %d" % [CropDefs.TYPES[item_name].name, amount]
+					options_container.add_child(item_label)
 
 			_add_option("\nClose", true)
-			menu_panel.size = Vector2(300, 340)
+			menu_panel.size = Vector2(300, 260)
+
+		"bin":
+			title_label.text = "Shipping bin"
+			gold_display.visible = false
+			shop_title_icon.visible = false
+			gold_icon.visible = false
+			bin_options.clear()
+			bin_options.append({"kind": "deposit"})
+			_add_option("Deposit what I carry", GameState.sellable_total() > 0)
+			for crop_name in CropDefs.TYPES.keys():
+				if not CropDefs.is_plantable(String(crop_name)):
+					continue
+				var stored := int(GameState.bin_reserve.get(crop_name, 0))
+				bin_options.append({"kind": "withdraw", "crop_type": crop_name})
+				_add_option("Take %s (%d stored)" % [CropDefs.TYPES[crop_name].name, stored],
+					stored > 0 and int(GameState.pouch.get(crop_name, 0)) < farm.sim.carry_cap(String(crop_name)))
+			var last: Dictionary = GameState.last_bin_delivery
+			if not last.is_empty():
+				var sold: Dictionary = last.get("sold", {})
+				var pieces: Array[String] = []
+				for crop_name in sold:
+					if int(sold[crop_name]) > 0:
+						var label := String(CropDefs.TYPES.get(crop_name, {}).get("name", crop_name)).to_lower()
+						pieces.append("sold %d %s" % [int(sold[crop_name]),
+							"eggs" if String(crop_name) == "egg" else label + " units"])
+				var summary := Label.new()
+				summary.text = "Last deposit: " + (", ".join(pieces) if not pieces.is_empty() else "nothing sold")
+				options_container.add_child(summary)
+			bin_options.append({"kind": "close"})
+			_add_option("Close", true)
+			menu_panel.size = Vector2(_fit_panel_width(320.0), _fit_panel_height())
 
 	# Shrink the container to its contents: left at its declared 300px it extends
 	# past the panel and can swallow taps aimed at the world below it.
@@ -849,6 +880,12 @@ func _add_shop_card(into: Control, item: Dictionary) -> void:
 		style.bg_color = Color(0.18, 0.18, 0.25, 0.6)
 	else:
 		style.bg_color = Color(0.1, 0.1, 0.15, 0.6)
+	# The full card already says 10/10 in red. A refused press keeps that card
+	# ringed in red after the press animation, with the existing nope sound — no
+	# new word a pre-reader must decode on the one wordless shop screen (S-7).
+	if bool(item.get("full_pouch", false)) and shop_refused_seed == String(item.seed_type):
+		style.border_color = Color(0.95, 0.28, 0.24)
+		style.set_border_width_all(3)
 	style.corner_radius_top_left = 6
 	style.corner_radius_top_right = 6
 	style.corner_radius_bottom_left = 6
@@ -897,8 +934,14 @@ func _add_shop_card(into: Control, item: Dictionary) -> void:
 		price_row.alignment = BoxContainer.ALIGNMENT_BEGIN
 		price_row.custom_minimum_size = Vector2(66, 0)
 		hbox.add_child(price_row)
-		_add_icon_number(price_row, coin_icon(), str(item.price), 20.0,
-			Color(1, 0.85, 0.2) if item.affordable else Color(0.9, 0.3, 0.3))
+		if bool(item.get("full_pouch", false)):
+			var full := Label.new()
+			full.text = "%d/%d" % [int(item.owned), int(item.cap)]
+			full.add_theme_color_override("font_color", Color(0.9, 0.3, 0.3))
+			price_row.add_child(full)
+		else:
+			_add_icon_number(price_row, coin_icon(), str(item.price), 20.0,
+				Color(1, 0.85, 0.2) if item.affordable else Color(0.9, 0.3, 0.3))
 
 		var owned_row := HBoxContainer.new()
 		owned_row.alignment = BoxContainer.ALIGNMENT_BEGIN
@@ -917,7 +960,9 @@ func _add_shop_card(into: Control, item: Dictionary) -> void:
 	btn.set_anchors_preset(Control.PRESET_FULL_RECT)
 	container.add_child(btn)
 	
-	if not item.unlocked or not item.affordable:
+	# A full pouch is a darkened card that still answers a tap with the reason.
+	# Locked or unaffordable cards keep their existing disabled treatment.
+	if not item.unlocked or (not item.affordable and not bool(item.get("full_pouch", false))):
 		btn.disabled = true
 	
 	btn.pressed.connect(_on_shop_card_pressed.bind(idx, container))
@@ -1000,6 +1045,20 @@ func _focus_current() -> void:
 
 func _select_current_option() -> void:
 	match active_menu:
+		"bin":
+			if selected_option >= bin_options.size():
+				return
+			var choice: Dictionary = bin_options[selected_option]
+			if choice.kind == "close":
+				close_menu()
+				return
+			var action := {"actor": "player", "verb": "sell"}
+			if choice.kind == "withdraw":
+				action = {"actor": "player", "verb": "withdraw_seed",
+					"params": {"crop_type": String(choice.crop_type)}}
+			var result: Dictionary = farm.apply_action(action, GameState)
+			if result.get("ok", false):
+				_rebuild_options()
 		"window":
 			# The action button while she is looking out is "done looking" — the
 			# view has nothing to select, and a keyboard or a gamepad needs a way
@@ -1044,11 +1103,17 @@ func _select_current_option() -> void:
 				else:
 					purchase["verb"] = "buy_seed"
 					purchase["seed_type"] = item.seed_type
-				var bought: bool = farm.apply_action(purchase, GameState).get("ok", false)
+				var result: Dictionary = farm.apply_action(purchase, GameState)
+				var bought: bool = result.get("ok", false)
 				if bought:
+					shop_refused_seed = ""
 					AudioManager.play_sfx("harvest")
 					_rebuild_options()
 					menu_action.emit("bought_seed")
+				elif String(result.get("reason", "")) == "pouch_full":
+					shop_refused_seed = String(item.seed_type)
+					AudioManager.play_sfx("nope")
+					_rebuild_options()
 			else:
 				close_menu()
 				menu_action.emit("resume")
@@ -1163,8 +1228,17 @@ func _build_shop_items() -> void:
 	shop_items.clear()
 	for crop_name in CropDefs.ORDER:
 		var def: Dictionary = CropDefs.TYPES[crop_name]
+		# **No card for a crop she already has** (S-18/S-19/S-20). Wheat is the crop the
+		# farm is given, and cutting one gives the seed for the next, so a wheat
+		# packet on the shelf would be selling her a thing she cannot run out of.
+		# The gateway refuses the same purchase (`GameState.buy_seed`), which is
+		# what keeps a bot off a shelf the player cannot see.
+		if not CropDefs.is_on_shelf(crop_name):
+			continue
 		var unlocked := CropDefs.is_seed_unlocked(crop_name, GameState.harvest_counts)
-		var affordable: bool = GameState.gold >= def.seed_price and unlocked
+		var full_pouch: bool = CropDefs.is_plantable(crop_name) and farm != null \
+			and GameState.held_count(crop_name) >= farm.sim.carry_cap(crop_name)
+		var affordable: bool = GameState.gold >= def.seed_price and unlocked and not full_pouch
 		shop_items.append({
 			"kind": "seed",
 			"seed_type": crop_name,
@@ -1172,8 +1246,10 @@ func _build_shop_items() -> void:
 			"price": def.seed_price,
 			"unlocked": unlocked,
 			"affordable": affordable,
+			"full_pouch": full_pouch,
+			"cap": farm.sim.carry_cap(crop_name) if farm != null and CropDefs.is_plantable(crop_name) else 0,
 			"icon": crop_icon(int(def.icon_col)),
-			"owned": GameState.seeds.get(crop_name, 0)
+			"owned": GameState.held_count(crop_name)
 		})
 	for machine_key in MachineDefs.ORDER:
 		var mdef: Dictionary = MachineDefs.TYPES[machine_key]
