@@ -57,7 +57,9 @@ class UndoIntegration(unittest.TestCase):
 
     def tearDown(self):
         server.DATA, server.REPO, drain.WORKTREES = self.old
-        work.bind(server)
+        # Restoring a fixture binding must not run the startup migration over
+        # the real work-card store and increment unrelated card revisions.
+        work.bind(server, sanitize=False)
         self.tmp.cleanup()
 
     def undo(self):
