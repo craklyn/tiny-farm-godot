@@ -1398,6 +1398,181 @@
             "Configs": "follow / circle / shoo",
             "Rule": "a bot gets no verb the player lacks"
           }
+        },
+        {
+          "id": "bot_mk3",
+          "name": "Robot Mk III",
+          "emoji": "🤖",
+          "desc": "The robot that learns from its own work. Its teal-green chassis, lit amber bead and three-pixel antenna distinguish it from the violet Mk I and copper Mk II at farm scale.",
+          "sheet": "assets/sprites/generated/bot_mk3.png",
+          "frames": [
+            [
+              0,
+              0,
+              48,
+              48
+            ],
+            [
+              48,
+              0,
+              48,
+              48
+            ],
+            [
+              96,
+              0,
+              48,
+              48
+            ],
+            [
+              144,
+              0,
+              48,
+              48
+            ],
+            [
+              0,
+              48,
+              48,
+              48
+            ],
+            [
+              48,
+              48,
+              48,
+              48
+            ],
+            [
+              96,
+              48,
+              48,
+              48
+            ],
+            [
+              144,
+              48,
+              48,
+              48
+            ],
+            [
+              0,
+              96,
+              48,
+              48
+            ],
+            [
+              48,
+              96,
+              48,
+              48
+            ],
+            [
+              96,
+              96,
+              48,
+              48
+            ],
+            [
+              144,
+              96,
+              48,
+              48
+            ],
+            [
+              0,
+              144,
+              48,
+              48
+            ],
+            [
+              48,
+              144,
+              48,
+              48
+            ],
+            [
+              96,
+              144,
+              48,
+              48
+            ],
+            [
+              144,
+              144,
+              48,
+              48
+            ]
+          ],
+          "anims": [
+            {
+              "id": "walk_down",
+              "label": "walk down",
+              "frames": [
+                0,
+                1,
+                2,
+                3
+              ],
+              "fps": 7
+            },
+            {
+              "id": "walk_up",
+              "label": "walk up",
+              "frames": [
+                4,
+                5,
+                6,
+                7
+              ],
+              "fps": 7
+            },
+            {
+              "id": "walk_left",
+              "label": "walk left",
+              "frames": [
+                8,
+                9,
+                10,
+                11
+              ],
+              "fps": 7
+            },
+            {
+              "id": "walk_right",
+              "label": "walk right",
+              "frames": [
+                12,
+                13,
+                14,
+                15
+              ],
+              "fps": 7
+            },
+            {
+              "id": "idle",
+              "label": "standing idle",
+              "frames": [
+                0,
+                4,
+                8,
+                12
+              ],
+              "kind": "stills"
+            }
+          ],
+          "fps": 7,
+          "layout": "A 192×192 sheet: four 48px frames in each of four rows, facing down, up, left and right. Frame 0 is the standing idle.",
+          "sounds": [],
+          "code": [
+            "entities/bot.gd",
+            "systems/sim/brains/bot_brain.gd"
+          ],
+          "facts": {
+            "Speed": "48 px/s (the player's)",
+            "Program": "learns from rewarded work rather than following a configured route",
+            "Configs": "none — the learning policy is not a dial",
+            "Rule": "a bot gets no verb the player lacks"
+          }
         }
       ]
     },
