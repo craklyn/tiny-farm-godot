@@ -372,7 +372,7 @@ func _build_ui() -> void:
 	bed_button.name = "BedButton"
 	bed_button.size = Vector2(44, 48)
 	bed_button.position = Vector2(10, viewport_size.y - 32 - 8 - 48)
-	bed_button.tooltip_text = "Go to bed"  # never drawn; for a developer with a mouse
+	bed_button.tooltip_text = tr("Go to bed")  # never drawn; for a developer with a mouse
 	var bed_style := StyleBoxFlat.new()
 	bed_style.bg_color = Color(0.16, 0.20, 0.16, 0.9)
 	bed_style.border_color = Color(0.62, 0.72, 0.58)
@@ -395,7 +395,7 @@ func _build_ui() -> void:
 	# can put it back rather than recomputing a layout it does not own.
 	teach_done_button = Button.new()
 	teach_done_button.name = "TeachDoneButton"
-	teach_done_button.text = "Done"
+	teach_done_button.text = tr("Done")
 	teach_done_button.size = Vector2(96, 44)
 	# It kept this raised spot when the held-item control left the centre for its
 	# bottom-right card (2026-09-08) — a mode control hovering clear of the bar
@@ -403,7 +403,7 @@ func _build_ui() -> void:
 	teach_done_button.position = Vector2(viewport_size.x / 2.0 - 48,
 		viewport_size.y - 32 - 8 - 44 - 44)
 	_teach_home = teach_done_button.position
-	teach_done_button.tooltip_text = "Finish showing the robot"
+	teach_done_button.tooltip_text = tr("Finish showing the robot")
 	var teach_style := StyleBoxFlat.new()
 	teach_style.bg_color = Color(0.14, 0.42, 0.62, 0.94)
 	teach_style.border_color = Color(0.55, 0.9, 1.0, 0.9)
@@ -430,7 +430,7 @@ func _build_ui() -> void:
 	# regrets. It sits beside Done rather than above it, so the thumb reaching for
 	# the safe control never passes over this one.
 	teach_clear_button = Button.new()
-	teach_clear_button.text = "\u00d7 Clear"
+	teach_clear_button.text = "\u00d7 " + tr("Clear")
 	teach_clear_button.size = Vector2(96, 44)
 	teach_clear_button.position = Vector2(-200, -200)
 	var clear_style := StyleBoxFlat.new()
@@ -836,8 +836,8 @@ func _apply_notes_collapsed() -> void:
 		# "≡" offers the block back; "×" closes it. No words, on a surface that is
 		# nothing but words — the button has to be readable at 22 pixels wide.
 		notes_toggle.text = "☰" if notes_collapsed else "×"
-		notes_toggle.tooltip_text = "show the playtest readout" if notes_collapsed \
-			else "hide the playtest readout"
+		notes_toggle.tooltip_text = tr("show the playtest readout") if notes_collapsed \
+			else tr("hide the playtest readout")
 
 
 # What the game currently wants, and what is gating whatever is still locked.
@@ -933,7 +933,7 @@ func _update_hud() -> void:
 	if not seed_pill_label:
 		return
 	# Top bary & Weather
-	day_label.text = "Day %d" % GameState.day
+	day_label.text = tr("Day %d") % GameState.day
 	
 	# Reported from play 2026-08-30: "Sunny" at night is confusing — and it was,
 	# because the label was answering a question nobody asked. Dropping the word
@@ -946,7 +946,7 @@ func _update_hud() -> void:
 	if GameState.weather == "sunny":
 		weather_label.text = ""
 	else:
-		weather_label.text = "🌧️ %s" % GameState.weather.capitalize()
+		weather_label.text = "🌧️ %s" % tr(GameState.weather.capitalize())
 
 	# The hour, drawn (T-29). Redrawn here rather than on a signal because the rest
 	# of the bar is: one pass, one place to look when the bar is wrong.
@@ -961,7 +961,7 @@ func _update_hud() -> void:
 	# Energy — debug readout only (T-14/Q-38's sub-ruling). Release builds get the
 	# sun-arc above and the sky behind it; neither carries a digit.
 	if energy_label != null:
-		energy_label.text = "Energy: %d/%d" % [GameState.energy, GameState.max_energy]
+		energy_label.text = tr("Energy: %d/%d") % [GameState.energy, GameState.max_energy]
 
 	# Gold
 	gold_label.text = "%dg" % GameState.gold
@@ -970,7 +970,7 @@ func _update_hud() -> void:
 	var tool_idx := GameState.selected_tool
 	if tool_idx >= 0 and tool_idx < Tools.LIST.size():
 		var tool_def = Tools.LIST[tool_idx]
-		tool_name_label.text = tool_def.tool_name
+		tool_name_label.text = tr(tool_def.tool_name)
 
 		# Update tool icon using AtlasTexture
 		var atlas := AtlasTexture.new()
@@ -981,7 +981,10 @@ func _update_hud() -> void:
 		# Seed info
 		if tool_def.tool_name == "Seeds":
 			var count: int = GameState.held_count(GameState.selected_seed_type)
-			seed_info_label.text = "[%s x%d]" % [GameState.selected_seed_type, count]
+			var held_name: String = String(CropDefs.TYPES[GameState.selected_seed_type].name) \
+				if CropDefs.TYPES.has(GameState.selected_seed_type) \
+				else MachineDefs.name_of(GameState.selected_seed_type)
+			seed_info_label.text = "[%s x%d]" % [tr(held_name), count]
 			seed_info_label.visible = true
 		else:
 			seed_info_label.visible = false
@@ -994,7 +997,7 @@ func _update_hud() -> void:
 		if not CropDefs.is_plantable(crop_name):
 			continue
 		var count: int = GameState.pouch.get(crop_name, 0)
-		var abbrev: String = crop_name.substr(0, 2).capitalize()
+		var abbrev: String = tr(String(CropDefs.TYPES[crop_name].name)).substr(0, 2)
 		parts.append("%s:%d" % [abbrev, count])
 	crop_counts_label.text = "  ".join(parts)
 
@@ -1028,7 +1031,7 @@ func _update_hud() -> void:
 		style.bg_color = Color(0.25, 0.25, 0.25, 0.75)
 
 	# Water
-	water_label.text = "Water: %d/%d" % [GameState.watering_can_charges, GameState.max_watering_can_charges]
+	water_label.text = tr("Water: %d/%d") % [GameState.watering_can_charges, GameState.max_watering_can_charges]
 
 	# T-28's satisfied treatment B, if it is the one being judged.
 	_update_state_chips()
@@ -1135,7 +1138,7 @@ func _update_toast(delta: float) -> void:
 func show_toast(message: String) -> void:
 	toast_message = message
 	toast_timer = TOAST_DURATION
-	toast_label.text = message
+	toast_label.text = tr(message)
 	toast_panel.visible = true
 	toast_panel.modulate = Color(1, 1, 1, 1)
 
@@ -1150,7 +1153,7 @@ func get_cursor_info(_pt: int, _fn: Node2D) -> Dictionary:
 
 func set_hint(text: String) -> void:
 	if hint_label:
-		hint_label.text = text
+		hint_label.text = tr(text)
 
 func _on_seed_pill_gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
@@ -1177,7 +1180,7 @@ func set_teaching(on: bool, taught: int = -1, limit: int = 0) -> void:
 		teach_clear_button.visible = on
 	if not on:
 		teach_done_button.position = _teach_home
-		teach_done_button.text = "Done"
+		teach_done_button.text = tr("Done")
 		return
 	var vp := get_viewport().get_visible_rect().size
 	# Clear of the build stamp, which draws on its own layer above this one in the
@@ -1185,15 +1188,15 @@ func set_teaching(on: bool, taught: int = -1, limit: int = 0) -> void:
 	# across the button the first time these moved here.
 	var row_y: float = vp.y - 58.0 - teach_done_button.size.y
 	teach_done_button.position = Vector2(vp.x - teach_done_button.size.x - 10.0, row_y)
-	teach_done_button.text = "%d/%d" % [taught, limit] if taught >= 0 and limit > 0 else "Done"
+	teach_done_button.text = "%d/%d" % [taught, limit] if taught >= 0 and limit > 0 else tr("Done")
 	if teach_clear_button != null:
 		teach_clear_button.position = Vector2(
 			teach_done_button.position.x - teach_clear_button.size.x - 8.0, row_y)
 		# Nothing marked, nothing to clear. Greyed rather than hidden: a control
 		# that comes and goes is one she has to find twice.
 		teach_clear_button.disabled = taught <= 0
-		teach_clear_button.tooltip_text = ("Take every square back off the list"
-			if taught > 0 else "Nothing is marked yet")
+		teach_clear_button.tooltip_text = (tr("Take every square back off the list")
+			if taught > 0 else tr("Nothing is marked yet"))
 
 
 func _on_teach_clear_button() -> void:

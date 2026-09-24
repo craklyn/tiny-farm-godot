@@ -590,7 +590,7 @@ func _build_ui() -> void:
 		root_box.modulate.a = 0.0
 
 	var title := Label.new()
-	title.text = "Tiny Farm"
+	title.text = tr("Tiny Farm")
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 48)
 	title.add_theme_color_override("font_color", Color.WHITE)
@@ -739,7 +739,7 @@ func _fill_farm_card(box: VBoxContainer, n: int) -> void:
 	var summary := _slot_summary(n)
 
 	var day := Label.new()
-	day.text = "Day %d" % summary.get("day", 1)
+	day.text = tr("Day %d") % summary.get("day", 1)
 	day.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	day.add_theme_font_size_override("font_size", 24)
 	day.add_theme_color_override("font_color", Color.WHITE)
@@ -747,7 +747,7 @@ func _fill_farm_card(box: VBoxContainer, n: int) -> void:
 	box.add_child(day)
 
 	var stats := Label.new()
-	stats.text = "%dg    %d shipped    %d crows shooed" % [
+	stats.text = tr("%dg    %d shipped    %d crows shooed") % [
 		summary.get("gold", 0), summary.get("shipped", 0), summary.get("scared", 0)]
 	stats.horizontal_alignment = HORIZONTAL_ALIGNMENT_LEFT
 	stats.add_theme_font_size_override("font_size", 13)
@@ -757,12 +757,12 @@ func _fill_farm_card(box: VBoxContainer, n: int) -> void:
 
 	var progress := Label.new()
 	if summary.get("phase1", false):
-		progress.text = "Homestead complete"
+		progress.text = tr("Homestead complete")
 		progress.add_theme_color_override("font_color", Color(1.0, 0.86, 0.45))
 	else:
 		# Same two counters the sim uses for the phase-1 proof (Q-12), so the
 		# card shows real progression rather than a decorative number.
-		progress.text = "Homestead  %d/%d crops  %d/%d crows" % [
+		progress.text = tr("Homestead %d/%d crops %d/%d crows") % [
 			min(summary.get("shipped", 0), SimWorld.PHASE1_SHIPPED_TARGET),
 			SimWorld.PHASE1_SHIPPED_TARGET,
 			min(summary.get("scared", 0), SimWorld.PHASE1_SCARED_TARGET),
@@ -784,7 +784,7 @@ func _fill_empty_card(box: VBoxContainer, look: Dictionary) -> void:
 	box.add_child(plus)
 
 	var word := Label.new()
-	word.text = "New farm"
+	word.text = tr("New farm")
 	word.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	word.add_theme_font_size_override("font_size", 14)
 	word.add_theme_color_override("font_color", Color(0.86, 0.90, 0.86))
@@ -797,7 +797,7 @@ func _fill_empty_card(box: VBoxContainer, look: Dictionary) -> void:
 func _make_slot_new_farm_button(n: int) -> Button:
 	var btn := Button.new()
 	btn.name = "SlotNewFarm%d" % n
-	btn.text = "New farm"
+	btn.text = tr("New farm")
 	btn.add_theme_font_size_override("font_size", 11)
 	btn.set_anchors_preset(Control.PRESET_TOP_RIGHT)
 	btn.anchor_left = 1.0
@@ -877,7 +877,7 @@ CREDITS.md in the project repository."""
 func _make_credits_button() -> Button:
 	var btn := Button.new()
 	btn.name = "CreditsButton"
-	btn.text = "Credits"
+	btn.text = tr("Credits")
 	btn.custom_minimum_size = Vector2(110, 30)
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	btn.add_theme_font_size_override("font_size", 12)
@@ -926,7 +926,7 @@ func _open_credits() -> void:
 
 	var back := Button.new()
 	back.name = "CreditsBackButton"
-	back.text = "Back"
+	back.text = tr("Back")
 	back.custom_minimum_size = Vector2(150, 40)
 	back.set_anchors_preset(Control.PRESET_CENTER_BOTTOM)
 	back.anchor_left = 0.5
@@ -948,7 +948,7 @@ func _open_credits() -> void:
 func _make_sound_test_button() -> Button:
 	var btn := Button.new()
 	btn.name = "SoundTestButton"
-	btn.text = "Sound Test"
+	btn.text = tr("Sound Test")
 	btn.custom_minimum_size = Vector2(130, 34)
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	btn.add_theme_font_size_override("font_size", 13)
@@ -993,14 +993,14 @@ func _open_sound_test() -> void:
 	scroll.add_child(box)
 
 	var head := Label.new()
-	head.text = "Sound Test"
+	head.text = tr("Sound Test")
 	head.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	head.add_theme_font_size_override("font_size", 26)
 	head.add_theme_color_override("font_color", Color(1.0, 0.86, 0.45))
 	box.add_child(head)
 
 	var hint := Label.new()
-	hint.text = "Tap a sound to hear it."
+	hint.text = tr("Tap a sound to hear it.")
 	hint.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	hint.add_theme_font_size_override("font_size", 13)
 	hint.add_theme_color_override("font_color", Color(0.78, 0.86, 0.76))
@@ -1032,7 +1032,7 @@ func _open_sound_test() -> void:
 		var cand_player := AudioStreamPlayer.new()
 		_confirm_layer.add_child(cand_player)
 		var sep := Label.new()
-		sep.text = "candidates (A/B against the above)"
+		sep.text = tr("candidates (A/B against the above)")
 		sep.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 		sep.add_theme_font_size_override("font_size", 12)
 		sep.add_theme_color_override("font_color", Color(0.70, 0.80, 0.86))
@@ -1060,7 +1060,7 @@ func _open_sound_test() -> void:
 
 	var music := Button.new()
 	music.name = "MusicToggle"
-	music.text = "Music: on"
+	music.text = tr("Music: on")
 	music.custom_minimum_size = Vector2(184, 36)
 	music.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	music.add_theme_font_size_override("font_size", 14)
@@ -1072,15 +1072,15 @@ func _open_sound_test() -> void:
 			return
 		if p.playing:
 			p.stop()
-			music.text = "Music: off"
+			music.text = tr("Music: off")
 		else:
 			p.play()
-			music.text = "Music: on")
+			music.text = tr("Music: on"))
 	box.add_child(music)
 
 	var back := Button.new()
 	back.name = "SoundTestBackButton"
-	back.text = "Back"
+	back.text = tr("Back")
 	back.custom_minimum_size = Vector2(150, 40)
 	back.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	back.add_theme_font_size_override("font_size", 16)
@@ -1108,7 +1108,7 @@ func _open_sound_test() -> void:
 func _make_zoo_button() -> Button:
 	var btn := Button.new()
 	btn.name = "ZooButton"
-	btn.text = "Zoo"
+	btn.text = tr("Zoo")
 	btn.custom_minimum_size = Vector2(130, 34)
 	btn.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	btn.add_theme_font_size_override("font_size", 13)
@@ -1200,14 +1200,14 @@ func _open_confirm(n: int) -> void:
 	box.add_child(emblem)
 
 	var warn := Label.new()
-	warn.text = "Start a new farm?"
+	warn.text = tr("Start a new farm?")
 	warn.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	warn.add_theme_font_size_override("font_size", 24)
 	warn.add_theme_color_override("font_color", Color.WHITE)
 	box.add_child(warn)
 
 	var detail := Label.new()
-	detail.text = "Your Day %d farm will be replaced." % _slot_summary(_confirm_slot).get("day", 1)
+	detail.text = tr("Your Day %d farm will be replaced.") % _slot_summary(_confirm_slot).get("day", 1)
 	detail.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	detail.add_theme_font_size_override("font_size", 14)
 	detail.add_theme_color_override("font_color", Color(0.92, 0.86, 0.72))
@@ -1215,7 +1215,7 @@ func _open_confirm(n: int) -> void:
 
 	var keep := Button.new()
 	keep.name = "KeepFarmButton"
-	keep.text = "Keep my farm"
+	keep.text = tr("Keep my farm")
 	keep.custom_minimum_size = Vector2(220, 46)
 	keep.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	keep.add_theme_font_size_override("font_size", 18)
@@ -1225,7 +1225,7 @@ func _open_confirm(n: int) -> void:
 
 	var wipe := Button.new()
 	wipe.name = "ConfirmNewFarmButton"
-	wipe.text = "Yes, start over"
+	wipe.text = tr("Yes, start over")
 	wipe.custom_minimum_size = Vector2(180, 36)
 	wipe.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
 	wipe.add_theme_font_size_override("font_size", 14)

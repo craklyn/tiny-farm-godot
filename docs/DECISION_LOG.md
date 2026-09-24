@@ -170,6 +170,16 @@ place where the wordless attempt is expected to succeed, because it is the loop 
 pre-reader plays, and every word admitted anywhere still has to earn itself against a
 picture that would have done the job.
 
+**Translation convention (2026-09-24).** Existing words use stable, bare English
+phrases as keys in `locale/strings.csv`; the imported `strings.en.translation` is
+registered in `project.godot`. UI calls `tr()` when it renders a label, hint, or
+toast, then inserts values into the translated format string. Crop, machine,
+species, and tool definitions keep their source phrases as keys rather than
+depending on locale. Spacing and layout newlines stay in UI code, outside keys.
+Add each new player-facing phrase to the catalog when adding its render call.
+This supplies translations for words already present; it does not add words to
+the phase-1 farming loop.
+
 **Gate mechanism revised 2026-08-28 (the constraint itself is unchanged).** M1's exit
 gate was written as "the 4-year-old plays unaided", which made a milestone hostage to a
 four-year-old's availability — and she is, in the designer's words, "consistently not

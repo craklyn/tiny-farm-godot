@@ -352,12 +352,12 @@ func _rebuild_options() -> void:
 
 	match active_menu:
 		"pause":
-			title_label.text = "PAUSED"
+			title_label.text = tr("PAUSED")
 			gold_display.visible = false
 			shop_title_icon.visible = false
 			gold_icon.visible = false
-			_add_option("Resume", true)
-			_add_option("Return to Title", true)
+			_add_option(tr("Resume"), true)
+			_add_option(tr("Return to Title"), true)
 			# The look lab, where the designer can actually reach it — one line per
 			# open question (T-27's cot, T-28's two station axes; see
 			# `systems/look_lab.gd`), each naming where it currently stands.
@@ -459,7 +459,7 @@ func _rebuild_options() -> void:
 			# still use words, so this panel is not wholly wordless yet.
 			var mid: String = machine_id if farm != null and farm.sim.has_actor(machine_id) else ""
 			var mkey: String = farm.sim.machine_key_of(mid) if mid != "" else ""
-			title_label.text = MachineDefs.name_of(mkey).to_upper() if mkey != "" else ""
+			title_label.text = tr(MachineDefs.name_of(mkey)).to_upper() if mkey != "" else ""
 			gold_display.visible = false
 			shop_title_icon.visible = false
 			gold_icon.visible = false
@@ -475,7 +475,7 @@ func _rebuild_options() -> void:
 					# Not "what to water" since 2026-09-07: it tills bare ground and
 					# waters soil, so the row has to name the job rather than one of
 					# the two verbs it might turn out to be.
-					_add_option("Show it where to work  (%d/%d)"
+					_add_option(tr("Show it where to work (%d/%d)")
 						% [taught, BotBrain.ORDER_LIMIT], not out_now)
 					# One row that says all three states it can be in, because
 					# "why is this greyed out" is the question a disabled control
@@ -488,21 +488,21 @@ func _rebuild_options() -> void:
 						# she caught: sent on a rainy morning from inside the house,
 						# the panel claimed it was working while it had not moved.
 						# A disabled row has to answer "why", and the answer is her.
-						_add_option("Waiting for you outside", false)
+						_add_option(tr("Waiting for you outside"), false)
 					elif out_now:
-						_add_option("Out working…", false)
+						_add_option(tr("Out working…"), false)
 					elif been_out:
-						_add_option("Been out today", false)
+						_add_option(tr("Been out today"), false)
 					elif taught <= 0:
-						_add_option("Send it out  (nothing to do yet)", false)
+						_add_option(tr("Send it out (nothing to do yet)"), false)
 					elif not BotBrain.round_has_work(farm.sim, mextra):
 						# Taught, unspent, and every square on the list already
 						# needs nothing — rain has watered them and none has gone
 						# bare. Sending it would spend its one turn on a walk that
 						# changes nothing (Q-93).
-						_add_option("Send it out  (nothing needs doing today)", false)
+						_add_option(tr("Send it out (nothing needs doing today)"), false)
 					else:
-						_add_option("Send it out  (%d tiles)" % taught, true)
+						_add_option(tr("Send it out (%d tiles)") % taught, true)
 				"configs":
 					var current: String = String(mextra.get("config", ""))
 					for config in MachineDefs.configs_of(mkey):
@@ -514,7 +514,7 @@ func _rebuild_options() -> void:
 						var mark: String = "\u00bb " if config == current else "   "
 						machine_options.append({ "kind": "config", "config": config })
 						var picture := robot_job_icon(config)
-						_add_option(mark + ("" if picture != null else CONFIG_LABELS.get(config, config)),
+						_add_option(mark + ("" if picture != null else tr(CONFIG_LABELS.get(config, config))),
 							true, 0, picture)
 				"policy":
 					# **The Mark III has no dial and no list**, so where the other
@@ -541,7 +541,7 @@ func _rebuild_options() -> void:
 					machine_options.append({ "kind": "practice" })
 					_add_scorecard(mextra)
 			machine_options.append({ "kind": "collect" })
-			_add_option("Pick up", true)
+			_add_option(tr("Pick up"), true)
 			machine_options.append({ "kind": "close" })
 			_add_option("\u00d7", true, 28)
 			# **A wider card for the mark-3 only.** A fortnight of chart needs more
@@ -557,15 +557,15 @@ func _rebuild_options() -> void:
 			# reason — there is no icon vocabulary for "go inside" yet, and the
 			# shop, which a pre-reader must use to play at all, stays wordless.
 			# Filed with Q-87.
-			title_label.text = MachineDefs.name_of(SimWorld.COOP_ITEM).to_upper()
+			title_label.text = tr(MachineDefs.name_of(SimWorld.COOP_ITEM)).to_upper()
 			gold_display.visible = false
 			shop_title_icon.visible = false
 			gold_icon.visible = false
 			structure_options = []
 			structure_options.append({ "kind": "enter" })
-			_add_option("Go inside", true)
+			_add_option(tr("Go inside"), true)
 			structure_options.append({ "kind": "collect" })
-			_add_option("Pick up", true)
+			_add_option(tr("Pick up"), true)
 			structure_options.append({ "kind": "close" })
 			_add_option("\u00d7", true, 28)
 			menu_panel.size = Vector2(320.0, _fit_panel_height())
@@ -583,7 +583,7 @@ func _rebuild_options() -> void:
 			gold_icon.visible = false
 
 		"inventory":
-			title_label.text = "INVENTORY"
+			title_label.text = tr("INVENTORY")
 			gold_display.visible = false
 			shop_title_icon.visible = false
 			gold_icon.visible = false
@@ -593,7 +593,7 @@ func _rebuild_options() -> void:
 			# split the change removed: a cut wheat is the seed for the next one,
 			# so showing it twice would be showing two things that are one.
 			var pouch_header := Label.new()
-			pouch_header.text = "Pouch:"
+			pouch_header.text = tr("Pouch:")
 			pouch_header.add_theme_color_override("font_color", Color(0.7, 0.9, 0.6))
 			options_container.add_child(pouch_header)
 			for crop_name in CropDefs.ORDER:
@@ -602,33 +602,33 @@ func _rebuild_options() -> void:
 				var def: Dictionary = CropDefs.TYPES[crop_name]
 				var count: int = GameState.pouch.get(crop_name, 0)
 				var lbl := Label.new()
-				lbl.text = "  %s: %d" % [def.name, count]
+				lbl.text = "  %s: %d" % [tr(def.name), count]
 				lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.75))
 				options_container.add_child(lbl)
 			for item_name in ["egg", "scarecrow"]:
 				var amount := int(GameState.items.get(item_name, 0))
 				if amount > 0:
 					var item_label := Label.new()
-					item_label.text = "%s: %d" % [CropDefs.TYPES[item_name].name, amount]
+					item_label.text = "%s: %d" % [tr(CropDefs.TYPES[item_name].name), amount]
 					options_container.add_child(item_label)
 
-			_add_option("\nClose", true)
+			_add_option(tr("Close"), true)
 			menu_panel.size = Vector2(300, 260)
 
 		"bin":
-			title_label.text = "Shipping bin"
+			title_label.text = tr("Shipping bin")
 			gold_display.visible = false
 			shop_title_icon.visible = false
 			gold_icon.visible = false
 			bin_options.clear()
 			bin_options.append({"kind": "deposit"})
-			_add_option("Deposit what I carry", GameState.sellable_total() > 0)
+			_add_option(tr("Deposit what I carry"), GameState.sellable_total() > 0)
 			for crop_name in CropDefs.TYPES.keys():
 				if not CropDefs.is_plantable(String(crop_name)):
 					continue
 				var stored := int(GameState.bin_reserve.get(crop_name, 0))
 				bin_options.append({"kind": "withdraw", "crop_type": crop_name})
-				_add_option("Take %s (%d stored)" % [CropDefs.TYPES[crop_name].name, stored],
+				_add_option(tr("Take %s (%d stored)") % [tr(CropDefs.TYPES[crop_name].name), stored],
 					stored > 0 and int(GameState.pouch.get(crop_name, 0)) < farm.sim.carry_cap(String(crop_name)))
 			var last: Dictionary = GameState.last_bin_delivery
 			if not last.is_empty():
@@ -636,14 +636,14 @@ func _rebuild_options() -> void:
 				var pieces: Array[String] = []
 				for crop_name in sold:
 					if int(sold[crop_name]) > 0:
-						var label := String(CropDefs.TYPES.get(crop_name, {}).get("name", crop_name)).to_lower()
-						pieces.append("sold %d %s" % [int(sold[crop_name]),
-							"eggs" if String(crop_name) == "egg" else label + " units"])
+						var label := tr(String(CropDefs.TYPES.get(crop_name, {}).get("name", crop_name))).to_lower()
+						pieces.append(tr("sold %d %s") % [int(sold[crop_name]),
+							tr("eggs") if String(crop_name) == "egg" else tr("%s units") % label])
 				var summary := Label.new()
-				summary.text = "Last deposit: " + (", ".join(pieces) if not pieces.is_empty() else "nothing sold")
+				summary.text = tr("Last deposit: %s") % (", ".join(pieces) if not pieces.is_empty() else tr("nothing sold"))
 				options_container.add_child(summary)
 			bin_options.append({"kind": "close"})
-			_add_option("Close", true)
+			_add_option(tr("Close"), true)
 			menu_panel.size = Vector2(_fit_panel_width(320.0), _fit_panel_height())
 
 	# Shrink the container to its contents: left at its declared 300px it extends

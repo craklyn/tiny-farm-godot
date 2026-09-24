@@ -438,7 +438,7 @@ func _draw_header() -> void:
 		draw_rect(Rect2(label_x, mid_y - 2.0, 26.0, 4.0), INK_DIM)
 		return
 
-	var title := MachineDefs.name_of(_model_of(robot_id))
+	var title := tr(MachineDefs.name_of(_model_of(robot_id)))
 	draw_string(f, Vector2(label_x, mid_y + NAME_SIZE * 0.36), title,
 		HORIZONTAL_ALIGNMENT_LEFT, -1, NAME_SIZE, INK)
 

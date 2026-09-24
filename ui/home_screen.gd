@@ -98,7 +98,7 @@ func _build_ui() -> void:
 	move_child(back, 0)  # behind the room, which was added first
 
 	var title := Label.new()
-	title.text = "Home"
+	title.text = tr("Home")
 	title.position = Vector2(12, 8)
 	title.add_theme_font_size_override("font_size", 22)
 	title.add_theme_color_override("font_color", Color(0.93, 0.89, 0.82))
@@ -106,8 +106,8 @@ func _build_ui() -> void:
 	add_child(title)
 
 	var note := Label.new()
-	note.text = "The bed, two windows, and very little else — on purpose (T-37).\n" \
-		+ "Generated from WorldLayout.HOME by the ordinary generator; walls are boundaries, the floor is a ground."
+	note.text = tr("The bed, two windows, and very little else — on purpose (T-37).") + "\n" \
+		+ tr("Generated from WorldLayout.HOME by the ordinary generator; walls are boundaries, the floor is a ground.")
 	note.position = Vector2(12, 40)
 	note.add_theme_font_size_override("font_size", 11)
 	note.add_theme_color_override("font_color", Color(0.66, 0.60, 0.52))
@@ -116,7 +116,7 @@ func _build_ui() -> void:
 
 	var exit := Button.new()
 	exit.name = "HomeBackButton"
-	exit.text = "Back"
+	exit.text = tr("Back")
 	exit.custom_minimum_size = Vector2(150, 40)
 	exit.position = Vector2(8, 552)
 	exit.add_theme_font_size_override("font_size", 16)

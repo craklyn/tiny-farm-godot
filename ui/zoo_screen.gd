@@ -179,8 +179,8 @@ func spawn_species(species: String) -> Array[String]:
 	var born := Zoo.spawn(farm.sim, gs, species, nth)
 	if born.is_empty():
 		var why := Zoo.decline_reason(farm.sim, species)
-		_notice = "No %s came — %s" % [Zoo.label_of(species),
-			why if why != "" else "its real arrival said no"]
+		_notice = tr("No %s came — %s") % [tr(Zoo.label_of(species)),
+			tr(why) if why != "" else tr("its real arrival said no")]
 		_notice_timer = NOTICE_SECONDS
 	farm.sync_actors()
 	farm.queue_redraw()
@@ -219,21 +219,21 @@ func turn_day() -> Dictionary:
 	farm.queue_redraw()
 	_refresh_census()
 	if _day_label != null:
-		_day_label.text = "Day %d" % int(gs.day)
+		_day_label.text = tr("Day %d") % int(gs.day)
 	return result
 
 
 func cycle_speed() -> int:
 	speed_idx = (speed_idx + 1) % SPEEDS.size()
 	if _speed_button != null:
-		_speed_button.text = "Speed %d×" % SPEEDS[speed_idx]
+		_speed_button.text = tr("Speed %d×") % SPEEDS[speed_idx]
 	return SPEEDS[speed_idx]
 
 
 func toggle_trail() -> bool:
 	overlay.enabled = not overlay.enabled
 	if _trail_button != null:
-		_trail_button.text = "Trail: %s" % ("on" if overlay.enabled else "off")
+		_trail_button.text = tr("Trail: %s") % (tr("on") if overlay.enabled else tr("off"))
 	farm.queue_redraw()
 	return overlay.enabled
 
@@ -242,13 +242,13 @@ func toggle_trail() -> bool:
 func census_text() -> String:
 	var counts := Zoo.census(farm.sim)
 	if counts.is_empty():
-		return "Nothing in the zoo yet — tap a critter."
+		return tr("Nothing in the zoo yet — tap a critter.")
 	var total := 0
 	var parts: PackedStringArray = []
 	for species in counts:
 		total += int(counts[species])
-		parts.append("%s %d" % [Zoo.label_of(String(species)), int(counts[species])])
-	return "%d in the zoo — %s" % [total, ", ".join(parts)]
+		parts.append("%s %d" % [tr(Zoo.label_of(String(species))), int(counts[species])])
+	return tr("%d in the zoo — %s") % [total, ", ".join(parts)]
 
 
 func _refresh_census() -> void:
@@ -269,7 +269,7 @@ func _build_ui() -> void:
 	move_child(back, 0)   # behind the farm, which was added first
 
 	var head := Label.new()
-	head.text = "Zoo"
+	head.text = tr("Zoo")
 	head.position = Vector2(10, 2)
 	head.add_theme_font_size_override("font_size", 24)
 	head.add_theme_color_override("font_color", Color(1.0, 0.86, 0.45))
@@ -278,7 +278,7 @@ func _build_ui() -> void:
 
 	_day_label = Label.new()
 	_day_label.name = "ZooDayLabel"
-	_day_label.text = "Day %d" % int(gs.day)
+	_day_label.text = tr("Day %d") % int(gs.day)
 	_day_label.position = Vector2(62, 12)
 	_day_label.add_theme_font_size_override("font_size", 13)
 	_day_label.add_theme_color_override("font_color", Color(0.92, 0.86, 0.72))
@@ -306,32 +306,32 @@ func _build_controls() -> void:
 	row.add_theme_constant_override("separation", 8)
 	add_child(row)
 
-	var day := _small_button("NextDayButton", "Next day")
+	var day := _small_button("NextDayButton", tr("Next day"))
 	day.pressed.connect(func():
 		turn_day()
 		AudioManager.play_sfx("click"))
 	row.add_child(day)
 
-	_speed_button = _small_button("SpeedButton", "Speed %d×" % SPEEDS[speed_idx])
+	_speed_button = _small_button("SpeedButton", tr("Speed %d×") % SPEEDS[speed_idx])
 	_speed_button.pressed.connect(func():
 		cycle_speed()
 		AudioManager.play_sfx("click"))
 	row.add_child(_speed_button)
 
-	_trail_button = _small_button("TrailButton", "Trail: off")
+	_trail_button = _small_button("TrailButton", tr("Trail: %s") % tr("off"))
 	_trail_button.pressed.connect(func():
 		toggle_trail()
 		AudioManager.play_sfx("click"))
 	row.add_child(_trail_button)
 
-	var sow := _small_button("ResowButton", "Re-sow")
+	var sow := _small_button("ResowButton", tr("Re-sow"))
 	sow.custom_minimum_size = Vector2(84, 34)
 	sow.pressed.connect(func():
 		resow()
 		AudioManager.play_sfx("click"))
 	row.add_child(sow)
 
-	var wipe := _small_button("ClearZooButton", "Clear")
+	var wipe := _small_button("ClearZooButton", tr("Clear"))
 	_style_button(wipe, Color(0.38, 0.18, 0.14), Color(0.72, 0.42, 0.34), Color(0.46, 0.22, 0.17))
 	wipe.pressed.connect(func():
 		clear_zoo()
@@ -339,15 +339,15 @@ func _build_controls() -> void:
 	row.add_child(wipe)
 
 	var note := Label.new()
-	note.text = "Every species in SpeciesDefs, entering as its real lifecycle does."\
-		+ "\nTrail tints the pest pheromone channel (design/09's reserved magenta)."
+	note.text = tr("Every species in SpeciesDefs, entering as its real lifecycle does.") \
+		+ "\n" + tr("Trail tints the pest pheromone channel (design/09's reserved magenta).")
 	note.position = Vector2(168, 518)
 	note.add_theme_font_size_override("font_size", 11)
 	note.add_theme_color_override("font_color", Color(0.70, 0.80, 0.86))
 	note.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(note)
 
-	var home := _small_button("ZooBackButton", "Back")
+	var home := _small_button("ZooBackButton", tr("Back"))
 	home.custom_minimum_size = Vector2(150, 40)
 	home.position = Vector2(8, 522)
 	home.add_theme_font_size_override("font_size", 16)
@@ -375,7 +375,7 @@ func _build_roster() -> void:
 	scroll.add_child(box)
 
 	var title := Label.new()
-	title.text = "Tap to add one"
+	title.text = tr("Tap to add one")
 	title.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	title.add_theme_font_size_override("font_size", 13)
 	title.add_theme_color_override("font_color", Color(1.0, 0.86, 0.45))
@@ -396,7 +396,7 @@ func _species_button(species: String) -> Button:
 	var btn := Button.new()
 	btn.name = "Zoo_%s" % species
 	btn.custom_minimum_size = Vector2(88, 58)
-	btn.tooltip_text = "%s — brain: %s" % [Zoo.label_of(species), SpeciesDefs.brain_of(species)]
+	btn.tooltip_text = tr("%s — brain: %s") % [tr(Zoo.label_of(species)), SpeciesDefs.brain_of(species)]
 	_style_button(btn, Color(0.13, 0.24, 0.30), Color(0.45, 0.62, 0.70), Color(0.18, 0.32, 0.40))
 	btn.pressed.connect(func():
 		spawn_species(species)
@@ -424,7 +424,7 @@ func _species_button(species: String) -> Button:
 		box.add_child(pic)
 
 	var name_label := Label.new()
-	name_label.text = Zoo.label_of(species)
+	name_label.text = tr(Zoo.label_of(species))
 	name_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
 	name_label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	name_label.add_theme_font_size_override("font_size", 10)

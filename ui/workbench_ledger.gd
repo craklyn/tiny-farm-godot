@@ -99,7 +99,7 @@ func _build() -> void:
 		# The label belongs to the slot, not to the robot on the bench: card two is
 		# the entropy card whichever machine is being read, so it is set here once
 		# and `_fill_cards` is left to the numbers.
-		card.label = CARD_LABELS[i]
+		card.label = tr(CARD_LABELS[i])
 		card.position = Vector2(CARD_X[i], CARD_Y)
 		card.size = CARD_SIZE
 		card.visible = false

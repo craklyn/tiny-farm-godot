@@ -37,6 +37,10 @@ window/size/resizable=false
 window/stretch/mode="canvas_items"
 window/handheld/orientation=4
 
+[internationalization]
+
+locale/translations=PackedStringArray("res://locale/strings.en.translation")
+
 [input]
 
 move_up={
