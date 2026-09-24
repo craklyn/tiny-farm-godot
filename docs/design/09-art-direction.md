@@ -1,24 +1,30 @@
 # 09 — Art Direction
 
-*Status: skeleton. `[Designer]`-taste-led with `[Claude]` consolidation. First
-deliverable: style guide + licensing audit (Q-7, Q-14).*
+*Status: measured draft. The shipped-asset baseline below was refreshed on
+2026-09-24; Q-14 still awaits the designer's look session and approval.*
 
 ## Current state
-Sprout Lands-style 16px pixel art (`assets/sprites/sprout_lands/`), 3× scale. Cozy,
-readable, kid-friendly. P-6 commits to the 8/16-bit lane for scope reasons (five
-genre-shifting phases are only affordable at low asset cost per phase).
+The game draws from 48 of the 52 PNG sheets in `assets/sprites/generated/` and
+from `assets/sprites/tool_icons.png`. The other four generated PNGs — `duck.png`,
+`fox.png`, `squirrel.png` and `terrain_grass.png` — have no runtime `res://`
+reference; the last is retained as the source for the generated yard sheet.
+The field, yard, floor and crop cells
+use a 16px grid; the farmer, neighbour and bots use padded 48px cells. The
+shipping look is small-grid pixel art with square, fully opaque pixels at drawn
+edges. P-6's low asset-cost premise still applies across its five phases. These
+are observations of the build, not the Q-14 style decision.
 
 ## Asset plan (Q-7 ruling, 2026-08-18)
-Current Sprout Lands art is **placeholder**. Full reskin happens once art style is
-aligned (Q-14 below); sourcing then: an openly released image dataset or original work.
-Residual check (Q-7b): before the *first public release*, sanity-check that placeholder
-assets permit free public distribution with credit — Q-6 makes releases public early.
+The removed Sprout Lands pack is no longer the game's art baseline. Generated
+sheets now ship, with their source and credits tracked under `assets/raw/` and
+`CREDITS.md`. A future reskin remains a Q-14 choice. Historical Q-7 licensing
+work is recorded in the decision log; it should not be read as a description of
+assets currently loaded by the game.
 
 ## Immediate actions
-1. `[Claude]` **Style guide consolidation (Q-14):** extract the de-facto rules from
-   existing assets (palette, tile conventions, outline style, animation frame counts)
-   into a one-page guide new assets must match — this doubles as the spec the eventual
-   reskin must satisfy. `[Designer]` approves.
+1. **Q-14 look session:** render the four treatments below on the same real-game
+   frame, let the designer choose, then ask for approval of the resulting guide.
+   The measured inventory below supplies a reproducible starting point.
 
 ## Sections to fill
 1. **Palette & readability** — including functional colors: scent-overlay channels
@@ -35,8 +41,8 @@ assets permit free public distribution with credit — Q-6 makes releases public
    expressed visually.
 
 ## Open items
-- `[Designer]` at Q-14 time: the actual style ruling the reskin targets (palette
-  personality, fidelity level, how far from the placeholder look to move).
+- `[Designer]` at Q-14 time: palette personality, fidelity level, edge treatment
+  and how far to move from today's generated look.
 
 ## Hand edits are evidence (2026-09-02)
 The designer's own strokes in HQ's sprite editor are the only *uncontaminated*
@@ -64,7 +70,7 @@ silhouette. Read against the style guide below, there is nothing to read it
 against: the guide fixes the per-material ramps, the coloured outlines, the
 contrast between the ambient world and the things worth touching, and the hues
 held back for overlays, and it says nothing about where a sprite stops. Today
-every sheet in `assets/sprites/generated/` stops hard — across all 51 of them not
+every sheet in `assets/sprites/generated/` stops hard — across all 52 now present not
 one pixel is partly transparent, so an edge is either fully drawn or fully absent
 — but that is what the image pipeline happens to produce, not a rule anyone chose.
 
@@ -129,19 +135,10 @@ it, which is the whole mechanism that makes them read as tappable. If the design
 sees the four and wants warmer, that grade is an hour's work on a frame already
 captured.
 
-**One caution for whoever renders capture 1.** The style guide below was measured
-from a bought sprite set (Sprout Lands) that this repository no longer contains;
-the build ships generated sheets instead. The captures are of the real game, so
-the session does not depend on the guide being current — but "the guide's rules,
-applied" is no longer something anyone can render, and re-measuring the guide
-against the shipping sheets is filed as its own work. A later pixel audit of
-current main found 13 of the 16 named colours exactly and three one red step
-away: `#d2e077`/`#d1e077`, `#c49a6c`/`#c39a6c`, and
-`#aa7959`/`#a97959`. The archived raw hillside is byte-identical to its shipped
-PNG and already contains `#d1e077`, so there is no downstream red-channel
-shift to repair in that example. The wood shades are explicit locks in later
-asset recipes. The palette readout shows these as near matches without calling
-them exact, while the guide's re-measurement remains separate work.
+**For whoever renders capture 1.** Use the actual generated sheets and game
+renderer. The measured baseline below supersedes the old Sprout Lands readout;
+in particular `#d1e077`, `#c39a6c` and `#a97959` are the shipped pixels. Q-14
+still needs the four captures and the designer's choice.
 
 ---
 
@@ -361,52 +358,109 @@ close — and no single sheet can show both.
 
 ---
 
-## Style guide v1 — extracted from current assets (Q-14 draft, 2026-08-18)
+## Shipped-sprite baseline — Q-14 draft, re-measured 2026-09-24
 
-*Measured from the sheets in `assets/sprites/sprout_lands/` (visual inspection +
-pixel-count palette analysis). This is the de-facto style new placeholder-era assets
-must match, and the baseline spec the eventual reskin either honors or deliberately
-diverges from.*
+This is an inventory for making and comparing the four look captures, **not an
+approved rule set or reskin spec**. Measurements are from PNG bytes currently
+under `assets/sprites/generated/`. A scan of runtime `.gd`, `.tscn` and `.tres`
+files for literal `res://assets/sprites/generated/*.png` references finds 48
+used sheets and excludes the four named above; the ground-source row is marked
+as such. Representative ground, crop, character, bot and structure sheets were
+also viewed at nearest-neighbour enlargement. The renderer references include
+`world/farm.gd`, `player/player.gd` and `entities/bot.gd`.
 
-**Grid & sheets.** 16×16 px tiles; atlas sheets in 16px cells. Characters live in
-48×48 cells (visual body much smaller — generous padding for swings), 4 rows =
-down/up/left/right, 4 frames per row (frame 3 doubles as the action pose). Tall props
-(cot, well, seed box) are 16×32, occupying one walkable footprint tile plus one
-overhang tile.
+**Grid and cells.** `terrain_field.png`, `terrain_yard.png` and
+`terrain_floor.png` are 48×48 sheets of nine 16×16 cells. The field draws the
+former, while `terrain_grass.png` (also 48×48) is retained as the yard source.
+`terrain_dirt.png` is a 512×256 autotile atlas, not a nine-cell sheet; its dry
+top-left 48×48 region is sampled below. Wheat, tomato and pea each have four
+16×16 growth cells in a 64×16 strip, plus one-cell stripped sheets. The farmer,
+neighbour and three bot marks use 192×192 sheets: four 48×48 columns by four
+direction rows (down/up/left/right); frame zero is idle. The drawn bodies occupy
+only part of their padded cells. Cot, well, seed box and workbench are 16×32;
+the farmhouse is 48×32, robot stall 32×32, and spiral tower 64×96. Their
+larger silhouettes are part of the shipped range, not deviations to erase.
 
-**Palette discipline (the load-bearing rule).** Each material family uses a tiny
-ramp — grass renders the entire ground in *six* colors, dirt likewise. Measured
-anchors:
-- Grass ramp: `#c0d470` (base) → `#a4c263` (mid) → `#78a158` (shadow), highlight
-  `#d2e077`.
-- Dirt/tilled ramp: `#e8cfa6` (base) → `#dcb98a` (mid), highlight `#eddab5`.
-- Crop greens reuse the grass mids (`#a4c263`, `#8db15d`); wheat gold `#eae178`.
-- Wood/furniture: `#c49a6c` → `#aa7959` → `#90625d`; accent pastels: rose `#d99a9a`,
-  teal `#8cbfc2`.
-- Character: cream body `#f3f2c0` with a *deep violet* outline `#5c4e92` — outlines
-  are colored, never black, and sit 2+ ramp steps darker than their fill.
+**Measured colour anchors.** Counts below mean exact opaque pixels in the named
+PNG or crop, before lighting, overlays or display scaling. Order follows pixel
+frequency, not a proposed highlight-to-shadow ramp.
 
-**Shape language.** Rounded silhouettes, no hard right angles on organic things;
-chibi proportions (~1.5 heads); shadows are hue-shifted (green→darker-warmer green),
-never grey/black.
+| Source | Exact opaque colours and counts | Other relevant pixels |
+|---|---|---|
+| `terrain_field.png` | `#78a158` 1,213; `#a4c263` 581; `#c0d470` 510 | Three colours total. |
+| `terrain_grass.png` (yard source) | `#d1e077` 1,098; `#bfd470` 909; `#a3c263` 297 | `terrain_yard.png` uses `#bed37c` 1,098; `#adc575` 909; `#93b268` 297. |
+| `terrain_dirt.png` dry top-left 48×48 | `#e8cfa6` 993; `#c9a06b` 480; `#8b7c63` 432; `#dcb98a` 222 | `#fff0c0` 84; `#eddab5` 69: six colours in this sample. |
+| `terrain_floor.png` | `#5e403c` 675; four plank tones of 396 each | Six colours total, including `#aa7e64` 45. |
+| `wheat.png` (all stages) | stem `#4e6e3a` 103; gold `#997a2e` 35 and `#cca13c` 35 | ripe light `#e9e178` 14; eight colours total. |
+| `fence.png` | brown `#a97959` 79; dark brown `#90625d` 66 | `#c39a6c` 9; five colours total. |
+| `characters.png` | yellow `#f0cf5a` 1,024; red-brown `#94371f` 892 | skin `#f6ddc4` 300; violet `#5c4e92` 282; eleven colours total. |
+| `bot.png` | violet `#5c4e92` 1,053; violet mid `#716389` 464 | grey `#8d8e92` 364; teal `#8cbfc2` 237; 31 colours total. |
 
-**Contrast model.** Ambient world is low-contrast pastel; *interactables pop by
-saturation, not outline weight* (crops and accent props carry the most saturated
-pixels on screen). Preserve this: it is why tap targets read at arm's length on a
-tablet (S-6/S-7).
+These are shared anchors, not exclusive palettes. Tomato uses `#c84e39` fruit
+against `#4e6e3a` stems; pea uses those stem greens and has twelve exact
+colours in its four cells. Wood sheets repeatedly use `#c39a6c`, `#a97959`
+and `#90625d`; the stall uses violet `#5c4e92` and teal `#8cbfc2`. The
+64×96 tower reaches 52 colours, so “every material has a tiny ramp” describes
+some ground and crop art but not every shipped structure.
 
-**Reserved functional hues (scent overlay & UI, P-10/D-4).** The ambient palette
-occupies yellow-green / warm-tan / soft-brown space. Reserve for overlays: magenta
-(pest pheromone), cyan (repellent), warm orange (lure), plus a pattern/hatch
-variant per channel for colorblind safety — none of these hues appear in the ambient
-world, so overlay reads instantly. UI cursor colors already in use (white/green/red)
-stay reserved.
+**Edges and contrast seen in the sheets.** All 48 referenced sheets (and the
+four excluded source or unused sheets) have zero pixels with alpha between 1
+and 254: edges are hard at source resolution.
+Outlines and darkest patches vary by subject: violet on the farmer and first
+bot, brown on the farmhouse and fence, deep green on stems and foliage, and
+near-black `#2f2b3d` on the crow and ants. The sheets do not establish a
+universal “never black” rule. Field ground is a dense, three-green pattern;
+the crops read through silhouette, fruit or wheat tips, animation and the
+separately implemented ripe cue. Whether a quieter ground improves touch
+legibility remains the question for look capture 2, not a measured success.
 
-**Animation budget.** 4 frames per walk cycle at ~0.15s/frame; single-frame props;
-effects carry the motion (particles), not sprite frames — hundreds of entities stay
-cheap (ARCHITECTURE budgets).
+**Functional colour and motion.** Magenta, cyan and warm orange are earmarked
+for the proposed scent-overlay channels (P-10/D-4), with pattern cues needed
+for colourblind reading. They are **not absent** from all current assets:
+teal/cyan pixels occur on bots and the stall, orange on the crow, and pink on
+the worm. Overlay colours therefore need a rendered contrast check
+against the actual game. The bot uses four cells per direction at 0.14 s per
+step but cycles frames 1–3 while walking; the neighbour uses four at 0.15 s,
+the chicken four at 0.14 s, and ants two at 0.16 s. Many props use one cell;
+crop stages are state images, not a four-frame playback cycle. These are
+current implementation facts, not a universal animation budget.
 
-**Reskin spec implication (Q-7 ruling).** Whatever art replaces the placeholders must
-keep: 16px grid, tiny per-material ramps, colored outlines, saturation-pop for
-interactables, and the reserved functional hues. Everything else (palette personality,
-fidelity, resolution multiplier) is the designer's Q-14 style ruling.
+**Reproduce the pixel inventory.** With Pillow installed, run from the repo
+root (the dry dirt crop is explicit so the full autotile atlas is not silently
+treated as one six-colour tile):
+
+```python
+from collections import Counter
+from pathlib import Path
+import re
+from PIL import Image
+
+root = Path("assets/sprites/generated")
+
+runtime = set()
+for source in Path(".").rglob("*"):
+    if source.suffix not in {".gd", ".tscn", ".tres"}:
+        continue
+    if source.parts[0] in {"tests", "tools", "hq"}:
+        continue
+    runtime.update(re.findall(
+        r"res://assets/sprites/generated/([a-z0-9_]+\.png)",
+        source.read_text(),
+    ))
+print("runtime", len(runtime), "excluded",
+      sorted({p.name for p in root.glob("*.png")} - runtime))
+for path in sorted(root.glob("*.png")):
+    image = Image.open(path).convert("RGBA")
+    if path.stem == "terrain_dirt":
+        image = image.crop((0, 0, 48, 48))
+    pixels = list(image.getdata())
+    colours = Counter((r, g, b) for r, g, b, a in pixels if a == 255)
+    partial = sum(0 < a < 255 for _, _, _, a in pixels)
+    use = "runtime" if path.name in runtime else "source/unused"
+    print(path.name, use, image.size, len(colours), partial,
+          colours.most_common(6))
+```
+
+The Q-14 decision still owns palette personality, fidelity, edge treatment,
+contrast target and any eventual reskin. This audit neither signs the guide
+nor chooses among the four treatments.
