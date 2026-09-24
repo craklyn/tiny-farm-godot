@@ -770,6 +770,9 @@
    "verdict": "second-look",
    "why": "Panels is house vocabulary, and read as is observation language instead of stating what the mockups show."
   },
+  "2b4b8c9594b8973e2d83": {
+   "verdict": "ok"
+  },
   "2b606445ab41f58ac173": {
    "baselined": "2026-09-19",
    "instead": "If I can't trust the data, then I can't use the program report.",
@@ -1741,6 +1744,12 @@
    "quote": "The raid's meal lasts as long as her walk",
    "verdict": "decode",
    "why": "'Raid's meal' is a metaphor for extent or duration; the reader has to work out what it means."
+  },
+  "64b5b06728658e91f82c": {
+   "instead": "Record the completed work that prevents integration from ending before it is ready",
+   "quote": "integration exit guard work",
+   "verdict": "decode",
+   "why": "“Exit guard” is internal engineering shorthand, so a reader cannot tell what the completed work does."
   },
   "64f0185c9f9a1bf9c3b6": {
    "baselined": "2026-09-19",
