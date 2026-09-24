@@ -7,7 +7,7 @@
   "tier_reason": "filed by hand",
   "ask": "Daniel's words, verbatim:\n\n\"I recommend we change the game so it's not necessary to buy seeds for the starting\nplants. Rather, the plants when harvested can be planted as seeds. They can also be used\nas consumables (e.g. pea shooter). Only when the player acquires an excess can they be\nsold. Excess will be defined by game phase. Early game, the player only has storage on\ntheir person and so excess is not a large number.. 5 or 10 maybe. Later, they'll get a\ngrain silo and other storage options that increases excess (so they can properly arm and\nstock their defensive structures).\n\nNote that if w",
   "first_action": "Read crops/crop_defs.gd, systems/sim/sim_world.gd's inventory and shop verbs, docs/design/ (especially the crop and economy chapters) and DECISION_LOG's S- and P- entries that bear on the loop. Then answer, in this order: (1) does harvest-as-seed make the first hour better or worse, and why — name the specific moment it changes; (2) does the consumable role (a pea used as pea-shooter ammunition) strengthen or muddle the crop's identity, given phase 3 is tower defence; (3) is a carry cap of 5-10 the right shape of pressure early, or does it just make the player walk to a box more often; (4) wha",
-  "state": "for_review",
+  "state": "dropped",
   "thread": "milo",
   "source": "chat",
   "source_message": "Daniel's words, verbatim:\n\n\"I recommend we change the game so it's not necessary to buy seeds for the starting\nplants. Rather, the plants when harvested can be planted as seeds. They can also be used\nas consumables (e.g. pea shooter). Only when the player acquires an excess can they be\nsold. Excess will be defined by game phase. Early game, the player only has storage on\ntheir person and so excess is not a large number.. 5 or 10 maybe. Later, they'll get a\ngrain silo and other storage options that increases excess (so they can properly arm and\nstock their defensive structures).\n\nNote that if w",
@@ -136,5 +136,13 @@
     "fresh": 151792,
     "list_usd": 1.8457
   },
-  "subject": "What a harvest is worth"
+  "subject": "What a harvest is worth",
+  "completion_reconciliation": {
+    "version": 1,
+    "at": "2026-09-23",
+    "classification": "superseded/duplicate",
+    "evidence_summary": "This interrupted design review has a truncated brief and a recommendation that a carry cap should never block harvest. Daniel's later Q-113, Q-115 and Q-116 rulings supersede that recommendation: ten carried plantable units per species, three units per harvest, an atomic full-pouch refusal, and a separate ten-unit-per-species bin reserve that sells only excess. The accepted wfa0d0918389 review and landed we49bc7771da implementation cover replanting and surplus sale; cc440b6 and 1cb5f01 landed the game and replay repair. Q-55 keeps pea ammunition and its storage/delivery design for M3; no peashooter exists in this prototype. Preserve this card's original result and checker findings as history."
+  },
+  "closed": "2026-09-23",
+  "superseded_by": "we49bc7771da"
 }
