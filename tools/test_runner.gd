@@ -2327,8 +2327,12 @@ func _scenario_w_the_cot_presents_itself() -> void:
 
 	# The ground gets the sky's treatment: held until the screen is black.
 	_assert(farm.is_tile_look_held(), "the ground she fell asleep on is held for the fade")
-	_assert(not farm.sim.get_tile(crop_t.x, crop_t.y).watered_today,
-		"even though the sim washed it dry at the tap (D-8 — the Action is never delayed)")
+	# A sunny morning leaves it dry; a rainy morning wets it again during the
+	# same sleep Action. Either way the sim has already resolved the new weather
+	# at the tap, while the picture below still holds last night's wet soil.
+	_assert(bool(farm.sim.get_tile(crop_t.x, crop_t.y).watered_today)
+			== (GameState.weather == "rainy"),
+		"the sim already reflects the new morning's weather at the tap (D-8)")
 	_assert(farm.tile_look(crop_t.x, crop_t.y).watered_today,
 		"so the soil she watered still draws wet while the world is still lit")
 

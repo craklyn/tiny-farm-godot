@@ -591,6 +591,9 @@
   "2252c250bd84ec763ae5": {
    "verdict": "ok"
   },
+  "2290efa08ee414d617bd": {
+   "verdict": "ok"
+  },
   "22ad65f6e11aa4ea9820": {
    "baselined": "2026-09-19",
    "instead": "Preview is showing — click the button to keep your changes.",
