@@ -91,7 +91,7 @@ class WaitingTests(unittest.TestCase):
         self.assertEqual(result["state"], "satisfied")
         self.assertEqual(project["waiting"]["resume_status"], "planned")
 
-    def test_project_reader_resumes_satisfied_wait_and_blocks_invalid_wait(self):
+    def test_project_reader_keeps_satisfied_wait_visible_and_blocks_invalid_wait(self):
         with tempfile.TemporaryDirectory() as tmp:
             data = Path(tmp)
             (data / "projects").mkdir()
@@ -108,10 +108,22 @@ class WaitingTests(unittest.TestCase):
             (data / "projects" / "broken.json").write_text(json.dumps(invalid), encoding="utf-8")
             with patch.object(server, "DATA", str(data)), patch.object(server, "_last_touched", return_value="now"):
                 rows = {row["id"]: row for row in server.load_projects()}
-        self.assertEqual(rows["waiter"]["status"], "planned")
+        self.assertEqual(rows["waiter"]["status"], "waiting")
         self.assertEqual(rows["waiter"]["wake_evaluation"]["state"], "satisfied")
         self.assertEqual(rows["broken"]["status"], "blocked")
         self.assertEqual(rows["broken"]["wake_evaluation"]["state"], "invalid")
+
+    def test_reached_wait_is_a_fire_without_becoming_a_blocker(self):
+        patient = {"id": "waiter", "name": "A planned pause", "status": "waiting",
+                   "wake_evaluation": {"state": "satisfied", "reason": "the date arrived"}}
+        asleep = {**patient, "id": "not-yet",
+                  "wake_evaluation": {"state": "waiting", "reason": "not yet"}}
+        fires = server._stale_wait_fires([patient, asleep])
+        self.assertEqual(len(fires), 1)
+        self.assertEqual(fires[0]["kind"], "fire")
+        self.assertEqual(fires[0]["href"], "#/project/waiter")
+        self.assertNotIn("unblocks", fires[0])
+        self.assertEqual(server._blocked_projects([patient, asleep]), [])
 
     def test_invalid_reference_and_date_are_errors(self):
         missing = self.project({"type": "project_status", "project_id": "gone", "status": "done"})

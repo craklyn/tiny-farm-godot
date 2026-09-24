@@ -223,12 +223,12 @@ def load_projects():
         result = evaluate_waiting_project(p, by_id, release_plan, ruling_ids)
         p["declared_status"] = "waiting"
         p["wake_evaluation"] = result
-        if result["state"] == "satisfied":
-            p["status"] = p["waiting"]["resume_status"]
-        elif result["state"] == "invalid":
+        if result["state"] == "invalid":
             # A broken wait is ordinary blocked work, not a quiet exemption.
             p["status"] = "blocked"
             p["unblock_action"] = "Repair this project's waiting rule: " + result["reason"] + "."
+        # A satisfied event does not silently change the stored project. Until
+        # someone resumes it, it remains a visible wait and raises a fire.
     projects.sort(key=lambda p: p.get("priority", 999))
     return projects
 
@@ -5300,6 +5300,18 @@ def _blocked_projects(projects):
     return [project for project in projects if project.get("status") == "blocked"]
 
 
+def _stale_wait_fires(projects):
+    """A reached wake event still needs the studio to resume the parked work."""
+    return [{"kind": "fire", "pillar": "product",
+             "headline": f"Resume {project['name']}",
+             "why_you": "Its planned wake-up has arrived, but the project is still waiting.",
+             "text": f"{project['name']}: {project['wake_evaluation']['reason']}; resume this work.",
+             "href": f"#/project/{project['id']}"}
+            for project in projects
+            if project.get("status") == "waiting"
+            and (project.get("wake_evaluation") or {}).get("state") == "satisfied"]
+
+
 def _compute_signals_now():
     import time as _t
     pillars = load_json(os.path.join(DATA, "pillars.json"))["pillars"]
@@ -5388,6 +5400,7 @@ def _compute_signals_now():
 
     # The Eye of Sauron: one ordered queue of what deserves the CEO's look.
     eye = []
+    eye.extend(_stale_wait_fires(projects))
     # Fires used to be appended here, one per burning pillar, reading that
     # pillar's first reason. The goals emit their own now — with the goal's
     # signal_key, so one artifact that unblocks three pillars reaches him once —
