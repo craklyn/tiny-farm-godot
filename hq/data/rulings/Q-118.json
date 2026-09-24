@@ -1,0 +1,16 @@
+{
+  "id": "Q-118",
+  "option": "a",
+  "option_label": "wobesound's planting beats (Recommended)",
+  "judgment": null,
+  "intent": "choose",
+  "submission_id": "decision-9bd75ddb-4e95-4723-b1b3-28ea114c6ddf",
+  "submission_payload": {
+    "intent": "choose",
+    "option": "a",
+    "judgment": null
+  },
+  "ruled_at": "2026-09-24T01:36:13",
+  "status": "pending_integration",
+  "earlier": []
+}
