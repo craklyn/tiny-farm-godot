@@ -15,6 +15,12 @@ func _ready() -> void:
 	# a pre-slot farm from ever migrating into it.
 	GameState.use_slot(1, "user://capture_slots_scratch/")
 
+	# The comparison frame represents the look that ships. Set the colour axis
+	# before main.tscn enters the tree, when its world CanvasModulate is created.
+	# Do not rely on WorldTintPresentation's default: a look session can leave a
+	# draft selected, and that should not change this regression baseline.
+	LookLab.set_to("world_tint", LookLab.shipped("world_tint"))
+
 	var main_scene = load("res://main.tscn").instantiate()
 	add_child(main_scene)
 
