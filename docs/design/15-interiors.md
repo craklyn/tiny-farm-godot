@@ -365,8 +365,10 @@ Recorded so the estimate is honest. Nothing here has been built.
 ## 9. What is settled, what is not
 
 **Settled by the directive and recorded as P-18:** the principle in §2; interiors nested in
-their building's footprint at finer pitch; entering is a uniform zoom; the farm stays
-visible throughout; the farmhouse is 3×2 outside and 6×3 inside.
+their building's footprint at a declared pitch; entering changes the camera scale; the farm
+stays visible throughout; the farmhouse is 3×2 outside and 6×3 inside. The later Spiral
+Tower target in §3 is the opposite scale: a 4×4 footprint with 2×2 total room cells at
+pitch ½. Neither furnishing proposal below changes either building's geometry.
 
 **Proposed, awaiting the CEO's yes:** the leftover-band rule in §2 — room width is the
 footprint's width times the pitch, room depth is free under it, and the strip that leaves is
@@ -425,7 +427,63 @@ goes when its host is picked up, and where a hen sheltering in it is standing on
 she was in has stopped existing. So `placeable_at` refuses the whole class, which is what
 P-13's deliberately weak first version is for, and a farm that already got into that state
 comes out of it: picking a hut up takes every hut nested inside it and pays the crate for
-each. **What may go in a room is filed as a design question**, not answered by accident here.
+each. **What may go in a room is proposed in §9a and put to Daniel in Q-117.** The guard
+remains until that decision is made and its consequences are implemented.
+
+## 9a. What a room may hold — proposed, not built
+
+The current ban in `SimWorld.placeable_at` is a safety rule. It stops a placed object from
+being erased when its host's room slot is cleared. It does not say that an empty coop or an
+empty home is the desired finished design. Q-117 asks Daniel to choose the furnishing model;
+the following is a concrete proposal, not a ruling or a change to play.
+
+**Furnishing.** Give each room type a small set of compatible, individually placed fittings:
+nest boxes, perches and bedding in a coop; household furniture in the farmhouse. A fitting
+is bought or acquired as a catalogue item and placed on a free floor cell, like a machine,
+rather than arriving invisibly with every copy of its building. This lets a player choose
+the room's use and rearrange it. The existing bed remains part of the farmhouse until there
+is a specific reason to turn it into a movable item. A fitting's footprint is measured in
+that room's cells, so the Spiral Tower's 2×2 *total* floor has four large cells, not sixteen
+small ones to fill. Its art and collisions must be sized for that pitch.
+
+**Machines.** A catalogue row would explicitly declare which room types, if any, accept it.
+The default is outdoors only. A sprinkler needs outdoor soil in its own space, so placing one
+in a bedroom would neither water the yard nor earn an exception. A future workbench could
+declare barn compatibility if its action really operates in that room. A room tag alone must
+not bypass its doorway, placement footprint, actor occupancy or the `space_of` guards on
+sensing and work. This is a proposed compatibility rule, not permission for today's machines
+to move indoors.
+
+**Picking up the host.** The room slot cannot keep independent objects after its building
+leaves: it is reused by the next room. Under the proposed portable-fittings model, taking up
+a building first moves each nonliving room item into the player's crate as its *own* item,
+preserving any state that ordinary pickup preserves (Q-98), then clears the room and takes
+up the building. No item is silently destroyed or left at a stale slot coordinate. Dropping
+items on the vacated farm tiles is a poor default: one indoor room can hold more items than
+the building's footprint has free outdoor squares, and those squares may have actors or
+objects immediately after pickup. Today's machine crate has no capacity limit; if one is
+added, pickup must check capacity for *all* contents before moving any of them. Save and
+replay must record one deterministic result. P-17's different rule for living occupants
+still applies: the hen stays outdoors on the building's former footprint, never in the crate.
+The existing rescue for old nested-coop saves must continue to return every coop it finds.
+
+**A room holding another room.** Do not permit it. The Spiral Tower already shows that
+interior pitch need not be a finer subdivision, but nesting a second host would still create
+a second room lifetime and doorway inside the first. Taking up the outer host would then
+have to relocate occupants and contents through two disappearing spaces. No current play
+need justifies that extra rule. A loft or two connected spaces within one building can be
+designed as parts of that building without making either a separately placeable host. The
+old nested-coop rescue is migration behavior, not a placement affordance.
+
+**What follows from current rules, and what needs Daniel.** P-17 settles that living
+occupants are not pocketed. Q-98 settles that pickup is repositioning, not a reset. Room
+slots being destroyed with their hosts means no object may be abandoned there, and the
+`space_of` guards mean an indoor machine may not act on the yard by reading raw room-cell
+coordinates. Those are constraints on any option. Daniel must choose whether furnishings
+are player-placed and portable, built into the building, or limited to decoration; that
+choice determines whether individual catalogue items and crate handling are wanted at all.
+Q-117 presents those options and recommends the portable model. Until he rules, the current
+all-room placement guard stays in force and none of this proposal is implemented.
 
 ## 8a. Going through a door is still a cut, and it should not be
 

@@ -503,6 +503,21 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
 ## M1 — phase 1 detail (active now)
 
+- **Q-117 — What should players put inside a room?** — **Ruling, open 2026-09-24.**
+  A coop and a farmhouse have walkable interiors, but placement there is currently refused:
+  an object left in a room slot would disappear when its building is picked up. P-17 already
+  says the hen stays outside; Q-98 says taking up an object is repositioning, not resetting
+  it. The design note in `docs/design/15-interiors.md` §9a proposes **(a) portable,
+  player-placed fittings** suited to each room, with only explicitly compatible machines
+  allowed indoors. Picking up the host would return each nonliving item separately to the
+  crate, then clear the room. **(b) built-in fittings** would give each building a fixed
+  interior and avoid a furnishing catalogue. **(c) decoration only** would let players
+  arrange a room without giving indoor objects any chores or machine actions.
+  **Recommendation: (a).** Nest boxes and perches can then make two coops feel different,
+  while an indoor workbench remains possible later. This choice does not permit a room to
+  contain another room; the current nesting ban stays. The 4×4 Spiral Tower still has only
+  2×2 total interior cells. Card: `hq/data/decisions/Q-117.json`.
+
 - **Q-7b** ~~Placeholder-asset license sanity check~~ — ✅ checked 2026-08-26
   (findings in `CREDITS.md`): free game *builds* with credit are fine; music cleared
   (CC BY 4.0); four old SFX need original replacements. One real problem found,

@@ -498,6 +498,9 @@
    "verdict": "decode",
    "why": "\"Hand edit\" is unclear, and \"to Crow\" doesn't specify what is being edited."
   },
+  "1c4ac778274a65a899d9": {
+   "verdict": "ok"
+  },
   "1c6f19a350111a0459fb": {
    "verdict": "ok"
   },
@@ -635,6 +638,9 @@
    "verdict": "ok"
   },
   "256b6b18033765f3cdfd": {
+   "verdict": "ok"
+  },
+  "25766ee3624c32fcf43c": {
    "verdict": "ok"
   },
   "25a96c50555e67c959ca": {
@@ -2092,6 +2098,9 @@
   "7c12900196f78d4a2b48": {
    "verdict": "ok"
   },
+  "7c23adf64920e8bea113": {
+   "verdict": "ok"
+  },
   "7c56f8c44df0c98818f1": {
    "verdict": "ok"
   },
@@ -2390,6 +2399,9 @@
   "8e7de00fc699bcfcbacd": {
    "verdict": "ok"
   },
+  "8ec0b5a129abacd615ef": {
+   "verdict": "ok"
+  },
   "8ecb04d823678c4f9233": {
    "verdict": "ok"
   },
@@ -2598,6 +2610,9 @@
   "9a7cea62a02ef7635391": {
    "verdict": "ok"
   },
+  "9ad61b0d35013783226e": {
+   "verdict": "ok"
+  },
   "9ae41b0ba5fa33ef926f": {
    "verdict": "ok"
   },
@@ -2654,6 +2669,9 @@
   "9cf588600a49c11f4443": {
    "verdict": "ok"
   },
+  "9d766836429c9a8c6440": {
+   "verdict": "ok"
+  },
   "9eb0ac692c815a662240": {
    "verdict": "ok"
   },
@@ -2692,6 +2710,9 @@
    "quote": "Worth a line when you are making a call about the look",
    "verdict": "second-look",
    "why": "Making a call about the look is colloquial; a plainer phrase would better explain what visual decision warrants a comment."
+  },
+  "9fb4fb49ad82393b6f3c": {
+   "verdict": "ok"
   },
   "9fe9e17f4027843d46a4": {
    "verdict": "ok"
@@ -3107,6 +3128,9 @@
    "verdict": "ok"
   },
   "b9ead1425b68911e3982": {
+   "verdict": "ok"
+  },
+  "ba0937b89d3e2f120836": {
    "verdict": "ok"
   },
   "ba0c7b66f78e58047d45": {
@@ -3585,6 +3609,12 @@
   },
   "d4e6e09d6564a0bc5b8a": {
    "verdict": "ok"
+  },
+  "d51df86252f820debc00": {
+   "instead": "The game will continue refusing indoor placement until that design is chosen and built.",
+   "quote": "The current placement guard stays until that design is chosen and built.",
+   "verdict": "decode",
+   "why": "“Placement guard” names an internal mechanism instead of telling the reader what the game will do."
   },
   "d52559135bc9ea2c517f": {
    "verdict": "ok"
@@ -4284,6 +4314,9 @@
    "why": "Observation language about what the visual communicates, not what the player actually sees."
   },
   "ff530cf8a1918fb03393": {
+   "verdict": "ok"
+  },
+  "ffd85f370a76b68d1dbf": {
    "verdict": "ok"
   }
  }

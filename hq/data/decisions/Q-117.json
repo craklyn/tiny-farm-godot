@@ -1,0 +1,36 @@
+{
+  "id": "Q-117",
+  "owner": "milo",
+  "title": "What should players put inside a room?",
+  "question": "The coop and farmhouse have rooms, but players cannot put anything on their floors today. A placed object would vanish when its building is picked up, so the game currently refuses all indoor placement. How should players furnish a room?",
+  "why_now": "Your choice decides whether furnishings need their own shop items and pickup rules. The game will continue refusing indoor placement until that design is chosen and built.",
+  "options": [
+    {
+      "key": "a",
+      "label": "Place and rearrange furnishings (Recommended)",
+      "detail": "Players acquire fittings such as nest boxes, perches and household furniture, then place them in compatible rooms. A machine may go indoors only if its catalogue entry explicitly allows that room and its work makes sense there. Picking up the building returns each nonliving item separately to the crate with its state preserved. Living occupants stay outside. Rooms cannot hold other rooms.",
+      "recommended": true
+    },
+    {
+      "key": "b",
+      "label": "Give each building fixed furnishings",
+      "detail": "The coop and house arrive with their fittings already in place. Taking up the building carries those fittings as part of it. Players cannot rearrange them; each copy of the same building has the same interior. Rooms cannot hold other rooms."
+    },
+    {
+      "key": "c",
+      "label": "Allow decoration only",
+      "detail": "Players can arrange objects for appearance, but no indoor fitting performs a chore and no machine works indoors. Decorations return separately to the crate when the building is picked up. Rooms cannot hold other rooms."
+    }
+  ],
+  "links": [
+    {
+      "label": "Room furnishing proposal",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/15-interiors.md"
+    },
+    {
+      "label": "Design queue entry",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+    }
+  ],
+  "subject": "What goes inside a room"
+}
