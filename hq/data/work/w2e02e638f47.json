@@ -7,13 +7,14 @@
   "tier_reason": "filed by hand",
   "ask": "Daniel ruled Q-88 option b — the mark-2 robot is earned by demonstration, by having actually used a mark-1 — and asked for the mark-1 to be triggered too, suggesting: after a player spends more than half a day's energy watering. That turns the placeholder shop rule off for machines and makes owning one mean something.",
   "first_action": "Write the design note for both triggers: what the sim already counts that could prove them, what the player sees when one fires, and what happens to the shop entries the machines have today.",
-  "state": "waiting_session",
+  "state": "done",
   "thread": "milo",
   "source": "chat",
   "source_message": "Daniel ruled Q-88 option b — the mark-2 robot is earned by demonstration, by having actually used a mark-1 — and asked for the mark-1 to be triggered too, suggesting: after a player spends more than half a day's energy watering. That turns the placeholder shop rule off for machines and makes owning one mean something.",
-  "result": "",
-  "started": "",
+  "result": "Already completed on main by f2e821a (2026-09-23), docs/design/06-bots-and-training.md, “Earning the first two robots.” The note turns Daniel’s Q-88 option b and his mark-1 watering suggestion into two proofs: 11 successful player water Actions in one day (330 of 600 normal energy units, reset at sleep), then a placed mark-1’s first successful taught water or till Action. It names excluded events, the locked-to-bright shop cards and seed-box cue, the existing 150g/400g [Playtest] purchases after proof, and the saved/replayed latch plus old-save ownership migration. docs/DECISION_LOG.md and docs/DESIGNER_QUEUE.md record the same ruling. Separate implementation card w9f46b7286df reports the subsequent build in 35714f2; this card requested the design note, so no duplicate design or implementation patch was made.",
+  "started": "2026-09-24T00:54:03-07:00",
   "attempts": 0,
   "created": "2026-09-04T10:14",
-  "created_ts": 1788542079.0684009
+  "created_ts": 1788542079.0684009,
+  "finished": "2026-09-24T00:54:03-07:00"
 }
