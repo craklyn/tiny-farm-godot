@@ -5,16 +5,49 @@
   "owner": "rin",
   "tier": 3,
   "tier_reason": "anim.",
-  "ask": "anim.py now carries loop discovery, staleness detection, script re-running with clamped overrides, and an unattended run launcher that spends money. It was verified by hand at every step \u2014 including with the CLI stubbed \u2014 but none of that is repeatable, and hq/ has no Python test harness at all while the Godot suites have two.\n\nThe pieces worth pinning are the ones where being wrong is expensive or silent: overrides clamped to a parameter's declared range, a slug that fails the name pattern being refused, the ignored-overrides comparison that stops the page reporting a redraw that did not happen, staleness computed against the right mtime, and a run that fails filing no work item. A stub for subprocess.run is enough for the last of those; it is how the launcher was checked before it ever ran.",
+  "ask": "anim.py now carries loop discovery, staleness detection, script re-running with clamped overrides, and an unattended run launcher that spends money. It was verified by hand at every step — including with the CLI stubbed — but none of that is repeatable, and hq/ has no Python test harness at all while the Godot suites have two.\n\nThe pieces worth pinning are the ones where being wrong is expensive or silent: overrides clamped to a parameter's declared range, a slug that fails the name pattern being refused, the ignored-overrides comparison that stops the page reporting a redraw that did not happen, staleness computed against the right mtime, and a run that fails filing no work item. A stub for subprocess.run is enough for the last of those; it is how the launcher was checked before it ever ran.",
   "first_action": "Add hq/test_anim.py with a plain runner, covering clamping, slug refusal, ignored-overrides detection, staleness, and the run launcher's two failure paths",
-  "state": "waiting_session",
+  "state": "landed",
   "thread": "rin",
   "source": "chat",
   "source_message": "Filed 2026-09-09 when Daniel asked whether any shortcuts taken while building the Animation Lab should be refactored or hardened. The module extraction and index caching were done in d417023; these two were not.",
-  "result": "",
-  "started": "",
-  "attempts": 0,
+  "result": "Animation Lab has a plain hq/test_anim.py runner on main. It checks both clamp bounds, invalid slug refusal, ignored overrides, staleness against params.json mtime even when the sprite sheet is newer, and failed, unnamed, and timed-out unattended runs filing no review item. The runner passed 13 tests locally and in the GitHub Actions writing job. GitHub Actions run 35981516789 passed all three jobs: gateway, tests, and writing.",
+  "started": "2026-09-24T09:32:12Z",
+  "attempts": 1,
   "created": "2026-09-09T09:56",
   "created_ts": 1788973001.833627,
-  "conversation": []
+  "conversation": [],
+  "_revision": 2,
+  "finished": "2026-09-24T09:32:12Z",
+  "closed": "2026-09-24T09:32:12Z",
+  "done_by": {
+    "seat": "operator",
+    "model": "codex",
+    "lane": "interactive audit"
+  },
+  "landed": {
+    "at": "2026-09-24T09:32:12Z",
+    "by": "Codex interactive",
+    "sha": "ee84fc4706ef03e7bcd36f746522f547b9b57637",
+    "note": "Animation Lab has a plain hq/test_anim.py runner on main. It checks both clamp bounds, invalid slug refusal, ignored overrides, staleness against params.json mtime even when the sprite sheet is newer, and failed, unnamed, and timed-out unattended runs filing no review item. The runner passed 13 tests locally and in the GitHub Actions writing job. GitHub Actions run 35981516789 passed all three jobs: gateway, tests, and writing."
+  },
+  "completion_reconciliation": {
+    "version": 1,
+    "at": "2026-09-24T09:32:12Z",
+    "classification": "safe_to_close",
+    "by": "Codex interactive",
+    "evidence_commits": [
+      "ee84fc4706ef03e7bcd36f746522f547b9b57637"
+    ],
+    "evidence_files": [
+      "hq/test_anim.py",
+      ".github/workflows/tests.yml"
+    ],
+    "test_proof": [
+      "python3 hq/test_anim.py: 13 passed locally",
+      "GitHub Actions tests run 35981516789: writing job and Animation Lab step passed",
+      "GitHub Actions tests run 35981516789: all three jobs passed"
+    ],
+    "limitations": "Operator evidence only; no native checker verdict or Daniel approval is claimed."
+  }
 }
