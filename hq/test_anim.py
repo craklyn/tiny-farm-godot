@@ -6,6 +6,7 @@ from __future__ import annotations
 import json
 import os
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import time
@@ -114,8 +115,11 @@ class AnimationLabTests(unittest.TestCase):
         with mock.patch.object(anim, "loops_index", return_value=known), \
                 mock.patch.object(anim.subprocess, "run", side_effect=render):
             result = anim.loop_render({"slug": "sprout", "values": {"speed": 99}})
+            low = anim.loop_render({"slug": "sprout", "values": {"speed": -99}})
         self.assertEqual(result["values"]["speed"], 4)
         self.assertEqual(result["ignored"], [])
+        self.assertEqual(low["values"]["speed"], 1)
+        self.assertEqual(low["ignored"], [])
 
     def test_render_reports_an_ignored_override(self):
         self.script()
@@ -145,12 +149,17 @@ class AnimationLabTests(unittest.TestCase):
         out.mkdir()
         meta = out / "params.json"
         meta.write_text(json.dumps({"params": [], "values": {}}), encoding="utf-8")
-        (out / "sprout_sheet.png").write_bytes(b"png")
+        sheet = out / "sprout_sheet.png"
+        sheet.write_bytes(b"png")
         now = time.time()
         os.utime(meta, (now, now))
         os.utime(source, (now + 10, now + 10))
+        os.utime(sheet, (now + 20, now + 20))
         result = anim.loops_index()["loops"][0]
         self.assertEqual(result["stale"], ["assets/sprites/generated/bird.png"])
+        os.utime(source, (now - 10, now - 10))
+        anim._INDEX_CACHE["key"] = None
+        self.assertEqual(anim.loops_index()["loops"][0]["stale"], [])
 
     def test_start_run_records_work_before_launch_without_running_session(self):
         with mock.patch.object(anim.execution, "launch_allowed", return_value=True), \
@@ -170,6 +179,27 @@ class AnimationLabTests(unittest.TestCase):
             "limited": False, "provider": "stub", "model": "stub",
         }
         with mock.patch.object(anim.execution, "run_session", return_value=failed):
+            anim._draw(run_id, "prompt")
+        self.assertEqual(anim._load_run(run_id)["state"], "failed")
+        self.assertEqual(list((self.data / "work").iterdir()), [])
+
+    def test_success_without_a_loop_name_files_no_work_item(self):
+        run_id = "r123abd"
+        anim._save_run({"id": run_id, "state": "drawing", "kind": "draw", "slug": ""})
+        unnamed = {
+            "exit_code": 0, "error": "", "text": "Finished without a slug", "usage": None,
+            "limited": False, "provider": "stub", "model": "stub",
+        }
+        with mock.patch.object(anim.execution, "run_session", return_value=unnamed):
+            anim._draw(run_id, "prompt")
+        self.assertEqual(anim._load_run(run_id)["state"], "failed")
+        self.assertEqual(list((self.data / "work").iterdir()), [])
+
+    def test_timed_out_run_files_no_work_item(self):
+        run_id = "r123abe"
+        anim._save_run({"id": run_id, "state": "drawing", "kind": "draw", "slug": ""})
+        with mock.patch.object(anim.execution, "run_session",
+                               side_effect=subprocess.TimeoutExpired("stub", 1)):
             anim._draw(run_id, "prompt")
         self.assertEqual(anim._load_run(run_id)["state"], "failed")
         self.assertEqual(list((self.data / "work").iterdir()), [])
