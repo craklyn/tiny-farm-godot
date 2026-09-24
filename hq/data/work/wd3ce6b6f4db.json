@@ -7,13 +7,81 @@
   "tier_reason": "Test harness code; git reverts it. The failure it prevents is a red suite that means nothing is broken, which the CEO has ruled must never happen.",
   "ask": "Seen 2026-09-09 while landing the Mark III: one integration run failed six panel assertions because a placed robot read as five days old, and three later runs passed. The likely cause is that several Claude sessions run the suites on this machine at once and Godot's user:// folder (the autosave, the replay log) is shared between them, so one session's game state leaks into another's test. Make each headless test run use its own user data directory (Godot's --user-data-dir, or a per-run subfolder chosen from the process id) so suites cannot see each other's saves, and make the integration runner assert it started from a clean slate.",
   "first_action": "Reproduce by running the integration suite in two shells at once; then pass a per-process user data dir in the suite's launch commands in CLAUDE.md and the CI workflow, and add a startup assertion that no autosave exists before the first scenario.",
-  "state": "waiting_session",
+  "state": "landed",
   "thread": "grace",
   "source": "session",
   "source_message": "Chief of staff session 2026-09-09: an Opus worker's report on a non-reproducing integration failure.",
-  "result": "",
+  "result": "Already satisfied by commit 459e9c5 on main: each headless Godot check runs under a fresh XDG_DATA_HOME; CLAUDE.md and CI use that runner; the integration scene asserts no suite autosave before loading its first farm. On 2026-09-24, all six process-integrity tests passed after import, and two simultaneous full integration suites each passed 1,012 assertions with the clean-start assertion passing. Remote main 66a3a31 has gateway, writing and tests CI jobs successful (run 35983808852). No new code or checker verdict was created for this closure.",
   "started": "",
   "attempts": 0,
   "created": "2026-09-09T23:08",
-  "created_ts": 1789020499.035034
+  "created_ts": 1789020499.035034,
+  "_revision": 4,
+  "process_completion_reconciliation": {
+    "version": 1,
+    "manifest_id": "3e356087ee76542a298579daa7e4d1097c9af1f9f825d455b3c3c6c40bf97dcc",
+    "at": "2026-09-24T03:07:17-07:00",
+    "classification": "safe_to_close",
+    "by": "Codex task verification of landed commit; not a native checker pass or Daniel acceptance",
+    "evidence_summary": "Every automated Godot check receives a private XDG data root, and the concurrency fixture cannot observe another run's files.",
+    "evidence_commits": [
+      "459e9c58cf66688e6f99cc366cb98e0f8b15860a"
+    ],
+    "test_proof": [
+      "python3 tools/test_process_integrity.py: 3 tests passed, including concurrent private user data",
+      "2026-09-24: six process-integrity tests passed; two concurrent integration suites each passed 1,012 assertions"
+    ]
+  },
+  "attempt_outcome": {
+    "version": 1,
+    "id": "process-audit-3e356087ee76542a298579daa7e4d1097c9af1f9f825d455b3c3c6c40bf97dcc-wd3ce6b6f4db",
+    "status": "complete",
+    "reason": "Every automated Godot check receives a private XDG data root, and the concurrency fixture cannot observe another run's files.",
+    "result_id": "44bf8c2991b3ece7d62bb72e366de6594d26cf10f882e81774546eb6460e7175",
+    "landing_verified": true,
+    "operator_audit": {
+      "version": 1,
+      "manifest_id": "3e356087ee76542a298579daa7e4d1097c9af1f9f825d455b3c3c6c40bf97dcc",
+      "at": "2026-09-24T03:07:17-07:00",
+      "classification": "safe_to_close",
+      "by": "Codex task verification of landed commit; not a native checker pass or Daniel acceptance",
+      "evidence_summary": "Every automated Godot check receives a private XDG data root, and the concurrency fixture cannot observe another run's files.",
+      "evidence_commits": [
+        "459e9c58cf66688e6f99cc366cb98e0f8b15860a"
+      ],
+      "test_proof": [
+        "python3 tools/test_process_integrity.py: 3 tests passed, including concurrent private user data",
+        "2026-09-24: six process-integrity tests passed; two concurrent integration suites each passed 1,012 assertions"
+      ]
+    }
+  },
+  "completion": {
+    "version": 1,
+    "attempt_id": "process-audit-3e356087ee76542a298579daa7e4d1097c9af1f9f825d455b3c3c6c40bf97dcc-wd3ce6b6f4db",
+    "at": "2026-09-24T03:07:17-07:00",
+    "by": "Codex task verification of landed commit; not a native checker pass or Daniel acceptance",
+    "kind": "operator_audit",
+    "evidence": {
+      "version": 1,
+      "manifest_id": "3e356087ee76542a298579daa7e4d1097c9af1f9f825d455b3c3c6c40bf97dcc",
+      "at": "2026-09-24T03:07:17-07:00",
+      "classification": "safe_to_close",
+      "by": "Codex task verification of landed commit; not a native checker pass or Daniel acceptance",
+      "evidence_summary": "Every automated Godot check receives a private XDG data root, and the concurrency fixture cannot observe another run's files.",
+      "evidence_commits": [
+        "459e9c58cf66688e6f99cc366cb98e0f8b15860a"
+      ],
+      "test_proof": [
+        "python3 tools/test_process_integrity.py: 3 tests passed, including concurrent private user data",
+        "2026-09-24: six process-integrity tests passed; two concurrent integration suites each passed 1,012 assertions"
+      ]
+    }
+  },
+  "closed": "2026-09-24T03:07:17-07:00",
+  "landed": {
+    "at": "2026-09-24T03:07:17-07:00",
+    "by": "Codex task verification of landed commit; not a native checker pass or Daniel acceptance",
+    "sha": "",
+    "note": "Every automated Godot check receives a private XDG data root, and the concurrency fixture cannot observe another run's files."
+  }
 }

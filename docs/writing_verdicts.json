@@ -1067,6 +1067,12 @@
   "3abde4495352d55d4af4": {
    "verdict": "ok"
   },
+  "3b64629fa3b70492346a": {
+   "instead": "Close the work item for keeping autosaves separate; the test results now confirm it works",
+   "quote": "Close autosave isolation card from landed test harness evidence",
+   "verdict": "decode",
+   "why": "“Card,” “landed,” and “test harness evidence” leave the reader to work out what was completed and why it can be closed."
+  },
   "3b73d82d9afddf1af43f": {
    "verdict": "ok"
   },
@@ -1993,6 +1999,9 @@
    "quote": "Why the sim benchmark went red, and what the target should have been",
    "verdict": "second-look",
    "why": "The reader doesn't know what \"the sim benchmark\" measures or why \"the target should have been\" implies something went wrong."
+  },
+  "704bf28cdb2e4c693edb": {
+   "verdict": "ok"
   },
   "706e7e661016bd7e89a2": {
    "verdict": "ok"
