@@ -9,20 +9,28 @@
   "tier_reason": "The CEO cleaned four frames of one sheet by hand; the same trapped pixels are almost certainly sitting in sheets nobody has looked at.",
   "ask": "Landed without Daniel: “Read Daniel's hand edit to Obstacle Set”. The CEO cleaned four frames of one sheet by hand; the same trapped pixels are almost certainly sitting in sheets nobody has looked at.",
   "first_action": "Sweep every sheet in assets/sprites/generated/ for opaque #f8f4e6 the way characters.png and chicken were swept in wc5472d80611 — alpha to zero, nothing recoloured. Separately check obstacles.png frame 7 (closed gate) for baked grass at #bfd470: decide per pixel whether it is backdrop or intended shading, and report the count rather than guessing.",
-  "state": "waiting_session",
+  "state": "for_review",
   "thread": "ingrid",
   "source": "chat",
   "source_message": "Landed without Daniel: “Read Daniel's hand edit to Obstacle Set”.",
-  "result": "",
+  "result": "Swept all 52 current PNGs in assets/sprites/generated/. Exact opaque #f8f4e6: 1,357 pixels in 20 sheets (32 sheets have none). Enlarged contact-sheet review and the existing docs/design/evidence/generated_white_inventory.md found no confirmed trapped cream backdrop: these pixels draw white feathers, eggs, farmer and robot highlights, bedding, farmhouse walls, and icon fills. Retained all 1,357; no sprite paint was recolored. The old obstacles.png atlas was retired; its closed-gate cell is now the second 16x16 cell of gate.png and is pixel-identical to the historical atlas before this cleanup.\n\nClosed gate: 52 opaque #bfd470 and 46 opaque #a3c263 pixels were baked grass in gaps between rails or below the gate, not wood shading. Converted those 98 pixels to alpha zero with RGB preserved. Before/after pixel diff against origin/main confirms exactly those 98 alpha changes, no other pixels; atlas remains 32x16 and the open-gate cell is unchanged. Godot import exited 0 and a direct loaded Texture2D read reported a 32x16 texture, 137 transparent pixels in the closed cell, and zero opaque grass pixels. The read-only light-pixel scan still covers 52 sheets and finds 12 with edge-adjacent intentional light pixels. The display visual-regression runner could not initialize X11/Wayland in this sandbox, so no screenshot verdict is claimed. No new art was generated or provenance changed.",
   "started": "",
-  "attempts": 0,
+  "attempts": 1,
   "created": "2026-09-21T22:43",
   "created_ts": 1790055811.5161881,
-  "_revision": 2,
+  "_revision": 3,
   "promised_by": "wae35fb20cb7",
   "promised": {
     "card": "Read Daniel's hand edit to Obstacle Set",
     "title": "Sweep the remaining generated sheets for trapped background pixels",
     "why": "The CEO cleaned four frames of one sheet by hand; the same trapped pixels are almost certainly sitting in sheets nobody has looked at."
+  },
+  "finished": "2026-09-24T11:01:23Z",
+  "diff": {
+    "files": [
+      "assets/sprites/generated/gate.png"
+    ],
+    "applied": true,
+    "stat": "gate.png: 98 alpha-only pixels cleared in closed gate (52 #bfd470, 46 #a3c263)."
   }
 }
