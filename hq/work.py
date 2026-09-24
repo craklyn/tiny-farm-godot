@@ -1485,6 +1485,26 @@ def supersede_item(item, canonical_id):
     return save_item(item)
 
 
+def withdraw_reverted_sprite(item_id, revert_step):
+    """Close an unanswered sprite-edit request after its edit is undone."""
+    if not re.fullmatch(r"w[a-f0-9]{11}", item_id or ""):
+        return False
+    with mutation_lock():
+        try:
+            item = load_item(item_id)
+        except (OSError, ValueError):
+            return False
+        if item.get("state") not in OPEN_STATES:
+            return False
+        forget_owner_memory(item)
+        item["state"] = "dropped"
+        item["closed"] = _now_iso()
+        item["withdrawn"] = {"at": item["closed"],
+                             "reason": f"reverted at step {revert_step}"}
+        save_item(item)
+        return True
+
+
 def requeue_for_revision(item):
     """The owner said "revise": the card goes back to the lane that can carry
     it out, carrying its earlier result, its diff and the conversation, so the

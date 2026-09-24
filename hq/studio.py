@@ -166,6 +166,30 @@ def attach_filing(key, seq, filed):
         _write_json(p, rec)
 
 
+def withdraw_reverted_filings(rec, work):
+    """Retire open art requests for steps discarded by a new revert step.
+
+    Earlier steps remain evidence in the ledger. Only steps after the restored
+    snapshot are undone; a card already answered or closed keeps its history.
+    """
+    if rec.get("kind") != "revert":
+        return []
+    key, end = rec["key"], rec["seq"]
+    start = rec.get("reverted_to")
+    if not isinstance(start, int) or not 0 <= start < end:
+        return []
+    withdrawn = []
+    for seq in range(start + 1, end):
+        try:
+            step = HOST.load_json(os.path.join(_dir(key), f"{seq:04d}.json"))
+        except (OSError, ValueError):
+            continue
+        work_id = (step.get("filed") or {}).get("work_id")
+        if work_id and work.withdraw_reverted_sprite(work_id, end):
+            withdrawn.append(work_id)
+    return withdrawn
+
+
 def commit_of(key, seq):
     """Which commit carries this step, asked of git rather than remembered.
 

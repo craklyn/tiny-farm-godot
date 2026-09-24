@@ -16,6 +16,7 @@ sys.path.insert(0, str(HERE.parent))
 
 import server  # noqa: E402
 import studio  # noqa: E402
+import work  # noqa: E402
 
 
 # A complete one-pixel PNG. The server only needs its IHDR dimensions for this
@@ -57,10 +58,14 @@ class SpriteCommits(unittest.TestCase):
         self.old_repo, self.old_data = server.REPO, server.DATA
         self.old_user_workspace = server.USER_WORKSPACE
         self.old_host, self.old_edits = studio.HOST, studio.EDITS
+        self.old_work_host, self.old_work_dir = work.HOST, work.WORK
         server.REPO = str(self.repo)
         server.DATA = str(self.repo / "hq" / "data")
         server.USER_WORKSPACE = str(self.repo)
         studio.bind(server)
+        work.HOST = server
+        work.WORK = str(self.repo / "hq" / "data" / "work")
+        Path(work.WORK).mkdir()
         self.patches = [
             patch.object(server, "run_cmd", self.run_cmd),
             patch.object(server, "signals_dirty", lambda: None),
@@ -77,6 +82,7 @@ class SpriteCommits(unittest.TestCase):
         server.REPO, server.DATA = self.old_repo, self.old_data
         server.USER_WORKSPACE = self.old_user_workspace
         studio.HOST, studio.EDITS = self.old_host, self.old_edits
+        work.HOST, work.WORK = self.old_work_host, self.old_work_dir
         self.tmp.cleanup()
 
     def git(self, *args):
@@ -143,6 +149,24 @@ class SpriteCommits(unittest.TestCase):
         raw.mkdir(parents=True)
         (raw / "borrowed.png").symlink_to(self.repo / SHEET)
         self.assertIsNone(server.editable_sprite_path("assets/raw/borrowed.png"))
+
+    def test_revert_withdraws_only_open_cards_for_undone_steps(self):
+        for seq, state in ((1, "doing"), (2, "accepted"), (3, "doing")):
+            card_id = f"w{seq:011x}"
+            work.save_item({"id": card_id, "state": state, "tier": 0,
+                            "title": f"Step {seq}", "owner": "ingrid"})
+            studio.record(SHEET, PNG + bytes([seq - 1]), PNG + bytes([seq]),
+                          {"kind": "edit"})
+            studio.attach_filing(KEY, seq, {"work_id": card_id})
+        # The latest edit is undone, as is the accepted step 2. Step 1 stays.
+        reverted = server.revert_sprite({"sheet": SHEET, "seq": 1})
+        self.assertEqual(reverted["withdrawn"], ["w00000000003"])
+        self.assertEqual(work.load_item("w00000000001")["state"], "doing")
+        self.assertEqual(work.load_item("w00000000002")["state"], "accepted")
+        card = work.load_item("w00000000003")
+        self.assertEqual(card["state"], "dropped")
+        self.assertEqual(card["withdrawn"]["reason"], "reverted at step 4")
+        self.assertEqual(studio.history(SHEET)[-1]["kind"], "revert")
 
 
 if __name__ == "__main__":
