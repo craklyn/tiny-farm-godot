@@ -266,6 +266,16 @@ class AnimationLabTests(unittest.TestCase):
         self.assertEqual(StoppedThread.starts, 0)
         paid.assert_not_called()
 
+    def test_existing_run_review_can_still_receive_a_verdict(self):
+        path = self.review(work_id="wr1788991284fa19")
+        result = anim.record_verdict(
+            {"work_id": "wr1788991284fa19", "slug": "sprout", "verdict": "drop",
+             "why": "The motion obscures the crop", "values": {"speed": 2}}
+        )
+        self.assertEqual(result["state"], "dropped")
+        self.assertEqual(self.read_json(path)["anim_verdicts"][-1]["reason"],
+                         "The motion obscures the crop")
+
     def test_verdict_rejects_wrong_source_state_and_slug(self):
         cases = [
             ("wa11111", "for_review", "manual", "sprout"),

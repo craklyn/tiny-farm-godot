@@ -643,7 +643,9 @@ def _work_slug(item):
 
 
 def _review_record(work_id, slug):
-    if not re.fullmatch(r"w[0-9a-f]{6,32}", work_id):
+    # Older unattended runs filed `wr...` reviews. Keep their in-page verdicts
+    # usable; every new review and follow-up now gets a standard work ID.
+    if not re.fullmatch(r"w(?:[0-9a-f]{6,32}|r[0-9a-f]{6,32})", work_id):
         return None, "", "a work item is required for this verdict"
     path = os.path.join(DATA, "work", f"{work_id}.json")
     try:
