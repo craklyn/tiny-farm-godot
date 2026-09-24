@@ -2525,6 +2525,66 @@ def api_post(path, payload):
 
 
 def _api_post(path, payload):
+    if path == "/api/work/request":
+        words = str(payload.get("words") or "").strip()
+        kind = str(payload.get("kind") or "work")
+        request_id = str(payload.get("request_id") or "")
+        if not words or len(words) > 4000:
+            return {"error": "Describe the request in 1–4000 characters."}
+        if kind not in ("work", "priority", "discussion"):
+            return {"error": "Unknown request kind."}
+        if not re.fullmatch(r"[a-zA-Z0-9_-]{8,100}", request_id):
+            return {"error": "Missing submission id; reload and try again."}
+        previous = next((i for i in items() if i.get("request_id") == request_id), None)
+        if previous:
+            if previous.get("source_message") != words or previous.get("request_kind") != kind:
+                return {"error": "This submission id was already used for another request."}
+            return previous
+        owner = "priya" if kind == "priority" else "claude"
+        if not any(e["id"] == owner for e in HOST.load_org()["employees"]):
+            owner = "claude"
+        first = {
+            "work": "Identify the accountable owner and safe execution tier, file the requested work as a linked follow-up, and report the route here.",
+            "priority": "Read the current priorities, identify the accountable owner, file the priority edit as linked work at its proper execution tier, and report the route here.",
+            "discussion": "Respond to Daniel's question here and file follow-up work only if the discussion calls for it.",
+        }[kind]
+        title = words.splitlines()[0][:160] or "New request"
+        return save_item({
+            "id": "w" + uuid.uuid4().hex[:11], "title": title, "level": "task",
+            "owner": owner, "tier": 0,
+            "tier_reason": "Read, route, and discuss first; any later action gets its own execution tier.",
+            "ask": words, "first_action": first, "state": "doing", "thread": owner,
+            "source": "request", "source_message": words, "request_kind": kind,
+            "request_id": request_id, "result": "", "started": "", "attempts": 0,
+            "created": _now_iso(), "created_ts": time.time(),
+        })
+    if path == "/api/work/reopen":
+        old_id = str(payload.get("id") or "")
+        if not re.fullmatch(r"w[0-9a-f]{6,32}", old_id) or not os.path.isfile(_item_path(old_id)):
+            return {"error": "No such work card."}
+        original = load_item(old_id)
+        if original.get("source") != "request":
+            return {"error": "Only requests can be reopened here."}
+        if original.get("state") not in ("accepted", "dropped", "landed"):
+            return {"error": "This request is still open; add a comment on its card."}
+        words = str(payload.get("words") or "").strip()
+        if not words or len(words) > 4000:
+            return {"error": "Describe what needs another look in 1–4000 characters."}
+        request_id = str(payload.get("request_id") or "")
+        previous = next((i for i in items() if i.get("request_id") == request_id), None)
+        if previous and previous.get("reopens") != old_id:
+            return {"error": "This submission id was already used for another request."}
+        created = _api_post("/api/work/request", {"words": words,
+            "kind": original.get("request_kind", "work"), "request_id": request_id})
+        if created.get("error"):
+            return created
+        if created.get("reopens") and created["reopens"] != old_id:
+            return {"error": "This submission id was already used for another reopening."}
+        if not created.get("reopens"):
+            created["reopens"] = old_id
+            created["parent"] = old_id
+            save_item(created)
+        return created
     if path == "/api/work/new":
         org = HOST.load_org()
         try:

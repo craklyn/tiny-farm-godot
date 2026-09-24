@@ -290,23 +290,64 @@ const routes = {
 };
 
 let routeSeq = 0, routeActive = 0;
+function navSection(hash) {
+  const path = hash.split("?")[0];
+  if (path === "/request" || path.startsWith("/request/")) return "request";
+  if (path === "/work-status" || path === "/chat/bullpen" || path === "/work/queue") return "work";
+  if (path === "/work" || path === "/inbox" || path.startsWith("/inbox/")) return "decisions";
+  if (path.startsWith("/work/")) return "work";
+  if (path === "/design" || path.startsWith("/design/") || path === "/entities" || path.startsWith("/entity/") || path.startsWith("/sprite/") || path === "/maps" || path === "/playtests" || path.startsWith("/playtest/")) return "studio";
+  return "overview";
+}
+function syncNavAvailability() {
+  document.querySelectorAll(".primary-nav a[data-section]").forEach(link => {
+    link.hidden = !!surfaceParked(link.getAttribute("href"));
+  });
+  document.querySelectorAll(".nav-tools-menu a[data-route]").forEach(link => {
+    const parked = !!surfaceParked(link.dataset.route);
+    link.hidden = parked;
+    if (!parked) {
+      link.classList.remove("parked-link");
+      link.removeAttribute("aria-disabled");
+      if ((link.title || "").startsWith("Switched off")) link.removeAttribute("title");
+    }
+  });
+}
+function setNavLayout(sidebar) {
+  document.body.classList.toggle("nav-sidebar-layout", sidebar);
+  const toggle = document.getElementById("nav-layout-toggle");
+  if (toggle) {
+    toggle.textContent = sidebar ? "Try top bar" : "Try compact sidebar";
+    toggle.setAttribute("aria-pressed", String(sidebar));
+  }
+  try { localStorage.setItem("hq-nav-layout", sidebar ? "sidebar" : "top"); } catch { }
+}
+function initNavLayout() {
+  let sidebar = false;
+  try { sidebar = localStorage.getItem("hq-nav-layout") === "sidebar"; } catch { }
+  setNavLayout(sidebar);
+  document.getElementById("nav-layout-toggle").addEventListener("click", () => {
+    setNavLayout(!document.body.classList.contains("nav-sidebar-layout"));
+  });
+}
 async function route() {
   clearAnimators();
   hidePersonTip();
   const seq = ++routeSeq;
   routeActive++;
   const hash = location.hash.slice(1) || "/";
-  // #/inbox is an alias for the one queue, so the nav highlights the row that
-  // actually holds it rather than nothing at all.
-  const navHash = hash.startsWith("/inbox") ? "/work" + hash.slice("/inbox".length) : hash;
-  document.querySelectorAll("#sidebar a").forEach(a => {
-    const r = a.dataset.route;
-    a.classList.toggle("active", r === "/" ? navHash === "/" : navHash.startsWith(r));
+  const section = navSection(hash);
+  document.querySelectorAll("#sidebar [data-section]").forEach(a => {
+    const active = a.dataset.section === section;
+    a.classList.toggle("active", active);
+    if (active) a.setAttribute("aria-current", "page");
+    else a.removeAttribute("aria-current");
   });
   applyNavGroups();
   $view.innerHTML = `<p class="muted">Loading…</p>`;
   // The switchboard answers first: a parked route never reaches its page.
   await surfaceReady;
+  syncNavAvailability();
   const parked = surfaceParked(hash);
   try {
     if (parked) {
@@ -331,6 +372,7 @@ async function route() {
     else if (hash.startsWith("/person/")) await renderPerson(hash.slice("/person/".length));
     else if (hash.startsWith("/work/")) await renderWork(hash.slice("/work/".length));
     else if (hash.startsWith("/inbox/")) await renderWork(hash.slice("/inbox/".length));
+    else if (hash.startsWith("/request/")) await renderRequest(hash.slice("/request/".length));
     // Guarded: on a direct page-load design.js hasn't registered yet; it
     // re-routes itself once loaded (same dance as its /design route).
     else if (hash.startsWith("/design/doc/") && window.renderDesignDoc) await renderDesignDoc(hash.slice("/design/doc/".length));
@@ -1749,7 +1791,9 @@ async function renderChat(toId) {
 
 /* ---------------- boot ---------------- */
 async function boot() {
+  initNavLayout();
   route();
+  surfaceReady.then(syncNavAvailability);
   try {
     await fetch("/api/health");
     const d = document.getElementById("health-dot");
