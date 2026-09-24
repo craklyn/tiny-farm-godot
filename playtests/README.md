@@ -25,14 +25,17 @@ exactly that confusion.
 
 ## Replay-corpus vintage: before harvest-as-seed
 
-Sessions recorded before the harvest-as-seed build use the old separate seed pouch and
-sell-all economy. A replay from this vintage may not verify against the current build;
-that is a build mismatch, not a reason to discard the session as training data.
+All 38 sessions here were recorded by 2026-09-16, before the harvest-as-seed change
+landed on 2026-09-23. They show the former separate seed and crop stores and sell-all
+economy. Keep this vintage labeled when selecting training data: a build-stamp mismatch
+or a failed end-state verification against a newer build does not erase what the player
+did. Exact replay verification and training value answer different questions.
 
-Keep `till`, `plant`, `water`, and `harvest` entries, and every recorded movement event,
-as valid training demonstrations across this change. Do not use `buy_seed` or `sell`
-entries from this vintage: the pouch and sale rules those actions demonstrate no longer
-apply.
+Keep `till`, `plant`, `water`, `harvest`, and recorded movement events as demonstrations
+of those actions. Their verbs and movement records remain useful across the pouch change,
+but stock, observations, and rewards can differ; assess those inputs by build vintage
+before training. Exclude this vintage's `buy_seed` and `sell` entries from current-economy
+training: their purchase and sale rules no longer transfer.
 
 Each directory holds up to three files, and they answer different questions:
 

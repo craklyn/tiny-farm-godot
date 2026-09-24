@@ -2798,6 +2798,9 @@
   "945755f5ef8eca4a64b3": {
    "verdict": "ok"
   },
+  "946a088ddc4bfffc5025": {
+   "verdict": "ok"
+  },
   "94b653533cb4746b6143": {
    "verdict": "ok"
   },
@@ -4627,6 +4630,12 @@
   },
   "f2067c508d33ff50c7f6": {
    "verdict": "ok"
+  },
+  "f2131e3a879413a82de7": {
+   "instead": "Clarify which version of the replay data was collected after the pouch update",
+   "quote": "Clarify replay corpus vintage after pouch change",
+   "verdict": "decode",
+   "why": "“Replay corpus vintage” and “pouch change” are unexplained internal terms, so the reader cannot tell which replay data or change this refers to."
   },
   "f23f65de868c8329acc8": {
    "verdict": "ok"
