@@ -192,7 +192,8 @@ function qWorkItem(card, org, reason) {
     owner, seconds: answer ? Q_PICK_SECONDS : Q_READ_SECONDS, state: card.state,
     tier: card.tier ?? 2, reason: reason || "hard to walk back, or a matter of taste",
     diffApplied: !!(card.diff && card.diff.applied),
-    options: [], followUps: card.follow_ups || [], conversation: convo, attachments: [],
+    options: [], followUps: card.follow_ups || [], conversation: convo, attachments: card.attachments || [],
+    artifact: card,
     deliverableEvidence: qDeliverableEvidence(card),
     evidence: qWorkEvidence(card, owner.name), source: `work card ${card.id}`, canDrop: true,
   };
@@ -218,7 +219,7 @@ function qDecisionItem(c, org, seats) {
       recommended: (o.label || "").includes("(Recommended)") })),
     followUps: [],
     conversation: (c.replies || []).map(r => ({ who: r.by === "claude" ? "Adam" : (r.by || "the studio"), text: r.text || "", at: r.at || "" })),
-    attachments: c.attachments || [], deliverableEvidence: qDeliverableEvidence(c),
+    attachments: c.attachments || [], artifact: c, deliverableEvidence: qDeliverableEvidence(c),
     evidence: qDecisionEvidence(c), source: `decision card ${c.id}`, canDrop: false,
   };
 }
@@ -369,11 +370,9 @@ function qPaneHtml(row, org) {
   };
   return `
     <div class="q-pane-q">${mdi(row.question)}</div>
-    <div class="q-pane-src">${esc(row.title)} · ${esc(row.source)} · ${esc(ownerName)}</div>
+    <div class="q-pane-src">${esc(row.title)}${row.kind === "review" ? reviewHeadingArtifact(row.artifact) : ""} · ${esc(row.source)} · ${esc(ownerName)}</div>
 
-    ${row.deliverableEvidence && row.deliverableEvidence.length ? `<div class="q-sec q-review-artifact"><h3>The result to review</h3>${row.deliverableEvidence.map(e =>
-      `<a class="plain" href="${esc(e.href)}">${esc(e.label)}</a>`).join(" · ")}</div>` : ""}
-
+    ${reviewComparison(row.artifact, row.attachments)}
     <div class="q-atts" id="q-pane-atts"></div>
 
     <div class="q-sec"><h3>What I recommend</h3>
@@ -572,6 +571,7 @@ function qRender(state) {
   const findRow = id => rows.find(r => r.id === id);
   const attsBox = () => document.getElementById("q-pane-atts");
   const fillAtts = row => { const box = attsBox(); if (box && row) (row.attachments || [])
+    .filter(a => a && ["look", "sprite"].includes(a.type))
     .forEach(a => { try { box.appendChild(attachmentEl(a, null, null)); } catch (e) {} }); };
   fillAtts(selectedRow);
 

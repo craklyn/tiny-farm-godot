@@ -27,6 +27,7 @@ const ctx = vm.createContext({
 vm.runInContext(app.slice(app.indexOf('async function api('), app.indexOf('/* This page is long-lived')), ctx);
 vm.runInContext(app.slice(app.indexOf('function workflowView('), app.indexOf('// A work title')), ctx);
 vm.runInContext(app.slice(app.indexOf("function reviewEvidenceLinks("), app.indexOf("/* Markdown for authored prose")), ctx);
+vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/review_evidence.js'), 'utf8'), ctx);
 const submissionStart = app.indexOf('function decisionSubmissionId');
 const submissionEnd = app.indexOf('\n\nfunction decisionCard', submissionStart);
 vm.runInContext(app.slice(submissionStart, submissionEnd), ctx);

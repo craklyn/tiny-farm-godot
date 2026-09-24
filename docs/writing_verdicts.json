@@ -133,6 +133,9 @@
   "07bfae196c2836beca70": {
    "verdict": "ok"
   },
+  "0800f7f73f760824569c": {
+   "verdict": "ok"
+  },
   "08359d55326086002d83": {
    "instead": "A scheduled run will automatically start the next attempt; you don't need to trigger it",
    "quote": "the studio's own scheduled run starts it, not you",

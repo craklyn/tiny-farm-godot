@@ -167,10 +167,7 @@ function reviewQuestion(it) {
 
 function reviewEvidence(it) {
   if (it.state !== "for_review") return "";
-  const evidence = reviewEvidenceLinks(it);
-  if (!evidence.length) return "";
-  return `<div class="w-rec"><div class="w-rec-h">The result to review</div><p class="w-rec-q">${evidence.map(e =>
-    `<a class="plain" href="${esc(e.href)}">${esc(e.label || "Open the reviewed result")}</a>`).join(" · ")}</p></div>`;
+  return reviewComparison(it, it.attachments || []);
 }
 
 function decidedNote(it) {
@@ -751,7 +748,7 @@ function workCard(it, org, pol) {
           <span class="w-owner-wrap"><button class="w-owner" data-person="${esc(it.owner)}"
             title="Who ${esc(who.name.split(" ")[0])} is, what they own, and what else they are carrying">${esc(who.emoji)} ${esc(who.name)}</button></span>
         </div>
-        <h3>${esc(FINISHED.includes(it.state) ? reviewTitle(it) : it.title)}</h3>
+        <h3>${esc(FINISHED.includes(it.state) ? reviewTitle(it) : it.title)}${it.state === "for_review" ? reviewHeadingArtifact(it) : ""}</h3>
         <div class="w-wants">${esc(view.canonical ? wantsLine(it, org) : (it.effective || {}).label || wantsLine(it, org))}${busy ? `<span class="w-dots"><i></i><i></i><i></i></span>` : ""}${!view.canonical && it.effective && it.effective.at ? ` · ${timeControl(it.effective.at)}` : ""}</div>
       </div>
     </div>

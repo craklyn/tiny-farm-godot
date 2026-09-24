@@ -185,18 +185,21 @@ const evidenceContext = vm.createContext({});
 vm.runInContext(evidenceHelper, evidenceContext);
 shared.reviewEvidenceLinks = evidenceContext.reviewEvidenceLinks;
 const queue = vm.createContext({ ...shared });
+const reviewSource = fs.readFileSync(root + "/hq/static/review_evidence.js", "utf8");
+vm.runInContext(reviewSource, queue);
 vm.runInContext(fs.readFileSync(root + "/hq/static/queue.js", "utf8"), queue);
 const index = (text, needle) => { const found = text.indexOf(needle); assert.ok(found >= 0, needle); return found; };
-const animation = queue.qPaneHtml({ id: "animation", question: "Does the motion read clearly?", title: "Review: Watering animation", source: "work card animation", owner: { name: "Ingrid" }, answer: "Keep this timing", why: "The pause reads at game size.", instead: "Slow it down", options: [], followUps: [], conversation: [], attachments: [], canDrop: true, deliverableEvidence: [{ label: "Play the watering animation", href: "/review/watering" }], evidence: [{ label: "Run notes", text: "Frames checked" }] }, {});
+const animation = queue.qPaneHtml({ id: "animation", kind: "review", question: "Does the motion read clearly?", title: "Review: Watering animation", source: "work card animation", owner: { name: "Ingrid" }, answer: "Keep this timing", why: "The pause reads at game size.", instead: "Slow it down", options: [], followUps: [], conversation: [], attachments: [], canDrop: true, artifact: {deliverable: {name: "Watering animation", evidence: [{ label: "Play the watering animation", href: "/review/watering" }]}}, evidence: [{ label: "Run notes", text: "Frames checked" }] }, {});
 assert.ok(index(animation, "Does the motion read clearly?") < index(animation, "Play the watering animation"));
 assert.ok(index(animation, "Play the watering animation") < index(animation, "What I recommend"));
 const design = queue.qPaneHtml({ id: "design", question: "Which tool should players receive first?", title: "First tool", source: "decision card design", owner: { name: "Milo" }, answer: "Watering can", why: "It teaches the core loop.", instead: "Hoe", options: [{ label: "Watering can", detail: "Care for a planted crop." }], followUps: [], conversation: [], attachments: [], canDrop: false, deliverableEvidence: [], evidence: [{ label: "Design comparison", text: "Both choices shown" }] }, {});
 assert.ok(index(design, "Which tool should players receive first?") < index(design, "What I recommend"));
 assert.ok(index(design, "What I recommend") < index(design, "What yes starts"));
-const incomplete = queue.qPaneHtml({ id: "incomplete", question: "Does this result stand despite the missing recommendation?", title: "Review: Crop icon", source: "work card incomplete", owner: { name: "Yuki" }, answer: "", why: "", instead: "", options: [], followUps: [], conversation: [], attachments: [], canDrop: true, deliverableEvidence: [{ label: "Open the crop icon", href: "/review/icon" }], evidence: [], }, {});
+const incomplete = queue.qPaneHtml({ id: "incomplete", kind: "review", question: "Does this result stand despite the missing recommendation?", title: "Review: Crop icon", source: "work card incomplete", owner: { name: "Yuki" }, answer: "", why: "", instead: "", options: [], followUps: [], conversation: [], attachments: [], canDrop: true, artifact: {deliverable: {name: "Crop icon", evidence: [{ label: "Open the crop icon", href: "/review/icon" }]}}, evidence: [], }, {});
 assert.ok(index(incomplete, "Does this result stand despite the missing recommendation?") < index(incomplete, "Open the crop icon"));
 assert.ok(index(incomplete, "Open the crop icon") < index(incomplete, "No recommendation on this one."));
 const work = vm.createContext({ ...shared });
+vm.runInContext(reviewSource, work);
 // work.js is loaded after app.js in the browser. Supply its one shared
 // workflow adapter here too; an isolated VM must not silently replace that
 // public projection with a second, different status calculation.
@@ -204,8 +207,8 @@ const workflowHelper = appSource.slice(appSource.indexOf("function workflowView(
 vm.runInContext(workflowHelper, work);
 vm.runInContext(fs.readFileSync(root + "/hq/static/work.js", "utf8"), work);
 const card = work.workCard({ id: "work-animation", title: "Internal animation task", state: "for_review", owner: "rin", level: "task", deliverable: { name: "Watering animation", evidence: [{ label: "Play the watering animation", href: "/review/watering" }] }, recommend: { question: "Does the motion read clearly?", answer: "Keep this timing", why: "The pause reads at game size.", instead: "Slow it down" }, result: "The frames are ready." }, {}, {}).html;
-assert.ok(index(card, "Does the motion read clearly?") < index(card, "Play the watering animation"));
-assert.ok(index(card, "Play the watering animation") < index(card, "Recommended"));
+assert.ok(index(card, "Play the watering animation") < index(card, "Does the motion read clearly?"));
+assert.ok(index(card, "Does the motion read clearly?") < index(card, "Recommended"));
 assert.ok(index(card, "Recommended") < index(card, "The frames are ready."));
 // Supported production path entries use only the already-served repo roots.
 const schemaCard = { id: "path-review", title: "Path evidence", state: "for_review", owner: "rin", level: "task",
@@ -240,6 +243,24 @@ const readCard = (kind, id) => JSON.parse(fs.readFileSync(root + "/hq/data/" + k
 const actualAnimation = readCard("work", "wr1788991284fa19");
 const actualIncomplete = readCard("work", "w449aff92129");
 const actualDesign = readCard("decisions", "Q-107");
+const seeder = queue.qPaneHtml(queue.qWorkItem(actualAnimation, {}, "Recorded review"), {});
+assert.ok(seeder.includes('href="#/design/anim/seeder_bot"'), "seeder review links to the real Lab result beside its heading");
+assert.ok(seeder.includes("does not identify the exact render originally reviewed"), "legacy display does not claim a pinned version");
+const audioChoice = readCard("decisions", "Q-102");
+const audioHtml = queue.qPaneHtml(queue.qDecisionItem(audioChoice, {}, { seats: [] }), {});
+assert.equal((audioHtml.match(/<audio /g) || []).length, 3, "all recorded rival sounds are listenable");
+const storyHtml = queue.qPaneHtml(queue.qDecisionItem(actualDesign, {}, { seats: [] }), {});
+assert.ok((storyHtml.match(/<video /g) || []).length >= 3, "story-night rivals remain playable");
+assert.ok(storyHtml.includes("The robot&#39;s treads") || storyHtml.includes("The robot's treads"), "rivals retain their groups");
+const comparison = queue.reviewComparison({deliverable: {reviewed_version: "sha256:example", created_at: "2026-09-24",
+  comparison: {copy: [{label: "Current", text: "Plant crop"}, {label: "Proposed", text: "Sow a seed"}],
+    rows: [{label: "Seed cost", current: 3, proposed: 2}]}, evidence: [
+    {label: "Current loop", role: "Current", path: "tools/experiments/out/crow_gorge/current.gif"},
+    {label: "Proposed loop", role: "Proposed", path: "tools/experiments/out/crow_gorge/proposed.gif"}]}});
+assert.equal((comparison.match(/<img /g) || []).length, 2, "both animations are visible at once");
+assert.ok(comparison.includes("Plant crop") && comparison.includes("Sow a seed"), "copy versions are readable together");
+assert.ok(comparison.includes("<table") && comparison.includes("Seed cost"), "numeric choices use a table");
+assert.ok(comparison.includes("Created:") && comparison.includes("Displayed here:") && comparison.includes("Reviewed version:"), "three artifact states remain distinct");
 for (const recorded of [actualAnimation, actualIncomplete]) {
   const row = queue.qWorkItem(recorded, {}, "Recorded review");
   const html = queue.qPaneHtml(row, {});
@@ -261,7 +282,7 @@ for (const option of actualDesign.options) assert.ok(choice.includes('value="' +
 assert.equal((choice.match(/type="radio"/g) || []).length, actualDesign.options.length + 1);
 assert.equal((choice.match(/class="q-decision-submit"/g) || []).length, 1);
 assert.ok(choice.includes('data-intent="revise"'));
-assert.ok(index(choice, "q-pane-atts") < index(choice, "What I recommend"));
+assert.ok(index(choice, "Result to review") < index(choice, "What I recommend"));
 console.log("Rendered review cards keep question, artifact, recommendation, and result in order.");
 '''
         rendered = subprocess.run(["node", "-e", renderer_test, os.path.dirname(os.path.dirname(HERE))],
