@@ -2547,6 +2547,12 @@
   "86dffa30dda5f3b8a6b2": {
    "verdict": "ok"
   },
+  "8705e70efe563015ce09": {
+   "instead": "Build new animation images from pixels already in the game",
+   "quote": "derived sprite frames from shipped pixels",
+   "verdict": "decode",
+   "why": "A reader has to work out that this means making new animation images from pixels already in the game."
+  },
   "87339152f33b1c468422": {
    "instead": "the charts match what the test suite logged",
    "quote": "the charts say the same thing as the robot's own scorecard",
@@ -2970,6 +2976,9 @@
    "verdict": "ok"
   },
   "9d766836429c9a8c6440": {
+   "verdict": "ok"
+  },
+  "9e8d4a48ded8a5e94b77": {
    "verdict": "ok"
   },
   "9eb0ac692c815a662240": {

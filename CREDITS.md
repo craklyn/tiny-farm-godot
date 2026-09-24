@@ -38,6 +38,14 @@ before the first public build ships.*
     count, metal and lens and trim untouched. A placeholder so the two robot marks can be
     told apart on the farm, at the designer's request, until they are designed as different
     machines. Cost nothing; no model was called.
+  - `player_chop.png` (2026-09-24) is **derived, not generated**: four 48px
+    clearing poses built by `tools/build_player_chop.py` from the standing cells
+    of `characters.png` and the axe cell of `tool_icons.png`. The axe rotates
+    about its handle butt with nearest-pixel sampling; the up-facing pose puts it
+    behind the body. Only obstacle clearing uses these poses. The builder checks
+    the exact sheet grid, binary alpha and the union of the other shipped sheet
+    colours before writing. Cost nothing; no model was called. Provenance and
+    rights remain those of the two source sheets above.
   - `obstacle_rock.png`, `obstacle_log.png`, `obstacle_weed.png`, `obstacle_tree.png`,
     `fence.png`, `hedge.png`, `gate.png` (2026-09-07) are `obstacles.png` cut into one sheet
     per thing, every cell moved pixel-identical. Same provenance as the sheet they came from.

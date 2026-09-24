@@ -21,6 +21,7 @@ var walk_timer: float = 0.0
 var is_moving: bool = false
 var is_acting: bool = false
 var action_timer: float = 0.0
+var action_verb: String = ""
 const ACTION_DURATION := 0.35
 
 var spook_radius: float = 3.0 * TILE_SIZE
@@ -37,6 +38,7 @@ const TAP_INDICATOR_DURATION := 0.6
 
 # Sprite
 var sprite_texture: Texture2D
+var chop_texture: Texture2D
 var sprite_quads: Dictionary = {}  # direction -> { frame -> Rect2 }
 
 # Reference to farm
@@ -64,7 +66,7 @@ var gs: Node = null
 # asleep would move sim truth and post a teleport into the training data. The
 # sprite goes to the cot; she does not.
 #
-# No new art (D-8's tier-(a) budget): the held action frame is the same trick the
+# The cot still needs no new art: its held frame is the same trick the
 # neighbour's wave uses — one frame doing a second job — and the cot is drawn
 # north-south, so an upright sprite already lies along it.
 var tuck_tile: Vector2i = Vector2i(-1, -1)
@@ -133,6 +135,7 @@ func init_position(start_tx: int, start_ty: int) -> void:
 
 func _load_sprites() -> void:
 	sprite_texture = load("res://assets/sprites/generated/characters.png")
+	chop_texture = load("res://assets/sprites/generated/player_chop.png")
 	var directions: Array[String] = ["down", "up", "left", "right"]
 	for row in directions.size():
 		var dir: String = directions[row]
@@ -174,6 +177,7 @@ func update_player(delta: float) -> void:
 		action_timer -= delta
 		if action_timer <= 0:
 			is_acting = false
+			action_verb = ""
 		return
 
 	var dx: float = 0.0
@@ -853,6 +857,7 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 		gs.selected_tool = pa["tool_idx"]
 	is_acting = true
 	action_timer = ACTION_DURATION
+	action_verb = action
 
 	if action == "clear_weed" or action == "clear_log" or action == "clear_rock" \
 			or action == "clear_tree":
@@ -935,17 +940,23 @@ func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
 
 	var frame := walk_frame
 	if is_acting:
-		frame = 3  # Action/swing frame
+		frame = 3  # Existing action pose for non-clearing verbs.
 
 	var quad_map = sprite_quads.get(facing, {})
 	var region: Rect2 = quad_map.get(frame, Rect2())
+	var draw_texture := sprite_texture
+	if is_acting and action_verb in ["clear_weed", "clear_log", "clear_rock", "clear_tree"] \
+			and chop_texture != null:
+		draw_texture = chop_texture
+		var row := ["down", "up", "left", "right"].find(facing)
+		region = Rect2(0, row * 48, 48, 48)
 	if region.size.x > 0:
 		# Draw 48x48 sprite. Offset by -24 (half width) and -32 (so feet align with center)
 		# We add player.position since it's drawn from the canvas (farm) which is at 0,0
 		var draw_pos := position + Vector2(-24.0, -32.0)
 		render_queue.append({
 			"y": position.y,
-			"draw": func(): canvas.draw_texture_rect_region(sprite_texture, Rect2(draw_pos, Vector2(48, 48)), region)
+			"draw": func(): canvas.draw_texture_rect_region(draw_texture, Rect2(draw_pos, Vector2(48, 48)), region)
 		})
 		
 	# Draw tap indicator
