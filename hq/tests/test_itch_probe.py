@@ -81,6 +81,22 @@ class ItchProbeTest(unittest.TestCase):
         self.assertIn("not found", self.cached()["error"])
         self.assertNotIn("views_count", self.cached())
 
+    def test_storefront_definition_comes_from_code_with_separate_live_data(self):
+        code = self.root / "code"
+        (code / "data").mkdir(parents=True)
+        current = {"platforms": [{"id": "itch-web", "requirements": [
+            {"label": "Store analytics we can read", "check": {
+                "kind": "probe_cache", "probe": "itch_daily", "field": "available"}}]}]}
+        stale = {"platforms": [{"id": "itch-web", "requirements": [
+            {"label": "Store analytics we can read", "check": {
+                "kind": "file_exists", "path": "old-cache.json"}}]}]}
+        (code / "data" / "platforms.json").write_text(json.dumps(current))
+        (self.data / "platforms.json").write_text(json.dumps(stale))
+        server._write_probe("itch_daily", {"available": True})
+        with patch.object(server, "HQ_DIR", str(code)):
+            requirement = server.platform_ladder()["platforms"][0]["requirements"][0]
+        self.assertEqual(requirement["state"], "have")
+
 
 if __name__ == "__main__":
     unittest.main()

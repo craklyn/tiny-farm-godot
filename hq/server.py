@@ -3615,7 +3615,10 @@ def record_web_play(payload):
 # ---------------------------------------------------------------------------
 
 def platform_ladder():
-    doc = load_json(os.path.join(DATA, "platforms.json"))
+    # This is authored storefront configuration, shipped with HQ code. In a
+    # relocated service DATA holds mutable readings and cards; its older copy
+    # of this tracked file must not override a newly shipped check definition.
+    doc = load_json(os.path.join(HQ_DIR, "data", "platforms.json"))
     out = []
     for p in doc["platforms"]:
         reqs = []
