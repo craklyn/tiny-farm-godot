@@ -27,8 +27,14 @@ function makeUi() {
 const ctx = vm.createContext({
   document: {
     getElementById(id) { return ({ "an-why": ui.why, "an-callnote": ui.note, "an-asks": ui.asks })[id] || null; },
-    querySelectorAll(selector) { return selector === ".an-verdicts button" ? ui.buttons : []; },
+    querySelector() { return null; },
+    querySelectorAll(selector) {
+      if (selector === ".an-verdicts button") return ui.buttons;
+      if (selector === ".an-params input[data-p]") return [{ dataset: { p: "speed" }, value: "2.5" }];
+      return [];
+    },
   },
+  anPlayer: { judgedValues: { speed: 2.5 } },
   fetch: async (url, options) => {
     assert.equal(url, "/api/loop/verdict");
     posted = JSON.parse(options.body);
@@ -45,7 +51,8 @@ async function submit(verdict, response, reason = "The timing reads clearly at g
   ctx.anWireVerdict({ slug: "watering", work_item: "w123456abcdef" });
   ui.why.value = reason;
   await ui.buttons.find(button => button.dataset.v === verdict).onclick();
-  assert.deepEqual(posted, { work_id: "w123456abcdef", slug: "watering", verdict, why: reason });
+  assert.deepEqual(posted, { work_id: "w123456abcdef", slug: "watering", verdict,
+    why: reason, values: { speed: 2.5 } });
   return ui;
 }
 
@@ -84,6 +91,16 @@ async function submit(verdict, response, reason = "The timing reads clearly at g
   assert.equal(posted, null, "a blank reason never reaches the server");
   assert.equal(ui.why.focused, true);
   assert.match(ui.note.textContent, /Say why first/);
+
+  ui = makeUi();
+  ui.why.value = "Looks good";
+  posted = null;
+  ctx.anPlayer = { judgedValues: { speed: 1 } };
+  ctx.anWireVerdict({ slug: "watering", work_item: "w123456abcdef" });
+  await ui.buttons[0].onclick();
+  assert.equal(posted, null, "a slider value that is not on stage cannot be judged");
+  assert.match(ui.note.textContent, /Wait for the preview/);
+  ctx.anPlayer = { judgedValues: { speed: 2.5 } };
 
   assert.match(source, /L\.work_item \? `<div class="an-verdicts">/,
     "a loop without a safe review identity has no verdict controls");

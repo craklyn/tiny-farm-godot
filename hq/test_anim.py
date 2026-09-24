@@ -228,13 +228,20 @@ class AnimationLabTests(unittest.TestCase):
             anim._INDEX_CACHE["key"] = "cached"
             result = anim.record_verdict(
                 {"work_id": work_id, "slug": "sprout", "verdict": verdict,
-                 "why": f"reason for {verdict}"}
+                 "why": f"reason for {verdict}", "values": {"speed": 2.5}}
             )
             saved = self.read_json(path)
             self.assertEqual(result["state"], state)
             self.assertEqual(saved["state"], state)
             self.assertIn(f"reason for {verdict}", saved["result"])
             self.assertEqual(saved["conversation"][-1]["text"], f"reason for {verdict}")
+            self.assertEqual(saved["anim_verdicts"][-1]["values"], {"speed": 2.5})
+            self.assertEqual(saved["anim_verdicts"][-1]["slug"], "sprout")
+            self.assertTrue(saved["anim_verdicts"][-1]["at"].endswith("Z"))
+            followup = self.read_json(self.data / "work" / f"{result['followup_work_id']}.json")
+            self.assertEqual(followup["owner"], "ingrid")
+            self.assertEqual(followup["state"], "waiting_session")
+            self.assertEqual(followup["anim_verdict"], saved["anim_verdicts"][-1])
             self.assertIsNone(anim._INDEX_CACHE["key"])
 
     def test_verdict_without_exact_work_identity_has_no_side_effect(self):
@@ -242,7 +249,8 @@ class AnimationLabTests(unittest.TestCase):
         with mock.patch.object(anim.threading, "Thread", StoppedThread), \
                 mock.patch.object(anim.execution, "run_session") as paid:
             result = anim.record_verdict(
-                {"slug": "sprout", "verdict": "rework", "why": "Change the timing curve"}
+                {"slug": "sprout", "verdict": "rework", "why": "Change the timing curve",
+                 "values": {"speed": 2}}
             )
         self.assertIn("work item", result["error"])
         self.assertEqual(StoppedThread.starts, 0)
@@ -257,7 +265,8 @@ class AnimationLabTests(unittest.TestCase):
         for work_id, state, source, slug in cases:
             self.review(slug=slug, work_id=work_id, state=state, source=source)
             result = anim.record_verdict(
-                {"work_id": work_id, "slug": "sprout", "verdict": "keep", "why": "It reads well"}
+                {"work_id": work_id, "slug": "sprout", "verdict": "keep", "why": "It reads well",
+                 "values": {"speed": 2}}
             )
             self.assertIn("error", result)
 
@@ -269,11 +278,12 @@ class AnimationLabTests(unittest.TestCase):
                 mock.patch.object(anim.execution, "run_session") as paid:
             result = anim.record_verdict(
                 {"work_id": "wr123", "slug": "sprout", "verdict": "rework",
-                 "why": "Slow the opening and hold the final pose"}
+                 "why": "Slow the opening and hold the final pose", "values": {"speed": 2}}
             )
         self.assertEqual(result["state"], "doing")
         self.assertEqual(result["work_id"], "wr123")
         self.assertEqual(self.read_json(path)["state"], "doing")
+        self.assertEqual(self.read_json(path)["anim_verdicts"][-1]["values"], {"speed": 2})
         self.assertEqual(result["run"]["work_item"], "wr123")
         self.assertEqual(StoppedThread.starts, 1)
         paid.assert_not_called()

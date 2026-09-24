@@ -19,6 +19,7 @@ ever started by a button.
 import execution
 
 import json
+import math
 import os
 import re
 import signal
@@ -27,6 +28,7 @@ import sys
 import types
 import threading
 import time
+import uuid
 
 HOST = None
 REPO = None
@@ -505,17 +507,27 @@ def record_verdict(payload):
     work_id = str(payload.get("work_id") or "")
     verdict = str(payload.get("verdict") or "")
     why = str(payload.get("why") or "").strip()
+    values = payload.get("values")
     if not re.fullmatch(r"[a-z0-9_]{1,64}", slug):
         return {"error": "bad loop name"}
     if verdict not in ("keep", "rework", "drop"):
         return {"error": "unknown verdict"}
     if not why:
         return {"error": "say why first — that sentence is what reaches the next person"}
+    if (not isinstance(values, dict) or len(values) > 64
+            or any(not isinstance(k, str) or not re.fullmatch(r"[a-zA-Z_][a-zA-Z0-9_]{0,63}", k)
+                   or isinstance(v, bool) or not isinstance(v, (int, float))
+                   or not math.isfinite(v) for k, v in values.items())):
+        return {"error": "the judged slider values are missing or invalid"}
     item, path, error = _review_record(work_id, slug)
     if error:
         return {"error": error}
+    stamp = time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime())
+    decision = {"slug": slug, "verdict": verdict, "reason": why,
+                "values": values, "at": stamp, "review_work_id": work_id}
     if verdict == "rework":
-        return start_rework(slug, why, work_id, item, path)
+        result = start_rework(slug, why, work_id, item, path, decision)
+        return result
     _append_ask(slug, {"at": time.strftime("%Y-%m-%dT%H:%M:%S"), "kind": verdict,
                        "text": why, "run_id": ""})
     item["state"] = "accepted" if verdict == "keep" else "dropped"
@@ -523,18 +535,45 @@ def record_verdict(payload):
     item.setdefault("conversation", []).append(
         {"role": "daniel", "text": why, "at": time.strftime("%Y-%m-%dT%H:%M"),
          "with": verdict})
+    item.setdefault("anim_verdicts", []).append(decision)
+    followup_id = "w" + uuid.uuid4().hex[:12]
+    followup = {
+        "id": followup_id, "title": (f"Land the kept {slug} loop" if verdict == "keep"
+                                    else f"Retire the dropped {slug} loop"),
+        "level": "story", "owner": "ingrid", "tier": 1,
+        "tier_reason": "The art director must carry Daniel's recorded loop verdict into the project.",
+        "ask": (f"Daniel judged `{slug}` at {values}: {verdict}. Reason: {why}\n\n"
+                + ("Land its approved script and render through the normal review path."
+                   if verdict == "keep" else
+                   "Record this loop as dropped and keep it out of the shipping animation set; preserve its files and history.")),
+        "first_action": (f"Review the kept {slug} loop and its render for landing"
+                         if verdict == "keep" else
+                         f"Record why {slug} was dropped and check shipping references"),
+        "state": "waiting_session", "thread": "ingrid", "source": "anim_verdict",
+        "source_message": f"Animation Lab verdict on {work_id}", "result": "",
+        "started": "", "attempts": 0, "created": stamp[:16],
+        "created_ts": time.time(), "conversation": [],
+        "anim_slug": slug, "anim_verdict": decision,
+    }
+    followup_path = os.path.join(DATA, "work", f"{followup_id}.json")
     try:
+        os.makedirs(os.path.join(DATA, "work"), exist_ok=True)
+        _write_review(followup, followup_path)
         _write_review(item, path)
     except OSError as exc:
+        try:
+            os.remove(followup_path)
+        except OSError:
+            pass
         return {"error": f"could not save the verdict: {exc}"}
     return {"ok": True, "verdict": verdict, "work_id": work_id,
-            "state": item["state"],
+            "state": item["state"], "followup_work_id": followup_id,
             "note": ("Kept, and the reason is on the loop's record."
                      if verdict == "keep" else
                      "Dropped, and the reason is on the loop's record. Nothing was deleted.")}
 
 
-def start_rework(slug, note, work_id="", review=None, review_path=""):
+def start_rework(slug, note, work_id="", review=None, review_path="", decision=None):
     """Send a loop back with an instruction. Same machinery as drawing one, a
     different prompt and the same slug."""
     if not execution.launch_allowed():
@@ -567,6 +606,8 @@ def start_rework(slug, note, work_id="", review=None, review_path=""):
             review.setdefault("conversation", []).append(
                 {"role": "daniel", "text": note,
                  "at": time.strftime("%Y-%m-%dT%H:%M"), "with": "rework"})
+            if decision is not None:
+                review.setdefault("anim_verdicts", []).append(decision)
             _write_review(review, review_path)
         threading.Thread(target=_draw, args=(run_id, prompt, slug), daemon=True).start()
     except Exception as exc:

@@ -538,7 +538,8 @@ async function renderAnimLoop(slug) {
   /* baseFrames is the render on disk. Comparison is always against that, never
      against whatever the last drag happened to produce — a baseline that moves
      under you answers no question at all. */
-  anPlayer = { frames, baseFrames: frames, idx: 0, playing: true, stages,
+  anPlayer = { frames, baseFrames: frames, judgedValues: { ...(L.values || {}) },
+               idx: 0, playing: true, stages,
                timer: null, w, hh, compare: false,
                wasStage: document.getElementById("an-was-c") };
   anFitStages();
@@ -756,6 +757,14 @@ function anWireVerdict(L) {
   buttons.forEach(b => {
     b.onclick = async () => {
       const text = why.value.trim();
+      const sliders = Object.fromEntries([...document.querySelectorAll(".an-params input[data-p]")]
+        .map(i => [i.dataset.p, Number(i.value)]));
+      if (document.querySelector(".an-params.an-working") || !anPlayer
+          || Object.entries(sliders).some(([k, v]) => anPlayer.judgedValues[k] !== v)) {
+        note.className = "small an-need";
+        note.textContent = "Wait for the preview to show these slider values before judging it.";
+        return;
+      }
       if (!text) {
         note.className = "small an-need";
         note.textContent = b.dataset.v === "rework"
@@ -772,7 +781,7 @@ function anWireVerdict(L) {
         const response = await fetch("/api/loop/verdict", {
           method: "POST", headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ work_id: L.work_item, slug: L.slug,
-            verdict: b.dataset.v, why: text }),
+            verdict: b.dataset.v, why: text, values: anPlayer.judgedValues }),
         });
         let r;
         try { r = await response.json(); }
@@ -866,6 +875,7 @@ function anWireInstruments(L, w, hh) {
         /* Back at the drawn values, the comparison is against itself again, and
            saying so beats showing two copies that differ by nothing. */
         anPlayer.frames = (!keep && !dirty()) ? anPlayer.baseFrames : frames;
+        anPlayer.judgedValues = { ...(r.values || {}) };
         anPlayer.idx = anPlayer.idx % anPlayer.frames.length;
         anPlayer.w = r.canvas[0]; anPlayer.hh = r.canvas[1];
         anFitStages();
