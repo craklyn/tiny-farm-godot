@@ -35,7 +35,9 @@ function reviewLegacyAnimation(item) {
   if (!item || item.source !== "anim_lab") return null;
   const match = /^Open #\/design\/anim\/([a-z0-9_]{1,64}) and watch it at both sizes$/.exec(item.first_action || "");
   if (!match) return null;
-  return {href: `#/design/anim/${match[1]}`, label: `Open ${match[1].replaceAll("_", " ")} in the Animation Lab`,
+  return {href: `/assets/anim/${match[1]}/sheet.png`,
+    label: `Open the current ${match[1].replaceAll("_", " ")} animation sheet`,
+    labHref: `#/design/anim/${match[1]}`,
     slug: match[1], legacy: true};
 }
 
@@ -97,7 +99,7 @@ function reviewComparison(item, attachments = []) {
   return `<section class="review-evidence" aria-label="Result evidence">
     <h4>Result to review</h4>
     <p class="review-provenance">${creation ? `Created: ${esc(creation)} · ` : ""}Displayed here: ${media.length ? "playable or readable evidence" : "linked artifact"} · ${versionLabel}</p>
-    ${legacy ? `<p class="review-version-gap">This older card does not identify the exact render originally reviewed. <a href="${esc(legacy.href)}">${esc(legacy.label)}</a>.</p>
+    ${legacy ? `<p class="review-version-gap">This older card does not identify the exact render originally reviewed. <a href="${esc(legacy.labHref)}">Open the Animation Lab</a> for the original review controls.</p>
       <div class="review-export"><b>Currently exported game animation</b><p>This is the sheet available in the game code today. It may differ from the original review.</p>
         <canvas data-review-slug="${esc(legacy.slug)}" aria-label="Currently exported ${esc(legacy.slug.replaceAll("_", " "))} animation at game scale"></canvas>
         <a href="/assets/anim/${esc(legacy.slug)}/sheet.png">Open exported sheet</a></div>` : ""}

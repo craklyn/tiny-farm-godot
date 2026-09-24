@@ -244,7 +244,7 @@ const actualAnimation = readCard("work", "wr1788991284fa19");
 const actualIncomplete = readCard("work", "w449aff92129");
 const actualDesign = readCard("decisions", "Q-107");
 const seeder = queue.qPaneHtml(queue.qWorkItem(actualAnimation, {}, "Recorded review"), {});
-assert.ok(seeder.includes('href="#/design/anim/seeder_bot"'), "seeder review links to the real Lab result beside its heading");
+assert.ok(seeder.includes('href="/assets/anim/seeder_bot/sheet.png"'), "seeder review links to the displayed sheet beside its heading");
 assert.ok(seeder.includes("does not identify the exact render originally reviewed"), "legacy display does not claim a pinned version");
 assert.ok(seeder.includes('data-review-slug="seeder_bot"') && seeder.includes("Currently exported game animation"),
   "seeder review offers the playable game export while distinguishing it from the unpinned original");

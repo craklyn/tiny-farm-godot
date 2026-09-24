@@ -1908,6 +1908,9 @@
   "66e950bcb25b7432f10c": {
    "verdict": "ok"
   },
+  "66fdd1c3b31724783188": {
+   "verdict": "ok"
+  },
   "672b3c3abcf48476e6bd": {
    "verdict": "ok"
   },
@@ -3216,6 +3219,12 @@
   },
   "ab69013a24cffcc898b0": {
    "verdict": "ok"
+  },
+  "abc1728b6895e9628b74": {
+   "instead": "Link the review of the seed-planting machine directly to the animation it displays",
+   "quote": "seeder review",
+   "verdict": "decode",
+   "why": "“Seeder” is unexplained, so a reader cannot tell what is being reviewed."
   },
   "abe199c089ba70b11cc1": {
    "verdict": "ok"
