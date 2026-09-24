@@ -371,6 +371,12 @@
    "verdict": "second-look",
    "why": "“This” has no referent in the sentence and makes the reader look elsewhere for the change being confirmed."
   },
+  "13ba7265133da7095099": {
+   "instead": "Keep reports from people playing in a browser anonymous until the dashboard supports logins",
+   "quote": "browser play claims anonymous",
+   "verdict": "decode",
+   "why": "The reader has to work out what “claims” are and what it means for them to be anonymous."
+  },
   "13f25afd53a45a973a95": {
    "verdict": "ok"
   },

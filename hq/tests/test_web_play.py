@@ -50,6 +50,7 @@ class WebPlayTest(unittest.TestCase):
         self.assertFalse(os.path.exists(os.path.join(self.data, "attestations.json")))
         record = server.record_web_play({"of": "web_play", "played": True})["record"]
         self.assertEqual(record["for_tag"], "v1")
+        self.assertNotIn("by", record)  # HQ has no login to establish identity.
         self.assertEqual(server.web_play_status()["state"], "holds")
         self.write("docs/DEPLOY.md", "new instructions")
         self.git("add", ".")

@@ -3468,7 +3468,7 @@ def record_web_play(payload):
         path = os.path.join(DATA, "attestations.json")
         doc = load_json(path) if os.path.isfile(path) else {"records": []}
         record = {"kind": "web_play", "for_tag": tag, "commit": head,
-                  "on": datetime.date.today().isoformat(), "by": "daniel"}
+                  "on": datetime.date.today().isoformat()}
         doc.setdefault("records", []).append(record)
         fd, temporary = tempfile.mkstemp(prefix="attestations-", suffix=".json", dir=DATA)
         try:
