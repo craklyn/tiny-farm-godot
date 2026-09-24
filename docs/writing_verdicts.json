@@ -1,6 +1,9 @@
 {
  "brief": "09e1eacead3f6f91",
  "verdicts": {
+  "001059c016429d1e60a5": {
+   "verdict": "ok"
+  },
   "0011bc3d9bcc491c7b9a": {
    "verdict": "ok"
   },
@@ -898,6 +901,9 @@
   "33414a2133384eb679bf": {
    "verdict": "ok"
   },
+  "3430f7aff8ba4c6aaf63": {
+   "verdict": "ok"
+  },
   "344317d6a4c7854997d7": {
    "instead": "The system will run your requested second attempt",
    "quote": "this is the second try you asked for when you wrote back",
@@ -1167,6 +1173,9 @@
   "46c0200e3c525377794f": {
    "verdict": "ok"
   },
+  "46e328bc71620ce2fc61": {
+   "verdict": "ok"
+  },
   "47069a9ea70697fcaa56": {
    "verdict": "ok"
   },
@@ -1283,6 +1292,9 @@
    "verdict": "ok"
   },
   "4cf7f5e7ea7f2d4249cd": {
+   "verdict": "ok"
+  },
+  "4d450954088e73ce4adf": {
    "verdict": "ok"
   },
   "4d9f8fe260fe5ca10ae3": {
@@ -1498,6 +1510,9 @@
   "591cbebef07b7b63eea0": {
    "verdict": "ok"
   },
+  "593f8fea9bc7c9f402ca": {
+   "verdict": "ok"
+  },
   "599186a63fade8aaa3d2": {
    "instead": "Record the decision made in each review",
    "quote": "Record decision answers from every review surface",
@@ -1547,6 +1562,9 @@
    "why": "'It' refers to 'feedback' from the previous sentence; rule 3 requires the referent be in the same sentence."
   },
   "5cf408057e1e2b523c70": {
+   "verdict": "ok"
+  },
+  "5d0df16d08cc2f518129": {
    "verdict": "ok"
   },
   "5d3db6c474daf5fc099b": {
@@ -1992,6 +2010,9 @@
    "verdict": "decode",
    "why": "A reader arriving cold cannot determine whether 'subjects' are fields, categories, tags, or internal studio vocabulary."
   },
+  "7652c71a6bffeeb0bb57": {
+   "verdict": "ok"
+  },
   "76741438fbf74ed40a70": {
    "verdict": "ok"
   },
@@ -2215,6 +2236,9 @@
    "verdict": "ok"
   },
   "82c2fd8ad52550747c5d": {
+   "verdict": "ok"
+  },
+  "8331c648fb5d195b717c": {
    "verdict": "ok"
   },
   "836be81c34aef1a5e839": {
@@ -2735,6 +2759,12 @@
   "a0356a5ac4a1b9884272": {
    "verdict": "ok"
   },
+  "a065be1113608506f5e8": {
+   "instead": "This result was measured on a version of the game that is no longer available.",
+   "quote": "Scored on a version of the game that is no longer available.",
+   "verdict": "second-look",
+   "why": "“Scored” makes the reader work out whether this means a game score, a test result, or a measurement."
+  },
   "a07040df878ba46ea840": {
    "verdict": "ok"
   },
@@ -3149,6 +3179,9 @@
    "verdict": "ok"
   },
   "bac3aaecc31e6abbc388": {
+   "verdict": "ok"
+  },
+  "bafe54ff898cb92b20af": {
    "verdict": "ok"
   },
   "baff7b4670a76e4d8877": {
@@ -4085,6 +4118,9 @@
   "f09d2dac476fb0bcb175": {
    "verdict": "ok"
   },
+  "f0e93677ce6a35f18cb5": {
+   "verdict": "ok"
+  },
   "f10a30745648451534e8": {
    "verdict": "ok"
   },
@@ -4116,6 +4152,9 @@
    "verdict": "ok"
   },
   "f2eada8ca31276656c07": {
+   "verdict": "ok"
+  },
+  "f305fd866763c99f70dc": {
    "verdict": "ok"
   },
   "f3061be01d391a17309b": {
@@ -4199,6 +4238,9 @@
    "why": "The grid is introduced with a definite article but not previously established; a reader does not know what form this takes or whether it is an existing or new component."
   },
   "f85b98e92a59a40112d9": {
+   "verdict": "ok"
+  },
+  "f8778746cd898e9371cf": {
    "verdict": "ok"
   },
   "f90155f90d0e9ec8e01c": {

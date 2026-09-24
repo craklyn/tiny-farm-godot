@@ -302,7 +302,7 @@ async function renderSpriteEditor(path) {
     nAnim ? `${nAnim} of them ${ent.frames.length > 1
       ? (nAnim === 1 ? "animates" : "animate") : (nAnim === 1 ? "draws" : "draw")} ${esc(ent.name)}.` : "",
     nOther ? `${nOther} ${nOther === 1 ? "draws" : "draw"} ${listNames(otherLinks)}.` : "",
-    nStray ? `${nStray} ${nStray === 1 ? "holds" : "hold"} art that nothing in the entity gallery lists.` : "",
+    nStray ? `${nStray} cell${nStray === 1 ? "" : "s"} contain art not shown in the entity gallery.` : "",
     nBlank ? `${nBlank} ${nBlank === 1 ? "is" : "are"} empty.` : "",
   ].filter(Boolean).join(" ");
 
@@ -698,11 +698,11 @@ async function renderSpriteEditor(path) {
     const light = (look.light || {})[ent.id] || (look.light || {})._fallback || [1, 1, 1];
 
     const PLANTS = 3, SCALE = 4;
-    host.innerHTML = `<h2>Ripe, as the field draws it</h2>
+    host.innerHTML = `<h2>How the crop looks when it is ripe</h2>
       <p class="small muted">What this crop does once it is ready to pick: a gentle sway and a
-      pool of its own ripe colour. Drawn with the numbers read out of
-      <code class="ref">${esc(look.source)}</code>, over the game's tilled soil, and from your
-      unsaved edits — repaint the last cell and watch it here.</p>
+      pool of its own ripe colour. This preview reads values from
+      <code class="ref">${esc(look.source)}</code> and shows the crop over the game's tilled soil.
+      It includes your unsaved edits — repaint the last cell and watch it here.</p>
       ${gone.length ? `<p class="small" style="color:var(--bad)">Out of date: the game no longer
         has ${esc(gone.join(", "))}. This preview is not showing what ships — update the code that
         reads the sheets, in <code class="ref">hq/server.py</code>.</p>` : ""}
@@ -1225,8 +1225,8 @@ async function renderSpriteEditor(path) {
     dirty = true;
     if (!erasing) color = keeper.rgb.slice();   // paint on with the tone that survived
     mergeNote = erasing
-      ? `Erased ${drop.size} tones — ${px(changed)} across ${cellsWord(snaps.length)} are now transparent. Ctrl+Z puts them back.`
-      : `Folded ${drop.size + 1} tones into ${toneName(keeper.rgb)} — ${px(changed)} across ${cellsWord(snaps.length)} changed. Ctrl+Z puts them back.`;
+      ? `Erased ${drop.size} tones. ${px(changed)} across ${cellsWord(snaps.length)} are now transparent. Ctrl+Z restores the erased pixels.`
+      : `Merged ${drop.size + 1} tones into ${toneName(keeper.rgb)}. ${px(changed)} across ${cellsWord(snaps.length)} changed colour. Ctrl+Z restores the previous pixel colours.`;
     mergeMode = false; mergeSel.clear(); mergeKeep = null;
     hoverTone = null; proposal = null; considering = null;
     setMergeBtn(); buildPalette(); redrawAll(true);

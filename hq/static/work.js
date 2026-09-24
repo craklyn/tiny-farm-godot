@@ -716,7 +716,7 @@ function workCard(it, org, pol) {
           : held ? "'s attempt — what came back" : it.revising ? "'s result so far — being revised"
           : pendingCode ? " created this proposed version; it has not been merged"
           : again ? "'s last attempt — what came back before it stopped"
-            : " did it — here's the result"}${revised}</div>${md(it.result)}
+            : " finished the work on this card. Here is the result"}${revised}</div>${md(it.result)}
        ${long ? `<button class="w-more" data-more="${esc(it.id)}">Read all of it</button>` : ""}</div>${earlier}`
     : "";
   const why = it.tier_reason ? `<span class="w-why">${esc(it.tier_reason)}</span>` : "";

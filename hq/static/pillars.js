@@ -796,12 +796,12 @@ async function instProduct(root, below, sig, g) {
     //    evidence-trust failures. Routes reuse routeControl so they read
     //    identically to the same goals on the scoreboard below.
     if (cond.state && cond.state !== "green") rows += blocker("d-fire", "failing",
-      `<b>No recorded session says who played it</b> or whether they had been coached, so that open bar could be a real miss or a tester who had already been shown the cot — nothing here tells them apart.`,
-      cond.measured_human || "0 recorded sessions carry their conditions",
+      `<b>No recorded session says who played it</b> or whether they had been coached, so we cannot tell whether a new player missed the cot or a tester had already been shown it.`,
+      cond.measured_human || "No recorded sessions include their test conditions",
       routeControl(cond));
     if (lag.state && lag.state !== "green") rows += blocker("d-attn", "slipping",
       `The last time the checklist was scored, it ran on a build well behind what you would ship today.`,
-      lag.state === "broken" ? "the build it was scored on cannot be resolved any more"
+      lag.state === "broken" ? "the version of the game it was scored on is no longer available"
         : (lag.measured_human || `${lag.measured} commits behind`),
       routeControl(lag));
 
@@ -834,7 +834,7 @@ async function instProduct(root, below, sig, g) {
        <div class="card muted">No next release is planned, so there is nothing to ship toward.</div>`;
 
   const decay = lag.state === "broken"
-    ? `Scored on a build that cannot be resolved any more.`
+    ? `Scored on a version of the game that is no longer available.`
     : `Scored ${gate && gate.scored_on ? esc(gate.scored_on) + " " : ""}on a build <b>${esc(String(lag.measured ?? "?"))} commits</b> older than the one you would ship today.`;
 
   const gateCard = `
@@ -899,7 +899,7 @@ async function instArt(root, below, sig, g) {
   const pal = await api("/api/palette").catch(() => null);
   const byId = Object.fromEntries((g.goals || []).map(x => [x.id, x]));
 
-  let ribbon = `<div class="card muted">The sheets could not be read.</div>`;
+  let ribbon = `<div class="card muted">The game image sheets could not be loaded.</div>`;
   if (pal && pal.swatches) {
     const total = pal.swatches.reduce((n, s) => n + s.pixels, 0) || 1;
     const cells = pal.swatches.map(s =>
@@ -911,7 +911,7 @@ async function instArt(root, below, sig, g) {
     ribbon = `<div class="card palcard">
       <div class="ribbon">${cells}</div>
       <div class="pal-meta">
-        <b>${pal.colours} colours</b> across ${pal.sheets} shipped sheets. The wider a band, the more of
+        <b>${pal.colours} colours</b> across ${pal.sheets} game image sheets. The wider a band, the more of
         the game is painted that colour. The notched bands are the ${pal.named_total} colours the style
         guide names — <b>${pal.named_present} occur exactly in the build</b>.
       </div>
