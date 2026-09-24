@@ -1096,6 +1096,11 @@ JOBS = {
         "cmd": ["tools/check_door_transition.sh"],
         "verdict": re.compile(r"Doors:\s*(\d+) passed, (\d+) failed"),
     },
+    "visual": {
+        "label": "Visual comparison",
+        "cmd": ["tools/check_visuals.sh"],
+        "verdict": re.compile(r"Results:\s*(PASSED|FAILED)"),
+    },
 }
 _JOB_LOCK = threading.Lock()
 _RUNNING_JOBS = set()
@@ -1187,6 +1192,9 @@ def _run_job(job):
                            f"Speed: {rate}.")
             else:
                 summary = "no verdict line found"
+        elif job == "visual":
+            ok = base_ok and bool(m and m.group(1) == "PASSED")
+            summary = "matches tools/baseline.png" if ok else "visual comparison failed; inspect the run log and tools/diff_current.png"
         else:
             ok = base_ok and bool(m and m.group(2) == "0")
             summary = f"{m.group(1)} passed, {m.group(2)} failed" if m else "no verdict line found"

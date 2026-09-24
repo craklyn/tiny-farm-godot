@@ -603,6 +603,7 @@ async function instEngineering(root, below, sig, g) {
     ["integration", "Integration tests", "the real scene, driven by simulated taps"],
     ["robot", "Robot session", "plays a whole game, then verifies its own replay"],
     ["benchmark", "Sim benchmark", "whether a farm full of machines still fits inside a frame on the tablet"],
+    ["visual", "Visual comparison", "one seeded desktop frame compared pixel by pixel with the local baseline"],
   ];
   const runs = await api("/api/runs").catch(() => ({}));
   const ci = byId["build-branch-builds-green"] || {};

@@ -46,8 +46,8 @@ python3 tools/run_godot_test.py -- godot --headless --path . res://tools/test_ru
 # Robot session: plays the real game end-to-end, then verifies its own replay
 python3 tools/run_godot_test.py -- godot --headless --path . res://tools/robot_session.tscn
 
-# Visual regression (renders a frame, diffs against tools/baseline.png) — needs a display
-godot --path . res://tools/test_visuals.tscn
+# Visual comparison (also available as Engineering's Run button)
+tools/check_visuals.sh
 
 # Sim fast-forward benchmark
 python3 tools/run_godot_test.py -- godot --headless --path . --script res://tools/benchmark_sim.gd
@@ -133,17 +133,18 @@ There is no per-test filter. Both suites are single-file custom runners: tests a
 and `tools/test_runner.gd` (`_ready`). To add a test, write the function and add the call
 there. The whole suite runs in seconds, so running everything is the normal workflow.
 
-CI (`.github/workflows/tests.yml`) runs five jobs on every push: unit, integration,
-robot session, the benchmark, and the one-gateway check below.
+CI (`.github/workflows/tests.yml`) runs gateway, writing/HQ, and Godot test jobs on
+every push. The Godot job includes the unit, integration, robot, and benchmark checks.
 
 ```bash
 # The one-gateway rule, checked statically over world/, entities/ and player/
 python3 tools/check_gateway.py              # --self-test plants each break and proves it is caught
 ```
 
-The visual regression check has no CI job on purpose — pixel-exact rendering only matches
-within one machine's driver stack — so it is a Run button on HQ's Engineering page,
-pressed before cutting a tag.
+The visual comparison is a local developer diagnostic on HQ's Engineering page. It
+uses xvfb and the desktop's software renderer; we have not tested whether the same
+pixels reproduce on a GitHub runner. It is not a release gate. A changed rendering
+environment may require a reviewed baseline update before this check passes.
 
 ## Architecture
 

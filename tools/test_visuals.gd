@@ -47,12 +47,9 @@ func _ready() -> void:
 	var img: Image = get_viewport().get_texture().get_image()
 	
 	if not FileAccess.file_exists(BASELINE_PATH):
-		print("No baseline found. Saving current frame as baseline to %s" % BASELINE_PATH)
-		img.save_png(BASELINE_PATH)
-		print("============================================================")
-		print("Results: BASELINE GENERATED")
-		print("============================================================")
-		get_tree().quit(0)
+		printerr("Visual baseline is missing: %s" % BASELINE_PATH)
+		print("Results: FAILED")
+		get_tree().quit(1)
 		return
 
 	var baseline: Image = Image.new()
