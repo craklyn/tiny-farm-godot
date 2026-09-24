@@ -1,0 +1,35 @@
+{
+  "id": "Q-118",
+  "owner": "dmitri",
+  "title": "Which soft soil sound belongs to planting?",
+  "question": "Planting is silent today for the player and every other actor. The sound direction calls for a soft, low pat-pat, as if soil is tucked over a seed; harvest already owns the reward sound. Here are two short CC0 planting recordings, cut to the length of one action and level-matched for comparison. Please listen to both and choose the one that reads as covering a seed, or say neither does. This card only chooses the source; nothing is wired into the game yet.",
+  "why_now": "Planting is the most repeated action without a sound. Daniel asked to hear free recordings with a recommendation before anyone spends an afternoon recording new game sounds.",
+  "options": [
+    {
+      "key": "a",
+      "label": "wobesound's planting beats (Recommended)",
+      "detail": "The first 1.5 seconds of “Planting Sounds.wav” have two distinct beats with a pause between them, matching the requested pat-pat timing. This is a provisional recommendation because the recording was made for planting and has two beats; your listening decides whether it actually sounds like soil. Freesound #488393 by wobesound, CC0 1.0: https://freesound.org/people/wobesound/sounds/488393/",
+      "recommended": true
+    },
+    {
+      "key": "b",
+      "label": "wyronroberth's planting effect",
+      "detail": "A complete 1.24-second planting effect whose volume changes more smoothly than the first recording. It may sound like a single placement rather than two pats; the recording is here so you can judge that directly. Freesound #516249 by wyronroberth, CC0 1.0: https://freesound.org/people/wyronroberth/sounds/516249/"
+    },
+    {
+      "key": "c",
+      "label": "Neither reads as soil closing",
+      "detail": "Say what is wrong with the recordings. Dmitri will search for another free sound; if none works, planting will be added to the next session that records several game sounds together."
+    }
+  ],
+  "links": [
+    {"label": "wobesound source and CC0 licence", "href": "https://freesound.org/people/wobesound/sounds/488393/"},
+    {"label": "wyronroberth source and CC0 licence", "href": "https://freesound.org/people/wyronroberth/sounds/516249/"},
+    {"label": "The sound direction", "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/10-audio-direction.md"},
+    {"label": "Source and processing credits", "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/CREDITS.md"}
+  ],
+  "attachments": [
+    {"type": "audio", "src": "assets/audio/sfx/plant_cc0_488393.wav", "caption": "(a) Planting beats — wobesound, CC0 1.0 (recommended for listening first)"},
+    {"type": "audio", "src": "assets/audio/sfx/plant_cc0_516249.wav", "caption": "(b) Planting (Seeds) — wyronroberth, CC0 1.0"}
+  ]
+}

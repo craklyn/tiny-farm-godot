@@ -513,6 +513,22 @@ before the first public build ships.*
     and redistribution are permitted with no attribution required. Credit is given
     here by choice. Fetched via `tools/fetch_sfx_candidates.py`, which re-checks
     each result's licence field rather than trusting the search filter.
+- **Plant (2 candidates, not wired; Q-118 listening card)** — two Freesound
+  recordings offered for Daniel to hear before a sound is chosen. Both uploads'
+  API licence fields were checked as CC0 1.0 Universal, a public-domain
+  dedication permitting commercial use, modification and redistribution without
+  required attribution. Credit is given here by choice. These are 22.05 kHz mono
+  WAV cuts made from the creators' high-quality MP3 previews with
+  `tools/fetch_sfx_candidates.py`; neither changes the current silent `plant`
+  action. The first cut takes the opening two beats of a longer source and is
+  reduced another 6 dB to match the quieter second candidate for comparison.
+    - `plant_cc0_488393.wav` — “Planting Sounds.wav” by **wobesound**; first
+      1.5 seconds of a 4.77-second planting-effects recording. The creator says
+      it was assembled from other CC0 sounds. Source and licence:
+      https://freesound.org/people/wobesound/sounds/488393/ — CC0 1.0.
+    - `plant_cc0_516249.wav` — “Planting (Seeds).mp3” by **wyronroberth**;
+      complete 1.24-second planting effect. Source and licence:
+      https://freesound.org/people/wyronroberth/sounds/516249/ — CC0 1.0.
 - **Dial (Q-102, ruled 2026-09-10: the wired one stays)** — a turn on a training-workbench
   dial. One CC0 recording is wired into `AudioManager`'s `dial` sound now; two more
   are kept alongside it, unwired, as the other options on the decision card

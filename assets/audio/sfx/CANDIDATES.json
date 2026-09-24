@@ -188,5 +188,25 @@
     "license": "CC0 1.0 Universal (public domain dedication)",
     "source": "https://freesound.org/people/Khrinx/sounds/333694/",
     "query": "bell chime"
+  },
+  {
+    "slot": "plant",
+    "file": "plant_cc0_488393.wav",
+    "freesound_id": 488393,
+    "title": "Planting Sounds.wav",
+    "author": "wobesound",
+    "license": "CC0 1.0 Universal (public domain dedication)",
+    "source": "https://freesound.org/people/wobesound/sounds/488393/",
+    "query": "by-id"
+  },
+  {
+    "slot": "plant",
+    "file": "plant_cc0_516249.wav",
+    "freesound_id": 516249,
+    "title": "Planting (Seeds).mp3",
+    "author": "wyronroberth",
+    "license": "CC0 1.0 Universal (public domain dedication)",
+    "source": "https://freesound.org/people/wyronroberth/sounds/516249/",
+    "query": "by-id"
   }
 ]

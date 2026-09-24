@@ -585,6 +585,14 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   release — the shipped set is complete and licence-clean.* Candidates drop into
   `assets/audio/sfx/` and appear in the in-game Sound Test for A/B on device;
   `tools/gen_sfx.py` remains the source for anything left synthesized.
+- **Q-118 — Which soft soil sound belongs to planting?** — **Audio, open
+  2026-09-24.** Plant remains silent while Daniel hears two CC0 candidates on
+  `hq/data/decisions/Q-118.json`. The recommended first listen is the two-beat
+  opening of “Planting Sounds.wav” by wobesound; “Planting (Seeds).mp3” by
+  wyronroberth is the other option. Their source URLs, authors, CC0 licences and
+  processing are in `CREDITS.md`. Daniel can choose either or reject both; only
+  a ruling licenses wiring a pick into the verb's shared cue path. If a further
+  free search still finds nothing, plant joins the batched Q-31 foley list.
 - **Q-29** ~~Verb animation depth~~ — ✅ **ruled 2026-09-02: tier (b), actor +
   reaction, for the five core verbs.** Full per-verb choreography (c) is not closed:
   the designer asked for an explicit revisit trigger, recorded under D-8.

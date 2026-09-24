@@ -233,6 +233,12 @@
   "0dc54adc33f4a496c2fd": {
    "verdict": "ok"
   },
+  "0e2ab9b40a4c3d2e287d": {
+   "instead": "Plant is the most repeated silent verb. Daniel's 2026-09-04 ruling calls for free sounds and a listening card before any sound-recording session is considered.",
+   "quote": "foley session",
+   "verdict": "decode",
+   "why": "The reader may not know that this means a session to record game sound effects."
+  },
   "0e488d7f4e3d96da6d56": {
    "verdict": "ok"
   },
@@ -401,6 +407,9 @@
   "166c119cfa3e4edf2829": {
    "verdict": "ok"
   },
+  "167e970ae9f91266c300": {
+   "verdict": "ok"
+  },
   "169ad60ad85f0d2c9479": {
    "verdict": "ok"
   },
@@ -436,6 +445,12 @@
    "quote": "provenance",
    "verdict": "decode",
    "why": "'Provenance' is internal terminology for where an asset came from; a stranger would not recognize it."
+  },
+  "190dfa96361b9ea2d438": {
+   "instead": "a written listening recommendation",
+   "quote": "a listening card",
+   "verdict": "decode",
+   "why": "The reader is not told what this internal document is or what it contains."
   },
   "190e74f165096eb6032f": {
    "verdict": "ok"
@@ -1374,6 +1389,12 @@
   "50db7c90e78a65c2e0d7": {
    "verdict": "ok"
   },
+  "50de03e30f3e0c11e429": {
+   "instead": "A complete 1.24-second planting effect whose volume changes more smoothly than the first recording. It may sound like a single placement rather than two pats; the recording is here so you can judge that directly. Freesound #516249 by wyronroberth, CC0 1.0: https://freesound.org/people/wyronroberth/sounds/516249/",
+   "quote": "(a)",
+   "verdict": "decode",
+   "why": "This points to an unnamed comparison that the reader cannot identify from the text."
+  },
   "50e56f539e2ac023ca2e": {
    "verdict": "ok"
   },
@@ -1423,6 +1444,9 @@
    "quote": "Seven distance checks reach straight through the wall",
    "verdict": "decode",
    "why": "Distance checks is internal terminology for collision detection; state what players experience instead."
+  },
+  "53bf53fb1d1efa3bd504": {
+   "verdict": "ok"
   },
   "53ca26e52a6e7b692ed7": {
    "verdict": "ok"
@@ -1876,6 +1900,9 @@
   "6eece977e2f6cf7b8e39": {
    "verdict": "ok"
   },
+  "6ef3e3ef0bd988c890ff": {
+   "verdict": "ok"
+  },
   "6f0972bb91f74b45586f": {
    "verdict": "ok"
   },
@@ -1956,6 +1983,9 @@
   "72f63b7c200c79b4512d": {
    "verdict": "ok"
   },
+  "7307bc304fffb5ab1b8b": {
+   "verdict": "ok"
+  },
   "732b79ec3d1c574bb01f": {
    "instead": "This work is paused and will not start automatically.",
    "quote": "held from automatic work",
@@ -1994,6 +2024,9 @@
    "quote": "temporary model routing",
    "verdict": "decode",
    "why": "“Model routing” is internal engineering shorthand for deciding which model HQ uses."
+  },
+  "750e64660ea8bbd96eee": {
+   "verdict": "ok"
   },
   "75317eca2607d2ff251f": {
    "verdict": "ok"
@@ -2646,6 +2679,12 @@
   "99c4c675c1824e14e4a2": {
    "verdict": "ok"
   },
+  "99ca18ecfe87f69779bf": {
+   "instead": "A complete 1.24-second planting effect that changes more smoothly than (a). It may sound like a single placement rather than two pats; the recording is here so you can judge that directly. Freesound #516249 by wyronroberth, CC0 1.0: https://freesound.org/people/wyronroberth/sounds/516249/",
+   "quote": "more continuous envelope",
+   "verdict": "second-look",
+   "why": "“Envelope” is audio terminology that asks the reader to work out that the sound changes more smoothly over time."
+  },
   "99f499a48e03cd4e4ecc": {
    "verdict": "ok"
   },
@@ -2914,6 +2953,9 @@
    "verdict": "ok"
   },
   "a7daadfb0973e2ee682b": {
+   "verdict": "ok"
+  },
+  "a7e2570d73f5801899a5": {
    "verdict": "ok"
   },
   "a82b03802e1b6b0a8fad": {
@@ -3323,6 +3365,9 @@
   "c23064aef0bcd4aad485": {
    "verdict": "ok"
   },
+  "c2355cf0f603b02607f2": {
+   "verdict": "ok"
+  },
   "c2446ea00a43e28d84d0": {
    "baselined": "2026-09-19",
    "instead": "Document where the visual regression test lives in the pipeline, or remove it from the feature list",
@@ -3356,6 +3401,9 @@
    "verdict": "decode",
    "why": "\"Paste\" is not a standard term—the reader would have to ask what it refers to."
   },
+  "c3c5c31f2803ffd603b4": {
+   "verdict": "ok"
+  },
   "c3cc656341839d6738a2": {
    "verdict": "ok"
   },
@@ -3375,6 +3423,9 @@
    "verdict": "ok"
   },
   "c45cc8a318accc97321e": {
+   "verdict": "ok"
+  },
+  "c4674b4c23e3f460056e": {
    "verdict": "ok"
   },
   "c4b8e4f6ce0e29c0d7d8": {
@@ -3456,6 +3507,12 @@
   "c8795c32b32f9a3b1496": {
    "verdict": "ok"
   },
+  "c8877f74d074e20a3f13": {
+   "instead": "The first 1.5 seconds of “Planting Sounds.wav” have two distinct soft strokes with a pause between them, matching the requested pat-pat timing. This is a provisional recommendation because the recording was made for planting and has two beats; your listening decides whether it actually sounds like soil. Freesound #488393 by wobesound, CC0 1.0: https://freesound.org/people/wobesound/sounds/488393/",
+   "quote": "two-beat envelope",
+   "verdict": "second-look",
+   "why": "“Envelope” is audio terminology that makes the reader translate a technical description instead of simply hearing what the clip does."
+  },
   "c8a3ac7a3c33d8875146": {
    "instead": "no more than 5% of a session's taps may do nothing, and the player may never go more than 30 seconds without something happening",
    "quote": "no more than % of a session's taps may do nothing, and the player may never go more than s without something happening",
@@ -3514,6 +3571,9 @@
    "quote": "sitting finished on main",
    "verdict": "second-look",
    "why": "A poetic construction instead of directly naming that features are complete but not yet in the game."
+  },
+  "cce0b6bfcdf634a8bed7": {
+   "verdict": "ok"
   },
   "cce0f60245714e7a37b2": {
    "verdict": "ok"
@@ -4016,6 +4076,12 @@
    "verdict": "second-look",
    "why": "Loose does not tell the reader whether this refers to unorganized, uncompiled, or unreferenced sprites."
   },
+  "e6a47f97a1c40d675200": {
+   "instead": "Say what is wrong.",
+   "quote": "Say what misses.",
+   "verdict": "second-look",
+   "why": "The phrase is an indirect way to say that the reader should report what is wrong."
+  },
   "e6f49432fa3cf0630f2b": {
    "verdict": "ok"
   },
@@ -4305,6 +4371,12 @@
    "quote": "GitHub CI the one result someone outside the studio can check for themselves on the commit itself",
    "verdict": "decode",
    "why": "The verb is missing between subject and object."
+  },
+  "f9d5d788fb82245d81b3": {
+   "instead": "Say what misses. Dmitri will search for another free sound; if none works, planting will be added to the next sound-recording session under the existing decision about free planting sounds.",
+   "quote": "the next batched foley session under the existing Q-31 ruling",
+   "verdict": "decode",
+   "why": "“Batched foley session” and “Q-31 ruling” are internal process terms that do not tell a cold reader what will happen."
   },
   "fa6db273ee067f802f67": {
    "verdict": "ok"
