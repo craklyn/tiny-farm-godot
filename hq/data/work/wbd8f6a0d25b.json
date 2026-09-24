@@ -7,7 +7,7 @@
   "tier_reason": "Daniel asked for the decision to be revised before he chooses.",
   "ask": "Revise this decision using Daniel's feedback, then add a reply to the decision card Q-108 so it returns to his queue.\n\nDaniel's feedback:\nPlease show me how the house and a coop next to something interesting (plants and fence on either side for example) would render for each of these so I can make an informed decision.",
   "first_action": "Read the decision card and Daniel's feedback; revise the choices or evidence, then reply on the card.",
-  "state": "waiting_session",
+  "state": "landed",
   "thread": "claude",
   "source": "decision_revision",
   "source_message": "Please show me how the house and a coop next to something interesting (plants and fence on either side for example) would render for each of these so I can make an informed decision.",
@@ -24,7 +24,7 @@
     "id": "Q-108",
     "after": "2026-09-21T20:31:22"
   },
-  "_revision": 199,
+  "_revision": 200,
   "last_recorded_attempt": "5b0545eee413490e8189543a6af16cf4",
   "done_by": {
     "seat": "claude",
@@ -32,16 +32,15 @@
     "lane": "drain"
   },
   "diff": {
-    "stat": "docs/DESIGNER_QUEUE.md                             |  11 ++-\n .../interiors/q108_house_and_coop_treatments.png   | Bin 0 -> 53866 bytes\n hq/data/decisions/Q-108.json                       |  16 ++-\n tools/compose_interior_mockups.py                  | 107 +++++++++++++++++++++\n 4 files changed, 126 insertions(+), 8 deletions(-)",
+    "stat": "Q-108 decision, comparison image, mockup composer, and designer queue landed",
     "files": [
       "docs/DESIGNER_QUEUE.md",
       "docs/design/mockups/interiors/q108_house_and_coop_treatments.png",
       "hq/data/decisions/Q-108.json",
       "tools/compose_interior_mockups.py"
     ],
-    "applied": false,
-    "why_not": "the check said it should not land as it stands",
-    "why_not_landed": "the checked candidate did not pass both test suites"
+    "applied": true,
+    "commit": "0eed400"
   },
   "usage": {
     "calls_detail": [
@@ -125,41 +124,19 @@
   "attempt_outcome": {
     "version": 1,
     "status": "complete",
-    "reason": "The revised evidence, recommendation, and reply are on the card, which now appears ready in Daniel's queue.",
+    "reason": "The house-and-coop comparison and revised Q-108 card landed. Q-108 remains unruled; the unchanged-yard follow-up is conditional on Daniel choosing option (a) and was not filed.",
     "result_id": "abe95d38c195ad1f91c3a52eb9da03d86e555d1bce84df9d914587be8d43a33c",
-    "id": "5b0545eee413490e8189543a6af16cf4",
-    "landing_verified": false,
-    "patch_id": "1565f5e8df099b95a13803d08c25b35a7fbd9a49af6b77d077766e0d7b95a632",
-    "check_evidence": "c22b7e17989df544f1699b5e473cd2fda56f3fdb3cb7c8a69652e1221cfb0925",
-    "test_evidence": "265e0eb0266132d33f7a0d6c74044eb6842f6a3531bd4853f9722547027bfd49",
-    "tree_evidence": null,
-    "candidate": {
-      "tree": "606fe917b0c180776623b3f14d9392cff3d10aee",
-      "base": "6d445cc8b3e8bcb66e0e1e802584511f4579d62c",
-      "files": {
-        "docs/DESIGNER_QUEUE.md": "100644 blob a63cb1e27c4f527316654060e3ead28854d12306",
-        "docs/design/mockups/interiors/q108_house_and_coop_treatments.png": "100644 blob 6186422c230d305ada9e5d18ba607c9c976545ff",
-        "hq/data/decisions/Q-108.json": "100644 blob 1cfe9095ad06fdf1ad3f84bcc0ecd9f3c05c5e5f",
-        "tools/compose_interior_mockups.py": "100644 blob 9711e81a78284c99ad2267eb89a4af618deddfe1"
-      },
-      "base_files": {
-        "docs/DESIGNER_QUEUE.md": "100644 blob 0140ebac5a364bd4cabff8d381d705e7652adb30",
-        "docs/design/mockups/interiors/q108_house_and_coop_treatments.png": null,
-        "hq/data/decisions/Q-108.json": "100644 blob cf9343ab327d8ebe975efd37ff961769d5ff1291",
-        "tools/compose_interior_mockups.py": "100644 blob b4ad6aa5585a4d805e1be9d676351b2188b22737"
-      }
-    },
-    "candidate_tests": {
-      "unit": {
-        "ok": false,
-        "tail": "Godot Engine v4.7.2.stable.official.ed1daf0bf - https://godotengine.org"
-      },
-      "integration": {
-        "ok": false,
-        "tail": "TimeoutExpired: Command '['godot', '--headless', '--path', '.', 'res://tools/test_runner.tscn']' timed out after 900 seconds"
-      }
-    },
-    "candidate_test_evidence": "a547a33818d68da84ae90ea5baebc52486e2712e513826b8701953d00657610a"
+    "id": "manual-reconciliation-20260923-q108",
+    "landing_verified": true,
+    "reconciliation": {
+      "commit": "0eed400",
+      "checks": [
+        "Mockup byte-identical on regeneration",
+        "Decision tests passed",
+        "HQ 45/45",
+        "GitHub Actions 35950361883 success"
+      ]
+    }
   },
   "finished": "2026-09-22T04:03",
   "automatic_repairs": 1,
@@ -205,7 +182,7 @@
       "candidate_test_evidence": "a547a33818d68da84ae90ea5baebc52486e2712e513826b8701953d00657610a"
     }
   ],
-  "revising": true,
+  "revising": false,
   "prior_results": [
     {
       "at": "2026-09-22T04:03",
@@ -241,11 +218,51 @@
       "attempt_id": "5b0545eee413490e8189543a6af16cf4"
     }
   ],
-  "waiting_for": {
-    "files": [
-      "docs/DESIGNER_QUEUE.md"
-    ],
-    "reason": "docs/DESIGNER_QUEUE.md is changed and unsaved in the repository, so writing this in would write over that work; it goes in once those files are committed or put away",
-    "at": "2026-09-23T14:59:55-07:00"
+  "check": {
+    "read": true,
+    "complete": true,
+    "verdict": "pass",
+    "summary": "The house-and-coop comparison and revised Q-108 card landed. Q-108 remains unruled; the unchanged-yard follow-up is conditional on Daniel choosing option (a) and was not filed.",
+    "findings": [],
+    "attempt_id": "manual-reconciliation-20260923-q108",
+    "method": "central reconciliation against committed evidence and CI"
+  },
+  "completion": {
+    "version": 1,
+    "attempt_id": "manual-reconciliation-20260923-q108",
+    "at": "2026-09-23T20:18:34-07:00",
+    "sha": "0eed400",
+    "by": "central reconciliation",
+    "kind": "change",
+    "evidence": {
+      "version": 1,
+      "status": "complete",
+      "reason": "The house-and-coop comparison and revised Q-108 card landed. Q-108 remains unruled; the unchanged-yard follow-up is conditional on Daniel choosing option (a) and was not filed.",
+      "result_id": "abe95d38c195ad1f91c3a52eb9da03d86e555d1bce84df9d914587be8d43a33c",
+      "id": "manual-reconciliation-20260923-q108",
+      "landing_verified": true,
+      "reconciliation": {
+        "commit": "0eed400",
+        "checks": [
+          "Mockup byte-identical on regeneration",
+          "Decision tests passed",
+          "HQ 45/45",
+          "GitHub Actions 35950361883 success"
+        ]
+      }
+    }
+  },
+  "completion_reconciliation": {
+    "version": 1,
+    "at": "2026-09-23T20:18:34-07:00",
+    "classification": "revision landed; ruling pending",
+    "evidence_summary": "The house-and-coop comparison and revised Q-108 card landed. Q-108 remains unruled; the unchanged-yard follow-up is conditional on Daniel choosing option (a) and was not filed."
+  },
+  "closed": "2026-09-23T20:18:34-07:00",
+  "landed": {
+    "at": "2026-09-23T20:18:34-07:00",
+    "by": "central reconciliation",
+    "sha": "0eed400",
+    "note": "The house-and-coop comparison and revised Q-108 card landed. Q-108 remains unruled; the unchanged-yard follow-up is conditional on Daniel choosing option (a) and was not filed."
   }
 }

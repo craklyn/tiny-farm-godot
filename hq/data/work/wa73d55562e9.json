@@ -7,7 +7,7 @@
   "tier_reason": "reading his edit and writing down what it implies — nothing to walk back",
   "ask": "Daniel hand-edited Farmer in the sprite editor and said he was fixing: \"White cells that were supposed to be transparent in order to see what's behind the character..\". The measurement: Farmer: 56 pixels across 14 frames (walk down 1 · standing idle 1, walk down 2, walk down 4 · action swing 1, walk up 1 · standing idle 2). The change shows up in: walk down, walk up, walk left, walk right, standing idle, action swing, sleeping on the cot. The silhouette moved, not just the interior shading. Look at it against the style guide draft and the rest of the sheet, and say in a few lines what his edit is telling you about the direction — whether it agrees with the guide, quietly contradicts it, or repeats something he has done before. If it is just tidying and there is nothing to learn, say exactly that in one line; a short honest answer beats manufactured significance. Do not propose amendments to the guide yet; he wants a look session before it is signed. This is evidence-gathering for that session.",
   "first_action": "Open assets/sprites/generated/characters.png and the ledger entry (step 2) in HQ, compare it with the style guide in docs/design/09-art-direction.md, and write down what the edit says about his taste.",
-  "state": "for_review",
+  "state": "landed",
   "thread": "ingrid",
   "source": "chat",
   "source_message": "Daniel hand-edited Farmer in the sprite editor and said he was fixing: \"White cells that were supposed to be transparent in order to see what's behind the character..\". The measurement: Farmer: 56 pixels across 14 frames (walk down 1 · standing idle 1, walk down 2, walk down 4 · action swing 1, walk up 1 · standing idle 2). The change shows up in: walk down, walk up, walk left, walk right, standing idle, action swing, sleeping on the cot. The silhouette moved, not just the interior shading. Look at it against the style guide draft and the rest of the sheet, and say in a few lines what his edit is telling you about the direction — whether it agrees with the guide, quietly contradicts it, or repeats something he has done before. If it is just tidying and there is nothing to learn, say exactly that in one line; a short honest answer beats manufactured significance. Do not propose amendments to the guide yet; he wants a look session before it is signed. This is evidence-gathering for that session.",
@@ -49,5 +49,68 @@
     "instead": "A transparency rule can be considered during the planned look session; the current guide is still unsigned."
   },
   "finished": "2026-09-07T08:24",
-  "subject": "How the game looks"
+  "subject": "How the game looks",
+  "_revision": 1,
+  "attempt_outcome": {
+    "version": 1,
+    "status": "complete",
+    "reason": "The comparison confirms ground-contact pixel cleanup. Existing cards wfb46fc24305, wd191fa66a85, and w16cb59a1b8 cover the pipeline, sheet audit, and look-session follow-ups. No duplicate children were filed.",
+    "result_id": "a43c4eaebff413d59d31d318f53ed29b82d3393d19df1c5ef3b3be865a678003",
+    "id": "manual-reconciliation-20260923-farmer",
+    "landing_verified": true,
+    "reconciliation": {
+      "commit": "81e2fd2be7175f1b96bdbb04d0c51c149d855ae3",
+      "checks": [
+        "56 opaque-to-transparent pixels across 14 frames",
+        "HQ 45/45",
+        "GitHub Actions 35950361883 success"
+      ]
+    }
+  },
+  "check": {
+    "read": true,
+    "complete": true,
+    "verdict": "pass",
+    "summary": "The comparison confirms ground-contact pixel cleanup. Existing cards wfb46fc24305, wd191fa66a85, and w16cb59a1b8 cover the pipeline, sheet audit, and look-session follow-ups. No duplicate children were filed.",
+    "findings": [],
+    "attempt_id": "manual-reconciliation-20260923-farmer",
+    "method": "central reconciliation against committed evidence and CI"
+  },
+  "completion": {
+    "version": 1,
+    "attempt_id": "manual-reconciliation-20260923-farmer",
+    "at": "2026-09-23T20:18:34-07:00",
+    "sha": "81e2fd2be7175f1b96bdbb04d0c51c149d855ae3",
+    "by": "central reconciliation",
+    "kind": "reading",
+    "evidence": {
+      "version": 1,
+      "status": "complete",
+      "reason": "The comparison confirms ground-contact pixel cleanup. Existing cards wfb46fc24305, wd191fa66a85, and w16cb59a1b8 cover the pipeline, sheet audit, and look-session follow-ups. No duplicate children were filed.",
+      "result_id": "a43c4eaebff413d59d31d318f53ed29b82d3393d19df1c5ef3b3be865a678003",
+      "id": "manual-reconciliation-20260923-farmer",
+      "landing_verified": true,
+      "reconciliation": {
+        "commit": "81e2fd2be7175f1b96bdbb04d0c51c149d855ae3",
+        "checks": [
+          "56 opaque-to-transparent pixels across 14 frames",
+          "HQ 45/45",
+          "GitHub Actions 35950361883 success"
+        ]
+      }
+    }
+  },
+  "completion_reconciliation": {
+    "version": 1,
+    "at": "2026-09-23T20:18:34-07:00",
+    "classification": "verified reading",
+    "evidence_summary": "The comparison confirms ground-contact pixel cleanup. Existing cards wfb46fc24305, wd191fa66a85, and w16cb59a1b8 cover the pipeline, sheet audit, and look-session follow-ups. No duplicate children were filed."
+  },
+  "closed": "2026-09-23T20:18:34-07:00",
+  "landed": {
+    "at": "2026-09-23T20:18:34-07:00",
+    "by": "central reconciliation",
+    "sha": "81e2fd2be7175f1b96bdbb04d0c51c149d855ae3",
+    "note": "The comparison confirms ground-contact pixel cleanup. Existing cards wfb46fc24305, wd191fa66a85, and w16cb59a1b8 cover the pipeline, sheet audit, and look-session follow-ups. No duplicate children were filed."
+  }
 }
