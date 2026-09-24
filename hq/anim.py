@@ -17,6 +17,7 @@ ever started by a button.
 """
 
 import execution
+import work
 
 import json
 import math
@@ -519,6 +520,12 @@ def record_verdict(payload):
                    or isinstance(v, bool) or not isinstance(v, (int, float))
                    or not math.isfinite(v) for k, v in values.items())):
         return {"error": "the judged slider values are missing or invalid"}
+    with work.mutation_lock():
+        return _record_verdict_locked(slug, work_id, verdict, why, values)
+
+
+def _record_verdict_locked(slug, work_id, verdict, why, values):
+    """Check the live review and save its handoff under the shared work lock."""
     item, path, error = _review_record(work_id, slug)
     if error:
         return {"error": error}
@@ -558,7 +565,7 @@ def record_verdict(payload):
     followup_path = os.path.join(DATA, "work", f"{followup_id}.json")
     try:
         os.makedirs(os.path.join(DATA, "work"), exist_ok=True)
-        _write_review(followup, followup_path)
+        work.save_item(followup)
         _write_review(item, path)
     except OSError as exc:
         try:
@@ -636,12 +643,11 @@ def _work_slug(item):
 
 
 def _review_record(work_id, slug):
-    if not re.fullmatch(r"w[a-zA-Z0-9_-]{1,127}", work_id):
+    if not re.fullmatch(r"w[0-9a-f]{6,32}", work_id):
         return None, "", "a work item is required for this verdict"
     path = os.path.join(DATA, "work", f"{work_id}.json")
     try:
-        with open(path, encoding="utf-8") as fh:
-            item = json.load(fh)
+        item = work.load_item(work_id)
     except (OSError, ValueError):
         return None, path, "that Animation Lab review no longer exists"
     if item.get("id") != work_id or item.get("source") != "anim_lab":
@@ -654,10 +660,7 @@ def _review_record(work_id, slug):
 
 
 def _write_review(item, path):
-    tmp = path + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as fh:
-        json.dump(item, fh, indent=2)
-    os.replace(tmp, path)
+    work.save_item(item)
     _INDEX_CACHE["key"] = None
 
 
@@ -929,7 +932,7 @@ def _file_for_review(rec):
     bill = (f"It cost ${spent:.2f} and {cost.get('turns', '?')} turns."
             if isinstance(spent, (int, float)) else
             "Its cost was not reported by the CLI.")
-    wid = rec.get("work_item") or f"w{rec['id']}"
+    wid = rec.get("work_item") or "w" + uuid.uuid4().hex[:12]
     if rec.get("work_item"):
         path = os.path.join(DATA, "work", f"{wid}.json")
         try:
@@ -983,8 +986,7 @@ def _file_for_review(rec):
     }
     try:
         path = os.path.join(DATA, "work", f"{wid}.json")
-        with open(path, "w", encoding="utf-8") as fh:
-            json.dump(item, fh, indent=2)
+        work.save_item(item)
         rec["work_item"] = wid
         _save_run(rec)
         return True

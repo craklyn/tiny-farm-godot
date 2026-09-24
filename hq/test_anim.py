@@ -20,6 +20,9 @@ import anim  # noqa: E402
 
 
 class FakeHost:
+    def load_json(self, path):
+        return json.loads(Path(path).read_text(encoding="utf-8"))
+
     def note_limit(self, *_args, **_kwargs):
         pass
 
@@ -60,6 +63,8 @@ class AnimationLabTests(unittest.TestCase):
         )
         anim.REPO = str(self.repo)
         anim.DATA = str(self.data)
+        anim.work.HOST = FakeHost()
+        anim.work.WORK = str(self.data / "work")
         anim.PREVIEWS = str(self.data / "loop_previews")
         anim.RUNS = str(self.data / "anim_runs")
         anim.HOST = FakeHost()
@@ -75,7 +80,7 @@ class AnimationLabTests(unittest.TestCase):
         path.write_text("# loop\n", encoding="utf-8")
         return path
 
-    def review(self, slug="sprout", work_id="wr123", state="for_review", source="anim_lab"):
+    def review(self, slug="sprout", work_id="wa12345", state="for_review", source="anim_lab"):
         item = {
             "id": work_id,
             "anim_slug": slug,
@@ -223,7 +228,7 @@ class AnimationLabTests(unittest.TestCase):
 
     def test_keep_and_drop_persist_reason_on_exact_review(self):
         for verdict, state in (("keep", "accepted"), ("drop", "dropped")):
-            work_id = "wr" + verdict
+            work_id = "wa12345" if verdict == "keep" else "wa56789"
             path = self.review(work_id=work_id)
             anim._INDEX_CACHE["key"] = "cached"
             result = anim.record_verdict(
@@ -242,6 +247,11 @@ class AnimationLabTests(unittest.TestCase):
             self.assertEqual(followup["owner"], "ingrid")
             self.assertEqual(followup["state"], "waiting_session")
             self.assertEqual(followup["anim_verdict"], saved["anim_verdicts"][-1])
+            self.assertEqual(anim.work.load_item(followup["id"])["id"], followup["id"])
+            if verdict == "drop":
+                acted = anim.work.api_post("/api/work/approve", {"id": followup["id"]})
+                self.assertEqual(acted["id"], followup["id"])
+                self.assertEqual(acted["_revision"], followup["_revision"] + 1)
             self.assertIsNone(anim._INDEX_CACHE["key"])
 
     def test_verdict_without_exact_work_identity_has_no_side_effect(self):
@@ -258,9 +268,9 @@ class AnimationLabTests(unittest.TestCase):
 
     def test_verdict_rejects_wrong_source_state_and_slug(self):
         cases = [
-            ("wrsource", "for_review", "manual", "sprout"),
-            ("wrstate", "accepted", "anim_lab", "sprout"),
-            ("wrslug", "for_review", "anim_lab", "other"),
+            ("wa11111", "for_review", "manual", "sprout"),
+            ("wa22222", "accepted", "anim_lab", "sprout"),
+            ("wa33333", "for_review", "anim_lab", "other"),
         ]
         for work_id, state, source, slug in cases:
             self.review(slug=slug, work_id=work_id, state=state, source=source)
@@ -277,14 +287,14 @@ class AnimationLabTests(unittest.TestCase):
                 mock.patch.object(anim.threading, "Thread", StoppedThread), \
                 mock.patch.object(anim.execution, "run_session") as paid:
             result = anim.record_verdict(
-                {"work_id": "wr123", "slug": "sprout", "verdict": "rework",
+                {"work_id": "wa12345", "slug": "sprout", "verdict": "rework",
                  "why": "Slow the opening and hold the final pose", "values": {"speed": 2}}
             )
         self.assertEqual(result["state"], "doing")
-        self.assertEqual(result["work_id"], "wr123")
+        self.assertEqual(result["work_id"], "wa12345")
         self.assertEqual(self.read_json(path)["state"], "doing")
         self.assertEqual(self.read_json(path)["anim_verdicts"][-1]["values"], {"speed": 2})
-        self.assertEqual(result["run"]["work_item"], "wr123")
+        self.assertEqual(result["run"]["work_item"], "wa12345")
         self.assertEqual(StoppedThread.starts, 1)
         paid.assert_not_called()
 
@@ -299,7 +309,8 @@ class AnimationLabTests(unittest.TestCase):
                "started": "now", "cost": None}
         anim._save_run(rec)
         self.assertTrue(anim._file_for_review(rec))
-        work_id = "wr456"
+        work_id = rec["work_item"]
+        self.assertRegex(work_id, r"^w[0-9a-f]{6,32}$")
         self.assertEqual(self.read_json(self.data / "work" / f"{work_id}.json")["anim_slug"],
                          "sprout")
         anim._INDEX_CACHE.update(key=None, data=None)
