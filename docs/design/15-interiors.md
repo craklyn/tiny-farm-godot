@@ -149,19 +149,25 @@ That remains an optional visual detail, not part of the chosen yard treatment. T
 frame in the comparison was one illustration of the unchosen option, not a geometric
 requirement.
 
-### What if the interior grid were coarser?
+### A larger building with a coarser interior (Daniel's chosen target, 2026-09-23)
 
-A 4×4-tile building containing **2×2 total interior cells** reverses the current rule:
+A 4×4-tile building containing **2×2 total interior cells** is the view Daniel wants
+when entering this larger building. It reverses the current rule:
 each room cell spans 2×2 farm tiles, so the pitch is ½ cell per farm tile. Keeping those
 cells at the usual on-screen size would make the farm appear at ×½ scale when viewed from
 inside. Twice as much farm fits across each axis, or four times the area. The boundary
 still registers if everything uses the same transform.
 
-That is a thought experiment, not a supported room size. P-18 specifies a *finer* interior
-grid with an integer pitch, and the current room code stores pitch as an integer of at
-least one. A 2×2 room also has no walkable floor after reserving a one-cell wall ring.
-If “2×2 interior” means a **2×2 walkable floor plus walls**, the total is 4×4 cells in a
-4×4 footprint: pitch one, so the farm stays at its ordinary scale rather than zooming out.
+This is a chosen visual target, **not yet implemented**. P-18 and the current room code
+require a *finer* grid with an integer pitch of at least one. The present one-cell wall
+ring would consume every cell of a 2×2 room. To build this target, the room transform
+must support a pitch of ½ and the wall and collision boundary must sit at the room's
+edge rather than occupy its four cells. The room still needs a usable doorway.
+
+The alternative of a **2×2 walkable floor plus a one-cell wall ring** would total 4×4
+interior cells and leave the camera at ×1. Daniel explicitly does **not** want that
+alternative for this 4×4-building example. This choice changes the grid geometry for
+larger rooms; it does not change Q-108's ruling to draw the live yard unchanged.
 
 ---
 

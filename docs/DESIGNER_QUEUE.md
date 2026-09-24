@@ -92,9 +92,10 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   haze**, **(c) desaturate and darken**, **(d) hard-cut walls with a clear yard**.
   Daniel chose (a) on 2026-09-23: the larger pixels already take focus from the yard when
   entering. A thin trim could later be drawn over the room-yard seam without taking
-  additional width, but it is not part of this ruling. The 4×4-building/2×2-cell inverse
-  scale thought experiment is recorded in design/15; the current finer-grid room rule does
-  not support it.
+  additional width, but it is not part of this ruling. For a 4×4 building, Daniel then
+  chose a **2×2 total-cell interior** and the resulting ×0.5 view of the unchanged farm,
+  rather than a 2×2 floor plus wall cells. This larger-room geometry is recorded in
+  design/15 as a target; current finer-grid room code does not support it yet.
   Card: `hq/data/decisions/Q-108.json`.
 
 - **Q-111** The one release step that still waits on your hands — **Ruling**. A `v*` tag

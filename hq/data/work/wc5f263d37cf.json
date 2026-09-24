@@ -1,0 +1,20 @@
+{
+  "id": "wc5f263d37cf",
+  "title": "Make a 4×4 building open to a 2×2 room with a wider farm view",
+  "level": "story",
+  "owner": "ravi",
+  "tier": 1,
+  "tier_reason": "Daniel chose this larger-building appearance; implementation is reversible repository work, with the visual decision already made.",
+  "ask": "Daniel chose the 'Inside: 2×2 total cells' view for a 4×4-tile building. Keep exactly four usable interior cells; do not reinterpret it as a 2×2 floor plus a one-cell wall ring. At the same displayed room-cell size, the farm beyond the boundary appears at ×0.5 scale and shows four times the area. The live yard remains unchanged in colour under Q-108. Support the fractional room pitch through room creation, drawing, camera transitions, interaction, persistence and replay; draw and block the wall at the room's edge without consuming a cell, and keep a usable doorway. Preserve current house and coop behavior. Add tests and visual evidence of both the new larger-room layout and the existing rooms. See docs/design/15-interiors.md §3, 'A larger building with a coarser interior'.",
+  "first_action": "Trace every integer-pitch assumption in room creation, sim/save, farm backdrop, and camera entry/exit, then design the edge wall and doorway representation before changing rendering.",
+  "state": "waiting_session",
+  "thread": "ravi",
+  "source": "chat",
+  "source_message": "For a 4×4 building, I want the Inside: 2×2 total cells view, not the 2×2 floor plus walls view.",
+  "result": "",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-23T21:32:42-07:00",
+  "created_ts": 1790224362.8401,
+  "_revision": 1
+}

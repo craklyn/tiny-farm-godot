@@ -2246,6 +2246,12 @@
   "85b6bfbb3a78722df582": {
    "verdict": "ok"
   },
+  "85ba94b42cbba7215cc3": {
+   "instead": "Make the 4×4 building open onto a 2×2 room, with a wider view of the farm",
+   "quote": "open to a 2×2 room with a wider farm view",
+   "verdict": "second-look",
+   "why": "It is unclear whether the building opens onto the room, and whether the wider farm view belongs to the room or the building."
+  },
   "85e3a99001b73dd4dcf0": {
    "verdict": "ok"
   },
