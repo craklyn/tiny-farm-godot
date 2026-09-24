@@ -846,6 +846,12 @@
   "302e151a03d80cb9dbac": {
    "verdict": "ok"
   },
+  "304b7aecdd9b50e92002": {
+   "instead": "… colours across … released image sheets. The wider a band, the more of the game is painted that colour. The notched bands are the … colours the style guide names — … occur exactly in the current game version . · …",
+   "quote": "colours across … shipped sheets",
+   "verdict": "second-look",
+   "why": "“Shipped sheets” makes the reader work out that this means image sheets included in the released game."
+  },
   "305c97a1db9424a400ce": {
    "verdict": "ok"
   },
@@ -1000,6 +1006,9 @@
    "quote": "dependency",
    "verdict": "decode",
    "why": "The reader has to work out that this means something else the action needs first."
+  },
+  "3abde4495352d55d4af4": {
+   "verdict": "ok"
   },
   "3b73d82d9afddf1af43f": {
    "verdict": "ok"
@@ -3703,6 +3712,12 @@
    "quote": "awaiting integration",
    "verdict": "second-look",
    "why": "“Integration” makes the reader work out that the reviewed work is waiting to be merged."
+  },
+  "d8e990c8c947fc120198": {
+   "instead": "Guide colours without an exact match: … · The guide's own note says its colour ranges were measured from a set of game images that is no longer in this project. So this is not necessarily drift in the art — the guide may be describing a game we no longer have. The art review's first question is which of the two it is.",
+   "quote": "sprite pack that is no longer in this repo",
+   "verdict": "decode",
+   "why": "“Sprite pack” and “repo” are internal terms for a set of game images and the project, so a stranger may need to ask what they mean."
   },
   "d9519560c37cef9bf363": {
    "verdict": "ok"

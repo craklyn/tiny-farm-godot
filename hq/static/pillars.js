@@ -905,16 +905,17 @@ async function instArt(root, below, sig, g) {
     const cells = pal.swatches.map(s =>
       `<i class="sw${s.named ? " named" : ""}" style="flex:${Math.max(1, Math.round(1000 * s.pixels / total))};background:#${s.hex}"
          title="#${s.hex} — ${s.pixels.toLocaleString()} pixels${s.named ? ", named by the style guide" : ""}"></i>`).join("");
+    const near = pal.named_near || {};
     const missing = (pal.named_missing || []).map(hx =>
-      `<span class="miss"><i style="background:#${hx}"></i>#${hx}</span>`).join("");
+      `<span class="miss"><i style="background:#${hx}"></i>#${hx}${near[hx] ? ` → #${near[hx]} (one red step)` : ""}</span>`).join("");
     ribbon = `<div class="card palcard">
       <div class="ribbon">${cells}</div>
       <div class="pal-meta">
         <b>${pal.colours} colours</b> across ${pal.sheets} shipped sheets. The wider a band, the more of
         the game is painted that colour. The notched bands are the ${pal.named_total} colours the style
-        guide names — <b>${pal.named_present} of those are still in the build</b>.
+        guide names — <b>${pal.named_present} occur exactly in the build</b>.
       </div>
-      ${missing ? `<div class="pal-missing"><b>Named by the guide, present in nothing:</b> ${missing}
+      ${missing ? `<div class="pal-missing"><b>Guide colours without an exact match:</b> ${missing}
         <div class="small muted">The guide's own note says its colour ranges were measured from a sprite pack
         that is no longer in this repo. So this is not necessarily drift in the art — the guide may be
         describing a game we no longer have. The look session's first question is which of the two it is.</div></div>` : ""}

@@ -2947,8 +2947,8 @@ def _pt_metric(row, metric):
 # asks how many of the colours the style guide names are still present.
 #
 # Decoded with zlib and struct rather than an imaging library, because HQ runs
-# on the standard library and nothing else, and because the sheets are all 8-bit
-# RGBA — the one PNG shape this needs to understand. Cached on the sheets' own
+# on the standard library and nothing else. Shipped sheets include both 8-bit
+# RGB and RGBA PNGs. Cached on the sheets' own
 # mtimes: it costs about a second the first time and nothing afterwards.
 # ---------------------------------------------------------------------------
 
@@ -2958,7 +2958,7 @@ _PALETTE_CACHE = {"key": None, "data": None}
 
 
 def _png_rgba(path):
-    """Decode an 8-bit RGBA PNG to a flat bytes buffer. Returns (w, h, buf)."""
+    """Decode an 8-bit RGB/RGBA PNG to RGBA bytes. Returns (w, h, buf)."""
     import struct
     import zlib
     with open(path, "rb") as f:
@@ -2972,7 +2972,7 @@ def _png_rgba(path):
         body = raw[pos + 8:pos + 8 + ln]
         if typ == b"IHDR":
             w, h, depth, ctype = struct.unpack(">IIBB", body[:10])
-            if depth != 8 or ctype != 6:
+            if depth != 8 or ctype not in (2, 6) or body[10] != 0:
                 raise ValueError(f"unsupported PNG shape depth={depth} colortype={ctype}")
         elif typ == b"IDAT":
             idat += body
@@ -2982,8 +2982,9 @@ def _png_rgba(path):
     if w is None:
         raise ValueError("no IHDR")
     data = zlib.decompress(bytes(idat))
-    stride = w * 4
-    out = bytearray(stride * h)
+    channels = 3 if ctype == 2 else 4
+    stride = w * channels
+    out = bytearray(w * h * 4)
     prev = bytearray(stride)
     p = 0
     for y in range(h):
@@ -2992,24 +2993,28 @@ def _png_rgba(path):
         line = bytearray(data[p:p + stride])
         p += stride
         if ft == 1:
-            for i in range(4, stride):
-                line[i] = (line[i] + line[i - 4]) & 0xFF
+            for i in range(channels, stride):
+                line[i] = (line[i] + line[i - channels]) & 0xFF
         elif ft == 2:
             for i in range(stride):
                 line[i] = (line[i] + prev[i]) & 0xFF
         elif ft == 3:
             for i in range(stride):
-                a = line[i - 4] if i >= 4 else 0
+                a = line[i - channels] if i >= channels else 0
                 line[i] = (line[i] + ((a + prev[i]) >> 1)) & 0xFF
         elif ft == 4:
             for i in range(stride):
-                a = line[i - 4] if i >= 4 else 0
+                a = line[i - channels] if i >= channels else 0
                 b = prev[i]
-                c = prev[i - 4] if i >= 4 else 0
+                c = prev[i - channels] if i >= channels else 0
                 pa, pb, pc = abs(b - c), abs(a - c), abs(a + b - 2 * c)
                 pr = a if (pa <= pb and pa <= pc) else (b if pb <= pc else c)
                 line[i] = (line[i] + pr) & 0xFF
-        out[y * stride:(y + 1) * stride] = line
+        if channels == 4:
+            out[y * w * 4:(y + 1) * w * 4] = line
+        else:
+            for x in range(w):
+                out[(y * w + x) * 4:(y * w + x + 1) * 4] = line[x * 3:x * 3 + 3] + b"\xff"
         prev = line
     return w, h, bytes(out)
 
@@ -3025,9 +3030,14 @@ def _sheet_paths():
 
 
 def _guide_named_colours():
-    """The hexes the style guide names, in the order it names them."""
+    """The measured palette anchors, excluding discussion elsewhere in the guide."""
+    guide = _read("docs/design/09-art-direction.md")
+    start = guide.find("**Palette discipline")
+    end = guide.find("**Shape language", start)
+    if start < 0 or end < 0:
+        return []
     seen, out = set(), []
-    for m in re.finditer(r"#([0-9a-fA-F]{6})\b", _read("docs/design/09-art-direction.md")):
+    for m in re.finditer(r"#([0-9a-fA-F]{6})\b", guide[start:end]):
         h = m.group(1).lower()
         if h not in seen:
             seen.add(h)
@@ -3141,6 +3151,18 @@ def palette_union():
             counts[buf[i:i + 3]] = counts.get(buf[i:i + 3], 0) + 1
     named = _guide_named_colours()
     present = {c.hex() for c in counts}
+    # A generator's input palette is guidance: a one-step channel difference is
+    # visually the same swatch, but it must not be reported as an exact match.
+    named_near = {}
+    for h in named:
+        if h in present:
+            continue
+        r = int(h[:2], 16)
+        for near_r in (r - 1, r + 1):
+            near = f"{near_r:02x}{h[2:]}" if 0 <= near_r <= 255 else ""
+            if near in present:
+                named_near[h] = near
+                break
     swatches = sorted(({"hex": c.hex(), "pixels": n, "named": c.hex() in named}
                        for c, n in counts.items()),
                       key=lambda s: -s["pixels"])
@@ -3151,6 +3173,7 @@ def palette_union():
         "named_total": len(named),
         "named_present": sum(1 for h in named if h in present),
         "named_missing": [h for h in named if h not in present],
+        "named_near": named_near,
         "swatches": swatches[:140],
     }
     _PALETTE_CACHE["key"] = key

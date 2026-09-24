@@ -134,11 +134,14 @@ from a bought sprite set (Sprout Lands) that this repository no longer contains;
 the build ships generated sheets instead. The captures are of the real game, so
 the session does not depend on the guide being current — but "the guide's rules,
 applied" is no longer something anyone can render, and re-measuring the guide
-against the shipping sheets is filed as its own work. Related and separate: four
-of the sixteen colours named below read as absent from the build, and all four are
-in fact present one step darker in red and identical in green and blue. That is
-the asset pipeline shifting a channel by one, not the art drifting, and it is also
-filed.
+against the shipping sheets is filed as its own work. A later pixel audit of
+current main found 13 of the 16 named colours exactly and three one red step
+away: `#d2e077`/`#d1e077`, `#c49a6c`/`#c39a6c`, and
+`#aa7959`/`#a97959`. The archived raw hillside is byte-identical to its shipped
+PNG and already contains `#d1e077`, so there is no downstream red-channel
+shift to repair in that example. The wood shades are explicit locks in later
+asset recipes. The palette readout shows these as near matches without calling
+them exact, while the guide's re-measurement remains separate work.
 
 ---
 
