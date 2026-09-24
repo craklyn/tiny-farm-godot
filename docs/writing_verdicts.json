@@ -392,6 +392,9 @@
    "verdict": "decode",
    "why": "The reader has to work out what “claims” are and what it means for them to be anonymous."
   },
+  "13c1a988f9444684d722": {
+   "verdict": "ok"
+  },
   "13f25afd53a45a973a95": {
    "verdict": "ok"
   },
