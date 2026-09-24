@@ -16,7 +16,7 @@
   "Bespoke foley recorded for the verb table (the CEO wanted to record these personally)",
   "Credits and provenance updated for every replaced asset"
  ],
- "current_status": "Blocked on two working sessions the CEO asked for rather than on approvals: he ruled 'not yet — discuss first' on the audio direction and 'not yet — I want a look session' on the art style guide (both 2026-09-02). So the next move is scheduling those two sittings, not re-sending the drafts. Deliberately unhurried: current placeholders are license-clean and complete, so nothing ships worse for waiting. Since 2026-09-02 the sprite editor also records every hand edit he makes (his own reason plus a measurement of what moved) and files it to Ingrid, so the look session will open on real evidence of his taste rather than on a document he has not signed.",
+ "current_status": "The art look session and audio discussion are still pending. Daniel asked on 2026-09-02 to hold the next foley recording session until he picks a look (Q-14); the project card has no recording date. This hold covers the recording batch only. Free sound searches, listening cards, sound-direction preparation, and source/licence checks continue under the 2026-09-04 sourcing rule in docs/design/10-audio-direction.md and docs/DESIGNER_QUEUE.md Q-31. The already-recorded watering takes remain in use; any future foley is batched only for sounds that free sources cannot cover.",
  "plan": [
   {
    "step": "Art style guide draft delivered",
@@ -47,7 +47,7 @@
    "done": false
   },
   {
-   "step": "Foley recording session; new takes A/B'd in the Sound Test on device",
+   "step": "After Daniel picks a look, schedule any needed batched foley session; A/B new takes in the Sound Test on device",
    "done": false
   }
  ],
