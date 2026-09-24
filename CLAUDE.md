@@ -103,6 +103,11 @@ godot --path . res://tools/capture_overnight_crow.tscn
 # at dusk, as tools/shot_window_view_{room,morning,dusk}.png — needs a display
 godot --path . res://tools/capture_window_view.tscn
 
+# Q-108's four live farmhouse yard treatments, one PNG per run under
+# docs/design/mockups/through_walls/ — needs a display. Repeat for each name.
+godot --path . res://tools/capture_through_walls.tscn --treatment=none
+# Repeat with haze, desaturate, and hardcut.
+
 # The screens the overnight's frame question is judged on (Q-106): both story nights
 # mid-play plus the Day-N type, then the four candidate frames drawn over them, all
 # under docs/design/mockups/overnight_frames/. The capture needs a display; the

@@ -49,6 +49,26 @@
    "type": "image",
    "src": "docs/design/mockups/interiors/q108_two_zooms.png",
    "caption": "The two zooms. Left: the house on its three tiles by two, the room inside at half pitch. Right: x2, and nothing has moved. Both the same photograph of the game."
+  },
+  {
+   "type": "image",
+   "src": "docs/design/mockups/through_walls/none.png",
+   "caption": "Unchanged live yard from inside the farmhouse. Captured after the September 23 ruling from the running game at one fixed seed and hour; the room and camera are identical across all four images."
+  },
+  {
+   "type": "image",
+   "src": "docs/design/mockups/through_walls/haze.png",
+   "caption": "The same live farmhouse view with a pale ordered dither over the yard. Captured after the September 23 ruling from the running game at one fixed seed and hour; the room and camera are identical across all four images."
+  },
+  {
+   "type": "image",
+   "src": "docs/design/mockups/through_walls/desaturate.png",
+   "caption": "The same live farmhouse view with the yard desaturated and darkened. Captured after the September 23 ruling from the running game at one fixed seed and hour; the room and camera are identical across all four images."
+  },
+  {
+   "type": "image",
+   "src": "docs/design/mockups/through_walls/hardcut.png",
+   "caption": "The same live farmhouse view with a solid wall frame around a clear opening, placed relative to the room. Captured after the September 23 ruling from the running game at one fixed seed and hour; the room and camera are identical across all four images."
   }
  ],
  "ruled": {
