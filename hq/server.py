@@ -709,6 +709,55 @@ def waiting_block():
 _CONSISTENCY = []
 
 
+def check_entity_geometry():
+    """Check the hand-copied catalogue against sheet dimensions and frame pools."""
+    import struct
+
+    warnings = []
+    catalog_path = os.path.join(DATA, "entities.json")
+    if not os.path.exists(catalog_path):
+        return warnings  # A minimal disposable HQ data root may omit the gallery.
+    with open(catalog_path, encoding="utf-8") as source:
+        catalog = json.load(source)
+    for group in catalog.get("groups", []):
+        for entity in group.get("entities", []):
+            name = entity.get("id", "?")
+            sheet = entity.get("sheet")
+            if not sheet:
+                continue
+            path = os.path.join(REPO, sheet)
+            try:
+                with open(path, "rb") as image:
+                    header = image.read(24)
+                if header[:8] != b"\x89PNG\r\n\x1a\n" or header[12:16] != b"IHDR":
+                    raise ValueError("not a PNG")
+                width, height = struct.unpack(">II", header[16:24])
+            except (OSError, ValueError, struct.error) as exc:
+                warnings.append(f"entity {name}: cannot read sheet {sheet}: {exc}")
+                continue
+            frames = entity.get("frames", [])
+            for index, rect in enumerate(frames):
+                if (not isinstance(rect, list) or len(rect) != 4
+                        or any(type(v) is not int for v in rect)):
+                    warnings.append(f"entity {name}: frame {index} is not an integer rectangle")
+                    continue
+                x, y, w, h = rect
+                if x < 0 or y < 0 or w <= 0 or h <= 0 or x + w > width or y + h > height:
+                    warnings.append(f"entity {name}: frame {index} {rect} outside {width}x{height} sheet")
+            for anim in entity.get("anims", []):
+                for index in anim.get("frames", []):
+                    if type(index) is int:
+                        refs = [index]
+                    elif isinstance(index, dict):
+                        refs = [part.get("f") for part in index.get("parts", [])]
+                    else:
+                        refs = [index]
+                    for ref in refs:
+                        if type(ref) is not int or not 0 <= ref < len(frames):
+                            warnings.append(f"entity {name}: animation {anim.get('id', '?')} references frame {ref!r} outside pool of {len(frames)}")
+    return warnings
+
+
 def check_consistency():
     """Dangling people, decisions, and goal routes.
 
@@ -723,6 +772,8 @@ def check_consistency():
         print("[consistency] " + msg)
 
     try:
+        for warning in check_entity_geometry():
+            note(warning)
         ids = {e["id"] for e in load_org()["employees"]}
         projects = load_projects()
         for p in projects:

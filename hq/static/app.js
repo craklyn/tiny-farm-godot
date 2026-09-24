@@ -202,8 +202,8 @@ async function animate(canvas, ent, scale) {
   const ctx = canvas.getContext("2d");
   ctx.imageSmoothingEnabled = false;
   // An entity that declares animations is previewed by its first one; the flat
-  // frame list is the whole sheet pool, not a cycle. A "stills" first animation
-  // (poses, variants) holds its first frame rather than flipbooking. One frame
+  // frame list is the whole sheet pool, not a cycle. A "stills" or "ladder"
+  // first set holds its first frame rather than flipbooking. One frame
   // of an animation is a *drawing*: a frame index for a single cell, or
   // {parts:[{f,dx,dy,rot,flip}]} for an assembly (the worm draws one cell per
   // tile of itself). A legacy ent.composite reads as one assembled still.
@@ -242,7 +242,8 @@ async function animate(canvas, ent, scale) {
     i++;
   };
   draw();
-  if (ds.length > 1 && !(anim && anim.kind === "stills")) animators.push(setInterval(draw, interval));
+  if (ds.length > 1 && !(anim && (anim.kind === "stills" || anim.kind === "ladder")))
+    animators.push(setInterval(draw, interval));
 }
 
 function clearAnimators() { while (animators.length) clearInterval(animators.pop()); }
