@@ -437,6 +437,17 @@ suite instantiates it just to check a button exists.
   (`TICK_EVERY`) and a headless skip rather than being assumed free.*
 - All randomness in layers 1–3 flows through the seeded sim RNG — never `randi()` in
   gameplay code.
+- Day-keyed rolls use `SimRng.stateless`: the current revision avalanches the seed,
+  day salt, and arrival index before combining them. Legacy string-hash rolls stay
+  available for v5 and earlier saves and v2 and earlier replays. Save v6 stores the
+  derivation revision; replay v3 selects it when generating a fresh world, while a
+  continued replay inherits its base save's revision. See
+  `tools/measure_schedule_rolls.gd` for 30-day sequences under both revisions.
+  Measured on seeds 1, 42, and 20260909: the legacy crow roll moved by +9
+  modulo 20 on 24 of 27 day transitions for each seed; the current roll did so
+  on 0 of 27 for each. Current rolls occupied 16, 16, and 15 of the 20 action
+  slots across days 3–30. Visitor schedules printed empty because all five
+  species have `per_day = 0` in the shipping configuration.
 - GDScript until profiling says otherwise; the known hot spots (sim fast-forward, NN math)
   are exactly the pieces already earmarked for C#/GDExtension.
 - Scent layer (P-10): write-on-event + lazy decay-on-read only — no per-tile diffusion

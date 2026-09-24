@@ -37,8 +37,9 @@
 class_name ReplayLog
 extends RefCounted
 
-# 1: M2's action stream. 2: tick-stamped, with the dual-record net (M2.5 WI-5).
-const VERSION := 2
+# 1: M2's action stream. 2: tick-stamped dual-record net (M2.5 WI-5).
+# 3: new stateless RNG derivation for fresh farms; a base save owns its revision.
+const VERSION := 3
 
 # Q-41: the *format* version above says how to parse the file; this says which game
 # produced it. They are different questions, and only the second one can tell you
@@ -206,9 +207,9 @@ func apply_to(world: SimWorld, gs) -> bool:
 				% int(base_save.get("version", 0))
 			return false
 		if version >= 2 and gen_seed != 0:
-			SimRng.reseed(gen_seed)
+			SimRng.reseed(gen_seed, SimRng.stateless_revision)
 	else:
-		SimRng.reseed(gen_seed)
+		SimRng.reseed(gen_seed, SimRng.STATELESS_CURRENT if version >= 3 else SimRng.STATELESS_LEGACY)
 		world.generate()
 	if version < 2:
 		# The legacy path, unchanged: no clock, no recomputation, every entry
@@ -326,7 +327,7 @@ var _marked := -1  # end_tick of the last mark line written
 func to_json() -> String:
 	var lines: PackedStringArray = []
 	lines.append(JSON.stringify({
-		"version": VERSION,
+		"version": version,
 		"gen_seed": gen_seed,
 		"base_save": base_save,
 		"build_id": build_id,

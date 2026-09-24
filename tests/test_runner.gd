@@ -144,6 +144,7 @@ func _init() -> void:
 	test_session_trace()
 	test_crow_readiness()
 	test_crow_schedule()
+	test_stateless_schedule_revision()
 	test_crow_raid_trigger()
 	test_crow_raid_waits_for_the_door()
 	test_crow_raid_costs_one_tomato()
@@ -2284,6 +2285,64 @@ func test_trace_analyses() -> void:
 	_assert(int(SessionTrace.active_time(empty)["active_ms"]) == 0, "empty trace has no active time")
 	_assert(SessionTrace.days_played(empty) == 0, "and no days")
 	_assert(SessionTrace.dead_tap_tools(empty).is_empty(), "and no dead taps")
+
+
+func test_stateless_schedule_revision() -> void:
+	print("\n--- Per-day schedule revision Tests ---")
+	SimRng.reseed(1, SimRng.STATELESS_LEGACY)
+	_assert(SimWorld.roll_crow_schedule(3) == [9]
+		and SimWorld.roll_crow_schedule(4) == [18],
+		"legacy revision preserves the shipped crow sequence")
+	var legacy_steps := 0
+	for day in range(3, 30):
+		var a: int = SimWorld.roll_crow_schedule(day)[0]
+		var b: int = SimWorld.roll_crow_schedule(day + 1)[0]
+		if (b - a + 20) % 20 == 9:
+			legacy_steps += 1
+	_assert(legacy_steps == 24, "the measured legacy sequence has 24 predictable steps in 27")
+	for seed_value in [1, 42, 20260909]:
+		SimRng.reseed(seed_value)
+		var current_steps := 0
+		for day in range(3, 30):
+			var a: int = SimWorld.roll_crow_schedule(day)[0]
+			var b: int = SimWorld.roll_crow_schedule(day + 1)[0]
+			if (b - a + 20) % 20 == 9:
+				current_steps += 1
+		_assert(current_steps < 8, "current seed %d breaks the +9 cycle" % seed_value)
+	var world := SimWorld.new()
+	GameState.reset()
+	SimRng.reseed(1)
+	world.generate()
+	var fresh := SaveGame.capture(world, GameState)
+	_assert(int(fresh["world"]["stateless_revision"]) == SimRng.STATELESS_CURRENT,
+		"new saves stamp the current derivation")
+	var old := fresh.duplicate(true)
+	old["version"] = 5
+	old["world"].erase("stateless_revision")
+	_assert(SaveGame.restore(old, SimWorld.new(), GameState)
+		and SimRng.stateless_revision == SimRng.STATELESS_LEGACY,
+		"v5 saves restore the original derivation")
+	_assert(SaveGame.restore(fresh, SimWorld.new(), GameState)
+		and SimRng.stateless_revision == SimRng.STATELESS_CURRENT,
+		"v6 saves restore the current derivation")
+	var replay := ReplayLog.new()
+	replay.start(1)
+	_assert(ReplayLog.from_json(replay.to_json()).version == 3,
+		"new replay headers carry the new derivation version")
+	replay.start_from_save(old, 1)
+	_assert(replay.apply_to(SimWorld.new(), GameState)
+		and SimRng.stateless_revision == SimRng.STATELESS_LEGACY,
+		"a continued v3 replay inherits its v5 base save's derivation")
+	replay.start_from_save(fresh, 1)
+	_assert(replay.apply_to(SimWorld.new(), GameState)
+		and SimRng.stateless_revision == SimRng.STATELESS_CURRENT,
+		"a continued v3 replay inherits its v6 base save's derivation")
+	replay.start(1)
+	replay.version = 2
+	_assert(replay.apply_to(SimWorld.new(), GameState)
+		and SimRng.stateless_revision == SimRng.STATELESS_LEGACY,
+		"v2 seed replays use the original derivation")
+	SimRng.reseed(1)
 
 
 func test_crow_schedule() -> void:
@@ -6846,11 +6905,11 @@ func _brain_entry_count(rlog: ReplayLog) -> int:
 
 
 func test_replay_v2() -> void:
-	print("\n--- Replay format v2 + the dual-record net (M2.5 WI-5) Tests ---")
+	print("\n--- Replay format v3 + the dual-record net (M2.5 WI-5) Tests ---")
 
 	# --- the format ------------------------------------------------------------
 	var s := _session_with_brain_actions(4321)
-	_assert(ReplayLog.VERSION == 2, "the format version is 2 (§3.3, ratified by Q-53)")
+	_assert(ReplayLog.VERSION == 3, "the format version is 3 (stateless derivation revision)")
 	_assert(_brain_entry_count(s.log) > 0,
 		"the session contains Actions a brain decided (%d of %d entries)"
 			% [_brain_entry_count(s.log), s.log.entries.size()])
@@ -6869,7 +6928,7 @@ func test_replay_v2() -> void:
 
 	var text := s.log.to_json()
 	var reloaded := ReplayLog.from_json(text)
-	_assert(reloaded.version == 2, "a v2 log reads back as v2")
+	_assert(reloaded.version == 3, "a v3 log reads back as v3")
 	_assert(reloaded.entries.size() == s.log.entries.size()
 			and _brain_entry_count(reloaded) == _brain_entry_count(s.log),
 		"with every entry and every brain mark intact")
@@ -16133,7 +16192,7 @@ func test_save_v5_migration() -> void:
 	var migrated := SaveGame.migrate(old)
 	_assert(int(migrated.world.actors.legacy_picker.extra.carrying_count) == 1,
 		"a v4 machine hand migrates as one carried unit")
-	_assert(migrated.version == 5 and int(migrated.state.pouch.wheat) == 16
+	_assert(migrated.version == 6 and int(migrated.state.pouch.wheat) == 16
 		and int(migrated.state.items.egg) == 3 and int(migrated.state.items.scarecrow) == 2,
 		"v4 stock sums plantable units without clipping and preserves noncrop items")
 	var restored := SimWorld.new()

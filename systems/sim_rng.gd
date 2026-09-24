@@ -5,6 +5,9 @@
 class_name SimRng
 
 static var rng := _create_default()
+const STATELESS_LEGACY := 1
+const STATELESS_CURRENT := 2
+static var stateless_revision := STATELESS_CURRENT
 
 
 static func _create_default() -> RandomNumberGenerator:
@@ -13,8 +16,9 @@ static func _create_default() -> RandomNumberGenerator:
 	return r
 
 
-static func reseed(new_seed: int) -> void:
+static func reseed(new_seed: int, revision: int = STATELESS_CURRENT) -> void:
 	rng.seed = new_seed
+	stateless_revision = revision
 
 
 # Which seed the stream is currently running under. `stateless()` below derives
@@ -52,5 +56,17 @@ static func randf_range(from: float, to: float) -> float:
 # is reproducible from the seed alone, needs no stamping in the replay log, and
 # cannot be knocked out of step by anything else consuming randomness.
 static func stateless(salt: int, index: int) -> int:
-	var h := hash("%d:%d:%d" % [rng.seed, salt, index])
-	return absi(h)
+	if stateless_revision == STATELESS_LEGACY:
+		return absi(hash("%d:%d:%d" % [rng.seed, salt, index]))
+	# Both changing inputs are avalanched before combining them. Mixing only the
+	# index leaves one-crow-per-day rolls (where day is the salt) in a cycle.
+	var day_bits := _avalanche(salt ^ int(rng.seed))
+	var index_bits := _avalanche(index ^ (int(rng.seed) >> 32))
+	return _avalanche(day_bits ^ index_bits) & 0x7fffffff
+
+
+static func _avalanche(value: int) -> int:
+	var x := value & 0xffffffff
+	x = ((x ^ (x >> 16)) * 0x7feb352d) & 0xffffffff
+	x = ((x ^ (x >> 15)) * 0x846ca68b) & 0xffffffff
+	return (x ^ (x >> 16)) & 0xffffffff

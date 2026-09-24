@@ -25,7 +25,9 @@ extends RefCounted
 # v5 (2026-09-23, S-18/S-19/S-20): her seed pouch and crop basket merge, with noncrop
 # inventory and a persistent bin reserve beside them. Missing `pouch` cannot
 # distinguish an older save from a new empty one, so v4 needs a real migration.
-const VERSION := 5
+# v6: the per-day stateless RNG derivation changed. V5 and earlier saves keep
+# their original rolls, including future days, by migrating to legacy revision.
+const VERSION := 6
 
 # 600 / 20. The one place the old scale is written down.
 const LEGACY_ENERGY_SCALE := 30
@@ -81,6 +83,7 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 			# from cannot be continued *or* replayed faithfully — the hole WI-3's
 			# closing note filed and this closes.
 			"gen_seed": world.gen_seed,
+			"stateless_revision": SimRng.stateless_revision,
 			# What kind of night the farm last had, and which of those nights it
 			# has already had (P-15, design/04). Additive in the same way as
 			# everything above: absent ⇒ an ordinary night and no story told yet,
@@ -255,6 +258,10 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 	for row in in_objects:
 		if not (row is Array) or row.size() != SimWorld.MAP_WIDTH:
 			return false
+	var revision := int(w.get("stateless_revision", SimRng.STATELESS_LEGACY))
+	if revision != SimRng.STATELESS_LEGACY and revision != SimRng.STATELESS_CURRENT:
+		return false
+	SimRng.stateless_revision = revision
 
 	# Tile states come back exactly as they were written, and **there is no T-32
 	# migration on purpose**: a save from before the yard existed restores a farm
@@ -483,6 +490,12 @@ static func migrate(data: Dictionary) -> Dictionary:
 	if v == 4:
 		out = _migrate_4_to_5(out)
 		v = 5
+	if v == 5:
+		out = out.duplicate(true)
+		out["version"] = 6
+		if out.get("world") is Dictionary:
+			out["world"]["stateless_revision"] = SimRng.STATELESS_LEGACY
+		v = 6
 	if v != VERSION:
 		return {}
 	return out

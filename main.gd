@@ -213,7 +213,7 @@ func _ready() -> void:
 			# nothing, and those continue exactly as they did.
 			if farm.sim.gen_seed != 0:
 				gen_seed = farm.sim.gen_seed
-				SimRng.reseed(gen_seed)
+				SimRng.reseed(gen_seed, SimRng.stateless_revision)
 			SaveGame.note_session(GameState, farm.sim, "resume")
 			farm.start_replay_log_from_save(save_data, farm.sim.gen_seed)
 			farm.start_trace(0, true)
