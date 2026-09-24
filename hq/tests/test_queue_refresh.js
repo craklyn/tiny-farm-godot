@@ -9,8 +9,8 @@ const items = [{ id: 'unprepared', title: 'Seeder animation', owner: 'rin', stat
 let projection = { available: true, count: 0, ready: [], items: [
   { source: 'work', status: 'preparing', source_id: 'unprepared', reason: 'The result is missing a recommended answer.' },
 ] };
-let reads = 0, rendered = '', badge, qAppListener;
-const qApp = { addEventListener(type, listener) { if (type === 'click') qAppListener = listener; } };
+let reads = 0, rendered = '', badge, qAppListener, keydownListener;
+const qApp = { classList: { contains: () => false }, addEventListener(type, listener) { if (type === 'click') qAppListener = listener; } };
 const ctx = vm.createContext({
   routes: {}, location: { hash: '#/' },
   cache: { '/api/waiting-on-you': { available: true, count: 99, ready: [{ source_id: 'stale' }] } },
@@ -20,8 +20,11 @@ const ctx = vm.createContext({
     return { curated: [], decided: [], rulings: {} };
   } }),
   ownerOf: () => ({ name: 'Rin' }), esc: String, mdi: String,
+  followUps: card => card.follow_ups || [],
+  workDecisionLabel: card => card.recommend?.answer ? `Accept result and record: ${card.recommend.answer}` : 'Accept this result',
   h: value => value, updateQueueBadge: value => { badge = value; },
-  document: { getElementById: id => id === 'q-app' ? qApp : ({ addEventListener() {} }), addEventListener() {} },
+  document: { getElementById: id => id === 'q-app' ? qApp : ({ addEventListener() {}, classList: { contains: () => false } }),
+    addEventListener(type, listener) { if (type === 'keydown') keydownListener = listener; } },
   $view: { replaceChildren: value => { rendered = value; }, addEventListener() {} },
 });
 vm.runInContext(app.slice(app.indexOf('async function api('), app.indexOf('/* This page is long-lived')), ctx);
@@ -70,6 +73,50 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/queue.js'), 'utf
   assert.match(pane, /recommended/);
   assert.match(pane, /None of these — revise and ask me again\./);
   assert.ok(pane.indexOf('None of these — revise and ask me again.') < pane.indexOf('q-decision-feedback'));
+  assert.match(pane, /disabled>Choose an option/);
+  assert.match(pane, /the studio/);
+  const yes = ctx.qDecisionItem({ id: 'Q-yes', title: 'Ship it?', options: [
+    { key: 'yes', label: 'Yes (Recommended)' }, { key: 'no', label: 'No' },
+  ] }, { employees: [] }, {});
+  const no = ctx.qDecisionItem({ id: 'Q-no', title: 'Ship it?', options: [
+    { key: 'yes', label: 'Yes' }, { key: 'no', label: 'No (Recommended)' },
+  ] }, { employees: [] }, {});
+  for (const choice of [yes, no]) {
+    const html = ctx.qPaneHtml(choice, { employees: [] });
+    assert.match(html, /value="yes"/);
+    assert.match(html, /value="no"/);
+    assert.match(html, /None of these — revise and ask me again/);
+  }
+  assert.equal(yes.answer, 'Yes');
+  assert.equal(no.answer, 'No');
+  let submitted = [];
+  ctx.recordDecision = async (_control, id, option, feedback) => submitted.push([id, option.dataset.intent, option.value, feedback]);
+  const submitControl = { disabled: false };
+  const status = { textContent: '' };
+  let selectedNext = false;
+  assert.equal(await ctx.qSubmitDecision(submitControl, yes,
+    { dataset: { intent: 'choose', label: 'Yes' }, value: 'yes' }, '', status,
+    async () => { selectedNext = true; }), true);
+  assert.equal(selectedNext, true);
+  assert.match(vm.runInContext('qNotice', ctx), /Recorded your choice: Yes/);
+  assert.equal(await ctx.qSubmitDecision(submitControl, no,
+    { dataset: { intent: 'choose', label: 'No' }, value: 'no' }, 'Keep the old version.', status,
+    async () => {}), true);
+  assert.match(vm.runInContext('qNotice', ctx), /Recorded your choice: No/);
+  assert.equal(await ctx.qSubmitDecision(submitControl, decision,
+    { dataset: { intent: 'revise', label: 'None of these — revise and ask me again' }, value: '' },
+    'Show both rooms.', status, async () => {}), true);
+  assert.match(vm.runInContext('qNotice', ctx), /No ruling was recorded/);
+  assert.deepEqual(submitted.map(x => x[1]), ['choose', 'choose', 'revise']);
+  assert.equal(ctx.qSelectNext([{ id: 'next' }]), 'next');
+  let opened = false, focused = false;
+  ctx.location.hash = '#/inbox';
+  ctx.document.querySelectorAll = () => [{ dataset: { id: 'next' }, click() { opened = true; } }];
+  ctx.document.querySelector = () => ({ focus() { focused = true; } });
+  keydownListener({ key: 'y', target: { tagName: 'BODY', closest: () => null } });
+  assert.equal(opened, true, 'y opens the selected question');
+  assert.equal(focused, true, 'y focuses the labelled action instead of submitting it');
+  ctx.location.hash = '#/';
 
   // Rendering a chosen ruling that still awaits integration must not throw, and
   // it stays findable in the studio-owned fold rather than disappearing.

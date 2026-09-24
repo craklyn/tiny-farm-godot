@@ -11,7 +11,7 @@
   "thread": "claude",
   "source": "interactive",
   "source_message": "Daniel authorized the HQ redesign cards and a temporary Claude/Codex execution rule, followed by one supervised run.",
-  "result": "Partial implementation landed in 30bc271 after Daniel's live Queue correction. Both decision views now show every recorded option, the always-present revise-and-ask-again choice, feedback after the choices, and one submit button. Blank owner wording falls back to the studio. Normal choices are validated; revision feedback keeps the decision open and creates one linked owner task, with concurrent and lost-response retries covered. All HQ checks, 2,853 unit checks and 968 integration checks passed; live Q-109 verification showed all five options plus the revision choice. The remaining section-5 work is the separate Approve, Comment, Reject and Close behavior for finished work results.",
+  "result": "Section 5 implementation: Queue and direct work cards now name acceptance, approval, comment without a verdict, and rejection that closes the review without deleting the artifact. Recommended answers, including No, appear in the acceptance action. Both surfaces preserve explanatory comments and show the recorded outcome and next work. Queue decision choices remain complete, with the feedback-required revision option; the selected option names the submit action. Unknown owners fall back to the studio. Focused JavaScript Queue/work tests and Python work/decision API tests passed. Live HQ had zero ready questions during this run, so no live verdict was submitted. This is an implementation record, not Daniel acceptance or CI confirmation.",
   "started": "",
   "attempts": 0,
   "created": "2026-09-21T15:42",

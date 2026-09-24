@@ -48,6 +48,7 @@ let workPoll = null;
 // Open composers, by item id. Held outside the DOM because the page re-renders
 // itself whenever the company moves, and half-typed words must survive that.
 const replyDrafts = {};
+const workFeedback = {};
 
 async function workSnap() {
   const r = await fetch("/api/work");
@@ -65,7 +66,19 @@ function workPost(path, body) {
 function ownerOf(org, id) {
   // A record with no owner, or one written with the wrong field, still renders:
   // the page must never go blank over one malformed card.
-  return (org.employees || []).find(e => e.id === id) || { name: String(id || "someone"), emoji: "•", title: "" };
+  return (org.employees || []).find(e => e.id === id && e.name && e.name.trim())
+    || { name: "the studio", emoji: "•", title: "" };
+}
+
+function workFirst(name) {
+  const resolved = String(name || "the studio").trim();
+  return resolved.toLowerCase() === "the studio" ? "the studio" : (resolved.split(" ")[0] || "the studio");
+}
+
+function workDecisionLabel(it) {
+  if (it.state === "needs_approval") return "Approve this work";
+  const answer = String((it.recommend || {}).answer || "").trim();
+  return answer ? `Accept result and record: ${answer}` : "Accept this result";
 }
 
 function compactTime(raw) {
@@ -129,7 +142,7 @@ function followUpBox(fus, org) {
           <span>${esc(who.emoji)} ${esc(who.name)}</span></div>
         ${fu.first_action ? `<p class="w-spawn-p"><b>First step:</b> ${mdi(fu.first_action)}</p>` : ""}
         ${fu.why ? `<p class="w-spawn-p muted">${mdi(fu.why)}</p>` : ""}
-        <p class="w-spawn-p muted">${esc(LANDS[tier] ? LANDS[tier](who.name.split(" ")[0]) : "")}</p>
+        <p class="w-spawn-p muted">${esc(LANDS[tier] ? LANDS[tier](workFirst(who.name)) : "")}</p>
       </div>`;
   }).join("")}
   </div>`;
@@ -260,7 +273,7 @@ function againLine(it, org) {
   if (repairHold) return `<div class="w-again"><b>Held from automatic work</b> — ${esc(repairHold)}
     Nothing starts automatically. The studio must resolve the hold and record what happens next.</div>`;
   if (!resuming(it)) return "";
-  const first = ownerOf(org, it.owner).name.split(" ")[0];
+  const first = workFirst(ownerOf(org, it.owner).name);
   const nth = ordinal(attemptsBehind(it) + 1);
   const running = it.state === "doing" && !!it.started;
   const head = running
@@ -291,7 +304,7 @@ function commentRow(first, closed) {
 
 function consequence(it, org) {
   const view = workflowView(it);
-  const first = ownerOf(org, it.owner).name.split(" ")[0];
+  const first = workFirst(ownerOf(org, it.owner).name);
   const rows = [];
   let extra = "";
   if (repairHoldReason(it) || (view.canonical && Number(it.tier) > 0
@@ -301,14 +314,14 @@ function consequence(it, org) {
       <div class="w-conseq-row"><b>What happens</b><span>${esc(workflowStatus(it))}. ${esc((view.next_action || {}).summary || "The studio is responsible for the next step.")}</span></div>
     </div>`;
   } else if (it.state === "needs_approval") {
-    rows.push(["Yes, go ahead", `Nothing runs on its own. It joins the build queue, and the next run — a session, or the studio's own scheduled one — carries out the step above and shows you the diff.`]);
-    rows.push(["Not this", `Filed as dropped. Nothing is created and nothing changes.`]);
+    rows.push(["Approve this work", `Nothing runs on its own. It joins the build queue, and the next run — a session, or the studio's own scheduled one — carries out the step above and shows you the diff.`]);
+    rows.push(["Decline and close request", `The request closes. Nothing is created and nothing changes.`]);
     rows.push(commentRow(first));
   } else if (it.state === "for_review" && heldReason(it)) {
     // Nothing to accept: the work is not in the repo. The honest answers are
     // "say what you want changed" and "we are not doing this".
     rows.push(["Comment", `${esc(first)} reads what you write, and what the check found goes with it, and either revises the attempt — a second attempt rather than a repeat — or answers you here.`]);
-    rows.push(["Drop it", `Filed as dropped. The work stays undone and nothing is created.`]);
+    rows.push(["Reject and close review", `The review closes. The work stays undone; anything already created is not deleted.`]);
     return `<div class="w-conseq">
       <div class="w-conseq-h">Nothing landed, so there is nothing to accept</div>
       ${rows.map(([k, v]) => `<div class="w-conseq-r"><b>${esc(k)}</b><span>${v}</span></div>`).join("")}
@@ -318,18 +331,16 @@ function consequence(it, org) {
     const rec = recommendOf(it);
     const takes = rec ? `Takes the recommendation — <b>${esc(rec.answer)}</b> — and files` : "Files";
     if (!("follow_ups" in it) && !("follow_up" in it)) {
-      rows.push(["Good — accept", `Records your yes and closes the card. ${esc(first)} is still working out what should follow — this card will say, in a moment, before you decide.`]);
+      rows.push([workDecisionLabel(it), `Records your answer and closes the card. No follow-up work starts because none is listed.`]);
     } else if (fus.length) {
-      rows.push(["Good — accept", `${takes} the ${fus.length === 1 ? "one piece of work" : `${fus.length} pieces of work`} below. Anything you write above goes into their brief.`]);
+      rows.push([workDecisionLabel(it), `${takes} the ${fus.length === 1 ? "one piece of work" : `${fus.length} pieces of work`} below. Anything you write above goes into their brief.`]);
       extra = followUpBox(fus, org);
     } else if (rec) {
-      rows.push(["Good — accept", `Takes ${esc(first)}'s recommendation — <b>${esc(rec.answer)}</b> — and closes the card. The answer is recorded here; no further work is filed.`]);
+      rows.push([workDecisionLabel(it), `Takes ${esc(first)}'s recommendation — <b>${esc(rec.answer)}</b> — and closes the card. The answer is recorded here; no further work is filed.`]);
     } else {
-      rows.push(["Good — accept", `Records your yes and closes the card. Nothing follows from it — no task, story, project or goal is created.`]);
+      rows.push([workDecisionLabel(it), `Records your acceptance and closes the card. Nothing follows from it — no task, story, project or goal is created.`]);
     }
-    rows.push(["Drop it", rec
-      ? `Filed as dropped. The question above stays open and nothing is filed.`
-      : `Filed as dropped. Nothing is created and nothing changes.`]);
+    rows.push(["Reject and close review", `Rejects this version and closes its review. The artifact is not deleted and no follow-up work is filed.`]);
     rows.push(commentRow(first));
   } else if (it.state === "waiting_session") {
     return `<div class="w-conseq">
@@ -373,7 +384,7 @@ function childrenNote(it, org) {
     <div class="w-kids-h">Already filed off this card — ${kids.length} piece${kids.length > 1 ? "s" : ""} of work</div>
     ${kids.map(k => `<div class="w-kid">
       <span class="w-kid-t">${esc(k.title)}</span>
-      <span class="w-kid-m">${esc(ownerOf(org, k.owner).emoji)} ${esc(ownerOf(org, k.owner).name.split(" ")[0])} · ${esc(workflowView(k).canonical ? workflowStatus(k) : STATE_WORD[k.state] || k.state)}</span>
+      <span class="w-kid-m">${esc(ownerOf(org, k.owner).emoji)} ${esc(workFirst(ownerOf(org, k.owner).name))} · ${esc(workflowView(k).canonical ? workflowStatus(k) : STATE_WORD[k.state] || k.state)}</span>
     </div>`).join("")}
   </div>`;
 }
@@ -390,7 +401,7 @@ function amendNote(it, org) {
   const list = it.amendments || [];
   const a = list[list.length - 1];
   if (!a) return "";
-  const who = ownerOf(org, a.by).name.split(" ")[0];
+  const who = workFirst(ownerOf(org, a.by).name);
   const fields = Object.keys(a.changed || {});
   if (!fields.length) return "";
   return `<details class="w-amend"><summary>${esc(who)} revised this card after you wrote back — ${esc(fields.join(", "))}</summary>
@@ -407,7 +418,7 @@ function convoBlock(it, org) {
   if (Array.isArray(it.timeline)) {
     const row = event => {
       const who = event.actor === "daniel" ? "You" : event.actor === "system"
-        ? "HQ" : ownerOf(org, event.actor).name.split(" ")[0];
+        ? "HQ" : workFirst(ownerOf(org, event.actor).name);
       const link = event.session
         ? ` <a class="plain w-session-link" href="#/chat/bullpen?item=${encodeURIComponent(it.id)}&session=${encodeURIComponent(event.session.run + "/" + event.session.name)}">${event.kind.startsWith("review") ? "Open review" : "Open session"}</a>` : "";
       const move = event.move === "revise" ? `<span class="w-move w-move-revise">revising the result</span>` : "";
@@ -437,11 +448,11 @@ function convoBlock(it, org) {
   const shown = msgs.slice(hidden);
   const row = m => {
     const you = m.role === "daniel";
-    const name = you ? "You" : ownerOf(org, m.role).name.split(" ")[0];
+    const name = you ? "You" : workFirst(ownerOf(org, m.role).name);
     // What his message rode in with, and what the owner's reply did about it,
     // sit on the name line — the card says what happened, not only what was said.
     const withWord = { accept: "with your accept", drop: "with your drop", approve: "with your yes" }[m.with] || "";
-    const filed = (m.filed || []).map(f => `<b>${esc(f.title)}</b> → ${esc(ownerOf(org, f.owner).name.split(" ")[0])}`).join(", ");
+    const filed = (m.filed || []).map(f => `<b>${esc(f.title)}</b> → ${esc(workFirst(ownerOf(org, f.owner).name))}`).join(", ");
     const move = m.move === "revise" ? `<span class="w-move w-move-revise">revising the result</span>`
       : m.move === "follow-up" ? `<span class="w-move w-move-follow">filed${filed ? ": " + filed : " as new work"}</span>`
       : m.move === "answer" ? `<span class="w-move">answered</span>` : "";
@@ -455,7 +466,7 @@ function convoBlock(it, org) {
       ${msgs.slice(0, hidden).map(row).join("")}</details>` : ""}
     ${shown.map(row).join("")}
     ${it.awaiting_reply ? `<div class="w-msg w-thinking">
-      <div class="w-msg-w">${esc(ownerOf(org, it.owner).name.split(" ")[0])}</div>
+      <div class="w-msg-w">${esc(workFirst(ownerOf(org, it.owner).name))}</div>
       <div class="w-msg-b muted">reading the card and writing back<span class="w-dots"><i></i><i></i><i></i></span></div>
     </div>` : ""}
   </div>`;
@@ -476,7 +487,7 @@ function convoBlock(it, org) {
    it and makes one of three moves — answers, revises the result, or files it
    as new work to the right person — and the card says which. */
 function replyBox(it, org) {
-  const first = ownerOf(org, it.owner).name.split(" ")[0];
+  const first = workFirst(ownerOf(org, it.owner).name);
   const draft = replyDrafts[it.id] || "";
   const closed = ["accepted", "dropped"].includes(it.state);
   return `<div class="w-reply">
@@ -493,8 +504,12 @@ function itemById(snap, id) {
 /* What just happened, said where he pressed the button. A card that silently
    leaves the list reads as data loss; this names the section it moved to. */
 function outcomeLine(act, it, org, comment) {
-  const first = ownerOf(org, it.owner || "").name.split(" ")[0];
+  const first = workFirst(ownerOf(org, it.owner || "").name);
   const noted = comment ? ` Your note went with it, and ${esc(first)} will answer it on the card.` : "";
+  const next = followUps(it);
+  const nextWork = next.length
+    ? ` Next work: ${next.map(f => esc(f.title)).join("; ")}.`
+    : " No follow-up work starts.";
   // Where it goes depends on the tier, because the two lanes are different: work
   // with nothing to walk back starts immediately, work that changes the repo
   // waits for the build queue. Naming the wrong section is as bad as naming none.
@@ -502,9 +517,11 @@ function outcomeLine(act, it, org, comment) {
     ? `<b>Happening now</b> above, and ${esc(first)} starts on it straight away`
     : `<b>Queued for a build session</b> below, and the next run carries it out`;
   const where = {
-    accept: `Accepted and closed. It is under <b>Closed</b> at the foot of this page.${noted}`,
+    accept: `The result was accepted and closed. The card is under <b>Closed</b> at the foot of this page.${nextWork}${noted}`,
     approve: `Approved. It has moved to ${lane}.${noted}`,
-    drop: `Dropped. It is under <b>Closed</b> at the foot of this page, and nothing was created.${noted}`,
+    drop: it.state === "for_review"
+      ? `This version was rejected and its review closed. The artifact was not deleted. It is under <b>Closed</b> at the foot of this page.${noted}`
+      : `The request was declined and closed. The request is under <b>Closed</b> at the foot of this page.${noted}`,
   }[act] || `Filed.${noted}`;
   return `<div class="w-done">${where}</div>`;
 }
@@ -523,7 +540,7 @@ function saveOpen(set) {
 
 function wantsLine(it, org) {
   if (workflowView(it).canonical) return workflowStatus(it);
-  const first = ownerOf(org, it.owner).name.split(" ")[0];
+  const first = workFirst(ownerOf(org, it.owner).name);
   const repairHold = repairHoldReason(it);
   if (repairHold) return `held from automatic work — ${repairHold}`;
   if (it.awaiting_reply) return `${first} is writing back`;
@@ -580,7 +597,7 @@ function drainBlock(it, org) {
        read the result for whether nothing needing changing is the right answer.</div>`
     : "";
   const by = it.done_by || {};
-  const seat = by.seat ? ownerOf(org, by.seat).name.split(" ")[0] : "";
+  const seat = by.seat ? workFirst(ownerOf(org, by.seat).name) : "";
   const files = (d && d.files || []);
   const filesLine = view.canonical && view.candidate_status !== "none"
     ? `${files.length} file${files.length === 1 ? "" : "s"} in the recorded proposed version; ${view.candidate_status === "landed" ? "merged into the main code branch" : "not merged into the main code branch"}`
@@ -684,19 +701,19 @@ function workCard(it, org, pol) {
   // The banner above the card is what tells him the result is being replaced.
   const locked = "";
   const acts = repairHold || pendingCode ? "" : ({
-    needs_approval: `<button data-act="approve" data-id="${it.id}"${locked}>Yes, go ahead</button>
-                     <button class="ghost" data-act="drop" data-id="${it.id}">Not this</button>`,
+    needs_approval: `<button data-act="approve" data-id="${it.id}"${locked}>Approve this work</button>
+                     <button class="ghost" data-act="drop" data-id="${it.id}">Decline and close request</button>`,
     for_review: heldReason(it) || (view.canonical && view.candidate_status === "stale")
-      ? `<button class="ghost" data-act="drop" data-id="${it.id}">Drop it</button>`
-      : `<button data-act="accept" data-id="${it.id}"${locked}>Good — accept</button>
-         <button class="ghost" data-act="drop" data-id="${it.id}">Drop it</button>`,
+      ? `<button class="ghost" data-act="drop" data-id="${it.id}">Reject and close review</button>`
+      : `<button data-act="accept" data-id="${it.id}"${locked}>${esc(workDecisionLabel(it))}</button>
+         <button class="ghost" data-act="drop" data-id="${it.id}">Reject and close review</button>`,
     waiting_session: `<button class="ghost" data-act="drop" data-id="${it.id}">Drop it</button>`,
     doing: "", accepted: "", dropped: "",
   }[it.state] || "");
   // Comment with no verdict: the owner answers on the card and makes a move.
   // Available on every card, closed ones included — a question about work
   // already accepted is still a question its owner should answer.
-  const talkBtn = repairHold || pendingCode ? "" : `<button class="${acts ? "ghost" : ""}" data-send="${esc(it.id)}">Comment</button>`;
+  const talkBtn = repairHold || pendingCode ? "" : `<button class="${acts ? "ghost" : ""}" data-send="${esc(it.id)}">Comment without a verdict</button>`;
   // The result is the tall part of a card. It folds to a readable window with
   // the rest one click away, rather than pushing the next decision off screen.
   const long = (it.result || "").length > 900;
@@ -708,7 +725,7 @@ function workCard(it, org, pol) {
     ? `<details class="w-earlier"><summary>${priors.length === 1 ? "The earlier result" : `${priors.length} earlier results`}, before you wrote back</summary>
         ${priors.map(p => `<div class="w-msg-b muted">${md(p.result)}</div>`).join("<hr>")}</details>` : "";
   const result = it.result
-    ? `<div class="w-result${long ? " w-clip" : ""}"><div class="w-result-h">${esc(who.name.split(" ")[0])}${
+    ? `<div class="w-result${long ? " w-clip" : ""}"><div class="w-result-h">${esc(workFirst(who.name))}${
         repairHold ? "'s last result — held from automatic work"
           : held ? "'s attempt — what came back" : it.revising ? "'s result so far — being revised"
           : pendingCode ? " created this proposed version; it has not been merged"
@@ -717,7 +734,7 @@ function workCard(it, org, pol) {
        ${long ? `<button class="w-more" data-more="${esc(it.id)}">Read all of it</button>` : ""}</div>${earlier}`
     : "";
   const why = it.tier_reason ? `<span class="w-why">${esc(it.tier_reason)}</span>` : "";
-  const first = who.name.split(" ")[0];
+  const first = workFirst(who.name);
   // The ask and the next step are written for the person doing the work, in
   // their vocabulary — useful to open, wrong as the first thing on the card.
   const nextStep = it.first_action && it.state !== "for_review" ? it.first_action : "";
@@ -746,7 +763,7 @@ function workCard(it, org, pol) {
           ${tierChip(it, pol)}
           ${why}
           <span class="w-owner-wrap"><button class="w-owner" data-person="${esc(it.owner)}"
-            title="Who ${esc(who.name.split(" ")[0])} is, what they own, and what else they are carrying">${esc(who.emoji)} ${esc(who.name)}</button></span>
+            title="Who ${esc(workFirst(who.name))} is, what they own, and what else they are carrying">${esc(who.emoji)} ${esc(who.name)}</button></span>
         </div>
         <h3>${esc(FINISHED.includes(it.state) ? reviewTitle(it) : it.title)}${it.state === "for_review" ? reviewHeadingArtifact(it) : ""}</h3>
         <div class="w-wants">${esc(view.canonical ? wantsLine(it, org) : (it.effective || {}).label || wantsLine(it, org))}${busy ? `<span class="w-dots"><i></i><i></i><i></i></span>` : ""}${!view.canonical && it.effective && it.effective.at ? ` · ${timeControl(it.effective.at)}` : ""}</div>
@@ -774,9 +791,10 @@ function workCard(it, org, pol) {
           + consequence(it, org) + (repairHold || pendingCode ? "" : replyBox(it, org))
           + `<div class="w-acts">${acts}${talkBtn}</div>`}
       ${brief}
+      ${workFeedback[it.id] ? `<div class="w-done" role="status">${esc(workFeedback[it.id])}</div>` : ""}
       <div class="w-outcome" hidden></div>
       <div class="w-foot">
-        <span class="small muted">${it.thread ? `from your chat with ${esc(ownerOf(org, it.thread).name.split(" ")[0])} · ` : ""}${esc(it.created || "")}</span>
+        <span class="small muted">${it.thread ? `from your chat with ${esc(workFirst(ownerOf(org, it.thread).name))} · ` : ""}${esc(it.created || "")}</span>
       </div>
     </div>
   </div>`).firstElementChild;
@@ -1102,10 +1120,12 @@ async function renderWork(focusId = workFocusId()) {
         el.querySelector(".w-reply textarea").focus();
         return;
       }
+      lock(el, "sending it to " + workFirst(ownerOf(org, itemById(snap, d.send).owner).name));
+      const response = await workPost("/api/work/respond", { id: d.send, message: text.trim() });
+      if (response.error) { alert(response.error); renderWork(focusId); return; }
       delete replyDrafts[d.send];
-      lock(el, "sending it to " + ownerOf(org, itemById(snap, d.send).owner).name.split(" ")[0]);
-      await workPost("/api/work/respond", { id: d.send, message: text.trim() });
-      renderWork();
+      workFeedback[d.send] = "Comment sent to the owner without a verdict. The review remains open.";
+      renderWork(focusId);
       return;
     }
     const act = d.act;
@@ -1116,7 +1136,8 @@ async function renderWork(focusId = workFocusId()) {
     const comment = box ? box.value.trim() : "";
     delete replyDrafts[id];
     lock(el, "filing your answer");
-    await workPost("/api/work/" + act, { id, comment });
+    const response = await workPost("/api/work/" + act, { id, comment });
+    if (response.error) { alert(response.error); renderWork(focusId); return; }
     // Never let a card appear to vanish. It has moved to another part of this
     // page; say so where he pressed the button, and let the poll re-render.
     const out = el.querySelector(".w-outcome");

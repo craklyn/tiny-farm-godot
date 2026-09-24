@@ -113,7 +113,7 @@
 .q-atts img, .q-atts video { max-width: 100%; max-height: 440px; border-radius: 6px; cursor: zoom-in; }
 
 .q-acts-big { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
-.q-acts-big button { padding: 9px 16px; font-size: 14.5px; }
+.q-acts-big button { padding: 9px 16px; font-size: 14.5px; max-width: 100%; overflow-wrap: anywhere; }
 
 /* The reason box sits above the verdicts, because what he writes rides along
    with whichever one he presses — his rule: he must always be able to say why. */

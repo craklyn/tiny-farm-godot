@@ -500,6 +500,9 @@
   "180baea5f57f0ea18300": {
    "verdict": "ok"
   },
+  "18428ccf099d387c856a": {
+   "verdict": "ok"
+  },
   "1876931cfba0e62d4211": {
    "verdict": "ok"
   },
@@ -553,6 +556,9 @@
    "quote": "modal",
    "verdict": "decode",
    "why": "A reader may not know that this means a pop-up window."
+  },
+  "1a6403a421f1b9589f2f": {
+   "verdict": "ok"
   },
   "1a701751d0da4afaa9ba": {
    "verdict": "ok"
@@ -648,6 +654,9 @@
   "1f697a43623afb2f961c": {
    "verdict": "ok"
   },
+  "1f850a586fd9871c5cb1": {
+   "verdict": "ok"
+  },
   "1fc52226a1f41f0700bd": {
    "verdict": "ok"
   },
@@ -688,6 +697,9 @@
    "verdict": "ok"
   },
   "216d3adfe0d9d5159558": {
+   "verdict": "ok"
+  },
+  "21c911d20f9c11d78c5e": {
    "verdict": "ok"
   },
   "21e178c35edb35762f6a": {
@@ -1036,6 +1048,9 @@
    "verdict": "decode",
    "why": "References a prior message ('when you wrote back') that is not on this surface."
   },
+  "344667d7047c47ba005f": {
+   "verdict": "ok"
+  },
   "345a775a2fccb2867d12": {
    "verdict": "ok"
   },
@@ -1133,6 +1148,12 @@
   "38859f2fa206cd4718ac": {
    "verdict": "ok"
   },
+  "38cd750d161067782860": {
+   "instead": "The request was declined and closed. The request is under Closed at the foot of this page.",
+   "quote": "It",
+   "verdict": "decode",
+   "why": "The pronoun has no referent in the same sentence, so the reader must work out what is under Closed."
+  },
   "38e6ceb52172fd3bd097": {
    "verdict": "ok"
   },
@@ -1223,6 +1244,12 @@
   "3e1fca60097d3c672ddf": {
    "verdict": "ok"
   },
+  "3e74436b467cda70d1f1": {
+   "instead": "This version was accepted and closed. It is under Closed at the foot of this page.",
+   "quote": "It",
+   "verdict": "decode",
+   "why": "The pronoun has no referent in the same sentence, so the reader must work out what was accepted and closed."
+  },
   "3e915abb6fcb448ce43c": {
    "verdict": "ok"
   },
@@ -1254,6 +1281,9 @@
    "verdict": "ok"
   },
   "415f0d720bcb3ddc00d5": {
+   "verdict": "ok"
+  },
+  "418e1a8f6d67af63fe56": {
    "verdict": "ok"
   },
   "41fcc1471d7cb97e16b7": {
@@ -1539,6 +1569,9 @@
    "verdict": "second-look",
    "why": "Technical language ('floor') treats the implication as the fact where plainer language would serve."
   },
+  "508fde3e87b72dacf93a": {
+   "verdict": "ok"
+  },
   "50cadd8a4751a1cabe5f": {
    "verdict": "ok"
   },
@@ -1810,6 +1843,9 @@
   "5ea70f73f46acedea9d8": {
    "verdict": "ok"
   },
+  "5f40e1bfefcee5e73870": {
+   "verdict": "ok"
+  },
   "5fa26fce262954cac6bc": {
    "verdict": "ok"
   },
@@ -1898,7 +1934,16 @@
   "639c469dd9e7715ac4dd": {
    "verdict": "ok"
   },
+  "63c4c54fc46a18a0bddc": {
+   "instead": "The review closes. The work stays undone; anything already created is not deleted.",
+   "quote": "existing artifact",
+   "verdict": "second-look",
+   "why": "“Artifact” is engineering shorthand, so the reader has to work out whether it means the submitted work, a file, or something else."
+  },
   "6421c8f40da9c308a534": {
+   "verdict": "ok"
+  },
+  "642b1f2a09e529776137": {
    "verdict": "ok"
   },
   "645c509636a618fc87f4": {
@@ -2801,6 +2846,9 @@
   "91b273615c831a683408": {
    "verdict": "ok"
   },
+  "91c67df9565baf435c5c": {
+   "verdict": "ok"
+  },
   "91c9b086c67c958d1485": {
    "verdict": "ok"
   },
@@ -2876,6 +2924,9 @@
   "952c2b2de84085ac2031": {
    "verdict": "ok"
   },
+  "952dbf065ce4817efca1": {
+   "verdict": "ok"
+  },
   "9538c8966bf1ac0538be": {
    "verdict": "ok"
   },
@@ -2916,6 +2967,9 @@
    "verdict": "ok"
   },
   "967842a805edf0ae02c8": {
+   "verdict": "ok"
+  },
+  "97060dde7f98f8f6ad51": {
    "verdict": "ok"
   },
   "97128bad0d452b3f03a0": {
@@ -3221,6 +3275,9 @@
   "a4935454f57ebd8038fa": {
    "verdict": "ok"
   },
+  "a4c828d1149270906b5a": {
+   "verdict": "ok"
+  },
   "a4d70bccc5f49b5a12c6": {
    "instead": "The reply exceeds what was originally asked",
    "quote": "the reply overclaimed",
@@ -3314,6 +3371,12 @@
    "quote": "on your team chase anything via your chief of staff",
    "verdict": "second-look",
    "why": "The actor is unclear and the construction is awkward; the reader would have to work out whose action this describes."
+  },
+  "a94c4d1fbc9d181685bd": {
+   "instead": "Your answer is recorded and the card closes. No next step has been chosen yet; this card will show it before you decide.",
+   "quote": "is still working out what should follow",
+   "verdict": "second-look",
+   "why": "This indirect phrase makes the reader infer that no next step has been chosen yet."
   },
   "a978a344c8918b1617f1": {
    "verdict": "ok"
@@ -3637,6 +3700,9 @@
   "bb32f446076def86956e": {
    "verdict": "ok"
   },
+  "bbcb48de7f161c274c31": {
+   "verdict": "ok"
+  },
   "bc4246bc17701563e5fe": {
    "verdict": "ok"
   },
@@ -3680,6 +3746,9 @@
    "verdict": "ok"
   },
   "be6ae3460f1c37e38b99": {
+   "verdict": "ok"
+  },
+  "be8f2e884677d927fd9b": {
    "verdict": "ok"
   },
   "be9154e956dd46206ad3": {
@@ -3938,6 +4007,9 @@
    "quote": "reach main automatically",
    "verdict": "decode",
    "why": "“Main” is unexplained engineering shorthand for the project's primary codebase or branch."
+  },
+  "ca4b0d42ba56c38ef968": {
+   "verdict": "ok"
   },
   "caf833e131f5e52ef4e1": {
    "verdict": "ok"
@@ -4513,6 +4585,9 @@
   "e4a01a91daee10447244": {
    "verdict": "ok"
   },
+  "e4a1e4e35637a26a9d52": {
+   "verdict": "ok"
+  },
   "e54239837fe58e0a0c2a": {
    "instead": "Make the sprite editor use the seamless ground sheet as one image instead of cutting it into multiple tiles",
    "quote": "treat a seamless ground sheet as its single tile",
@@ -4770,6 +4845,9 @@
   "f59a0af028b26a05e75c": {
    "verdict": "ok"
   },
+  "f5e8bd059ba2ae8e1d78": {
+   "verdict": "ok"
+  },
   "f5f51633f8f5661d5d7c": {
    "verdict": "ok"
   },
@@ -4899,6 +4977,9 @@
    "verdict": "ok"
   },
   "fb87aa84312ec21c07dd": {
+   "verdict": "ok"
+  },
+  "fbb049b90956ef665ffb": {
    "verdict": "ok"
   },
   "fbb23c9cf13a57b17c97": {

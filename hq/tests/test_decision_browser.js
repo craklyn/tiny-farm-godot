@@ -28,6 +28,8 @@ function h(s) { const t=document.createElement('template'); t.innerHTML=s; retur
 function ownerOf() { return {name:'Rin',emoji:'🎨'}; }
 function reviewTitle(c) { return 'Review: ' + c.title; }
 function reviewEvidenceLinks() { return [{href:'#/design',label:'Open the reviewed artifact'}]; }
+function followUps(card) { return card.follow_ups || []; }
+function workDecisionLabel(card) { return card.recommend?.answer ? 'Accept result and record: ' + card.recommend.answer : 'Accept this result'; }
 function workflowView() { return {canonical:false}; }
 function workflowStatus() { return 'Complete'; }
 function updateQueueBadge() {} function attachmentEl() { return document.createElement('img'); }

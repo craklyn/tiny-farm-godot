@@ -102,7 +102,14 @@ const Q_PICK_SECONDS = 30, Q_READ_SECONDS = 120;
 
 
 
-function qFirst(name) { return String(name || "").split(" ")[0]; }
+function qFirst(name) {
+  const resolved = String(name || "the studio").trim();
+  return resolved.toLowerCase() === "the studio" ? "the studio" : (resolved.split(" ")[0] || "the studio");
+}
+
+function qWorkActionLabel(row) {
+  return workDecisionLabel({ state: row.state, recommend: { answer: row.answer } });
+}
 
 function qNoRecommendation(row) {
   return row.isDecision
@@ -162,6 +169,7 @@ function qWalkBack(row) {
    this only supplies the sentence above them. */
 function qYesCauses(row) {
   if (row.isDecision) return "Records your pick; the seat that opened the card works it into the design that day.";
+  if (row.state === "needs_approval") return "Approves this work and queues it for a build session; the finished result comes back for review.";
   const fus = row.followUps;
   if (!fus.length) return "It closes. Nothing else starts.";
   const risky = fus.filter(f => (f.tier ?? 1) === 2).length;
@@ -192,7 +200,7 @@ function qWorkItem(card, org, reason) {
     owner, seconds: answer ? Q_PICK_SECONDS : Q_READ_SECONDS, state: card.state,
     tier: card.tier ?? 2, reason: reason || "hard to walk back, or a matter of taste",
     diffApplied: !!(card.diff && card.diff.applied),
-    options: [], followUps: card.follow_ups || [], conversation: convo, attachments: card.attachments || [],
+    options: [], followUps: followUps(card), conversation: convo, attachments: card.attachments || [],
     artifact: card,
     deliverableEvidence: qDeliverableEvidence(card),
     evidence: qWorkEvidence(card, owner.name), source: `work card ${card.id}`, canDrop: true,
@@ -355,6 +363,7 @@ function qTimeAgo(tsSeconds) {
 
 let qSelected = null;   // id of the row filling the pane, once any exists
 let qDetailOpen = false; // narrow screens show either the list or its selected detail
+let qNotice = "";
 
 async function qSubmitDecision(control, row, selected, feedback, status, refresh) {
   control.disabled = true;
@@ -366,6 +375,9 @@ async function qSubmitDecision(control, row, selected, feedback, status, refresh
     if (status) status.textContent = error.message;
     return false;
   }
+  qNotice = selected.dataset.intent === "revise"
+    ? "Revision requested. No ruling was recorded; the owner must revise the question and pass readiness before it returns."
+    : `Recorded your choice: ${selected.dataset.label}. The studio will work it into the design.`;
   if (status) status.textContent = "Recorded. Loading the next question…";
   await refresh(status);
   return true;
@@ -424,10 +436,10 @@ function qPaneHtml(row, org) {
       <label class="q-talk-l" for="q-decision-feedback">Feedback — optional unless you ask for a revision</label>
       <textarea id="q-decision-feedback" placeholder="Add context for the studio"></textarea>
       <p class="q-decision-status" id="q-decision-status" role="status"></p>
-      <button class="q-decision-submit" data-id="${esc(row.id)}">Submit decision</button>
+      <button class="q-decision-submit" data-id="${esc(row.id)}" disabled>Choose an option</button>
     </div>` : ""}
 
-    <div class="q-sec"><h3>What yes starts</h3>
+    <div class="q-sec"><h3>${row.isDecision ? "What choosing starts" : row.state === "needs_approval" ? "What approval starts" : "What accepting starts"}</h3>
       <p>${esc(qYesCauses(row))}</p>
       ${row.followUps.length ? `<ul class="q-fu-list">${row.followUps.map(fuLine).join("")}</ul>` : ""}
     </div>
@@ -448,25 +460,20 @@ function qPaneHtml(row, org) {
       <label class="q-talk-l" for="q-talk-t">Anything you want to say about this — optional</label>
       <textarea id="q-talk-t" placeholder="A line of why. Whichever button you press, ${esc(qFirst(ownerName))} reads this."></textarea>
       <div class="q-talk-acts">
-        <button class="ghost q-send" data-id="${esc(row.id)}">Ask ${esc(qFirst(ownerName))}, without answering yet</button>
+        <button class="ghost q-send" data-id="${esc(row.id)}">Comment to ${esc(qFirst(ownerName))} without a verdict</button>
         <span class="q-talk-n" id="q-talk-st">${esc(qFirst(ownerName))} answers within thirty seconds or hands it back and you move on.</span>
       </div>
     </div>`}
 
     ${row.isDecision ? "" : `<div class="q-acts-big">
-      ${row.answer
-        ? `<button class="q-yes" data-id="${esc(row.id)}">${
-            row.isDecision ? `Rule: ${esc(row.answer)}` : "Yes — do what is recommended above"}</button>`
-        : (row.isDecision ? ""
-          // Nobody wrote a recommendation, which is the studio's failing, not a
-          // reason he cannot answer. A finished result always has a yes.
-          : `<button class="q-yes" data-id="${esc(row.id)}">Yes — this stands</button>`)}
-      ${row.canDrop ? `<button class="ghost q-no" data-id="${esc(row.id)}">${
-        row.isDecision ? "None of these" : "No — drop this"}</button>` : ""}
+      <button class="q-yes" data-id="${esc(row.id)}">${esc(qWorkActionLabel(row))}</button>
+      ${row.canDrop ? `<button class="ghost q-no" data-id="${esc(row.id)}">${row.state === "for_review" ? "Reject and close review" : "Decline and close request"}</button>` : ""}
     </div>`}`;
 }
 
 function qRender(state) {
+  const notice = qNotice;
+  qNotice = "";
   const { org, hisWork, hisDecisions, pendingCompletion, waitingToStart, studioWork, wentIn, closedWork, studioDecisions, awaitingStudio } = state;
   const execution = Object.assign({ paused: false, pause: {}, queued: waitingToStart.length,
     batch_limit: 3, interval_minutes: 20, timer: { active: null } }, state.execution || {});
@@ -572,6 +579,7 @@ function qRender(state) {
 
   $view.replaceChildren(h(`
     <h1>🧾 Your queue</h1>
+    ${notice ? `<p class="q-decision-status" role="status">${esc(notice)}</p>` : ""}
     <div class="q-app${qDetailOpen && rows.length ? " q-detail-open" : ""}" id="q-app">
       <div class="q-list">
         <p class="sub">Questions the studio needs an answer to, one at a time, grouped by what they are
@@ -646,19 +654,44 @@ function qRender(state) {
     const path = r.state === "needs_approval" ? "/api/work/approve" : "/api/work/accept";
     const result = await workPost(path, { id: r.cardId, comment: comment || "" });
     if (result && result.error) throw new Error(result.error);
+    qNotice = r.state === "needs_approval"
+      ? "Work approved and queued for the studio."
+      : `Result accepted${r.answer ? `; recorded answer: ${r.answer}` : ""}. ${r.followUps.length
+        ? `Next work: ${r.followUps.map(f => f.title).join("; ")}.` : "No follow-up work starts."}`;
+    if (comment) qNotice += " Your comment was sent to the owner.";
     qRefresh();
   }
 
   async function qDoNo(r, comment) {
-    await workPost("/api/work/drop", { id: r.cardId, comment: comment || "" });
+    const result = await workPost("/api/work/drop", { id: r.cardId, comment: comment || "" });
+    if (result && result.error) throw new Error(result.error);
+    qNotice = r.state === "for_review"
+      ? "This version was rejected and its review closed. The artifact was not deleted."
+      : "Request declined and closed; no work will start from it.";
+    if (comment) qNotice += " Your comment was sent to the owner.";
     qRefresh();
   }
 
   async function qDoTalk(r, text) {
     const result = await workPost("/api/work/respond", { id: r.cardId, message: text });
     if (result && result.error) throw new Error(result.error);
+    qNotice = "Comment sent to the owner without a verdict. The review remains open.";
     qRefresh();
   }
+
+  function qUpdateDecisionButton() {
+    const btn = document.querySelector(".q-decision-submit");
+    if (!btn) return;
+    const selected = document.querySelector(`input[name="q-choice-${btn.dataset.id}"]:checked`);
+    const feedback = (document.getElementById("q-decision-feedback") || {}).value || "";
+    btn.disabled = !selected || (selected.dataset.intent === "revise" && !feedback.trim());
+    btn.textContent = !selected ? "Choose an option"
+      : selected.dataset.intent === "revise" ? "Request revision without a ruling"
+      : `Record choice: ${selected.dataset.label}`;
+  }
+
+  document.getElementById("q-app").addEventListener("change", qUpdateDecisionButton);
+  document.getElementById("q-app").addEventListener("input", qUpdateDecisionButton);
 
   document.getElementById("q-app").addEventListener("click", ev => {
     if (ev.target.closest("#q-back")) {
@@ -694,7 +727,7 @@ function qRender(state) {
       return;
     }
     if (yes) { const r = findRow(yes.dataset.id); if (r) { yes.disabled = true; qDoYes(r, reason()).catch(error => { yes.disabled = false; alert(error.message); }); } return; }
-    if (no) { const r = findRow(no.dataset.id); if (r) { no.disabled = true; qDoNo(r, reason()); } return; }
+    if (no) { const r = findRow(no.dataset.id); if (r) { no.disabled = true; qDoNo(r, reason()).catch(error => { no.disabled = false; alert(error.message); }); } return; }
     if (talk) {
       // The box is always open in the pane; this only brings the right card up
       // and puts the cursor in it.
@@ -705,6 +738,10 @@ function qRender(state) {
     }
     if (send) {
       const st = document.getElementById("q-talk-st");
+      const r = findRow(send.dataset.id);
+      const box = document.getElementById("q-pane-talk");
+      const text = box.querySelector("textarea").value.trim();
+      if (!text || !r) { box.querySelector("textarea").focus(); return; }
       if (st) {
         // The thirty seconds he was promised, counted where he is looking. The
         // card itself hands back when the clock runs out; this only shows it.
@@ -719,10 +756,6 @@ function qRender(state) {
           if (left <= 0) clearInterval(window.qClock);
         }, 1000);
       }
-      const r = findRow(send.dataset.id);
-      const box = document.getElementById("q-pane-talk");
-      const text = box.querySelector("textarea").value.trim();
-      if (!text || !r) return;
       send.disabled = true;
       qDoTalk(r, text).catch(error => { send.disabled = false; alert(error.message); });
       return;
@@ -770,7 +803,7 @@ document.addEventListener("keydown", ev => {
   let idx = els.findIndex(e => e.dataset.id === qSelected);
   if (ev.key === "j") { idx = Math.min(els.length - 1, idx + 1); els[idx].click(); }
   else if (ev.key === "k") { idx = Math.max(0, idx - 1); els[idx].click(); }
-  else if (ev.key === "y") { if (idx >= 0) document.querySelector("#q-pane .q-yes")?.click(); return; }
+  else if (ev.key === "y") { if (idx >= 0) { els[idx].click(); document.querySelector("#q-pane .q-yes")?.focus(); } return; }
   else if (ev.key === "t") { if (idx >= 0) { els[idx].click(); document.querySelector("#q-pane-talk textarea")?.focus(); } return; }
   else return;
   if (!matchMedia("(max-width: 1100px)").matches) els[idx].focus();

@@ -80,6 +80,19 @@ ctx.ownerOf = () => ({ name: 'Rin' });
   assert.match(heldCard, /held from automatic work/i);
   assert.match(heldCard, /first implementation remains available for review/i);
   assert.match(heldCard, /original result is still here/i);
+  ctx.reviewTitle = it => `Review: ${it.title}`;
+  ctx.reviewEvidenceLinks = () => [];
+  ctx.reviewHeadingArtifact = () => '';
+  ctx.reviewComparison = () => '';
+  const review = actualWorkCard({ id: 'review', title: 'Animation', level: 'task', tier: 1,
+    state: 'for_review', owner: 'rin', result: 'The revised animation is ready.',
+    recommend: { answer: 'No — keep the old animation.', question: 'Should this replace it?' } },
+  { employees: [{ id: 'rin', name: 'Rin Sato' }] }, { tiers: { '1': { name: 'Do it, show the diff' } } }).html;
+  assert.match(review, /Accept result and record: No — keep the old animation/);
+  assert.match(review, /Reject and close review/);
+  assert.match(review, /Comment without a verdict/);
+  assert.match(ctx.outcomeLine('drop', { owner: 'rin', state: 'for_review' },
+    { employees: [{ id: 'rin', name: 'Rin Sato' }] }, ''), /artifact was not deleted/);
   assert.match(heldCard, /Nothing starts automatically/);
   assert.doesNotMatch(heldCard, /data-act=|data-send=|class="w-reply|scheduled run|attempt is queued|starts in a moment/);
   const timelineCard = actualWorkCard({ id: 'timeline', title: 'Verify the gallery', level: 'task', tier: 1,

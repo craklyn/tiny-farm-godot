@@ -167,7 +167,7 @@
 }
 
 .w-acts { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
-.w-acts button { font-size: 12.5px; padding: 5px 12px; }
+.w-acts button { font-size: 12.5px; padding: 5px 12px; max-width: 100%; overflow-wrap: anywhere; }
 
 /* Anything that has not happened yet gets the accent edge; finished work that
    wants a verdict gets the blue one. Work in flight stays deliberately plain. */
