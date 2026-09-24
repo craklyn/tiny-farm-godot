@@ -14,32 +14,26 @@
 # arrive together are usually different failures and a build that only offers
 # fixed combinations cannot tell you which half worked.
 #
-# **All four questions it has carried are now answered, so `AXES` is empty**
-# (2026-09-08, at the designer's request: *"clean up the debug menu options for
-# the other things, if they are no longer needed"*). The cot's look, the two
-# station axes and the ripe crop were each ruled from staged captures, and a
-# switch between candidates that no longer exist is furniture. The pause menu
-# therefore carries no look lines at all, which is the honest picture of a studio
-# with no open look question.
+# The cot, station and ripe-crop questions were answered and removed from the
+# debug menu on 2026-09-08. Q-14's colour study now opens one new axis.
 #
 # **The rig is kept, not deleted.** It is Q-86's answer to "how do we ask the
 # designer a look question", and four decisions were made from it. Opening the
 # next one costs an entry here, one in `tools/look_scenarios.gd`, and one arm of
-# `tools/capture_looks.gd`'s staging — the three lines the ripe crop cost. An
-# empty registry is this file at rest, not this file retired.
+# `tools/capture_looks.gd`'s staging — the three lines the ripe crop cost.
 #
 # Layer note: pure static over other pure statics. No Node, no autoload, no sim.
 class_name LookLab
 
 # One entry per **open** question. Empty is a legitimate and expected state.
-const AXES: Array[String] = []
+const AXES: Array[String] = ["world_tint"]
 
 # Short enough to fit a pause-menu line beside its current value; keyed by axis.
-const LABELS := {}
+const LABELS := {"world_tint": "World colour"}
 
 # What each axis is asking. Developer text, debug builds only — S-7 is about the
 # game, and none of this is in it.
-const QUESTIONS := {}
+const QUESTIONS := {"world_tint": "Which colour direction should the farm take?"}
 
 # Which axis the last `cycle()` moved, so a toast can name it. Empty means the
 # last press was the put-back rather than a single axis.
@@ -48,20 +42,17 @@ static var last_axis: String = ""
 
 # --- The five questions an axis has to answer --------------------------------
 #
-# Each of these was a `match` over the registered axes, dispatching to the
-# treatment file that owns one. With nothing registered they answer for the empty
-# set, and the shape is left standing because that is what the next question
-# fills in: one arm each, pointing at its own presentation file, which is where
-# the numbers and the reasoning belong.
+# Each accessor dispatches by registered axis to its presentation file. Unknown
+# axes still answer empty, so the rig is safe when a question retires.
 
 ## How many drafts this axis is choosing between.
-static func count_of(_axis: String) -> int:
-	return 0
+static func count_of(axis: String) -> int:
+	return WorldTintPresentation.COUNT if axis == "world_tint" else 0
 
 
 ## Which draft it is currently wearing.
-static func current(_axis: String) -> int:
-	return 0
+static func current(axis: String) -> int:
+	return WorldTintPresentation.current if axis == "world_tint" else 0
 
 
 ## What the game ships wearing on this axis — the ruled pick. Named beside the
@@ -71,17 +62,19 @@ static func shipped(_axis: String) -> int:
 	return 0
 
 
-static func set_to(axis: String, _value: int) -> int:
+static func set_to(axis: String, value: int) -> int:
 	last_axis = axis
+	if axis == "world_tint":
+		return WorldTintPresentation.set_to(value)
 	return 0
 
 
-static func name_of(_axis: String, _value: int) -> String:
-	return ""
+static func name_of(axis: String, value: int) -> String:
+	return WorldTintPresentation.name_of(value) if axis == "world_tint" else ""
 
 
-static func blurb_of(_axis: String, _value: int) -> String:
-	return ""
+static func blurb_of(axis: String, value: int) -> String:
+	return WorldTintPresentation.blurb_of(value) if axis == "world_tint" else ""
 
 
 static func cycle(axis: String) -> int:

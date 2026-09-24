@@ -55,7 +55,18 @@ class_name LookScenarios
 # whole argument is that it moves. `catch` replaces `settle` for a draft the rig
 # had to wait for — how many frames after the event its own effect looks most like
 # itself.
-const SCENARIOS: Array[Dictionary] = []
+const SCENARIOS: Array[Dictionary] = [
+	{
+		"id": "world_colour_station",
+		"axis": "world_tint",
+		"question": "Which colour makes this farm easiest to read?",
+		"note": "Day three at mid-morning, by the seed box. These are whole-world colour studies; selective object saturation is still open.",
+		"stand": Vector2i(9, 7),
+		"focus_object": "seed_box",
+		"crop": Vector2i(720, 460),
+		"settle": 5,
+	},
+]
 
 
 static func by_id(id: String) -> Dictionary:

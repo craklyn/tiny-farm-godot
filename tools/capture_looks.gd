@@ -87,8 +87,10 @@ func _shoot(scenario: Dictionary) -> String:
 		# sets, like the hour the bed is looked at.
 		LookLab.set_to(axis, draft)
 		main_scene._apply_station_treatment()
+		main_scene._apply_world_tint_treatment()
 		await _stage(scenario)
 		main_scene._apply_station_treatment()
+		main_scene._apply_world_tint_treatment()
 		var waited := await _after_switch(id)
 		# A draft that had to be waited for has just *started*; the full settle
 		# after that photographs the moment it ended. `catch` is how long its own
@@ -158,6 +160,8 @@ func _stage(scenario: Dictionary) -> void:
 	# below so a question only has to describe what is different about it.
 	await _put_her_at(scenario["stand"])
 	match String(scenario["id"]):
+		"world_colour_station":
+			_stage_world_colour_station()
 		_:
 			# No question is open (see `tools/look_scenarios.gd`). The four that
 			# were staged here retired with the axes they compared; a new one adds
@@ -172,6 +176,12 @@ func _stage(scenario: Dictionary) -> void:
 	# unconditionally so that a question shot after one of these is not
 	# photographed from the sky.
 	await _set_altitude(bool(scenario.get("altitude", false)))
+
+
+func _stage_world_colour_station() -> void:
+	# The same station and mixed plot for every draft; no RNG is consumed here.
+	_stage_ripe_plot()
+	GameState.day = 3
 
 
 # Some drafts are events rather than states: they are not on screen until the

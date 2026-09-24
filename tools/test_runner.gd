@@ -709,6 +709,21 @@ func _scenario_h_daylight() -> void:
 	_assert(tint.color.is_equal_approx(Daylight.tint_for(GameState.energy, GameState.max_energy)),
 		"world tint tracks Daylight.tint_for after the action")
 
+	# Q-14: switching the look during a held dusk must use the cached hour.
+	var held := tint.color
+	main_scene._freeze_daylight()
+	GameState.set_energy(GameState.max_energy)
+	LookLab.set_to("world_tint", WorldTintPresentation.COLD_LIGHT)
+	main_scene._apply_world_tint_treatment()
+	_assert(tint.color.is_equal_approx(held * WorldTintPresentation.multiplier()),
+		"a look switch grades held dusk, not the next day's restored energy")
+	LookLab.restore_all()
+	main_scene._apply_world_tint_treatment()
+	_assert(tint.color.is_equal_approx(held), "restoring the look restores held daylight")
+	main_scene._thaw_daylight()
+	_assert(tint.color.is_equal_approx(Daylight.tint_for(GameState.energy, GameState.max_energy)),
+		"thaw follows the live daylight again")
+
 	# (c) the HUD no longer carries the energy bar at all
 	_assert(not ("energy_bar_fill" in main_scene.hud), "the HUD has no energy_bar_fill")
 	_assert(not ("energy_bar_bg" in main_scene.hud), "the HUD has no energy_bar_bg")
@@ -2932,7 +2947,7 @@ func _scenario_ab_the_stations_present_themselves() -> void:
 
 	var was_s: int = StationPresentation.satisfied
 
-	# --- door 1: the pause menu no longer carries look lines -----------------
+	# --- door 1: the pause menu carries only the open colour question ---------
 	#
 	# It carried one per open question, and every one of them has been ruled
 	# (2026-09-08). The assertion is now that the menu is *clean*: a switch
@@ -2944,15 +2959,16 @@ func _scenario_ab_the_stations_present_themselves() -> void:
 	await get_tree().process_frame
 	var labels: Array = []
 	_collect_labels(main_scene.menus.options_container, labels)
-	_assert(labels.size() == 2
+	_assert(labels.size() == 4
 			and String(labels[0].text) == "Resume"
-			and String(labels[1].text) == "Return to Title",
-		"the pause menu is back to two lines, both of them the player's (%d)" % labels.size())
+			and String(labels[1].text) == "Return to Title"
+			and String(labels[2].text).begins_with("World colour:"),
+		"the pause menu adds one colour axis and restore line (%d)" % labels.size())
 	var lab_line := false
 	for l in labels:
-		if String(l.text).contains("ships as") or String(l.text) == LookLab.restore_label():
+		if String(l.text).begins_with("World colour:"):
 			lab_line = true
-	_assert(not lab_line, "and no look-lab furniture is left standing in it")
+	_assert(lab_line, "the open colour question has a live pause-menu switch")
 	main_scene.menus.close_menu()
 	await get_tree().process_frame
 

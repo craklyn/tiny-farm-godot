@@ -36,6 +36,7 @@ var _cot_tile: Vector2i = Vector2i(-1, -1)  # located after world setup (Q-11 pu
 # recomputing per draw call.
 var world_tint: CanvasModulate
 var _tint: Color = Color.WHITE
+var _daylight_tint: Color = Color.WHITE
 
 
 # T-13 (Q-37/Q-45): the cold open is paced here and decided in the sim. Every few
@@ -507,6 +508,14 @@ func _update_daylight() -> void:
 	if _daylight_frozen:
 		return
 	_tint = Daylight.tint_for(GameState.energy, GameState.max_energy)
+	_daylight_tint = _tint
+	_apply_world_tint_treatment()
+
+
+func _apply_world_tint_treatment() -> void:
+	# A look switch during tuck-in must use the held dusk, not the new day's
+	# already-restored energy. Only _update_daylight is allowed to change this cache.
+	_tint = _daylight_tint * WorldTintPresentation.multiplier()
 	if world_tint != null:
 		world_tint.color = _tint
 
@@ -1120,6 +1129,7 @@ func _handle_action_result(action: String) -> void:
 		# so a tablet says out loud what changed and to what.
 		_refresh_camera_limits()
 		_apply_station_treatment()
+		_apply_world_tint_treatment()
 		if hud != null and hud.has_method("show_toast"):
 			hud.show_toast(LookLab.last_change_text())
 

@@ -663,7 +663,11 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   bright touchables, cold light, and more detail per surface — in
   `design/09-art-direction.md` §"The look session". A warmer, cosier grade was dropped
   for being too close to today's look to be a direction. Rendering the four is the
-  remaining work before the re-ask.
+  remaining work before the re-ask. **2026-09-24 implementation status:** the
+  debug Look Lab and station capture rig can render today's colour and two
+  whole-world colour studies (grey-green and blue) from the same game switch.
+  Selective saturation of touchables, the cold machine accents, and the fourth
+  detail treatment remain to be rendered; no look has been approved.
 - **Q-113** ~~How much a player can carry before she has to sell~~ — ✅ ruled
   2026-09-21 and clarified 2026-09-23: **10 plantable units of each crop species
   on her person; 40 of each with a future grain silo.** Both limits are

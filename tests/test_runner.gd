@@ -195,6 +195,7 @@ func _init() -> void:
 	test_cot_halo()
 	test_cot_presentation()
 	test_station_presentation()
+	test_world_tint_presentation()
 	test_crop_presentation()
 	test_zoo()
 	test_rain_on_ripe_soil()
@@ -9490,8 +9491,8 @@ func test_crop_presentation() -> void:
 	for other in ["seeded", "growing", "tilled", "cleared", "obstacle_weed"]:
 		_assert_quiet(not CropPresentation.shows(other), "and %s is not" % other)
 	_assert(true, "and nothing else is — seeded, growing, bare soil, an obstacle")
-	_assert(LookLab.AXES.is_empty(),
-		"and it is no longer a switch: every look question the lab carried is answered")
+	_assert(not LookLab.AXES.has("ripe_crop"),
+		"the ruled ripe crop is no longer a switch")
 
 	# --- the variation is a function of the square, never a die ---------------
 	#
@@ -9890,18 +9891,12 @@ func test_station_presentation() -> void:
 	_assert(StationPresentation.SATISFIED_NAMES.size() == StationPresentation.SATISFIED_COUNT,
 		"the retained HUD comparison has names")
 
-	# --- the look lab, at rest ------------------------------------------------
+	# --- the look lab with its one open colour question ------------------------
 	#
-	# One door for every look that is still his to pick, and as of 2026-09-08
-	# there are none: the cot's look, both station axes and the ripe crop have all
-	# been ruled from staged captures, so the registry is empty and the pause menu
-	# carries no look lines. What is asserted is that the empty state is *safe* —
-	# the accessors answer for the empty set instead of reaching into a treatment
-	# that is no longer switchable — because the rig is kept for the next question
-	# and a rig that only works when populated is a rig that breaks on the day it
-	# is needed.
-	_assert(LookLab.AXES.is_empty(),
-		"no look question is open, so the lab offers nothing to switch")
+	# The answered cot, station and ripe-crop axes stay retired. Unknown axes
+	# still answer empty while Q-14 offers its colour comparison.
+	_assert(LookLab.AXES.size() == 1 and LookLab.AXES[0] == "world_tint",
+		"the colour study is the only open look switch")
 	_assert(LookLab.changed_axes().is_empty()
 			and LookLab.restore_label() == "Every look is as it ships",
 		"and there is nothing to put back")
@@ -9912,9 +9907,10 @@ func test_station_presentation() -> void:
 	LookLab.restore_all()
 	_assert(LookLab.last_change_text() == "Every look back to what ships",
 		"and a put-back with nothing in it is still a sentence, not a crash")
-	_assert(LookScenarios.SCENARIOS.is_empty()
-			and LookScenarios.by_id("bed_at_dusk").is_empty(),
-		"and the capture rig has no question staged either — the two retire together")
+	_assert(LookScenarios.SCENARIOS.size() == 1
+			and LookScenarios.by_id("world_colour_station")["axis"] == "world_tint",
+		"the station capture draws the same colour axis as the game")
+
 
 	# --- the pictures exist --------------------------------------------------
 	#
@@ -10131,6 +10127,26 @@ func test_station_presentation() -> void:
 # `SpeciesDefs.ids()`**, not a list somebody wrote out beside it. Everything else
 # proves that the door it opens actually leads somewhere — every species reaching
 # the registry, with its own brain bound, through its own real entry point.
+func test_world_tint_presentation() -> void:
+	print("\n--- World colour switch (Q-14) Tests ---")
+	WorldTintPresentation.set_to(WorldTintPresentation.NEUTRAL)
+	_assert(WorldTintPresentation.multiplier() == Color.WHITE,
+		"the shipping look does not alter daylight")
+	_assert(LookLab.count_of("world_tint") == 3,
+		"the switch contains today, quiet world and cold light")
+	LookLab.set_to("world_tint", WorldTintPresentation.QUIET_WORLD)
+	_assert(WorldTintPresentation.multiplier().g > WorldTintPresentation.multiplier().r,
+		"quiet world moves toward grey green")
+	_assert(LookLab.changed_axes() == ["world_tint"],
+		"the game reports a colour draft away from shipping")
+	LookLab.set_to("world_tint", WorldTintPresentation.COLD_LIGHT)
+	_assert(WorldTintPresentation.multiplier().b > WorldTintPresentation.multiplier().r,
+		"cold light has a blue cast")
+	LookLab.restore_all()
+	_assert(WorldTintPresentation.multiplier() == Color.WHITE,
+		"restore returns the world to the shipped colour")
+
+
 func test_zoo() -> void:
 	print("\n--- The zoo (T-33) ---")
 
