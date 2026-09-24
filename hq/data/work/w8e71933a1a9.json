@@ -11,8 +11,8 @@
   "thread": "rin",
   "source": "chat",
   "source_message": "Accepted “Reword every phrase on HQ's pages that only makes sense inside this studio”. This sweep was done from the word list in the brief because the checker was not yet in the working tree, so nothing has actually been verified against it.",
-  "result": "Ran the current tools/check_writing.py against the current dashboard checkout at b7aa11e. The judge checked 637 unique visible texts; none were unjudged. It reported 0 MUST FIX (decode) findings, 19 optional consider (second-look) findings overall, and 13 optional findings in hq/static page scripts. It reported no allowed line in map.js; the older expectation of exactly one allowed map line is stale. The offline --verify run also passed. The latest main CI run for b7aa11e (35975281166) completed successfully, including the writing job and its Every surface he reads has been read, and passed step. The current checker uses docs/WRITING.md and docs/writing_rulings.json with cached verdicts; docs/glossary.json no longer exists. No new decode finding requires a page change. The 19 optional second-look suggestions remain visible in the checker output and are not recorded here as fixed or accepted by Daniel.",
-  "started": "2026-09-24T08:31:26Z",
+  "result": "Ran the current tools/check_writing.py against the current dashboard checkout at b7aa11e. The judge checked 637 unique visible texts; none were unjudged. It reported 0 MUST FIX (decode) findings, 19 optional consider (second-look) findings overall, and 13 optional findings in hq/static page scripts. It reported no allowed line in map.js; the older expectation of exactly one allowed map line is stale. The offline --verify run also passed. The latest main CI run for b7aa11e (35975281166) completed successfully, including the writing job and its Every surface he reads has been read, and passed step. The current checker uses docs/WRITING.md and docs/writing_rulings.json with cached verdicts; docs/glossary.json no longer exists. No new decode finding requires a page change. The 19 optional second-look suggestions remain visible in the checker output and are not recorded here as fixed or accepted by Daniel. The card closure commit 296f287 then passed all three CI jobs: gateway, writing, and tests.",
+  "started": "",
   "attempts": 2,
   "created": "2026-09-04T14:29",
   "created_ts": 1788557392.8329446,
@@ -20,7 +20,7 @@
   "recommend": {},
   "finished": "2026-09-24T08:31:26Z",
   "subject": "How HQ works",
-  "_revision": 2,
+  "_revision": 3,
   "completion_reconciliation": {
     "version": 1,
     "manifest_id": "38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33",
@@ -50,14 +50,16 @@
     "writing": "pass; 637 unique texts, zero unjudged, zero decode, 19 optional second-look (13 page scripts)",
     "writing_offline": "pass",
     "ci_run": "https://github.com/craklyn/tiny-farm-godot/actions/runs/35975281166",
-    "ci_writing_step": "success on b7aa11e"
+    "ci_writing_step": "success on b7aa11e",
+    "closure_ci_run": "https://github.com/craklyn/tiny-farm-godot/actions/runs/35975935288",
+    "closure_ci": "pass; gateway, writing, tests"
   },
   "attempt_outcome": {
     "version": 1,
     "id": "interactive-writing-sweep-w8e71933a1a9-20260924",
     "status": "complete",
     "reason": "Current checker and offline verification passed; no required dashboard wording fixes.",
-    "result_id": "7dbdd8f8aec7a9e4deb09cb4a6796d29e9bc5932e9f6f4736ad21a11ac4a908d",
+    "result_id": "fe1f125f425e6af7dd7925cdd16284e6f139fc9eae569e7e8e44cc0b68f52c01",
     "landing_verified": true
   },
   "check": {
@@ -72,19 +74,20 @@
     "version": 1,
     "attempt_id": "interactive-writing-sweep-w8e71933a1a9-20260924",
     "at": "2026-09-24T08:31:26Z",
-    "sha": "",
+    "sha": "296f2871195313f84e923d8736d42cda888e61a9",
     "by": "Codex interactive",
     "kind": "reading",
     "evidence": {
       "checker": "python3 tools/check_writing.py: exit 0, zero decode, 19 optional second-look",
       "offline": "python3 tools/check_writing.py --verify: exit 0",
-      "ci_run": "https://github.com/craklyn/tiny-farm-godot/actions/runs/35975281166"
+      "ci_run": "https://github.com/craklyn/tiny-farm-godot/actions/runs/35975281166",
+      "closure_ci_run": "https://github.com/craklyn/tiny-farm-godot/actions/runs/35975935288"
     }
   },
   "landed": {
     "at": "2026-09-24T08:31:26Z",
     "by": "Codex interactive",
-    "sha": "",
+    "sha": "296f2871195313f84e923d8736d42cda888e61a9",
     "note": "Current checker verified the HQ pages; no new decode finding. Optional second-look suggestions remain."
   },
   "resolved_follow_ups": [
@@ -106,8 +109,8 @@
     "integrations": [],
     "ci": {
       "confirmed": true,
-      "commit_sha": "b7aa11e9a4c492656b7510c4a58eb50c98d58895",
-      "run_url": "https://github.com/craklyn/tiny-farm-godot/actions/runs/35975281166"
+      "commit_sha": "296f2871195313f84e923d8736d42cda888e61a9",
+      "run_url": "https://github.com/craklyn/tiny-farm-godot/actions/runs/35975935288"
     }
   }
 }
