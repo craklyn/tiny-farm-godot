@@ -689,6 +689,43 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   separate from what she carries; only excess sells.** The player can take stock
   from the bin to plant again. Ten is `[Playtest]`. See S-20.
 
+- **Q-121 — Does the harvest yield make early purchases arrive at the right pace?**
+  — **Ruling, open 2026-09-24.** Harvested crops are now the same plantable units
+  used to sow again. At **one unit harvested for one planted**, replanting consumes
+  the entire harvest. Selling one wheat for 15g or one tomato for 30g removes one
+  future planting; without a replacement seed purchase, a finite starting field
+  cannot both sustain itself and produce crop income. The starter wheat is off the
+  shop shelf. With crops kept for replanting, the chicken's 50% chance of one egg
+  per morning at 10g per egg leaves **5g/day on average**, assuming the egg is
+  collected and sold. From the current 0g start, that is roughly **10 mornings
+  for a 50g scarecrow** or **24 for a 120g sprinkler** as separate price
+  thresholds. Buying the scarecrow first and then the sprinkler needs **170g,
+  about 34 mornings** on eggs alone. These are expected values, not guaranteed
+  dates; each morning's egg is a coin flip. The 25g coop is another purchase on
+  that same thin stream.
+
+  **Today's ruled baseline is already three plantable units per harvest** (S-19 /
+  Q-115, `[Playtest]`), not one. Planting one and harvesting three creates **two
+  surplus units** while preserving one for the next sowing: potentially 30g per
+  wheat cycle, 60g per tomato cycle, or 40g per pea cycle once that species'
+  reserve is full. The bin first reserves ten units of each species (S-20), and
+  she can carry ten of each (S-18), so the first harvests build a buffer rather
+  than paying immediately. For example, five starting wheat seeds can grow into
+  fifteen units; keeping five to sow again and reserving ten at the bin yields
+  **0g in that first complete cycle**, then up to **150g from ten excess wheat**
+  in the next cycle if the reserve stays full. The ten-unit carry cap means she
+  must deposit between harvests; this is arithmetic, not a measured playthrough.
+  Wheat takes three growing days, tomato five, and pea three; the latter has no
+  shop debut yet. Crow losses, watering, and purchase order can stretch the pace.
+
+  **Recommendation: keep the ×3 harvest yield for a playtest**, and tune the
+  50g scarecrow and 120g sprinkler only after observing when players can actually
+  buy them. It creates a renewable two-unit margin where ×1 creates none, while
+  the ten-unit reserve delays the first crop payout. Daniel, is that delay and
+  subsequent jump the intended phase-1 purchase curve, or should the yield,
+  reserve, or prices change? **No economy change is authorized by this question.**
+  Card: `hq/data/work/w405c9324c29.json`.
+
 - **Q-43** ~~M1's exit gate depends on an unavailable playtester~~ — ✅ ruled 2026-08-28
   by the designer: **user-acceptance test satisfied at this stage.** The 4-year-old is
   consistently unavailable when review is needed, so gating a milestone on her was a
