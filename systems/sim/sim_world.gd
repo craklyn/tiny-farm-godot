@@ -1002,6 +1002,21 @@ func room_of_cell(t: Vector2i) -> String:
 	return ""
 
 
+# Storage pages and room slots share one array, but a radius may only measure
+# within one map. Derive this from the room rectangles and page layout; it is
+# never saved. Empty means the dark between rooms has no sensing space.
+func space_of(t: Vector2i) -> String:
+	if t.x < 0 or t.x >= MAP_WIDTH or t.y < 0 or t.y >= MAP_HEIGHT:
+		return ""
+	var room := room_of_cell(t)
+	if room != "":
+		return room
+	match page_of(t):
+		0: return "farm"
+		1: return HOME_ROOM_ID
+	return ""
+
+
 # **Where a cell really is**, in farm tiles, as a float. This is the whole of what
 # the anchor and the pitch buy: an actor standing indoors has a true position on
 # the farm, so a distance to it is an ordinary distance and nothing has to be
@@ -1263,11 +1278,15 @@ func count_planted() -> int:
 
 
 func is_protected_by_scarecrow(tx: int, ty: int) -> bool:
+	var source_space := space_of(Vector2i(tx, ty))
+	if source_space == "":
+		return false
 	for dy in range(-4, 5):
 		for dx in range(-4, 5):
 			var nx := tx + dx
 			var ny := ty + dy
-			if nx >= 0 and nx < MAP_WIDTH and ny >= 0 and ny < MAP_HEIGHT:
+			if nx >= 0 and nx < MAP_WIDTH and ny >= 0 and ny < MAP_HEIGHT \
+					and space_of(Vector2i(nx, ny)) == source_space:
 				if objects[ny][nx] == "scarecrow":
 					return true
 	return false
@@ -1840,6 +1859,9 @@ func actors_of_class(cls: String) -> Array[String]:
 func spook_source_near(t: Vector2i, ignore: String = "") -> String:
 	var best := ""
 	var best_d := INF
+	var source_space := space_of(t)
+	if source_space == "":
+		return ""
 	var ids: Array = actors.keys()
 	ids.sort()
 	for raw in ids:
@@ -1848,6 +1870,8 @@ func spook_source_near(t: Vector2i, ignore: String = "") -> String:
 			continue
 		var radius := float(SpeciesDefs.senses_of(species_of(id)).get("spook_radius", 0.0))
 		if radius <= 0.0:
+			continue
+		if space_of(actor_pos(id)) != source_space:
 			continue
 		var d := Vector2(actor_pos(id) - t).length()
 		if d < radius and d < best_d:

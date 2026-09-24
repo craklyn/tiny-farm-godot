@@ -143,6 +143,26 @@ func _run_scenarios() -> void:
 	await _scenario_aw_the_front_door_holds_one_picture()
 	await _scenario_ax_three_farms_three_cards()
 	await _scenario_az_robot_unlock_cues()
+	await _scenario_ba_crow_spook_stops_at_room_wall()
+
+
+func _scenario_ba_crow_spook_stops_at_room_wall() -> void:
+	print("\n--- Scenario BA: a crow cannot see the farmer through a room wall ---")
+	var old_player_tile: Vector2i = farm.sim.actor_pos(SimWorld.ACTOR_PLAYER)
+	var outside := Vector2i(8, WorldLayout.PAGE_ROWS - 1)
+	var inside := outside + Vector2i.DOWN
+	farm.sim.spawn_actor("boundary_crow", SpeciesDefs.CROW, outside)
+	var crow = load("res://entities/crow.gd").new()
+	crow.init_actor(farm, "boundary_crow")
+	crow.position = player.position
+	farm.sim.set_actor_pos(SimWorld.ACTOR_PLAYER, inside)
+	_assert(not crow._player_is_near(),
+		"a crow beside the farmer on screen cannot spook from another storage page")
+	farm.sim.set_actor_pos(SimWorld.ACTOR_PLAYER, outside)
+	_assert(crow._player_is_near(), "the same crow senses the farmer in its own space")
+	farm.sim.set_actor_pos(SimWorld.ACTOR_PLAYER, old_player_tile)
+	farm.sim.despawn_actor("boundary_crow")
+	crow.free()
 
 
 func _scenario_az_robot_unlock_cues() -> void:

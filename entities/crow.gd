@@ -176,6 +176,13 @@ func _player_is_near() -> bool:
 		player = farm.player_node() if farm != null and farm.has_method("player_node") else null
 	if player == null:
 		return false
+	if farm == null or not farm.sim.has_actor(actor_id) \
+			or not farm.sim.has_actor(SimWorld.ACTOR_PLAYER):
+		return false
+	var crow_space: String = farm.sim.space_of(farm.sim.actor_pos(actor_id))
+	if crow_space == "" or crow_space != \
+			farm.sim.space_of(farm.sim.actor_pos(SimWorld.ACTOR_PLAYER)):
+		return false
 	var sr = player.get("spook_radius")
 	if sr == null:
 		sr = SpeciesDefs.senses_of(SpeciesDefs.PLAYER).get("spook_radius", 3.0) * TILE_SIZE

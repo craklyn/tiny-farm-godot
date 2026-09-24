@@ -376,13 +376,15 @@ func _sense(world: SimWorld, actor_id: String) -> int:
 func _crop_within(world: SimWorld, from: Vector2i, radius: int) -> Vector2i:
 	var best := Vector2i(-1, -1)
 	var best_d := radius + 1
+	var source_space := world.space_of(from)
 	for dy in range(-radius, radius + 1):
 		for dx in range(-radius, radius + 1):
 			var d := absi(dx) + absi(dy)
 			if d > radius or d >= best_d:
 				continue
 			var t := from + Vector2i(dx, dy)
-			if world.has_crop(t.x, t.y):
+			if source_space != "" and world.space_of(t) == source_space \
+					and world.has_crop(t.x, t.y):
 				best = t
 				best_d = d
 	return best

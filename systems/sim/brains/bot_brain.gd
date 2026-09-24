@@ -753,7 +753,9 @@ static func set_orders(extra: Dictionary, tiles: Array[Vector2i]) -> void:
 # (ground rule 8): a bot at its station costs one poll.
 func _follow(world: SimWorld, actor_id: String, extra: Dictionary, tick: int) -> void:
 	var her := _owner_tile(world, extra)
-	if her.x < 0:
+	var bot_space := world.space_of(world.actor_pos(actor_id))
+	if her.x < 0 or bot_space == "" or world.space_of(her) != bot_space:
+		Movement.clear_route(world, actor_id)
 		_wait(extra, tick)
 		return
 	var here := world.actor_pos(actor_id)
@@ -814,12 +816,14 @@ func _take_station(world: SimWorld, actor_id: String, extra: Dictionary, tick: i
 # could stand on. Built in a fixed scan order; her own tile is not in it.
 func _stations(world: SimWorld, actor_id: String, her: Vector2i, keep: int) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
+	var source_space := world.space_of(her)
 	var mode := Movement.mode_of(world.species_of(actor_id))
 	for dy in range(-keep, keep + 1):
 		var dx := keep - absi(dy)
 		for sx in ([0] if dx == 0 else [-dx, dx]):
 			var t := her + Vector2i(int(sx), dy)
-			if Movement.can_stop(world, mode, t) and Movement.can_enter(world, actor_id, t):
+			if source_space != "" and world.space_of(t) == source_space \
+					and Movement.can_stop(world, mode, t) and Movement.can_enter(world, actor_id, t):
 				out.append(t)
 	return out
 
@@ -1952,7 +1956,12 @@ func _owner_tile(world: SimWorld, extra: Dictionary) -> Vector2i:
 # this free for the case that exists today.
 func _distance_to(world: SimWorld, actor_id: String, from: Vector2i) -> float:
 	var best := INF
+	var source_space := world.space_of(from)
+	if source_space == "":
+		return INF
 	for t in Movement.occupied_tiles(world, actor_id):
+		if world.space_of(t) != source_space:
+			continue
 		best = minf(best, Vector2(t - from).length())
 	return best
 

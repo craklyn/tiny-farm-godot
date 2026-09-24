@@ -185,13 +185,19 @@ func deposit(channel: String, tile: Vector2i, amount: float, tick: int) -> float
 # feel": pay for it **at write time**, in one event, rather than by diffusing the
 # field every tick. Nothing ships that uses it; it exists so that the first
 # design that wants softness does not reach for a per-tile pass instead.
-func deposit_blob(channel: String, tile: Vector2i, amount: float, tick: int, radius: int = 1) -> void:
+func deposit_blob(world: SimWorld, channel: String, tile: Vector2i, amount: float,
+		tick: int, radius: int = 1) -> void:
+	var source_space := world.space_of(tile)
+	if source_space == "":
+		return
 	for dy in range(-radius, radius + 1):
 		for dx in range(-radius, radius + 1):
 			var d := absi(dx) + absi(dy)
 			if d > radius:
 				continue
-			deposit(channel, tile + Vector2i(dx, dy), amount / float(d + 1), tick)
+			var target := tile + Vector2i(dx, dy)
+			if world.space_of(target) == source_space:
+				deposit(channel, target, amount / float(d + 1), tick)
 
 
 # --- read -----------------------------------------------------------------------

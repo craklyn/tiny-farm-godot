@@ -225,6 +225,7 @@ func _init() -> void:
 	test_chicken_coop()
 	test_coop_interior()
 	test_spiral_tower_interior()
+	test_senses_stop_at_space_boundary()
 	test_robot_usefulness()
 	test_one_pouch()
 	test_carry_cap()
@@ -6325,7 +6326,9 @@ func test_scent() -> void:
 	# ships that uses it; it is here so the first design that wants softness does not
 	# reach for a per-tile pass.
 	var soft := Scent.new()
-	soft.deposit_blob(Scent.TRAIL, Vector2i(9, 9), 20.0, 0, 1)
+	var scent_world := SimWorld.new()
+	scent_world.generate()
+	soft.deposit_blob(scent_world, Scent.TRAIL, Vector2i(9, 9), 20.0, 0, 1)
 	_assert(soft.cell_count(Scent.TRAIL) == 5,
 		"a blob writes its own tile and its four neighbours — five cells, not a map")
 	_assert(soft.read(Scent.TRAIL, Vector2i(9, 9), 0) == 20.0
@@ -15622,6 +15625,9 @@ func test_spiral_tower_interior() -> void:
 	_assert(world.world_pos_of_cell(origin + Vector2i(1, 1))
 			== Vector2(building.position + Vector2i(2, 2)),
 		"an indoor cell maps to the same farm square shown behind it")
+	_assert(world.space_of(origin) == id and world.space_of(building.position) == "farm"
+			and world.space_of(origin - Vector2i(1, 0)) == "",
+		"tower cells have their own sensing space even when their world positions overlap the farm")
 	var entry := world.room_door_at(spot)
 	_assert(entry.get("to") == room["door"], "all tower footprint cells lead inside")
 	var exit := world.room_door_at(room["door"])
@@ -15644,6 +15650,53 @@ func test_spiral_tower_interior() -> void:
 			and is_equal_approx(float(restored.rooms[id]["pitch"]), 0.5)
 			and bool(restored.rooms[id]["edge_walls"]),
 		"the compressed room survives save and reload")
+
+
+func test_senses_stop_at_space_boundary() -> void:
+	print("\n--- Senses stop at the farm/home boundary ---")
+	var world := SimWorld.new()
+	world.generate()
+	var outside := Vector2i(8, WorldLayout.PAGE_ROWS - 1)
+	var inside := outside + Vector2i.DOWN
+	_assert(world.space_of(outside) == "farm" and world.space_of(inside) == SimWorld.HOME_ROOM_ID,
+		"adjacent storage rows belong to different spaces")
+	world.set_object(outside.x, outside.y, "scarecrow")
+	_assert(world.is_protected_by_scarecrow(outside.x, outside.y)
+			and not world.is_protected_by_scarecrow(inside.x, inside.y),
+		"a scarecrow on the farm bottom row cannot protect the home top row")
+	world.set_actor_pos(SimWorld.ACTOR_PLAYER, outside)
+	_assert(world.spook_source_near(inside) == "" and world.spook_source_near(outside) == SimWorld.ACTOR_PLAYER,
+		"the nearest frightener has no distance through a page wall")
+	world.set_tile_state(inside.x, inside.y, "growing", "tomato")
+	var grazer := GrazerBrain.new()
+	_assert(grazer._crop_within(world, outside, 5).x < 0
+			and grazer._crop_within(world, inside, 5) == inside,
+		"a grazer's crop sense reads only its own space")
+	world.spawn_actor("edge_sprinkler", SpeciesDefs.SPRINKLER, outside, {"radius": 1})
+	var coverage := SprinklerBrain.coverage(world, "edge_sprinkler")
+	_assert(outside in coverage and inside not in coverage,
+		"sprinkler coverage stops before the home page")
+	var blob := Scent.new()
+	blob.deposit_blob(world, Scent.TRAIL, outside, 20.0, 0, 1)
+	_assert(blob.read(Scent.TRAIL, outside, 0) > 0.0
+			and blob.read(Scent.TRAIL, inside, 0) == 0.0,
+		"a scent blob does not deposit through the page wall")
+	world.spawn_actor("edge_bird", SpeciesDefs.CROW, inside)
+	var bot := BotBrain.new()
+	var shoo := {"radius": 4.0, "quarry": SpeciesDefs.CLASS_BIRD,
+		"home_x": outside.x, "home_y": outside.y}
+	_assert(bot._quarry_near(world, "edge_sprinkler", shoo, 0) == ""
+			and is_inf(bot._distance_to(world, "edge_bird", outside)),
+		"a shoo bot has no distance to a bird in another space")
+	world.set_actor_pos("edge_bird", outside)
+	_assert(bot._quarry_near(world, "edge_sprinkler", shoo, 0) == "edge_bird",
+		"the shoo bot finds the same bird once it enters its space")
+	world.spawn_actor("edge_bot", SpeciesDefs.BOT, outside)
+	var follow_extra := {"owner": SimWorld.ACTOR_PLAYER, "distance": 2}
+	world.set_actor_pos(SimWorld.ACTOR_PLAYER, inside)
+	bot._follow(world, "edge_bot", follow_extra, 0)
+	_assert(not Movement.has_route(world, "edge_bot"),
+		"a follow bot waits when its owner enters another space")
 
 
 func test_coop_interior() -> void:

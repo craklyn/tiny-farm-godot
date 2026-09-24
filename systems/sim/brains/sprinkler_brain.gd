@@ -63,9 +63,12 @@ static func actions_for(world: SimWorld, actor_id: String) -> Array[Dictionary]:
 	if at.x < 0:
 		return out
 	var radius: int = maxi(0, int(world.actor(actor_id)["extra"].get("radius", RADIUS)))
+	var source_space := world.space_of(at)
 	for dy in range(-radius, radius + 1):
 		for dx in range(-radius, radius + 1):
 			var t := at + Vector2i(dx, dy)
+			if source_space == "" or world.space_of(t) != source_space:
+				continue
 			if world.get_tile(t.x, t.y).is_empty():
 				continue
 			out.append({ "verb": "water", "target": t, "actor": actor_id })
