@@ -43,7 +43,7 @@ class ProcessIntegrityTests(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="tiny-farm-rendezvous-") as rendezvous:
             children = [
                 subprocess.Popen(
-                    command("isolation", token, rendezvous),
+                    command("isolation", token, rendezvous, grace="2"),
                     cwd=ROOT,
                     stdout=subprocess.PIPE,
                     stderr=subprocess.STDOUT,
@@ -58,20 +58,20 @@ class ProcessIntegrityTests(unittest.TestCase):
             "\n".join(output for output, _ in results),
         )
 
-    def test_green_result_returns_even_if_godot_does_not(self) -> None:
+    def test_green_result_fails_if_godot_does_not_exit(self) -> None:
         started = time.monotonic()
         result = subprocess.run(
             command("green_hang"), cwd=ROOT, capture_output=True, text=True, timeout=5
         )
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertLess(time.monotonic() - started, 3)
         self.assertIn("did not exit", result.stdout + result.stderr)
 
-    def test_status_result_returns_even_if_godot_does_not(self) -> None:
+    def test_status_result_fails_if_godot_does_not_exit(self) -> None:
         result = subprocess.run(
             command("status_green_hang"), cwd=ROOT, capture_output=True, text=True, timeout=5
         )
-        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+        self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertIn("did not exit", result.stdout + result.stderr)
 
     def test_failed_status_is_nonzero(self) -> None:

@@ -78,15 +78,15 @@ def run(command: list[str], timeout: float, result_grace: float) -> int:
                 _stop(proc)
                 return 124
             if result_deadline is not None and now >= result_deadline:
-                passed, failed = result
+                # A result line is not a successful run until Godot exits.
                 print(
-                    "WARNING: Godot printed its final result but did not exit; "
+                    "ERROR: Godot printed its final result but did not exit; "
                     f"stopping it after {result_grace:g}s",
                     file=sys.stderr,
                     flush=True,
                 )
                 _stop(proc)
-                return 1 if failed or saw_script_error else 0
+                return 1
             wait = min(0.1, timeout - (now - started))
             if result_deadline is not None:
                 wait = min(wait, result_deadline - now)
