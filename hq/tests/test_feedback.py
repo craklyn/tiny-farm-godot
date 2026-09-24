@@ -11,7 +11,7 @@ from feedback import parse_comments, read_feedback
 
 class FeedbackTest(unittest.TestCase):
     def test_public_comment_and_reply(self):
-        page = '''<div class="game_comments_widget"><div class="community_post_list_widget">
+        page = '''<div><span>Page heading</span></div><div class="game_comments_widget"><div class="community_post_list_widget">
           <div id="post-6517027" class="community_post"><span class="post_author"><a>Player</a></span>
           <span class="post_date" title="2026-09-24 12:00:00"><a href="/post/6517027">today</a></span>
           <div class="post_body user_formatted"><p>Watering <b>stopped</b>.</p><p>After sleep.</p></div></div>

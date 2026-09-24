@@ -43,11 +43,11 @@ class CommentParser(HTMLParser):
                     self.post_depth = len(self.stack)
             if self.post and "post_body" in classes:
                 self.body_depth = len(self.stack)
-        elif tag == "span" and self.post:
+        elif tag == "span":
             self.stack.append(classes)
-            if "post_author" in classes:
+            if self.post and "post_author" in classes:
                 self.author_depth = len(self.stack)
-            if "post_date" in classes:
+            if self.post and "post_date" in classes:
                 self.post["date"] = attrs.get("title", "")
         elif tag in ("p", "br") and self.body_depth and self.post:
             self.post["body"] += "\n"
