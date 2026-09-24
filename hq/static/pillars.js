@@ -916,9 +916,8 @@ async function instArt(root, below, sig, g) {
         guide names — <b>${pal.named_present} occur exactly in the build</b>.
       </div>
       ${missing ? `<div class="pal-missing"><b>Guide colours without an exact match:</b> ${missing}
-        <div class="small muted">The guide's own note says its colour ranges were measured from a sprite pack
-        that is no longer in this repo. So this is not necessarily drift in the art — the guide may be
-        describing a game we no longer have. The look session's first question is which of the two it is.</div></div>` : ""}
+        <div class="small muted">The guide measured colours from older game images.
+        Compare the current colours before changing the artwork.</div></div>` : ""}
     </div>`;
   }
   root.replaceChildren(h(`<h2>The palette, as shipped</h2>${ribbon}`));
