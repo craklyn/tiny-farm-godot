@@ -11,7 +11,7 @@
     "judgment": "I think unchanged yard is fine. The pixelation is already enough to take focus from it in the case of entering a space with more pixels."
   },
   "ruled_at": "2026-09-23T20:24:23",
-  "status": "pending_integration",
+  "status": "integrated",
   "earlier": [
     {
       "id": "Q-108",
@@ -36,8 +36,12 @@
         "judgment": "Please show me how the house and a coop next to something interesting (plants and fence on either side for example) would render for each of these so I can make an informed decision."
       },
       "ruled_at": "2026-09-21T20:31:22",
-      "status": "pending_integration",
-      "revision_work_id": "wbd8f6a0d25b"
+      "status": "integrated",
+      "revision_work_id": "wbd8f6a0d25b",
+      "integrated_at": "2026-09-23T20:37:53-07:00",
+      "integrated_note": "Revision work closed in 7473733; the Q-108 comparison and card landed in 0eed400."
     }
-  ]
+  ],
+  "integrated_at": "2026-09-23T20:37:53-07:00",
+  "integrated_note": "Option a is recorded in the decision card and interiors design, and the provisional yard dim was removed in d698065. GitHub Actions run 35951965669 passed."
 }
