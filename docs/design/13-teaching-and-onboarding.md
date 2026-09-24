@@ -673,82 +673,58 @@ thing we are currently hoping the player guesses.
 | 11 | clear weeds | ring 1, when the player wants more space | the hedge opens; weeds are the only obstacle inside | designed |
 | 12 | the axe / logs | ring 2 | new ring, one new obstacle type | designed |
 | 13 | the pickaxe / rocks | ring 3 | new ring, one new obstacle type | designed |
-| 14 | sell at the bin | when the basket holds three crops | first half of the second causal chain | ✅ built 2026-08-30 (T-11) |
-| 15 | buy seeds at the box | when the pouch empties *and she can afford a seed* | second half; the payoff is *three* seeds for one crop | ✅ built 2026-08-30 (T-11) |
+| 14 | replant a harvest | after the first ripe crop, when another tilled tile is ready | the harvested species is immediately plantable; one planted unit yields three | ✅ economy built 2026-09-23; teaching beat to verify |
+| 15 | use the shipping bin | when carried stock approaches its species limit | deposit plantable stock; the bin keeps ten per species before selling surplus | ✅ economy built 2026-09-23; teaching beat to verify |
 | 16 | refilling the can at the well | when the can empties | the gap this table exposed; same shape as the other two | ✅ built 2026-08-30 (T-11) |
 | 17 | scaring a crow by walking at it | day 3+ | discovered, never taught — the crow flees whether or not she meant it | intentional |
 
-Items 14–16 are the real gap this inventory exposes, and they share a shape: all three
-are the fixed objects in the spawn band (`shipping_bin`, `seed_box`, `well`), all three
-are *economy* rather than *cultivation*, and none of them currently has a teaching beat.
-The empty seed pouch that produced the silent refusal we fixed on 2026-08-27 was this gap
-showing through: the player was never taught where seeds come from.
+Items 14–16 need a legible first encounter. Replanting closes the cultivation loop;
+the bin and well are fixed objects in the spawn band. The seed box remains available
+for other species and unlocks, but buying starter wheat no longer closes the loop.
 
-### 7a. The second causal chain: crop → coins → more seeds
+### 7a. The promoted fork: harvest → plant again
 
-*Designer's observation, 2026-08-28: the sold crop buys the next seeds, and that is what
-teaches the shop.* It is the right answer, and the existing numbers already support it
-without tuning.
+**Revised 2026-09-24 after Daniel's accepted proposal.** The 2026-08-28 version of
+this section favored crop → coins → bought seeds and named harvest-as-seed as a cheap
+fallback. That fallback is now the design for starter plants. A harvested wheat crop
+goes directly into the same carried stock used for planting and other uses. Planting
+spends one unit; a successful harvest gives three plantable units of that species
+(S-19, `[Playtest]`). The player can plant, tend, harvest, and replant without visiting
+the shop or earning gold. Selling is an outlet for surplus, not the source of the next
+starter seed. Other species' existing unlock and purchase rules remain separate.
 
-**Wheat sells for 15g; a wheat seed costs 5g.** So one harvested crop buys **three**
-seeds. To a pre-reader that reads as *I gave away one thing and got three things back* —
-a legible multiplication, and the second causal chain in the game after seed → crop. The
-first is about patience; this one is about increase, and it is what turns a garden into
-something that grows.
+**Storage supplies the reason to visit the bin later.** The player may carry ten
+plantable units *of each species* (S-18, Q-113). A future grain silo raises that to
+forty per species; it is not yet a playable building. Both numbers are `[Playtest]`.
+The shipping bin holds a separate reserve of ten plantable units per species and sells
+only what a delivery adds beyond that reserve (S-20, Q-116). The player can take
+reserved units back into carried stock. These are distinct limits: the reserve does
+not reduce carrying room. A harvest that would exceed the carried limit leaves the
+crop ripe without spending energy. Show a clear full-pouch cue before expecting a bin
+trip; its first teaching trigger should follow an actual need, not a day number.
 
-**Two properties of the current numbers make this safe, and both should be protected.**
+**Keep the no-soft-lock property.** The old argument depended on a five-seed start
+and a crow gate that allowed a harvest before loss. The direct replanting loop removes
+the coin and purchase dependency, but that alone does not prove every future rule is
+safe. A full pouch must leave stock available to plant, and a refused harvest must
+leave its ripe crop available. Changes to crow losses, inventory, or the opening farm
+must recheck that the player can always get back to a plantable crop without a required
+purchase. A pre-reader who is stuck has no way to recover through instructions (S-7).
 
-- *The shop is an accelerator, never a rescue.* The player starts with five seeds
-  (`GameState.reset()`), so the pouch cannot empty on day 1 or 2. The shop therefore
-  answers "how do I go faster?" rather than "how do I stop being stuck" — motivation
-  before mechanism, with no urgency behind it, which is what gives the two-step sell →
-  buy room to be taught calmly.
-- *There is no soft-lock, and as of T-2 there provably cannot be.* The dead state is zero
-  seeds, zero crops, zero gold and nothing planted. Reaching it requires losing every
-  planted crop, which requires crows — and crows now require at least one completed
-  harvest, so by the time anything can be taken she demonstrably holds a crop or the gold
-  from one. The crow readiness gate closed this without being aimed at it. **Any future
-  change to that gate must preserve the property**, because a pre-reader who soft-locks
-  has no way to know it and no way out (S-7: no punishing fail states).
+**Teach one new action at a time.** The first harvest should make the returned
+plantable stock apparent at the next tilled tile. Replanting belongs after the
+harvest, while the bin waits until excess exists; day 3 already carries the egg and
+first crow. The well appears when the can empties. The seed box can be taught when
+an optional species or unlock gives the player a reason to use it. Keep the core farm
+loop generally understandable with minimal literacy: try pictures, behavior, and
+highlighting first, and use a few words where they genuinely serve the player better.
+S-7 allows text; it does not require every surface to be wordless. The existing shop
+icon treatment remains useful, but the shop is no longer a gate for starter wheat.
 
-**A fork worth naming and declining.** The loop could instead close without money at all,
-by having a harvest yield a seed as well as a crop — many farming games do this, and it
-makes a soft-lock structurally impossible rather than incidentally so. It is rejected
-here because the economy already works, is generous, and teaching a real system beats
-routing around one. But it is the fallback if playtest shows the two-step sell → buy is
-one step too many, and it is cheap to switch to.
-
-**Sequencing caution.** Day 3 already carries the egg and the first crow. The economy
-beat should not join them: **one new thing per day** is the rule the whole chapter runs
-on, and the pouch emptying naturally around day 3–4 gives a free, self-scheduling trigger.
-Let the need arrive rather than placing it.
-
-**The reading risk is real and lands here.** Selling at the bin is a tap. *Buying* opens
-`ui/menus.gd`, which prints prices as text ("5g"). That screen is the one place phase 1
-currently breaks S-7's no-reading rule, and this chain is what will send a four-year-old
-into it. T-12 owns the fix; it becomes load-bearing the moment this beat ships.
-
-**Fixed 2026-08-30 (T-12).** The shop has no words in it: a seed-packet header instead of
-"SEED SHOP", a coin beside the gold numeral instead of "100g", a coin + numeral for price,
-a packet + ×numeral for what she owns, and an ✕ to close. A locked item is the same picture
-darkened — never an empty box and never "??? (Locked)", which tells a pre-reader nothing
-except that something is missing; it is the same "you can see it, not yet yours" vocabulary
-a placed tool uses (Q-46a). Numerals stay, because S-7 forbids required *reading*, not
-digits. `_scenario_j_wordless_shop` walks every Label in the screen and fails on any ASCII
-letter, so the promise is mechanical rather than remembered.
-
-**Both halves of the trigger design carry one rule worth restating**, because it is the
-kind of thing that looks like a detail and is not: the seed-box beat also requires that she
-can *afford* the cheapest seed. Pointing a pre-reader at a screen that is going to refuse
-her is worse than pointing at nothing.
-
-Recommendation, offered for **Q-35**: teach them as a fourth chapter on the day the
-player first *needs* one — first sale when the basket has three crops, first purchase
-when the pouch empties, first refill when the can empties — each as a single glowing
-object at the moment of need, which is motivation-before-mechanism applied to the
-economy. The shop screen itself is the one place where phase 1 may have to break the
-no-reading rule, and it should be designed to avoid it (crop icons, coin counts, no
-words) rather than exempted from it.
+The settled economy numbers and implementation boundaries are recorded in
+`docs/SEED_ECONOMY_PLAN.md` and S-18–S-20 of `docs/DECISION_LOG.md`. This chapter
+changes what the first session teaches; it does not add a silo or settle other
+species' acquisition and pricing.
 
 ---
 
@@ -904,7 +880,7 @@ ruler is finer.
 | Q-32 | Phase-1 loop intent: low-stress garden, or efficiency ladder? | Low-stress garden, with repetition deliberately preserved as phase-2 setup (§3) |
 | Q-33 | Adopt harvest-first opening? | Yes — it is the one change that converts instruction into motivation (§4) |
 | Q-34 | Tool-gated land rings, or all tools from the start? | Rings, with the lock expressed as land rather than refusal (§5) |
-| Q-35 | How and when to teach sell / buy / refill | At first need, one object at a time (§7) |
+| Q-35 | How and when to teach sell / buy / refill | Historical recommendation: at first need, one object at a time. Starter seed purchase is superseded by harvest → replant; teach the bin at surplus and the well at empty (§7a). |
 | Q-36 | Hint escalation: is stage 3 too much hand-holding? | Ship it; a stalled four-year-old has already cost us the gate (§6) |
 | Q-37 | The cold open: adopt, and in which form? | Adopt the live-scene revision, not the cutscene — a fence, control never taken, one verb demonstrated, the layout carries the rest (§4a) |
 | Q-38 | Replace the energy bar with a daylight cycle? | ✅ ratified 2026-08-31 — daylight stays, with an explicit sun-arc beside it (T-29) and the day re-partitioned into 600 fine units (§8a) |
@@ -914,4 +890,3 @@ ruler is finer.
 onboarding: **Q-40** (the landing page's attract loop) in `11-ux-ui.md`, and **Q-41**
 (stamping replays with the build id) which was engineering rather than taste and shipped
 the same day.*
-

@@ -441,6 +441,13 @@ filed 1.6 new verdicts on him (97 follow-ups on 61 cards, every one returning), 
 could not converge on effort alone.
 
 ### S-18. The player can carry ten plantable units of each crop species
+**Onboarding consequence, recorded 2026-09-24.** Daniel accepted harvest-as-seed
+for starter plants, promoting the fallback named in `design/13-teaching-and-onboarding.md`
+§7a. Harvested crop stock is directly plantable; the first session no longer requires
+selling a crop to buy its replacement seed. Selling serves surplus. This does not
+change other species' unlocks or purchases, and the separate implementation details
+are in `SEED_ECONOMY_PLAN.md`.
+
 **Ruled 2026-09-21 and clarified 2026-09-23 (Q-113, option b).** The carried
 limit is ten wheat, ten tomato, and so on, independently. A future grain silo
 raises each species limit to forty; no grain silo is sold or placed in this
