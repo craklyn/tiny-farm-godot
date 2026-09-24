@@ -1348,6 +1348,12 @@
   "4d450954088e73ce4adf": {
    "verdict": "ok"
   },
+  "4d8902d99b7f16417065": {
+   "instead": "Record what happened when you checked the game in a web browser",
+   "quote": "the verified result of the browser play task",
+   "verdict": "decode",
+   "why": "The reader cannot tell what the browser play task involved or what result they are meant to record."
+  },
   "4d9f8fe260fe5ca10ae3": {
    "instead": "Show working versions side by side before asking for a verdict",
    "quote": "playable comparisons",

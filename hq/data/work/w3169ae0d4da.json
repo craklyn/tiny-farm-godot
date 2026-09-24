@@ -7,33 +7,36 @@
   "tier_reason": "filed by hand",
   "ask": "Nothing records that anybody played the exported web build before a tag, so the runbook's first pre-release box measures only whether somebody ticked a box. Design the smallest honest record: an attestation keyed to the tag being cut, so it expires with each release instead of standing forever, and wire it into the launch check on the Sales & Platforms page.",
   "first_action": "Read docs/DEPLOY.md's 'Before any release' section and hq/data/goals/sales.json, then propose the record's shape.",
-  "state": "waiting_session",
+  "state": "landed",
   "thread": "victor",
   "source": "chat",
   "source_message": "Nothing records that anybody played the exported web build before a tag, so the runbook's first pre-release box measures only whether somebody ticked a box. Design the smallest honest record: an attestation keyed to the tag being cut, so it expires with each release instead of standing forever, and wire it into the launch check on the Sales & Platforms page.",
-  "result": "The gate that said \"nobody is checking this\" now has a record behind it, and a way for you to make one.\n\n**What the record is.** A new file, `hq/data/attestations.json`, holds one entry per human act that no file can measure. Each entry names three things: the tag it was made for, the commit the build came from, and the date. Those first two are what make it perish. Cutting the tag spends the record — the next release wants a different tag, and no entry exists for it. And it lapses early if anything a player would meet changes after you played: the game folders, the assets, the project file. Changes to docs, tests or the dashboard don't touch it, so ordinary work doesn't keep knocking the row over.\n\n**How you make one.** The Sales & Platforms page's row \"Somebody played the actual web build end to end before it went out\" now carries a button. First press arms it and states what you'd be claiming; second press writes the record. The server stamps the tag, the commit and the date — not the page, and not you by hand, because those are the three things a person gets wrong and the three things that make the entry worth anything. Today the row reads \"nobody has played the build Player Update 1 would ship\". After you press it, \"you played it on 2026-09-04, on the build Player Update 1 would ship\", and beside it, \"holds until v0.2.0 is cut, or until the game changes under it\". If the game moves under you it goes back to needing you, saying \"the game has changed 3 times since\".\n\nOnly you can attest — same rule the dashboard already applies to its one other attested row. The rest of the org are personas and a persona vouching for a thing nobody measured would be inventing studio activity.\n\n**Two things you should know.** The runbook's box said \"play the web build\" without saying which one — the tag is what builds and publishes the web export, so before a tag there is nothing public to play. The runbook now says to export one locally from the commit you're about to tag and serve it over HTTP, which is two remembered steps I'd rather were one command. And nothing stops a tag that has no record; the credits and playtest-readout boxes below it are enforced by the release workflow, this one is not. Both are named in the follow-ups.\n\nBoth suites are green (1983 and 528 passing). The work is in the worktree, uncommitted, as the house rules require — nothing pushed.",
+  "result": "Completed and pushed to origin/main in 82365dd, 743aedb, and 0d1fbeb. HQ now has a two-step, first-person record for playing the exported web build before the next uncut tag. The server stamps the intended tag, commit, and date. It refuses a new record while game files are dirty; an existing record lapses after committed or uncommitted game changes, and a new tag needs its own record. HQ has no login, so it does not claim to know who pressed the button.\n\nThe Sales pillar is switched off by ruling. Its parked page now shows this one release safety row without restoring its old goals. The runbook describes the normal pre-tag export and the record accurately. Nothing in the record blocks a tag automatically.\n\nVerified with nine focused Python tests, a Chrome-rendered scratch flow showing no record, first-press arming, holds, and lapsed, and the live HQ Sales page and API. The live API reads: nobody has recorded playing the web build for v0.2.1. No real attestation was created and nobody played a build as part of this task. Full CI passed on the final code commit: https://github.com/craklyn/tiny-farm-godot/actions/runs/35982173498. The prior native checker concerns were addressed, but no new native checker verdict or Daniel acceptance is claimed.",
   "started": "",
   "attempts": 1,
   "created": "2026-09-03T18:11",
   "created_ts": 1788484262.2097147,
   "follow_ups": [],
   "recommend": {},
-  "finished": "2026-09-04T09:46",
+  "finished": "2026-09-24T09:40:31Z",
   "done_by": {
     "seat": "victor",
     "model": "opus",
     "lane": "drain"
   },
   "diff": {
-    "stat": "docs/DEPLOY.md            |  12 ++++\n hq/README.md              |  14 +++-\n hq/data/attestations.json |   4 ++\n hq/data/goals/sales.json  |  15 ++--\n hq/server.py              | 177 +++++++++++++++++++++++++++++++++++++++++++++-\n hq/static/pillars.js      |  50 ++++++++++++-\n hq/static/style.css       |   3 +\n 7 files changed, 265 insertions(+), 10 deletions(-)",
+    "stat": "3 scoped code commits on origin/main",
     "files": [
       "docs/DEPLOY.md",
+      "docs/writing_verdicts.json",
       "hq/README.md",
       "hq/data/attestations.json",
-      "hq/data/goals/sales.json",
       "hq/server.py",
+      "hq/static/app.js",
       "hq/static/pillars.js",
-      "hq/static/style.css"
+      "hq/static/surface.js",
+      "hq/tests/test_web_play.py",
+      "hq/tests/test_web_play_browser.js"
     ],
     "applied": true,
     "why_not": ""
@@ -50,7 +53,7 @@
     "list_usd": 6.2093
   },
   "subject": "The store page",
-  "_revision": 1,
+  "_revision": 2,
   "completion_reconciliation": {
     "version": 1,
     "manifest_id": "38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33",
@@ -61,7 +64,6 @@
   },
   "repair_brief": "Reconcile the promised web-play attestation with the actual endpoint, UI and release-readiness behavior; verify expiration across release and game-content changes, including dirty game content, and update the runbook to match.",
   "automatic_repairs": 1,
-  "revising": true,
   "prior_results": [
     {
       "at": "2026-09-04T09:46",
@@ -93,5 +95,37 @@
       "escalates": null,
       "escalation_reason": null
     }
-  ]
+  ],
+  "closed": "2026-09-24T09:40:31Z",
+  "landed": {
+    "at": "2026-09-24T09:40:31Z",
+    "by": "Codex interactive",
+    "sha": "0d1fbeb6cc623e61ba21d5230e72337065518c87",
+    "note": "Verified endpoint and parked Sales page; no human playtest recorded."
+  },
+  "attempt_outcome": {
+    "version": 1,
+    "id": "interactive-web-play-w3169ae0d4da-20260924",
+    "status": "complete",
+    "reason": "Scoped code pushed; focused tests, Chrome flow, live API, and final CI passed.",
+    "result_id": "16d5978b9eebb7e58ba71bff1a313377c1a3ee131ddc2c436065645d54b6374c",
+    "landing_verified": true
+  },
+  "completion": {
+    "version": 1,
+    "attempt_id": "interactive-web-play-w3169ae0d4da-20260924",
+    "at": "2026-09-24T09:40:31Z",
+    "sha": "0d1fbeb6cc623e61ba21d5230e72337065518c87",
+    "by": "Codex interactive",
+    "kind": "interactive_verification",
+    "evidence": {
+      "python": "python3 -m unittest hq.tests.test_web_play hq.tests.test_release_manifest -q: 9 passed",
+      "browser": "node hq/tests/test_web_play_browser.js: Chrome rendered no-record, armed, holds, and dirty-game-lapsed states using scratch responses",
+      "live": "GET /api/web-play: v0.2.1 state none; parked Sales page visibly shows that fact and its button; no click",
+      "ci_run": "https://github.com/craklyn/tiny-farm-godot/actions/runs/35982173498",
+      "ci_conclusion": "success",
+      "native_checker": "not run; prior concerns repaired and preserved in prior_checks"
+    }
+  },
+  "revisions": 1
 }
