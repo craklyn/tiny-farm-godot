@@ -46,6 +46,9 @@
   "0368530aab1f28a6192f": {
    "verdict": "ok"
   },
+  "038f5c4db2c039a83d12": {
+   "verdict": "ok"
+  },
   "03f15dd215b2ad25eebd": {
    "verdict": "ok"
   },
@@ -353,6 +356,9 @@
   "133b2e1b2fb3a977eb1f": {
    "verdict": "ok"
   },
+  "1357a324f01b4fb9378d": {
+   "verdict": "ok"
+  },
   "13821985312c124efbe6": {
    "instead": "Remove before 'Two runs'",
    "quote": ": \"\"}",
@@ -518,6 +524,12 @@
   "1ae25d4d285dc8715e9f": {
    "verdict": "ok"
   },
+  "1b12aa70715553b2d29c": {
+   "instead": "Keep the current HUD while Elena prepares another picture design that distinguishes crop type or quantity. Ask for a new live comparison before choosing the new picture design.",
+   "quote": "another picture treatment",
+   "verdict": "second-look",
+   "why": "“Treatment” makes the reader translate a design term into the plain fact that Elena is preparing another picture design."
+  },
   "1b566635d87cc74bc23a": {
    "verdict": "ok"
   },
@@ -671,6 +683,9 @@
    "verdict": "ok"
   },
   "24a55c838265368ba00b": {
+   "verdict": "ok"
+  },
+  "24e9cb88720358fdd923": {
    "verdict": "ok"
   },
   "24ea1de910c34b36a86a": {
@@ -1003,6 +1018,12 @@
    "quote": "She walks out of the bloom",
    "verdict": "decode",
    "why": "Bare pronoun with no referent in the same sentence; the reader cannot identify who 'she' is from this text alone."
+  },
+  "36b42e0b353ba2119d7e": {
+   "instead": "Remove the rejected visual options and ask whether the basket information display is ready",
+   "quote": "Retire ruled look candidates and ask about basket HUD",
+   "verdict": "decode",
+   "why": "The reader has to work out which visual options were rejected and what “HUD” means here."
   },
   "36b7571081b931c539b3": {
    "verdict": "ok"
@@ -2337,6 +2358,9 @@
   "80dade8ba64f421f1aad": {
    "verdict": "ok"
   },
+  "80f091a1ac95d8d0437a": {
+   "verdict": "ok"
+  },
   "8142ce847dc8207d3fcd": {
    "verdict": "ok"
   },
@@ -2416,6 +2440,12 @@
   },
   "848c02b9ffbf203033df": {
    "verdict": "ok"
+  },
+  "84921caa700433f1d76d": {
+   "instead": "The picture display appeared in a draft of the already-made tap decision. Daniel rejected that decision, but the picture display was never judged on its own. Q-78 has already made the can gauge permanent, so the remaining choice is the basket's crop-count words versus its picture. The game's minimal-literacy direction makes it worth asking before the picture option is deleted.",
+   "quote": "picture HUD",
+   "verdict": "decode",
+   "why": "“HUD” is internal interface shorthand that a cold reader may not know."
   },
   "8508aef2ce5d2017c17a": {
    "verdict": "ok"
@@ -2597,6 +2627,9 @@
   "9045e59dbb1112724cc2": {
    "verdict": "ok"
   },
+  "906a794e6e83c4285b9b": {
+   "verdict": "ok"
+  },
   "9072c5defa3a69c93458": {
    "verdict": "ok"
   },
@@ -2667,6 +2700,9 @@
    "verdict": "ok"
   },
   "94b653533cb4746b6143": {
+   "verdict": "ok"
+  },
+  "95244adc2979d6981a80": {
    "verdict": "ok"
   },
   "952c2b2de84085ac2031": {
@@ -2924,6 +2960,12 @@
   "a07c490fb5e20092673e": {
    "verdict": "ok"
   },
+  "a0860726345be528f3ce": {
+   "instead": "A separate question—whether a tap that changes nothing should identify the object with a symbol and check mark—was settled on 2026-09-01.",
+   "quote": "The earlier question about how a tap that changes nothing should name the object with a symbol and check mark was settled separately on 2026-09-01",
+   "verdict": "second-look",
+   "why": "The reader must untangle a nested description to understand which earlier question was settled."
+  },
   "a0bc94e710ffb8638e4f": {
    "verdict": "ok"
   },
@@ -3052,6 +3094,9 @@
    "verdict": "ok"
   },
   "a7e2570d73f5801899a5": {
+   "verdict": "ok"
+  },
+  "a7f45eee1ab99b87bd33": {
    "verdict": "ok"
   },
   "a82b03802e1b6b0a8fad": {
@@ -3258,6 +3303,12 @@
   "b2f9ad9f90ee5d6a7e29": {
    "verdict": "ok"
   },
+  "b34edef741d2cc06e010": {
+   "instead": "An earlier design decision already made the can gauge permanent.",
+   "quote": "Q-78 already made the can gauge permanent.",
+   "verdict": "decode",
+   "why": "Q-78 is an unexplained internal reference, so the reader cannot know which earlier decision made the gauge permanent."
+  },
   "b3685853aa102f694a4a": {
    "verdict": "ok"
   },
@@ -3272,6 +3323,9 @@
    "quote": "A worker can start these actions",
    "verdict": "decode",
    "why": "The reader has to know that a worker is the automated task that starts an action."
+  },
+  "b529c3473ed4e4ef64d3": {
+   "verdict": "ok"
   },
   "b5833064b22f80a15104": {
    "verdict": "ok"
@@ -3580,6 +3634,9 @@
    "verdict": "second-look",
    "why": "Passive construction hides the actor (what would stop holding? what agent spoils the games?) and the sentence is rearranged for effect rather than clarity."
   },
+  "c55be8e0adefa5e8cff9": {
+   "verdict": "ok"
+  },
   "c583c724abfaa744760e": {
    "baselined": "2026-09-19",
    "instead": "Saved — see your sheet in the Work section.",
@@ -3757,6 +3814,12 @@
   },
   "ceda827233d8ff27798a": {
    "verdict": "ok"
+  },
+  "cf11b4aa033b0dadcc95": {
+   "instead": "The picture HUD was included in a draft, but that draft omitted the comparison.",
+   "quote": "bundled into a draft that lost a comparison",
+   "verdict": "second-look",
+   "why": "“Lost a comparison” makes the reader infer that the draft omitted the comparison."
   },
   "cf3c320572f82e8993d4": {
    "verdict": "ok"
@@ -3999,6 +4062,12 @@
    "verdict": "second-look",
    "why": "\"Back-end labels\" is unclear—database keys, configuration values, or something else?"
   },
+  "da1b8b58310629ad203e": {
+   "instead": "The picture display appeared in a draft of the reply shown after a tap.",
+   "quote": "already-done tap reply",
+   "verdict": "decode",
+   "why": "“Tap reply” is internal shorthand whose meaning a reader would have to work out."
+  },
   "da4181ebe25092a65578": {
    "verdict": "ok"
   },
@@ -4079,6 +4148,12 @@
    "quote": "Make a work card carry its deliverable before it reaches the CEO",
    "verdict": "second-look",
    "why": "“Carry its deliverable” makes the reader translate a metaphor instead of plainly saying the card must include the deliverable."
+  },
+  "de173edd283083d6cd07": {
+   "instead": "When the player taps the basket without changing anything, the game needs a response. One proposed response also replaced the basket's crop counts with pictures; Daniel rejected that tap response, but the team has not decided whether the basket should show pictures or crop counts. A previous decision already made the can gauge permanent. Because the game is designed for people who may read little, decide which basket display to keep before deleting the picture option.",
+   "quote": "An earlier comparison asked how the game should answer a tap that changes nothing.",
+   "verdict": "decode",
+   "why": "The paragraph refers to an earlier discussion and several unnamed options, so a cold reader cannot tell what decision still needs to be made."
   },
   "dee15b89307447b19d07": {
    "verdict": "ok"
@@ -4437,8 +4512,17 @@
   "f6615d37222be7fa6f52": {
    "verdict": "ok"
   },
+  "f6758057eb85ad85ec24": {
+   "verdict": "ok"
+  },
   "f6791e393e1c6defd387": {
    "verdict": "ok"
+  },
+  "f6a63c4992143be42aa3": {
+   "instead": "Ask for a new live comparison before choosing the new picture treatment.",
+   "quote": "before choosing it",
+   "verdict": "second-look",
+   "why": "“It” could refer to the current HUD or to Elena’s new picture treatment."
   },
   "f6b68f2a1848449a1ee5": {
    "verdict": "ok"

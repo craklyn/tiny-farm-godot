@@ -13,27 +13,11 @@
 #      or repeated tapping gets farmed for stimulation (Q-42). The complaint is
 #      **legibility, not volume**: the cue says "yes" and never says *to what*.
 #
-# **The final form is the designer's, so this file draws no conclusion.** Two
-# treatments per problem ride along in one build and are switched on the tablet
-# with a thumb — Q-31's Sound Test precedent, as T-27 box 5 applied it to the
-# cot. The two problems are **separate axes** on purpose: they are different
-# failures with different fixes, and a build that only lets you judge them as
-# four fixed combinations is a build that cannot tell you which half worked.
-# Both defaulted to OFF while the question was open — the designer needs to see
-# what he complained about beside the drafts, and a draft that cannot be
-# compared to the status quo is not a draft. He ruled on 2026-09-01, so each axis
-# now ships wearing his pick (`DISCOVERY_SHIPPED`, `SATISFIED_SHIPPED`) and the
-# switch stays so the pick can be revisited against OFF on the device.
-#
-# Layer note: **presentation only, and pure.** Static functions over sim reads,
-# like `teaching_focus.gd` — no Node, no autoload, no rendering, no `Input`, and
-# no randomness at all (the glint's *timing* is cosmetic and is rolled in
-# `main.gd` from `CosmeticRng`, never `SimRng`: a hint that flickers on a
-# different frame in two runs of one replay is correct, and one that moves the
-# sim's dice is finding F-2). Nothing here can gate, delay or alter
-# `apply_action` (D-8): every station tap resolves at the tap under every
-# treatment, which is what Scenario AB asserts treatment by treatment. All four
-# treatments are wordless (S-7) — light, motion and pictograms, no text.
+# The designer picked purpose pips and the noun-and-tick reply on 2026-09-01.
+# The wordless HUD bundled with the losing reply remains a separate, unanswered
+# question: should the basket contents be pictures rather than crop-count text?
+# Keep SATISFIED_CHIP until that question is decided from a side-by-side capture.
+# Presentation reads sim truth and never changes an action or replay (D-8).
 class_name StationPresentation
 
 # --- The three stations ------------------------------------------------------
@@ -42,7 +26,7 @@ class_name StationPresentation
 # three objects and the same "has she ever done this" counters answer both. The
 # counters are sim truth (`GameState.total_shipped` / `cans_refilled` /
 # `seeds_bought`, saved and replayed), so "never used" needs no new flag —
-# which is the property that lets every treatment here retire itself.
+# which is the property that lets each pip retire itself.
 const BIN := "shipping_bin"
 const WELL := "well"
 const BOX := "seed_box"
@@ -86,72 +70,39 @@ const GLYPH_ATLAS := {
 
 # --- Axis 1: discovery -------------------------------------------------------
 
-const DISCOVERY_OFF := 0
-# A — an unused station occasionally catches the light. No condition beyond
-#     "she has never used it": the station is not answering a need, it is simply
-#     *there*, and a thing that glints is a thing worth walking to.
-const DISCOVERY_GLINT := 1
-# B — a purpose pip, at the moment the station becomes the answer. A glyph
-#     bubble floats over it — a coin over the bin when the basket has something
-#     in it, the can over the well when hers is not full, a packet over the box
-#     when she can afford a seed — and stops the first time she uses it.
-const DISCOVERY_PIP := 2
-const DISCOVERY_COUNT := 3
-
-# **The designer picked B (2026-09-01)**, from live captures of both drafts, so
-# the pip is the default the game ships with — the same way the cot's dusk-glow
-# pick landed (T-27). The axis stays in the Look Lab so the pick can be
-# revisited against OFF on the device.
-const DISCOVERY_SHIPPED := DISCOVERY_PIP   # see `CotPresentation.SHIPPED`
-
-static var discovery: int = DISCOVERY_SHIPPED
-
-const DISCOVERY_NAMES: Array[String] = [
-	"off · as today",
-	"A · idle glints",
-	"B · purpose pips",
-]
-const DISCOVERY_BLURBS: Array[String] = [
-	"nothing until she needs it — the game as it is today",
-	"an unused station catches the light now and then",
-	"a glyph floats over the station that is the answer",
-]
-
+# Purpose pips are the ruled discovery cue; no discovery switch remains.
+const DISCOVERY_PIP := 0
+const DISCOVERY_SHIPPED := DISCOVERY_PIP
 
 # --- Axis 2: the already-done answer -----------------------------------------
 
-const SATISFIED_OFF := 0
 # A — the answer names itself. Same ring, same sparkles, same quiet tick, same
 #     volume; it gains a **noun and a check**. A full can at the well answers
 #     with a can and a tick, an empty basket at the bin with an empty basket, an
 #     already-watered crop with a droplet. The cue stops saying only "yes" and
 #     starts saying "yes, *this*".
-const SATISFIED_NOUN := 1
-# B — the state shows before the tap, so the answer arrives before the question
-#     does. Her can's fullness and her basket's emptiness become pictures on the
-#     HUD instead of "Water: 8/8" and "Wh:0", and a watered crop wears a droplet.
-#     The cue at the tap is untouched; this treatment is about the thirteen taps
-#     that should never have been asked.
-const SATISFIED_CHIP := 2
-const SATISFIED_COUNT := 3
+const SATISFIED_NOUN := 0
+# The retained comparison shows basket contents as pictures instead of crop-count
+# words. Q-78 already made the can gauge permanent, under both settings. This
+# branch also carries a watered-crop droplet from the old bundled treatment;
+# Q-119 asks only about the HUD and does not overrule the noun-and-tick verdict.
+const SATISFIED_CHIP := 1
+const SATISFIED_COUNT := 2
 
 # **The designer picked A (2026-09-01)**, with one condition — the noun must
 # *show, then fade*, not fade from birth (its alpha used to ride the ring's
 # decaying envelope; `world/farm.gd` now holds it full until the cue's last
-# third). Default ships as the pick, axis stays in the Look Lab, as above.
+# third). The noun reply ships as the ruled pick.
 const SATISFIED_SHIPPED := SATISFIED_NOUN
 
 static var satisfied: int = SATISFIED_SHIPPED
 
-const SATISFIED_NAMES: Array[String] = [
-	"off · as today",
-	"A · the answer names itself",
-	"B · the state shows first",
-]
+# CHIP retains the picture HUD for the separate designer question. It is a
+# comparison setting, not a reversal of the ruled noun-and-tick reply.
+const SATISFIED_NAMES: Array[String] = ["noun and tick", "picture HUD"]
 const SATISFIED_BLURBS: Array[String] = [
-	"ring, sparkles and a tick, saying only \"yes\"",
-	"the same cue, carrying the noun it is talking about",
-	"can, basket and water readable before she taps",
+	"the cue carries the noun it answers",
+	"the can and basket can be read as pictures before a tap",
 ]
 
 # Which noun answers which of `ActionRouter.satisfied_reason`'s codes. Data, not
@@ -169,45 +120,14 @@ static func noun_for(reason: String) -> String:
 	return String(SATISFIED_GLYPHS.get(reason, ""))
 
 
-# --- The switches ------------------------------------------------------------
-#
-# Statics on a `class_name` script, exactly like `CotPresentation.treatment` and
-# for the same reasons: they outlive a trip to the title screen and back, and
-# they are deliberately NOT in GameState, because a developer's A/B dial is not
-# farm state and `GameState.reset()` must not touch it.
-
-static func set_discovery(t: int) -> int:
-	discovery = posmod(t, DISCOVERY_COUNT)
-	return discovery
-
-
-static func cycle_discovery() -> int:
-	return set_discovery(discovery + 1)
-
-
+# The picture HUD is kept reachable for a controlled comparison until ruled.
 static func set_satisfied(t: int) -> int:
 	satisfied = posmod(t, SATISFIED_COUNT)
 	return satisfied
 
 
-static func cycle_satisfied() -> int:
-	return set_satisfied(satisfied + 1)
-
-
-static func discovery_name(t: int) -> String:
-	return DISCOVERY_NAMES[posmod(t, DISCOVERY_COUNT)]
-
-
-static func discovery_blurb(t: int) -> String:
-	return DISCOVERY_BLURBS[posmod(t, DISCOVERY_COUNT)]
-
-
 static func satisfied_name(t: int) -> String:
 	return SATISFIED_NAMES[posmod(t, SATISFIED_COUNT)]
-
-
-static func satisfied_blurb(t: int) -> String:
-	return SATISFIED_BLURBS[posmod(t, SATISFIED_COUNT)]
 
 
 # --- Has she ever used it? ---------------------------------------------------
@@ -253,7 +173,7 @@ static func relevant(gs, kind: String) -> bool:
 	return false
 
 
-# --- Treatment B: the purpose pips -------------------------------------------
+# --- The ruled purpose pips ------------------------------------------------
 #
 # `[{ "at": Vector2i, "glyph": String }]`, or empty. Pure read.
 #
@@ -280,7 +200,7 @@ static func relevant(gs, kind: String) -> bool:
 # means *do this now*, quiet floating glyph means *this is what that is for*.
 static func pips(world, gs, player_t: Vector2i = Vector2i(-1, -1)) -> Array[Dictionary]:
 	var out: Array[Dictionary] = []
-	if discovery != DISCOVERY_PIP or world == null or gs == null:
+	if world == null or gs == null:
 		return out
 	# Nothing is taught until the farm is hers — guard 0 of the arbitration, for
 	# the same reason: during the cold open the neighbour is the show.
@@ -295,56 +215,6 @@ static func pips(world, gs, player_t: Vector2i = Vector2i(-1, -1)) -> Array[Dict
 			continue
 		out.append({ "at": at, "glyph": String(STATION_GLYPHS[kind]) })
 	return out
-
-
-# --- Treatment A: the idle glints --------------------------------------------
-#
-# Which stations are allowed to catch the light: the ones she has never used.
-# *When* one does is cosmetic and is rolled in `main.gd` — one station at a time,
-# on a long random interval, from `CosmeticRng`.
-static func glint_candidates(world, gs, player_t: Vector2i = Vector2i(-1, -1)) -> Array[Vector2i]:
-	var out: Array[Vector2i] = []
-	if discovery != DISCOVERY_GLINT or world == null or gs == null:
-		return out
-	if not TeachingFocus.handed_over(world):
-		return out
-	var rows := VignetteState.page_rows(world, player_t)
-	for kind in STATIONS:
-		if used(gs, kind):
-			continue
-		var at := find_station(world, kind, rows)
-		if at.x >= 0:
-			out.append(at)
-	return out
-
-
-# [Playtest] Long enough to read as weather rather than as a prompt: the whole
-# point of a glint is that it is not asking for anything.
-const GLINT_MIN_S := 7.0
-const GLINT_MAX_S := 14.0
-const GLINT_DUR := 1.05
-
-
-# [Playtest] Warps the swell's time so the peak lands at GLINT_DUR * 0.31 rather
-# than at its middle. A symmetric envelope is a *pulse*, and the cot owns
-# pulsing (T-27 treatment B); two things breathing at each other across one farm
-# is noise. Light catching a surface arrives faster than it leaves.
-const GLINT_SKEW := 0.6
-
-
-# 0 outside the glint, a swell inside it, skewed early.
-static func glint_alpha(elapsed: float) -> float:
-	if elapsed <= 0.0 or elapsed >= GLINT_DUR:
-		return 0.0
-	var e: float = elapsed / GLINT_DUR
-	return sin(pow(e, GLINT_SKEW) * PI)
-
-
-# Where the sweep has got to, 0 at the top-left corner of the sprite and 1 past
-# the bottom-right. Linear on purpose: the light moves at a constant rate and
-# only its brightness swells.
-static func glint_sweep(elapsed: float) -> float:
-	return clampf(elapsed / GLINT_DUR, 0.0, 1.0)
 
 
 # --- Shared -------------------------------------------------------------------

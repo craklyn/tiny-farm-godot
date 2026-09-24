@@ -358,10 +358,8 @@ func _ready() -> void:
 	_on_weather_changed(GameState.weather)
 
 	# T-27 box 5 and T-28: whichever drafts the session is carrying. Applied once
-	# here and again whenever a switch is thrown, so a farm that was already
-	# running picks it up without reloading (which is the point of switching from
-	# the pause menu at dusk rather than from the title screen).
-	_apply_cot_treatment()
+	# here so the camera carries Q-68's ruled top limit from the first frame.
+	_refresh_camera_limits()
 	_apply_station_treatment()
 
 
@@ -511,30 +509,6 @@ func _update_daylight() -> void:
 	_tint = Daylight.tint_for(GameState.energy, GameState.max_energy)
 	if world_tint != null:
 		world_tint.color = _tint
-	_update_cot_look()
-
-
-# T-27 box 5, treatment C: the cot's two cells, chosen on the same signal the sky
-# is. Riding the daylight update rather than polling is deliberate — the treatment
-# reads the *same number* Q-38 renders as light, so the bed can never turn itself
-# down at a different hour than the one the sky is showing. The freeze in
-# `_update_daylight` covers this too: the bed she is lying in stays turned down
-# for the whole transition instead of remaking itself under her.
-func _update_cot_look() -> void:
-	if farm == null:
-		return
-	var down := CotPresentation.turned_down(GameState.energy, GameState.max_energy)
-	if down != farm.cot_turned_down:
-		farm.cot_turned_down = down
-		farm.queue_redraw()
-
-
-# Everything a treatment change touches outside the per-frame overlay: the camera
-# (Q-68's fix, which A and B carry and C does not) and the cot's cell. Cheap
-# enough to just re-run, and it is only ever called from `_ready` and the switch.
-func _apply_cot_treatment() -> void:
-	_refresh_camera_limits()
-	_update_cot_look()
 
 
 # --- The camera is page-scoped (2026-09-06, the door) -------------------------
@@ -802,15 +776,8 @@ func way_to_bed() -> Vector2i:
 	return _bed_way
 
 
-# T-28's two axes, applied live. Both are read per frame by whoever draws them
-# (the overlay for discovery, `world/farm.gd` and the HUD for the already-done
-# answer), so there is nothing to push — except the farm's redraw, because the
-# satisfied axis changes what a *watered tile* looks like and tiles only redraw
-# when something asks them to. The glint's schedule is reset so a switch does
-# not leave half a sparkle from the treatment before it on screen.
+# Refresh the farm when the retained HUD comparison changes a watered tile.
 func _apply_station_treatment() -> void:
-	_glint_at = Vector2i(-1, -1)
-	_glint_next = 0.0
 	if farm != null:
 		farm.queue_redraw()
 
@@ -878,12 +845,6 @@ func _process(delta: float) -> void:
 	# What is left here is the frame boundary, exactly like the clock pump above.
 	if farm != null:
 		farm.sync_actors()
-
-	# T-28 discovery treatment A: whose turn it is to catch the light. Above the
-	# day-transition return with the clock and the actors, because a glint is
-	# weather rather than gameplay — but it does nothing at all under the other
-	# treatments, so this costs one comparison when it is switched off.
-	_tick_station_glints(delta)
 
 	# Skip gameplay during day transition.
 	#
@@ -1155,9 +1116,9 @@ func _handle_action_result(action: String) -> void:
 		# The look lab's switch was thrown from the pause menu (debug builds
 		# only). The menu has already moved something — one axis advanced, or the
 		# whole set put back to the picks; this is the live farm catching up
-		# without a reload — camera limit, cot cell, station state — and a toast
+		# without a reload — camera limit and station state — and a toast
 		# so a tablet says out loud what changed and to what.
-		_apply_cot_treatment()
+		_refresh_camera_limits()
 		_apply_station_treatment()
 		if hud != null and hud.has_method("show_toast"):
 			hud.show_toast(LookLab.last_change_text())
@@ -1639,41 +1600,6 @@ var cot_draws: int = 0
 # The same witness for T-28's station block (Scenario AB), and the same reason.
 var station_draws: int = 0
 
-# The idle glint's schedule (T-28, discovery treatment A). Which station is
-# currently catching the light, when it started, and how long until the next one.
-#
-# **`CosmeticRng`, never `SimRng`.** Both the interval and the choice of station
-# are things that may differ between two runs of the same replay without either
-# being wrong — which is exactly the carve-out `cosmetic_rng.gd` exists for, and
-# the opposite of finding F-2, where a renderer's timers drew from the sim's
-# stream and a frame rate could move the sim's dice.
-var _glint_at: Vector2i = Vector2i(-1, -1)
-var _glint_start: float = 0.0
-var _glint_next: float = 0.0
-
-
-func _tick_station_glints(delta: float) -> void:
-	if farm == null or StationPresentation.discovery != StationPresentation.DISCOVERY_GLINT:
-		_glint_at = Vector2i(-1, -1)
-		return
-	var now := Time.get_ticks_msec() / 1000.0
-	if _glint_at.x >= 0:
-		if now - _glint_start < StationPresentation.GLINT_DUR:
-			return  # one at a time: two things twinkling is a choice, not a hint
-		_glint_at = Vector2i(-1, -1)
-	_glint_next -= delta
-	if _glint_next > 0.0:
-		return
-	_glint_next = CosmeticRng.randf_range(
-		StationPresentation.GLINT_MIN_S, StationPresentation.GLINT_MAX_S)
-	var candidates: Array[Vector2i] = StationPresentation.glint_candidates(
-		farm.sim, GameState, player.get_tile_pos() if player else Vector2i(-1, -1))
-	if candidates.is_empty():
-		return
-	_glint_at = candidates[CosmeticRng.randi_range(0, candidates.size() - 1)]
-	_glint_start = now
-
-
 # Where a station's sprite actually sits, which is not its tile: the well and the
 # seed box are 16x32 and rise north, the bin is 16x16 (`world/farm.gd` draws
 # objects at `py - (h - TILE_SIZE)`). A pip floating over the *tile* would sit
@@ -1689,9 +1615,9 @@ func _station_rect(at: Vector2i) -> Rect2:
 	return Rect2(px, py - (h - TILE_SIZE), TILE_SIZE, h)
 
 
-# T-28's discovery axis, drawn. Presentation throughout: it reads sim state and
+# T-28's ruled purpose pips, drawn. Presentation throughout: it reads sim state and
 # `GameState` and draws, and nothing it does can reach `apply_action` (D-8) — a
-# tap on a pipped, glinting bin sells exactly when a tap on a bare one does,
+# tap on a pipped bin sells exactly when a tap on a bare one does,
 # which Scenario AB asserts treatment by treatment.
 func _draw_station_presentation(overlay: CanvasItem) -> void:
 	if farm == null:
@@ -1739,28 +1665,6 @@ func _draw_station_presentation(overlay: CanvasItem) -> void:
 			c + Vector2(-2.2, PIP_R - 0.6), c + Vector2(2.2, PIP_R - 0.6),
 			c + Vector2(0.0, PIP_R + 3.0)]), _lit(Color(0.10, 0.09, 0.16, 0.62)))
 
-	# A — the idle glint: a catch of light travelling across an unused station.
-	# Deliberately **not** daylight-compensated, for the reason the cot's lamp is
-	# not: compensation exists to stop a painted hint going muddy under the tint,
-	# and this is not paint, it is a highlight on a surface. It takes the hour's
-	# colour because a real one would.
-	if _glint_at.x >= 0:
-		var e := t - _glint_start
-		var a := StationPresentation.glint_alpha(e)
-		if a > 0.0:
-			var gr := _station_rect(_glint_at)
-			var s := StationPresentation.glint_sweep(e)
-			var head := gr.position + Vector2(gr.size.x * s, gr.size.y * (0.15 + 0.7 * s))
-			# A four-point star at the head of the sweep, and two dots behind it.
-			var arm: float = 4.2 * a
-			var star := Color(1.0, 0.99, 0.88, 0.9 * a)
-			overlay.draw_line(head - Vector2(arm, 0), head + Vector2(arm, 0), star, 1.0)
-			overlay.draw_line(head - Vector2(0, arm), head + Vector2(0, arm), star, 1.0)
-			overlay.draw_circle(head, 1.3, Color(1, 1, 1, a))
-			for i in 2:
-				var f: float = maxf(0.0, s - 0.16 * (i + 1))
-				var p := gr.position + Vector2(gr.size.x * f, gr.size.y * (0.15 + 0.7 * f))
-				overlay.draw_circle(p, 1.0 - 0.25 * i, Color(1.0, 0.98, 0.85, a * (0.5 - 0.2 * i)))
 	station_draws += 1
 
 
@@ -1797,25 +1701,18 @@ func _draw_cot_presentation(overlay: CanvasItem) -> void:
 	var cot_rect := CotPresentation.cue_rect(at, TILE_SIZE,
 		WorldLayout.is_door_object(farm.get_object(at.x, at.y)))
 
-	# Treatment B replaces the Q-11 pulse with a superset of itself — earlier,
-	# deeper, quicker — so the two are never drawn together and nothing is lost
-	# when it is the one selected. Under A and C, Q-11's floor is exactly what it
-	# has always been: "night must stay SOFT ... the cot pulses."
-	var b := CotPresentation.pulse_alpha(GameState.energy, GameState.max_energy, t)
-	if b <= 0.0 and CotPresentation.at_floor(GameState.energy):
+	# Q-11's settled floor pulse remains beneath the dusk glow.
+	var b := 0.0
+	if CotPresentation.at_floor(GameState.energy):
 		b = 0.25 + 0.2 * sin(Time.get_ticks_msec() / 300.0)
 	if b > 0.0:
 		overlay.draw_rect(cot_rect, _lit(Color(1.0, 0.95, 0.6, b * 0.35)), true)
 		overlay.draw_rect(cot_rect, _lit(Color(1.0, 0.95, 0.6, b)), false, 1.5)
 
-	# Treatment A is not drawn here — it is light, so it has its own additive
-	# canvas (`_draw_cot_glow`). Treatment C is not drawn here either: it is the
-	# sprite, swapped in `world/farm.gd` off `cot_turned_down`. That is worth
-	# having in the A/B — one of the three candidates costs nothing per frame.
 	cot_draws += 1
 
 
-# Treatment A. Concentric rings, largest first, so the added light accumulates
+# Dusk glow. Concentric rings, largest first, so the added light accumulates
 # toward the wick: a pool with a falloff rather than a disc with an edge. Runs on
 # `CotGlowRenderer`, which blends additively — see where it is built for why that
 # is not a detail.

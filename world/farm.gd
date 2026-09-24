@@ -76,14 +76,6 @@ var crop_regions: Dictionary = {}     # crop_type -> { stage -> Rect2 }
 var object_regions: Dictionary = {}   # object_name -> Rect2
 var glyph_regions: Dictionary = {}    # T-28 glyph key -> [texture, Rect2]
 
-# T-27 box 5, treatment C: which of the cot's two cells to draw — the made bed or
-# the turned-down one. Pushed in rather than worked out here, because this file
-# has no GameState and must not gain one (finding F-4); `main.gd` sets it from the
-# same daylight update the sky's tint comes from. Default false, so every other
-# renderer of a farm (the attract loop, the replay viewer) draws the made bed
-# without knowing this exists.
-var cot_turned_down: bool = false
-
 # How many ripe crops this renderer has drawn a cue on, ever. The integration
 # suite's witness that each treatment renders (Scenario RC), and it exists for
 # the reason `main.gd`'s `cot_draws` does: a draw callback that throws half way
@@ -519,11 +511,6 @@ func _load_textures() -> void:
 	# Object regions map, one sheet per object (cot, well, seed_box 16x32;
 	# bin, acorn, egg 16x16). Format: object_name -> [texture, rect]
 	object_regions["cot"] = [load("res://assets/sprites/generated/cot.png"), Rect2(0, 0, 16, 32)]
-	# T-27 box 5, treatment C. Not an object the sim knows about — no verb, no
-	# footprint, nothing in `OBJECT_POSITIONS`: it is the cot with its blanket
-	# pulled back, cell 1 of the cot's sheet, and `cot_turned_down` chooses
-	# between the two below.
-	object_regions["cot_turned_down"] = [object_regions["cot"][0], Rect2(16, 0, 16, 32)]
 	object_regions["well"] = [load("res://assets/sprites/generated/well.png"), Rect2(0, 0, 16, 32)]
 	object_regions["shipping_bin"] = [load("res://assets/sprites/generated/shipping_bin.png"), Rect2(0, 0, 16, 16)]
 	object_regions["seed_box"] = [load("res://assets/sprites/generated/seed_box.png"), Rect2(0, 0, 16, 32)]
@@ -1660,13 +1647,7 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 						canvas.draw_texture_rect_region(small_tex, egg_rect, small_reg)
 				})
 			elif obj != "":
-				# T-27 box 5 (treatment C): the same object, in its other state.
-				# Only the picture changes — the tile still holds "cot", so taps,
-				# saves, replays and `TALL_OBJECTS` are all untouched.
-				var key: String = obj
-				if obj == "cot" and cot_turned_down:
-					key = "cot_turned_down"
-				var obj_data = object_regions.get(key)
+				var obj_data = object_regions.get(obj)
 				if obj_data:
 					var tex: Texture2D = obj_data[0]
 					var region: Rect2 = obj_data[1]

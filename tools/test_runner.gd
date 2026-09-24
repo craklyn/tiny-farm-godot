@@ -2476,7 +2476,6 @@ func _scenario_x_three_looks_for_the_cot() -> void:
 	GameState.save_path = "user://t27x_autosave.json"
 	GameState.replay_path = "user://t27x_replay.json"
 	GameState.trace_path = "user://t27x_trace.jsonl"
-	var was_treatment: int = CotPresentation.treatment
 
 	var cot: Vector2i = main_scene._cot_tile
 	_assert(cot.x >= 0, "the farm has a cot")
@@ -2489,12 +2488,8 @@ func _scenario_x_three_looks_for_the_cot() -> void:
 	# **The switch is gone** (2026-09-08). Every look question the lab carried has
 	# been ruled, so the pause menu is back to the two lines a player has, and
 	# what is asserted here is the cot as it *ships* rather than three candidates
-	# one of which won. The other two still exist in `cot_presentation.gd` and are
-	# no longer reachable from the game; removing them is filed separately, and
-	# this scenario deliberately does not exercise them, because a suite that
-	# tests unreachable code reports health it cannot vouch for.
-	CotPresentation.set_treatment(CotPresentation.SHIPPED)
-	main_scene._apply_cot_treatment()
+	# one of which won. The other two have now been deleted, so this scenario
+	# exercises only the shipped dusk glow and Q-11's settled floor pulse.
 	main_scene.menus.open_menu("pause")
 	await get_tree().process_frame
 	var labels: Array = []
@@ -2524,7 +2519,7 @@ func _scenario_x_three_looks_for_the_cot() -> void:
 
 	# The shipped cot, in the real scene: it draws, it looks like itself, and the
 	# tap still resolves at the tap.
-	var label: String = CotPresentation.name_of(CotPresentation.SHIPPED)
+	var label: String = "dusk glow"
 	# Dusk, which is the hour this cue is about. 60 of 600 is where `energy = 2`
 	# sat on the old 20-point day (T-29) — the same instant.
 	GameState.set_energy(60)
@@ -2532,8 +2527,6 @@ func _scenario_x_three_looks_for_the_cot() -> void:
 
 	_assert(main_scene.camera.limit_top == _expected_camera_top(),
 		"%s: the camera carries this look's Q-68 answer" % label)
-	_assert(not farm.cot_turned_down,
-		"%s: and the bed is made, not turned down" % label)
 
 	# Renders. The counter is the witness: a draw callback that throws part way
 	# through prints a red line and fails nothing, so the assertion is that the
@@ -2561,11 +2554,8 @@ func _scenario_x_three_looks_for_the_cot() -> void:
 	for i in 5:
 		await get_tree().process_frame
 
-	# Put everything back: the default is A, and the next scenario (and the human
-	# holding the tablet) gets the game as shipped.
-	CotPresentation.set_treatment(was_treatment)
-	main_scene._apply_cot_treatment()
-	_assert(CotPresentation.treatment == CotPresentation.GLOW,
+	# The cot remains on its ruled look for the next scenario.
+	_assert(CotPresentation.SHIPPED == CotPresentation.GLOW,
 		"and the build's default, restored, is A — the box stays the designer's to tick")
 	GameState.pouch["wheat"] = 5
 	for p in [GameState.save_path, GameState.replay_path, GameState.trace_path]:
@@ -2940,9 +2930,7 @@ func _scenario_ab_the_stations_present_themselves() -> void:
 	# against the real main scene.
 	print("\n--- Scenario AB: the stations present themselves, and none of it gates a tap (T-28) ---")
 
-	var was_d: int = StationPresentation.discovery
 	var was_s: int = StationPresentation.satisfied
-	var was_cot: int = CotPresentation.treatment
 
 	# --- door 1: the pause menu no longer carries look lines -----------------
 	#
@@ -2983,7 +2971,6 @@ func _scenario_ab_the_stations_present_themselves() -> void:
 	await get_tree().process_frame
 	# Back to the shipped defaults for the scenario below, which the panel's own
 	# pick used to do on its way past.
-	StationPresentation.set_discovery(StationPresentation.DISCOVERY_PIP)
 	StationPresentation.set_satisfied(StationPresentation.SATISFIED_NOUN)
 
 	# --- the world the drafts need -------------------------------------------
@@ -3012,71 +2999,36 @@ func _scenario_ab_the_stations_present_themselves() -> void:
 			art_ok = false
 	_assert(art_ok, "and the live farm resolved every T-28 glyph to a real texture")
 
-	# --- the discovery treatments, in the real scene -------------------------
-	for d in [StationPresentation.DISCOVERY_OFF, StationPresentation.DISCOVERY_GLINT,
-			StationPresentation.DISCOVERY_PIP]:
-		var label: String = StationPresentation.discovery_name(d)
-		StationPresentation.set_discovery(d)
-		main_scene._apply_station_treatment()
+	# The ruled pip renders and a bin tap still resolves through the gateway.
+	var drew: int = main_scene.station_draws
+	for i in 4:
 		await get_tree().process_frame
-
-		var drew: int = main_scene.station_draws
-		for i in 4:
-			await get_tree().process_frame
-		_assert(main_scene.station_draws > drew,
-			"%s: the station block draws to completion, frame after frame (%d)"
-				% [label, main_scene.station_draws - drew])
-
-		var pips: Array[Dictionary] = StationPresentation.pips(
-			farm.sim, GameState, player.get_tile_pos())
-		var on_bin := false
-		for pip in pips:
-			if pip["at"] == bin:
-				on_bin = true
-		_assert(on_bin == (d == StationPresentation.DISCOVERY_PIP),
-			"%s: a coin floats over the bin only under B" % label)
-
-	# The glint's scheduler, driven for real: it must pick an unused station from
-	# CosmeticRng and never sit on two at once.
-	StationPresentation.set_discovery(StationPresentation.DISCOVERY_GLINT)
-	main_scene._apply_station_treatment()
-	var lit := await _wait_until(func(): return main_scene._glint_at.x >= 0, 900)
-	_assert(lit, "under A a station does eventually catch the light (%s)" % main_scene._glint_at)
-	if lit:
-		_assert(StationPresentation.glint_candidates(farm.sim, GameState).has(main_scene._glint_at),
-			"and it is one she has never used")
-
-	# --- D-8, once per discovery treatment: the tap still sells ---------------
-	for d2 in [StationPresentation.DISCOVERY_OFF, StationPresentation.DISCOVERY_GLINT,
-			StationPresentation.DISCOVERY_PIP]:
-		StationPresentation.set_discovery(d2)
-		main_scene._apply_station_treatment()
-		GameState.pouch["wheat"] = 0 + 1
-		GameState.pouch["tomato"] = 0
-		GameState.total_shipped = 0
-		player.pos = Vector2(bin.x * 16 + 8.0, (bin.y + 1) * 16 + 8.0)
-		player.path.clear()
-		player.pending_action = {}
-		await get_tree().process_frame
-		InputManager.click_tile = bin
-		InputManager.has_click = true
-		var open := await _wait_until(
-			func(): return main_scene.menus.active_menu == "bin", 200)
-		_assert(open, "%s: the bin tap still opens its menu"
-			% StationPresentation.discovery_name(d2))
-		if open:
-			var before_deposits: int = GameState.bin_deposits
-			_press_row(main_scene.menus.options_container, 0)
-			_assert(GameState.bin_deposits == before_deposits + 1,
-				"%s: pressing Deposit sends a sim action" % StationPresentation.discovery_name(d2))
-			main_scene.menus.close_menu()
+	_assert(main_scene.station_draws > drew,
+		"the purpose pip renderer completes each frame")
+	var pips: Array[Dictionary] = StationPresentation.pips(
+		farm.sim, GameState, player.get_tile_pos())
+	_assert(pips.any(func(pip): return pip["at"] == bin),
+		"the first-use bin carries a coin pip")
+	player.pos = Vector2(bin.x * 16 + 8.0, (bin.y + 1) * 16 + 8.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	InputManager.click_tile = bin
+	InputManager.has_click = true
+	var opened := await _wait_until(func(): return main_scene.menus.active_menu == "bin", 200)
+	_assert(opened, "the pipped bin opens on a tap")
+	if opened:
+		var before_deposits: int = GameState.bin_deposits
+		_press_row(main_scene.menus.options_container, 0)
+		_assert(GameState.bin_deposits == before_deposits + 1,
+			"Deposit still sends one sim action")
+		main_scene.menus.close_menu()
 
 	# --- the already-done treatments -----------------------------------------
 	_stage_tile(11, 8, "cleared")
 	_stage_tile(12, 8, "seeded", "wheat")
 	farm.water_tile(12, 8)
-	for s in [StationPresentation.SATISFIED_OFF, StationPresentation.SATISFIED_NOUN,
-			StationPresentation.SATISFIED_CHIP]:
+	for s in [StationPresentation.SATISFIED_NOUN, StationPresentation.SATISFIED_CHIP]:
 		var slabel: String = StationPresentation.satisfied_name(s)
 		StationPresentation.set_satisfied(s)
 		main_scene._apply_station_treatment()
@@ -3140,7 +3092,7 @@ func _scenario_ab_the_stations_present_themselves() -> void:
 	_assert(hud.can_gauge_fill.size.y == 0.0 and hud.can_chip.modulate.r < 0.9,
 		"and an empty can empties the gauge — so 'go to the well' is visible from anywhere")
 
-	StationPresentation.set_satisfied(StationPresentation.SATISFIED_OFF)
+	StationPresentation.set_satisfied(StationPresentation.SATISFIED_NOUN)
 	await get_tree().process_frame
 	await get_tree().process_frame
 	# Q-78 (ruled 2026-09-01): the can chip is no longer treatment B's to take
@@ -3154,12 +3106,9 @@ func _scenario_ab_the_stations_present_themselves() -> void:
 	GameState.pouch["wheat"] = 0
 	GameState.pouch["tomato"] = 0
 	GameState.watering_can_charges = GameState.max_watering_can_charges
-	StationPresentation.set_discovery(was_d)
 	StationPresentation.set_satisfied(was_s)
-	CotPresentation.set_treatment(was_cot)
 	main_scene._apply_station_treatment()
-	main_scene._apply_cot_treatment()
-	_assert(StationPresentation.discovery == StationPresentation.DISCOVERY_PIP
+	_assert(StationPresentation.DISCOVERY_SHIPPED == StationPresentation.DISCOVERY_PIP
 			and StationPresentation.satisfied == StationPresentation.SATISFIED_NOUN,
 		"and the build's defaults, restored, are the 2026-09-01 picks — pips, and the noun")
 

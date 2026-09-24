@@ -1,0 +1,38 @@
+{
+  "id": "Q-119",
+  "owner": "elena",
+  "title": "Should the basket's contents be pictures on the screen?",
+  "question": "Look at the bottom bar in the paired live-game capture. The left frame shows the shipped crop counts ('Wh:2 To:1'); the right shows a basket with three small contents marks. The farm, can level, tool and camera are identical. Which basket readout should the player see? The tap reply was settled on 2026-09-01: a tap that changes nothing identifies the object with a symbol and check mark. This question does not reopen that reply.",
+  "why_now": "Daniel already chose how taps that change nothing respond: show the object and a check mark. One rejected draft also included pictures of the basket's contents on the game screen. That display has never been judged separately. The can gauge is already permanent. This card asks whether to keep the current crop-count words or use the basket picture, given the goal of requiring little reading.",
+  "options": [
+    {
+      "key": "a",
+      "label": "Keep crop-count text",
+      "detail": "Keep the shipped 'Wh:2 To:1' readout. It distinguishes wheat from tomato and gives exact counts at a glance, but asks the player to read abbreviations. The can gauge remains a picture under either choice."
+    },
+    {
+      "key": "b",
+      "label": "Use basket pictures",
+      "detail": "Show the basket and its contents marks instead of the crop-count words. It reads without abbreviations and shows whether the basket is empty or has crops, but the current marks do not distinguish crop species or show exact counts above the visible marks."
+    },
+    {
+      "key": "c",
+      "label": "Revise the pictures first",
+      "detail": "Keep the current crop-count display while Elena prepares another picture design that distinguishes crop type or quantity. Ask for a new live comparison before choosing the new picture design."
+    }
+  ],
+  "links": [
+    {
+      "label": "Designer queue entry (Q-119)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+    }
+  ],
+  "attachments": [
+    {
+      "type": "image",
+      "src": "docs/design/mockups/hud_pictures/side_by_side.png",
+      "caption": "Live game, same seed and state in both frames: 2 wheat and 1 tomato carried, can half full. Left: shipped crop-count text. Right: basket picture. The can gauge stays in both. Captured by tools/capture_hud_question.tscn, not a painted mockup."
+    }
+  ],
+  "subject": "Wordless basket display"
+}

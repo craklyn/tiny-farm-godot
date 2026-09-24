@@ -3034,7 +3034,6 @@ func test_energy_repartition() -> void:
 	# `energy / max_energy`, so re-partitioning must be invisible to them. This is
 	# the proof rather than the claim: the old scale and the new one are asked the
 	# same question at every equivalent instant and must answer identically.
-	CotPresentation.set_treatment(CotPresentation.GLOW)
 	for e in range(0, 21):
 		var fine: int = e * 30
 		_assert_quiet(Daylight.tint_for(e, 20).is_equal_approx(Daylight.tint_for(fine, 600)),
@@ -3053,18 +3052,6 @@ func test_energy_repartition() -> void:
 		_assert_quiet(is_equal_approx(CotPresentation.glow_alpha(e, 20, 1.25),
 				CotPresentation.glow_alpha(fine, 600, 1.25)),
 			"lamp at %d/20 == lamp at %d/600" % [e, fine])
-	CotPresentation.set_treatment(CotPresentation.PULSE)
-	for e in range(0, 21):
-		var fine2: int = e * 30
-		_assert_quiet(is_equal_approx(CotPresentation.pulse_strength(e, 20),
-				CotPresentation.pulse_strength(fine2, 600)),
-			"pulse at %d/20 == pulse at %d/600" % [e, fine2])
-	CotPresentation.set_treatment(CotPresentation.TURNDOWN)
-	for e in range(0, 21):
-		var fine3: int = e * 30
-		_assert_quiet(CotPresentation.turned_down(e, 20) == CotPresentation.turned_down(fine3, 600),
-			"turndown at %d/20 == turndown at %d/600" % [e, fine3])
-	CotPresentation.set_treatment(CotPresentation.GLOW)
 	_flush_quiet("every fraction-reader gives the same answer at both scales, at all 21 instants")
 
 	# Q-11's own floor pulse moved from `energy <= 2` to a stated threshold, and
@@ -9471,100 +9458,23 @@ func test_cot_halo() -> void:
 
 
 func test_cot_presentation() -> void:
-	# T-27 (box 5). Three treatments in one build, switched on device — the
-	# designer's pick, not this file's. What is asserted here is only what a
-	# treatment is *allowed* to be: pure arithmetic over the number Q-38 already
-	# renders as light, with no way to reach the sim.
-	print("\n--- T-27: the cot's three looks (box 5) ---")
-
-	var was: int = CotPresentation.treatment
+	print("\n--- T-27: the ruled dusk glow and Q-11 floor pulse ---")
 	var maxe := 20
-
-	# The default is A, and the switch is a cycle with no dead end.
-	CotPresentation.set_treatment(CotPresentation.GLOW)
-	_assert(CotPresentation.treatment == CotPresentation.GLOW,
-		"the default treatment is A, the dusk glow")
-	_assert(CotPresentation.cycle() == CotPresentation.PULSE, "cycling A gives B")
-	_assert(CotPresentation.cycle() == CotPresentation.TURNDOWN, "cycling B gives C")
-	_assert(CotPresentation.cycle() == CotPresentation.GLOW, "cycling C comes back to A")
-	_assert(CotPresentation.NAMES.size() == CotPresentation.COUNT
-			and CotPresentation.BLURBS.size() == CotPresentation.COUNT,
-		"every treatment has a name and a blurb, so neither switch can list a blank")
-
-	# --- A: the lamp ---------------------------------------------------------
-	CotPresentation.set_treatment(CotPresentation.GLOW)
-	_assert(CotPresentation.dusk_ramp(maxe, maxe) == 0.0,
-		"a full day is not dusk — nothing lights up at dawn")
-	_assert(CotPresentation.glow_alpha(maxe, maxe, 0.0) == 0.0,
-		"so treatment A draws nothing at all at the top of the day")
-	_assert(CotPresentation.dusk_ramp(0, maxe) == 1.0, "an empty day is fully lit")
-	var mid := CotPresentation.dusk_ramp(3, maxe)  # f = 0.15, inside the ramp
-	_assert(mid > 0.0 and mid < 1.0, "and it arrives as a ramp, not a switch (%.2f)" % mid)
-	_assert(CotPresentation.glow_alpha(0, maxe, 0.0) > 0.0,
-		"the lamp is on at an empty day")
+	_assert(CotPresentation.SHIPPED == CotPresentation.GLOW,
+		"the designer's pick is the dusk glow")
+	_assert(CotPresentation.dusk_ramp(maxe, maxe) == 0.0
+			and CotPresentation.glow_alpha(maxe, maxe, 0.0) == 0.0,
+		"the lamp is dark at dawn")
+	_assert(CotPresentation.dusk_ramp(0, maxe) == 1.0
+			and CotPresentation.glow_alpha(0, maxe, 0.0) > 0.0,
+		"the lamp lights as the day runs out")
 	_assert(CotPresentation.dusk_ramp(0, 0) == 0.0,
-		"a world with no max energy asks for no light rather than dividing by zero")
-
-	# Only one treatment draws at a time — that is what makes an A/B an A/B.
-	_assert(CotPresentation.pulse_alpha(0, maxe, 0.0) == 0.0,
-		"A does not also run B's pulse")
-	_assert(not CotPresentation.turned_down(0, maxe), "and does not turn the bed down")
-
-	# --- B: the pulse, earlier and stronger ----------------------------------
-	CotPresentation.set_treatment(CotPresentation.PULSE)
-	_assert(CotPresentation.pulse_strength(maxe, maxe) == 0.0,
-		"B is silent at the top of the day")
-	_assert(CotPresentation.pulse_strength(0, maxe) == 1.0,
-		"and at full strength on an empty one")
-	# The box says "starts at a low-energy threshold and scales as energy drains".
-	var early := CotPresentation.pulse_strength(6, maxe)   # f = 0.30
-	var late := CotPresentation.pulse_strength(2, maxe)    # f = 0.10 — Q-11's old trigger
-	_assert(early > 0.0, "it has started well before the old energy<=2 trigger")
-	_assert(late > early, "and it is louder later — the cot breathes harder as bedtime nears")
-
-	# It must be a superset of the Q-11 pulse it stands in for, at every energy
-	# where that one drew at all. Q-11's floor swings in [0.05, 0.45]; sampling
-	# the swing is the only honest way to compare two sines.
-	for e in [0, 1, 2]:
-		var hi := -1.0
-		var lo := 2.0
-		for i in 200:
-			var v: float = CotPresentation.pulse_alpha(e, maxe, i * 0.037)
-			hi = maxf(hi, v)
-			lo = minf(lo, v)
-		_assert(hi >= 0.45,
-			"at energy %d B swings at least as bright as Q-11's floor (%.2f)" % [e, hi])
-		_assert(hi - lo >= 0.4,
-			"and at energy %d it still comes all the way down — it breathes (%.2f)" % [e, hi - lo])
-	_assert(CotPresentation.glow_alpha(0, maxe, 0.0) == 0.0, "B does not also light a lamp")
-	_assert(not CotPresentation.turned_down(0, maxe), "and does not turn the bed down")
-
-	# --- C: the bed turns itself down ----------------------------------------
-	CotPresentation.set_treatment(CotPresentation.TURNDOWN)
-	_assert(not CotPresentation.turned_down(maxe, maxe), "C leaves the bed made at dawn")
-	_assert(CotPresentation.turned_down(0, maxe), "and turns it down once the day is spent")
-	_assert(CotPresentation.turned_down(5, maxe), "from the same dusk threshold A uses")
-	_assert(CotPresentation.pulse_alpha(0, maxe, 0.0) == 0.0
-			and CotPresentation.glow_alpha(0, maxe, 0.0) == 0.0,
-		"and draws nothing into the overlay at all — the whole treatment is one sprite")
-
-	# --- Q-68, folded in -----------------------------------------------------
-	# A and B take fix (d): the camera reserves the HUD bar's height, so at the
-	# top clamp the world sits below the bar instead of under it. C keeps (a),
-	# because its cue lives below the bar anyway. Picking a treatment therefore
-	# also rules Q-68, which is the point.
-	CotPresentation.set_treatment(CotPresentation.GLOW)
-	_assert(CotPresentation.camera_top_limit(30.0, 3) == -10,
-		"A drops the camera's top limit by the bar's height in world pixels")
-	CotPresentation.set_treatment(CotPresentation.PULSE)
-	_assert(CotPresentation.camera_top_limit(30.0, 3) == -10, "so does B")
-	CotPresentation.set_treatment(CotPresentation.TURNDOWN)
-	_assert(CotPresentation.camera_top_limit(30.0, 3) == 0,
-		"C does not move the camera — its cue is below the bar already")
-	_assert(CotPresentation.camera_top_limit(30.0, 0) == 0,
-		"and a zero scale asks for no shift rather than dividing by zero")
-
-	CotPresentation.set_treatment(was)
+		"zero max energy does not divide by zero")
+	_assert(CotPresentation.at_floor(60) and not CotPresentation.at_floor(61),
+		"Q-11's floor pulse still starts with two base actions left")
+	_assert(CotPresentation.camera_top_limit(30.0, 3) == -10
+			and CotPresentation.camera_top_limit(30.0, 0) == 0,
+		"Q-68's ruled camera offset is unconditional at a valid scale")
 
 
 func test_crop_presentation() -> void:
@@ -9969,46 +9879,16 @@ func test_station_presentation() -> void:
 	# hers, and none of it touches the sim.
 	print("\n--- The stations present themselves (T-28) Tests ---")
 
-	var was_d: int = StationPresentation.discovery
 	var was_s: int = StationPresentation.satisfied
-	var was_cot: int = CotPresentation.treatment
-
-	# --- the two axes, and the fact that they really are two -----------------
-	# Shipped OFF while the drafts awaited judgement; the designer ruled on
-	# 2026-09-01 — pips for discovery, the noun for already-done — so the ruled
-	# picks ARE the defaults now, exactly as the cot's dusk-glow pick landed.
-	_assert(StationPresentation.discovery == StationPresentation.DISCOVERY_PIP
+	_assert(StationPresentation.DISCOVERY_SHIPPED == StationPresentation.DISCOVERY_PIP
 			and StationPresentation.satisfied == StationPresentation.SATISFIED_NOUN,
-		"the axes ship the designer's picks — B · purpose pips, A · the answer names itself")
-
-	StationPresentation.set_discovery(StationPresentation.DISCOVERY_OFF)
-	StationPresentation.set_satisfied(StationPresentation.SATISFIED_OFF)
-	_assert(StationPresentation.cycle_discovery() == StationPresentation.DISCOVERY_GLINT,
-		"cycling discovery off gives A, the idle glints")
-	_assert(StationPresentation.cycle_discovery() == StationPresentation.DISCOVERY_PIP,
-		"cycling A gives B, the purpose pips")
-	_assert(StationPresentation.cycle_discovery() == StationPresentation.DISCOVERY_OFF,
-		"and B wraps back to off, so a thumb can never park it on nothing")
-	_assert(StationPresentation.satisfied == StationPresentation.SATISFIED_OFF,
-		"three turns of the discovery axis left the other one exactly where it was")
-
-	_assert(StationPresentation.cycle_satisfied() == StationPresentation.SATISFIED_NOUN,
-		"and the already-done axis cycles on its own: off gives A")
-	_assert(StationPresentation.cycle_satisfied() == StationPresentation.SATISFIED_CHIP,
-		"A gives B")
-	_assert(StationPresentation.cycle_satisfied() == StationPresentation.SATISFIED_OFF,
-		"B wraps back to off")
-	_assert(StationPresentation.discovery == StationPresentation.DISCOVERY_OFF,
-		"having moved nothing on the discovery axis — the two problems are judged separately")
-	_assert(StationPresentation.set_discovery(-1) == StationPresentation.DISCOVERY_PIP
-			and StationPresentation.set_satisfied(7) == StationPresentation.SATISFIED_NOUN,
-		"and an out-of-range set wraps rather than crashing or parking on nothing")
-
-	_assert(StationPresentation.DISCOVERY_NAMES.size() == StationPresentation.DISCOVERY_COUNT
-			and StationPresentation.DISCOVERY_BLURBS.size() == StationPresentation.DISCOVERY_COUNT
-			and StationPresentation.SATISFIED_NAMES.size() == StationPresentation.SATISFIED_COUNT
-			and StationPresentation.SATISFIED_BLURBS.size() == StationPresentation.SATISFIED_COUNT,
-		"every treatment on both axes has a name and a blurb for the two switches")
+		"stations ship with purpose pips and the noun reply")
+	_assert(StationPresentation.set_satisfied(StationPresentation.SATISFIED_CHIP)
+			== StationPresentation.SATISFIED_CHIP,
+		"the wordless HUD remains available for the separate designer question")
+	StationPresentation.set_satisfied(was_s)
+	_assert(StationPresentation.SATISFIED_NAMES.size() == StationPresentation.SATISFIED_COUNT,
+		"the retained HUD comparison has names")
 
 	# --- the look lab, at rest ------------------------------------------------
 	#
@@ -10127,7 +10007,6 @@ func test_station_presentation() -> void:
 
 	# Before the handover, nothing at all: the neighbour is the show, and a hint
 	# on a farm that is not hers yet is a hint on a tile whose tap does nothing.
-	StationPresentation.set_discovery(StationPresentation.DISCOVERY_PIP)
 	gs.pouch["wheat"] = 2
 	_assert(StationPresentation.pips(world, gs).is_empty(),
 		"during the cold open the stations say nothing — guard 0, shared with the highlight")
@@ -10217,94 +10096,32 @@ func test_station_presentation() -> void:
 	for pip in StationPresentation.pips(world, gs):
 		_assert(pip["at"] != box, "and buying once retires it")
 
-	# The other treatments do not leak into this one.
-	gs.pouch["wheat"] = 0
-	gs.pouch["tomato"] = 0
-	gs.total_shipped = 0
-	gs.bin_deposits = 0
-	gs.cans_refilled = 0
-	gs.seeds_bought = 0
-	gs.pouch["wheat"] = 0 + 3
-	StationPresentation.set_discovery(StationPresentation.DISCOVERY_OFF)
-	_assert(StationPresentation.pips(world, gs).is_empty()
-			and StationPresentation.glint_candidates(world, gs).is_empty(),
-		"switched off, neither treatment draws anything — off is today's game exactly")
-	StationPresentation.set_discovery(StationPresentation.DISCOVERY_GLINT)
-	_assert(StationPresentation.pips(world, gs).is_empty(),
-		"and A never floats a pip")
-
-	# --- the glints ----------------------------------------------------------
-	var glints := StationPresentation.glint_candidates(world, gs)
-	_assert(glints.size() == 3 and glints.has(bin) and glints.has(well) and glints.has(box),
-		"under A every station she has never used may catch the light (%d)" % glints.size())
-	world.apply_action({ "verb": "sell", "actor": "player" }, gs)
-	var glints2 := StationPresentation.glint_candidates(world, gs)
-	_assert(glints2.size() == 2 and not glints2.has(bin),
-		"a station she has used stops glinting — the treatment retires itself, station by station")
-	StationPresentation.set_discovery(StationPresentation.DISCOVERY_PIP)
-	_assert(StationPresentation.glint_candidates(world, gs).is_empty(),
-		"and B never glints")
-
-	_assert(StationPresentation.glint_alpha(-0.1) == 0.0
-			and StationPresentation.glint_alpha(0.0) == 0.0
-			and StationPresentation.glint_alpha(StationPresentation.GLINT_DUR) == 0.0,
-		"a glint is nothing before it starts and nothing after it ends")
-	var peak := 0.0
-	var peak_at := 0.0
-	for i in 101:
-		var e: float = StationPresentation.GLINT_DUR * i / 100.0
-		var v: float = StationPresentation.glint_alpha(e)
-		if v > peak:
-			peak = v
-			peak_at = i / 100.0
-	_assert(peak > 0.95 and peak <= 1.0,
-		"and swells to a full but bounded brightness (%.2f)" % peak)
-	_assert(peak_at < 0.5,
-		"reaching it in the first half of the glint (at %.0f%%)" % (peak_at * 100.0))
-	_assert(StationPresentation.glint_alpha(StationPresentation.GLINT_DUR * 0.15)
-			> StationPresentation.glint_alpha(StationPresentation.GLINT_DUR * 0.85),
-		"skewed early — a catch of light arrives faster than it leaves, so it is not a pulse")
-	_assert(StationPresentation.glint_sweep(0.0) == 0.0
-			and StationPresentation.glint_sweep(StationPresentation.GLINT_DUR) == 1.0
-			and StationPresentation.glint_sweep(99.0) == 1.0,
-		"and the sweep crosses the sprite once and stays put")
-	_assert(StationPresentation.GLINT_MIN_S >= 5.0,
-		"the interval is long enough to read as weather rather than as a prompt (%.1fs)"
-			% StationPresentation.GLINT_MIN_S)
-
 	# --- D-8: none of this can reach the gateway -----------------------------
 	#
 	# Every treatment is presentation, so asking it what to draw must leave the
 	# world byte-identical. Cheap to prove and the one property that would break
 	# replays if it were ever false.
 	var before := SaveGame.capture_canonical(world, gs)
-	for d in [StationPresentation.DISCOVERY_OFF, StationPresentation.DISCOVERY_GLINT,
-			StationPresentation.DISCOVERY_PIP]:
-		StationPresentation.set_discovery(d)
-		for s in [StationPresentation.SATISFIED_OFF, StationPresentation.SATISFIED_NOUN,
-				StationPresentation.SATISFIED_CHIP]:
-			StationPresentation.set_satisfied(s)
-			StationPresentation.pips(world, gs, Vector2i(9, 9))
-			StationPresentation.glint_candidates(world, gs)
-			for kind in StationPresentation.STATIONS:
-				StationPresentation.used(gs, kind)
-				StationPresentation.relevant(gs, kind)
-				StationPresentation.find_station(world, kind)
+	for sat in [StationPresentation.SATISFIED_NOUN, StationPresentation.SATISFIED_CHIP]:
+		StationPresentation.set_satisfied(sat)
+		StationPresentation.pips(world, gs, Vector2i(9, 9))
+		for kind in StationPresentation.STATIONS:
+			StationPresentation.used(gs, kind)
+			StationPresentation.relevant(gs, kind)
+			StationPresentation.find_station(world, kind)
 	_assert(SaveGame.capture_canonical(world, gs) == before,
-		"asking any treatment what to draw, nine ways, changed nothing in the world (D-8)")
+		"asking either retained HUD comparison what to draw, changed nothing in the world (D-8)")
 
 	# A missing GameState is a renderer that is starting up, not a crash.
 	_assert(StationPresentation.pips(world, null).is_empty()
-			and StationPresentation.glint_candidates(null, gs).is_empty()
 			and StationPresentation.used(null, StationPresentation.BIN),
 		"and a half-built scene asks these questions safely")
 
 	gs.free()
-	StationPresentation.set_discovery(was_d)
 	StationPresentation.set_satisfied(was_s)
-	_assert(StationPresentation.discovery == StationPresentation.DISCOVERY_PIP
+	_assert(StationPresentation.DISCOVERY_SHIPPED == StationPresentation.DISCOVERY_PIP
 			and StationPresentation.satisfied == StationPresentation.SATISFIED_NOUN,
-		"and the build's defaults, restored, are the ruled picks — the Look Lab can still dissent")
+		"and the ruled picks are restored")
 
 
 # --- The zoo (T-33) -----------------------------------------------------------

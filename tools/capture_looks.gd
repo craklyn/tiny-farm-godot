@@ -86,10 +86,8 @@ func _shoot(scenario: Dictionary) -> String:
 		# says so itself) and covers the treatments that read state the staging
 		# sets, like the hour the bed is looked at.
 		LookLab.set_to(axis, draft)
-		main_scene._apply_cot_treatment()
 		main_scene._apply_station_treatment()
 		await _stage(scenario)
-		main_scene._apply_cot_treatment()
 		main_scene._apply_station_treatment()
 		var waited := await _after_switch(id)
 		# A draft that had to be waited for has just *started*; the full settle
