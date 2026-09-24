@@ -79,9 +79,5 @@
     "sha": "",
     "note": "Current runners judge each invocation’s own process output and exit status in private scratch/data paths; preserve a distinct named log and check exit status or nonempty output for manual runs."
   },
-  "pending_followups": {
-    "version": 1,
-    "attempt_id": "operator-audit-w37ca945abca2-2026-09-24",
-    "items": []
-  }
+  "_revision": 3
 }
