@@ -15,6 +15,23 @@ const context = { console, ImageData, Uint8ClampedArray };
 vm.createContext(context);
 vm.runInContext(source, context);
 
+for (const name of ["can", "plant"]) {
+  assert.equal(context.spShowcasePath(`path/${encodeURIComponent(`assets/showcase/watering_beam/${name}.png`)}`),
+    `assets/showcase/watering_beam/${name}.png`);
+}
+for (const route of ["path/assets/raw/can.png", "path/assets/showcase/../raw/can.png",
+  "path/assets/showcase/watering_beam/can.jpg", "path/%ZZ"]) {
+  assert.equal(context.spShowcasePath(route), null);
+}
+const animSource = fs.readFileSync(path.join(__dirname, "../static/anim.js"), "utf8");
+const chipStart = animSource.indexOf("function anSourceChip(");
+const chipEnd = animSource.indexOf("\n\n/*", chipStart);
+const chipContext = vm.createContext({ esc: x => x, encodeURIComponent });
+vm.runInContext(animSource.slice(chipStart, chipEnd), chipContext);
+assert.match(chipContext.anSourceChip("assets/showcase/watering_beam/can.png"),
+  /href="#\/sprite\/path\/assets%2Fshowcase%2Fwatering_beam%2Fcan\.png"/);
+assert.doesNotMatch(chipContext.anSourceChip("assets/sprites/generated/bird.png"), /href=/);
+
 const catalog = JSON.parse(fs.readFileSync(path.join(__dirname, "../data/entities.json"), "utf8"));
 const entities = Object.fromEntries(catalog.groups.flatMap(group => group.entities).map(entity => [entity.id, entity]));
 for (const id of ["terrain_field", "terrain_yard", "terrain_floor"]) {

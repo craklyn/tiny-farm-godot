@@ -34,6 +34,13 @@ function anStop() {
   if (anBusyTimer) { clearInterval(anBusyTimer); anBusyTimer = null; }
 }
 
+function anSourceChip(source) {
+  const label = `<code class="ref">${esc(source.split("/").pop())}</code>`;
+  return source.startsWith("assets/showcase/")
+    ? `<a class="plain" href="#/sprite/path/${encodeURIComponent(source)}" title="Edit ${esc(source)}">${label}</a>`
+    : label;
+}
+
 /* Slice a horizontal sheet into its frames, once, and keep them as canvases. */
 function anSlice(src, w, h, n) {
   const out = [];
@@ -427,8 +434,7 @@ async function renderAnimLoop(slug) {
       <span>›</span> <b>${esc(anTitle(L.slug))}</b></p>
     <h1>${esc(anTitle(L.slug))}</h1>
     <p class="sub">${L.frames} frames · ${w}×${hh} · drawn ${esc(L.drawn || "")}${
-      (L.sources || []).length ? ` · from ${L.sources.map(s =>
-        `<code class="ref">${esc(s.split("/").pop())}</code>`).join(" ")}` : ""}</p>
+      (L.sources || []).length ? ` · from ${L.sources.map(anSourceChip).join(" ")}` : ""}</p>
     ${(L.stale || []).length ? `<div class="card an-stalebar">
       <div><b>! This was drawn before ${L.stale.map(s =>
         `<code class="ref">${esc(s.split("/").pop())}</code>`).join(" and ")} changed.</b>

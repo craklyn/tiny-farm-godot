@@ -2006,6 +2006,21 @@ def land_sprite_edit(rec, work_id=""):
     return state
 
 
+def editable_sprite_path(sheet):
+    """Return an existing editable PNG, with its canonical ledger path."""
+    if (not isinstance(sheet, str) or not sheet.endswith(".png") or
+            os.path.isabs(sheet) or "\\" in sheet or
+            os.path.normpath(sheet) != sheet):
+        return None
+    full = os.path.realpath(os.path.join(USER_WORKSPACE, sheet))
+    roots = ("assets/sprites", "assets/showcase")
+    if not any(sheet.startswith(root + "/") and
+               full.startswith(os.path.realpath(os.path.join(USER_WORKSPACE, root)) + os.sep)
+               for root in roots):
+        return None
+    return full if os.path.isfile(full) else None
+
+
 def save_sprite(payload):
     """Write an edited sheet back into assets/ and append the edit to that sheet's
     ledger (studio.py): every step kept in sequence, with his own one-line answer
@@ -2018,10 +2033,9 @@ def save_sprite(payload):
     import base64
     sheet = str(payload.get("sheet", ""))
     data_url = str(payload.get("data_url", ""))
-    full = os.path.realpath(os.path.join(USER_WORKSPACE, sheet))
-    root = os.path.realpath(os.path.join(USER_WORKSPACE, "assets", "sprites"))
-    if not (full.startswith(root + os.sep) and full.endswith(".png") and os.path.isfile(full)):
-        return {"error": "sheet must be an existing PNG under assets/sprites/"}
+    full = editable_sprite_path(sheet)
+    if not full:
+        return {"error": "sheet must be an existing PNG under assets/sprites/ or assets/showcase/"}
     prefix = "data:image/png;base64,"
     if not data_url.startswith(prefix):
         return {"error": "expected a PNG data URL"}
@@ -2062,10 +2076,9 @@ def revert_sprite(payload):
         seq = int(payload.get("seq"))
     except (TypeError, ValueError):
         return {"error": "which step?"}
-    full = os.path.realpath(os.path.join(USER_WORKSPACE, sheet))
-    root = os.path.realpath(os.path.join(USER_WORKSPACE, "assets", "sprites"))
-    if not (full.startswith(root + os.sep) and full.endswith(".png") and os.path.isfile(full)):
-        return {"error": "sheet must be an existing PNG under assets/sprites/"}
+    full = editable_sprite_path(sheet)
+    if not full:
+        return {"error": "sheet must be an existing PNG under assets/sprites/ or assets/showcase/"}
     key = studio.sheet_key(sheet)
     want = studio.png_at(key, seq)
     if want is None:

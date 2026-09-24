@@ -161,6 +161,23 @@ class AnimationLabTests(unittest.TestCase):
         anim._INDEX_CACHE["key"] = None
         self.assertEqual(anim.loops_index()["loops"][0]["stale"], [])
 
+    def test_showcase_save_invalidates_loop_index(self):
+        source = self.repo / "assets" / "showcase" / "watering_beam" / "can.png"
+        source.parent.mkdir(parents=True)
+        source.write_bytes(b"can")
+        self.script().write_text('CAN = "assets/showcase/watering_beam/can.png"\n', encoding="utf-8")
+        out = self.repo / "tools" / "experiments" / "out" / "sprout"
+        out.mkdir()
+        meta = out / "params.json"
+        meta.write_text(json.dumps({"params": [], "values": {}}), encoding="utf-8")
+        now = time.time()
+        os.utime(source, (now - 10, now - 10))
+        os.utime(meta, (now, now))
+        self.assertEqual(anim.loops_index()["loops"][0]["stale"], [])
+        os.utime(source, (now + 10, now + 10))
+        self.assertEqual(anim.loops_index()["loops"][0]["stale"],
+                         ["assets/showcase/watering_beam/can.png"])
+
     def test_start_run_records_work_before_launch_without_running_session(self):
         with mock.patch.object(anim.execution, "launch_allowed", return_value=True), \
                 mock.patch.object(anim.threading, "Thread", StoppedThread), \

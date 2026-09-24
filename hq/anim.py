@@ -110,6 +110,14 @@ def _index_key():
                 parts.append((name, os.path.getmtime(os.path.join(full, name))))
         except OSError:
             parts.append((d, 0))
+    # Source art is nested by loop. Directory mtimes alone do not change when
+    # an existing PNG is repainted, so include each file's own mtime.
+    showcase = _repo("assets/showcase")
+    for base, _, files in os.walk(showcase):
+        for name in sorted(files):
+            if name.endswith(".png"):
+                path = os.path.join(base, name)
+                parts.append((path, os.path.getmtime(path)))
     for extra in (RUNS, os.path.join(DATA, "anim_asks")):
         try:
             parts.append((extra, os.path.getmtime(extra)))

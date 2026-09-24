@@ -117,6 +117,33 @@ class SpriteCommits(unittest.TestCase):
         })
         self.assertEqual(self.git("status", "--short"), "M unrelated.txt")
 
+    def test_showcase_sheet_uses_the_same_save_and_revert_ledger(self):
+        sheet = "assets/showcase/watering_beam/can.png"
+        target = self.repo / sheet
+        target.parent.mkdir(parents=True)
+        target.write_bytes(PNG)
+        self.git("add", sheet)
+        self.git("commit", "-qm", "Add showcase art")
+        saved = server.save_sprite({
+            "sheet": sheet,
+            "data_url": "data:image/png;base64," + base64.b64encode(PNG + b"x").decode(),
+            "entity_name": "can", "note": "Clean up the handle.",
+        })
+        self.assertTrue(saved["landed"]["ok"])
+        self.assertEqual(target.read_bytes(), PNG + b"x")
+        self.assertIn(sheet, self.committed_paths())
+        self.assertEqual(server.revert_sprite({"sheet": sheet, "seq": 0})["landed"]["ok"], True)
+        self.assertEqual(target.read_bytes(), PNG)
+
+    def test_editor_rejects_traversal_and_raw_sources(self):
+        for sheet in ("assets/raw/can.png", "assets/showcase/../raw/can.png",
+                      "/assets/showcase/watering_beam/can.png", "assets/showcase/missing.png"):
+            self.assertIsNone(server.editable_sprite_path(sheet))
+        raw = self.repo / "assets" / "raw"
+        raw.mkdir(parents=True)
+        (raw / "borrowed.png").symlink_to(self.repo / SHEET)
+        self.assertIsNone(server.editable_sprite_path("assets/raw/borrowed.png"))
+
 
 if __name__ == "__main__":
     unittest.main()

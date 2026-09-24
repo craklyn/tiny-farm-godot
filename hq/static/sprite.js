@@ -93,6 +93,18 @@ function spSaveRects(ent, frame, sheetW, sheetH) {
 
 function spGroundIndex(x, y) { return (y % 3) * 3 + x % 3; }
 
+function spShowcasePath(route) {
+  if (!route.startsWith("path/")) return null;
+  try {
+    const path = decodeURIComponent(route.slice(5));
+    const parts = path.split("/");
+    if (parts.length < 4 || parts[0] !== "assets" || parts[1] !== "showcase" ||
+        !parts.slice(2, -1).every(p => /^[A-Za-z0-9_-]+$/.test(p)) ||
+        !/^[A-Za-z0-9_-]+\.png$/.test(parts[parts.length - 1])) return null;
+    return path;
+  } catch { return null; }
+}
+
 function spRollHalf(data) {
   const w = data.width, h = data.height;
   const out = new ImageData(w, h);
@@ -105,34 +117,42 @@ function spRollHalf(data) {
 }
 
 async function renderSpriteEditor(path) {
-  const [gid, eid] = path.split("/");
+  const byPath = path.startsWith("path/");
+  const sheetPath = byPath ? spShowcasePath(path) : null;
+  // The server enforces the same root on save and revert. Check here too so a
+  // pasted editor URL cannot turn this page into an arbitrary file browser.
+  if (byPath && !sheetPath) {
+    $view.replaceChildren(h(`<div class="card">That is not a showcase sprite.</div>`));
+    return;
+  }
+  const [gid, eid] = byPath ? ["showcase", sheetPath.split("/").pop().slice(0, -4)] : path.split("/");
   const [data, org] = await Promise.all([api("/api/entities"), api("/api/org")]);
   const nameOf = id => {
     const e = (org.employees || []).find(x => x.id === id);
     return e ? e.name : id;
   };
-  const group = data.groups.find(g => g.id === gid);
-  const ent = group && group.entities.find(e => e.id === eid);
-  if (!ent || !ent.sheet || !(ent.frames || []).length) {
+  const group = byPath ? { id: "showcase", name: "Animation Lab" } : data.groups.find(g => g.id === gid);
+  let ent = byPath ? { id: eid, name: eid.replace(/_/g, " "), emoji: "✏️", sheet: sheetPath,
+    frames: [], fps: 1 } : group && group.entities.find(e => e.id === eid);
+  if (!ent || !ent.sheet || (!byPath && !(ent.frames || []).length)) {
     $view.replaceChildren(h(`<div class="card">Nothing editable here. <a class="plain" href="#/entities">Back to the gallery</a></div>`));
     return;
   }
-  const groundSheet = !!ent.ground_tile;
-
-  // The cell size is the size of this entity's frames; every frame in the
-  // catalogue sits on that grid with its origin at the sheet's top-left corner.
-  const cellW = Math.max(...ent.frames.map(f => f[2]));
-  const cellH = Math.max(...ent.frames.map(f => f[3]));
-  const fw = cellW, fh = cellH;
-  const zoom = Math.max(4, Math.min(28, Math.floor(430 / Math.max(fw, fh))));
-  const pvW = fw * 3, pvH = fh * 3;   // initial size; startPreview refits per clip
-
   // Load the sheet fresh (no cache) so we always edit current bytes.
   const img = await new Promise((res, rej) => {
     const i = new Image();
     i.onload = () => res(i); i.onerror = () => rej(new Error("sheet failed to load"));
     i.src = "/" + ent.sheet + "?t=" + Date.now();
   });
+
+  if (byPath) ent.frames = [[0, 0, img.naturalWidth, img.naturalHeight]];
+  const groundSheet = !!ent.ground_tile;
+  // Catalogue sheets use their frame grid; uncatalogued source art is one cell.
+  const cellW = Math.max(...ent.frames.map(f => f[2]));
+  const cellH = Math.max(...ent.frames.map(f => f[3]));
+  const fw = cellW, fh = cellH;
+  const zoom = Math.max(1, Math.min(28, Math.floor(430 / Math.max(fw, fh))));
+  const pvW = fw * 3, pvH = fh * 3;
 
   // Every cell of the sheet, left to right and top to bottom. A sheet whose
   // width or height is not a whole number of cells still has all of its pixels
@@ -354,9 +374,9 @@ async function renderSpriteEditor(path) {
   const cellsWord = n => `${n} cell${n === 1 ? "" : "s"}`;
 
   $view.replaceChildren(h(`
-    <p class="crumbs"><a class="plain" href="#/entities" data-crumb-tab="">Entities</a> <span>›</span>
+    <p class="crumbs">${byPath ? `<a class="plain" href="#/design/anim">Animation Lab</a> <span>›</span> <a class="plain" href="#/design/anim/${encodeURIComponent(sheetPath.split("/")[2])}">${esc(sheetPath.split("/")[2].replace(/_/g, " "))}</a> <span>›</span> <b>${esc(ent.name)}</b>` : `<a class="plain" href="#/entities" data-crumb-tab="">Entities</a> <span>›</span>
       <a class="plain" href="#/entities" data-crumb-tab="${esc(group.id)}">${esc(group.name)}</a> <span>›</span>
-      <a class="plain" href="#/entity/${gid}/${eid}">${ent.emoji} ${esc(ent.name)}</a> <span>›</span> <b>Edit sprite</b></p>
+      <a class="plain" href="#/entity/${gid}/${eid}">${ent.emoji} ${esc(ent.name)}</a> <span>›</span> <b>Edit sprite</b>`}</p>
     <h1>✏️ ${esc(ent.name)}</h1>
     <p class="sub">You are editing <code class="ref">${esc(ent.sheet)}</code>. ${sheetLine}</p>
     <p class="sub">Pencil paints the selected color · eraser (or right-click) makes a pixel transparent · alt-click picks a color from the canvas · arrow keys move to the next cell · Ctrl+Z undoes.</p>

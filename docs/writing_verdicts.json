@@ -2364,6 +2364,12 @@
   "82c2fd8ad52550747c5d": {
    "verdict": "ok"
   },
+  "82c707b3608bcff320ba": {
+   "instead": "Open the original sprite files used in the showcase in the HQ editor",
+   "quote": "showcase source sprites",
+   "verdict": "decode",
+   "why": "A cold reader cannot tell whether these are sprites used in the showcase or the original sprite files for it."
+  },
   "8331c648fb5d195b717c": {
    "verdict": "ok"
   },
@@ -3249,6 +3255,9 @@
   "b2eba8f857002527a8e9": {
    "verdict": "ok"
   },
+  "b2f9ad9f90ee5d6a7e29": {
+   "verdict": "ok"
+  },
   "b3685853aa102f694a4a": {
    "verdict": "ok"
   },
@@ -3525,6 +3534,9 @@
    "verdict": "ok"
   },
   "c436e32f165b63e0e422": {
+   "verdict": "ok"
+  },
+  "c439f09f5fdccade0e06": {
    "verdict": "ok"
   },
   "c45427c9aa6b32b983d2": {
@@ -4301,6 +4313,9 @@
    "verdict": "ok"
   },
   "ed6b6d90a76adfb6942c": {
+   "verdict": "ok"
+  },
+  "edbb805c6cc7bd8de78f": {
    "verdict": "ok"
   },
   "edc9dd6329657ed4c338": {
