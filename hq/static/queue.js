@@ -213,7 +213,7 @@ function qDecisionItem(c, org, seats) {
     title: c.title, question: c.title,
     answer: rec ? clean(rec.label) : "", why: rec ? (rec.detail || "") : "", instead: "",
     recOption: rec, owner, seconds: rec ? Q_PICK_SECONDS : Q_READ_SECONDS,
-    tier: 2, reason: "hard to walk back, or a matter of taste", diffApplied: false,
+    tier: 2, reason: c.why_now || (rec && rec.detail) || "Choose how the design should proceed.", diffApplied: false,
     options: opts.map(o => ({ key: o.key, label: o.label, detail: o.detail || "",
       recommended: (o.label || "").includes("(Recommended)") })),
     followUps: [],
@@ -328,6 +328,7 @@ function qTimeAgo(tsSeconds) {
 }
 
 let qSelected = null;   // id of the row filling the pane, once any exists
+let qDetailOpen = false; // narrow screens show either the list or its selected detail
 
 async function qSubmitDecision(control, row, selected, feedback, status, refresh) {
   control.disabled = true;
@@ -455,6 +456,7 @@ function qRender(state) {
   // new first row is what makes the pane "advance by itself" (§7) without any
   // extra bookkeeping across the reload.
   qSelectNext(rows);
+  if (!rows.length) qDetailOpen = false;
 
   const unavailable = state.waiting.available === false;
   const autoStatus = execution.paused ? "Paused" : (execution.timer.active === false ? "Scheduler stopped" : "Scheduler enabled");
@@ -490,19 +492,12 @@ function qRender(state) {
        </li>`).join("")}</ul>`
     : "";
 
-  const rowHtml = r => `<div class="q-row${r.id === qSelected ? " q-focus" : ""}" data-id="${esc(r.id)}">
+  const rowHtml = r => `<button type="button" class="q-row${r.id === qSelected ? " q-focus" : ""}" data-id="${esc(r.id)}" aria-current="${r.id === qSelected ? "true" : "false"}">
     <div class="q-row-main">
-      <div class="q-row-q">${mdi(r.question)}</div>
-      ${r.answer
-        ? `<div class="q-row-r">Recommended: ${mdi(r.answer)}</div>`
-        : `<div class="q-row-r q-row-none">No recommendation yet — ${esc(qNoRecommendation(r))}</div>`}
+      <span class="q-row-q">${esc(r.title)}</span>
+      <span class="q-row-r">${esc(r.reason || (r.answer ? `Recommended: ${r.answer}` : qNoRecommendation(r)))}</span>
     </div>
-    <div class="q-row-acts">
-      ${r.kind === "rule" ? "" : `<button class="q-yes" data-id="${esc(r.id)}">Yes</button>`}
-      <button class="ghost q-talk" data-id="${esc(r.id)}" title="Open it and write to its owner">Open</button>
-      <span class="chip q-chip">${r.seconds <= Q_PICK_SECONDS ? "30 s" : "2 min"}</span>
-    </div>
-  </div>`;
+  </button>`;
 
   const groupsHtml = groups.map(g => !g.items.length ? "" : `
     <h2 class="q-group-h">${esc(g.name)} <span class="chip q-chip q-count">${g.items.length}</span></h2>
@@ -543,7 +538,7 @@ function qRender(state) {
 
   $view.replaceChildren(h(`
     <h1>🧾 Your queue</h1>
-    <div class="q-app" id="q-app">
+    <div class="q-app${qDetailOpen && rows.length ? " q-detail-open" : ""}" id="q-app">
       <div class="q-list">
         <p class="sub">Questions the studio needs an answer to, one at a time, grouped by what they are
         about. Everything else the studio is doing needs nothing from you and is not on this page.</p>
@@ -569,7 +564,8 @@ function qRender(state) {
       <details class="q-fold"><summary>Closed work (${closedWork.length})</summary>
         <ul class="q-fold-list">${closedHtml || "<li>Nothing yet.</li>"}</ul></details>
       </div>
-      <div class="q-pane" id="q-pane">${qPaneHtml(selectedRow, org)}</div>
+      <div class="q-pane" id="q-pane"><button type="button" class="q-back ghost" id="q-back">← Back to questions</button>
+        <div class="q-pane-content">${qPaneHtml(selectedRow, org)}</div></div>
     </div>
   `));
 
@@ -596,9 +592,19 @@ function qRender(state) {
 
   function qSelect(id) {
     qSelected = id;
-    document.querySelectorAll(".q-row").forEach(e => e.classList.toggle("q-focus", e.dataset.id === id));
-    document.getElementById("q-pane").innerHTML = qPaneHtml(findRow(id), org);
+    document.querySelectorAll(".q-row").forEach(e => {
+      const selected = e.dataset.id === id;
+      e.classList.toggle("q-focus", selected);
+      e.setAttribute("aria-current", String(selected));
+    });
+    document.querySelector("#q-pane .q-pane-content").innerHTML = qPaneHtml(findRow(id), org);
     fillAtts(findRow(id));
+    if (matchMedia("(max-width: 1100px)").matches) {
+      qDetailOpen = true;
+      document.getElementById("q-app").classList.add("q-detail-open");
+      document.getElementById("q-back").focus();
+      window.scrollTo(0, 0);
+    }
   }
 
   async function qDoYes(r, comment) {
@@ -620,6 +626,12 @@ function qRender(state) {
   }
 
   document.getElementById("q-app").addEventListener("click", ev => {
+    if (ev.target.closest("#q-back")) {
+      qDetailOpen = false;
+      document.getElementById("q-app").classList.remove("q-detail-open");
+      document.querySelectorAll(".q-row").forEach(e => { if (e.dataset.id === qSelected) e.focus(); });
+      return;
+    }
     const yes = ev.target.closest(".q-yes");
     const no = ev.target.closest(".q-no");
     const talk = ev.target.closest(".q-talk");
@@ -712,19 +724,26 @@ function qRender(state) {
 document.addEventListener("keydown", ev => {
   const here = location.hash.slice(1) || "/";
   if (!here.startsWith("/work") && !here.startsWith("/inbox")) return;
-  if (ev.target.tagName === "TEXTAREA" || ev.target.tagName === "INPUT") return;
+  if (ev.key === "Escape" && document.getElementById("q-app")?.classList.contains("q-detail-open")) {
+    document.getElementById("q-back")?.click();
+    return;
+  }
+  if (ev.target.closest?.("input, textarea, select, a, button:not(.q-row), [contenteditable]")) return;
+  if (document.getElementById("q-app")?.classList.contains("q-detail-open")) return;
   const els = [...document.querySelectorAll(".q-row")];
   if (!els.length) return;
   let idx = els.findIndex(e => e.dataset.id === qSelected);
   if (ev.key === "j") { idx = Math.min(els.length - 1, idx + 1); els[idx].click(); }
   else if (ev.key === "k") { idx = Math.max(0, idx - 1); els[idx].click(); }
-  else if (ev.key === "y") { if (idx >= 0) els[idx].querySelector(".q-yes")?.click(); return; }
-  else if (ev.key === "t") { if (idx >= 0) els[idx].querySelector(".q-talk")?.click(); return; }
+  else if (ev.key === "y") { if (idx >= 0) document.querySelector("#q-pane .q-yes")?.click(); return; }
+  else if (ev.key === "t") { if (idx >= 0) { els[idx].click(); document.querySelector("#q-pane-talk textarea")?.focus(); } return; }
   else return;
+  if (!matchMedia("(max-width: 1100px)").matches) els[idx].focus();
   els[idx].scrollIntoView({ block: "nearest" });
 });
 
 async function renderQueue() {
+  qDetailOpen = false;
   // A link to a particular work item must show that item's outcome, recovery
   // action and evidence. The queue reader is for choosing among CEO questions.
   const focused = typeof workFocusId === "function" ? workFocusId() : "";

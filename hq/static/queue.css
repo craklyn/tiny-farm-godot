@@ -3,16 +3,17 @@
    so it draws on the same tokens style.css already defines (--panel, --line,
    --text, --muted, --accent). */
 
-.q-app { display: grid; grid-template-columns: minmax(360px, 46%) 1fr; gap: 20px;
+.q-app { display: grid; grid-template-columns: clamp(300px, 28vw, 350px) minmax(0, 1fr); gap: 24px;
   align-items: start; }
 .q-list { min-width: 0; }
-.q-pane { min-width: 0; border: 1px solid var(--line); border-radius: 10px;
-  padding: 16px 20px; background: var(--panel); position: sticky; top: 12px;
+.q-pane { min-width: 0; border-radius: 10px;
+  padding: 24px clamp(20px, 3vw, 40px); background: var(--panel); position: sticky; top: 12px;
   max-height: calc(100vh - 24px); overflow: auto; }
-@media (max-width: 900px) {
-  .q-app { grid-template-columns: 1fr; }
-  .q-pane { position: static; max-height: none; }
-}
+.q-pane-content { font-size: 16px; line-height: 1.6; }
+.q-pane-content p, .q-pane-content li, .q-pane-content details div,
+.q-pane-content .q-msg { max-width: 70ch; overflow-wrap: anywhere; }
+.q-pane-content .q-review-artifact, .q-pane-content .q-atts { max-width: none; }
+.q-back { display: none; }
 
 .q-band { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px;
   background: var(--panel); margin: 10px 0 4px; }
@@ -32,15 +33,18 @@
   .q-strip-list li { grid-template-columns: 1fr; gap: 1px; }
 }
 
-.q-group-h { font-size: 14px; color: var(--accent); margin: 24px 0 8px;
+.q-group-h { font-size: 14px; color: var(--muted); margin: 24px 0 8px;
   display: flex; align-items: center; gap: 8px; }
 
-.q-row { display: grid; grid-template-columns: 1fr auto; gap: 10px;
-  padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line);
-  background: var(--panel); margin-bottom: 10px; align-items: start; cursor: pointer; }
-.q-row.q-focus { border-color: var(--accent); background: var(--panel2); }
-.q-row-q { font-weight: 600; font-size: 14.5px; }
-.q-row-r { color: var(--muted); font-size: 13px; margin-top: 3px; }
+.q-row { display: block; width: 100%; text-align: left; font: inherit; color: var(--text);
+  padding: 12px 14px; border-radius: 8px; border: 0; border-left: 3px solid transparent;
+  background: transparent; margin-bottom: 3px; cursor: pointer; }
+.q-row:hover { background: var(--panel); }
+.q-row.q-focus { border-left-color: var(--accent); background: var(--panel2); }
+.q-row:focus-visible, .q-back:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.q-row-q { display: block; font-weight: 600; font-size: 15px; line-height: 1.4; }
+.q-row-r { display: -webkit-box; color: var(--muted); font-size: 13.5px; line-height: 1.45;
+  margin-top: 4px; overflow: hidden; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
 .q-row-none { font-style: italic; }
 .q-row-acts { display: flex; gap: 6px; align-items: center; }
 .q-row-acts button { white-space: nowrap; }
@@ -50,7 +54,7 @@
   border-radius: 8px; border: 1px solid var(--line); background: var(--bg2); color: var(--text); }
 .q-talk-acts { margin-top: 6px; }
 
-.q-fold-h { font-size: 13px; letter-spacing: .03em; text-transform: uppercase;
+.q-fold-h { font-size: 13px;
   color: var(--muted); margin: 22px 0 4px; display: flex; align-items: center; gap: 8px; }
 .q-fold { border: 1px solid var(--line); border-radius: 8px; padding: 4px 12px; margin-bottom: 4px; }
 .q-fold summary { cursor: pointer; padding: 8px 0; color: var(--muted); font-size: 13px; }
@@ -63,24 +67,23 @@
 
 /* The pane (§7): a fixed anatomy, same section rhythm every time. */
 .q-pane-empty { color: var(--muted); padding: 20px 0; }
-.q-pane-q { font-size: 19px; font-weight: 700; margin: 0 0 4px; }
+.q-pane-q { font-size: clamp(21px, 2vw, 27px); font-weight: 700; line-height: 1.3; margin: 0 0 8px; }
 .q-pane-src { color: var(--muted); font-size: 12.5px; margin-bottom: 6px; }
 
 .q-sec { margin: 16px 0; }
-.q-sec h3 { font-size: 12.5px; text-transform: uppercase; letter-spacing: .04em;
-  color: var(--muted); margin: 0 0 6px; }
+.q-sec h3 { font-size: 16px; color: var(--text); margin: 0 0 6px; }
 
-.q-rec { border-left: 4px solid var(--accent); padding: 8px 12px; border-radius: 0 8px 8px 0;
+.q-rec { padding: 10px 14px; border-radius: 8px;
   background: var(--panel2); }
 .q-rec b { display: block; font-size: 15px; }
 .q-rec p { margin: 6px 0 0; }
-.q-rec-none { border-left-color: var(--line); font-style: italic; }
+.q-rec-none { font-style: italic; }
 .q-instead { color: var(--muted); margin-top: 6px !important; font-style: normal; }
 
 .q-opt { padding: 8px 0; border-top: 1px solid var(--line); }
 .q-opt:first-child { border-top: 0; }
 .q-opt b { display: block; }
-.q-opt p { margin: 3px 0 0; color: var(--muted); font-size: 13.5px; }
+.q-opt p { margin: 3px 0 0; color: var(--muted); }
 
 .q-decision-form fieldset { border: 0; margin: 0; padding: 0; display: grid; gap: 8px; }
 .q-choice { display: flex; gap: 10px; align-items: flex-start; padding: 10px 12px; border: 1px solid var(--line);
@@ -88,14 +91,14 @@
 .q-choice:focus-within { outline: 2px solid var(--accent); outline-offset: 2px; }
 .q-choice input { margin-top: 4px; accent-color: var(--accent); }
 .q-choice b, .q-choice small { display: block; }
-.q-choice small { margin-top: 3px; color: var(--muted); font-size: 13.5px; }
+.q-choice small { margin-top: 3px; color: var(--muted); font-size: 14px; line-height: 1.5; }
 .q-decision-form textarea { width: 100%; min-height: 60px; box-sizing: border-box; font: inherit; padding: 8px;
   border-radius: 8px; border: 1px solid var(--line); background: var(--bg2); color: var(--text); }
 .q-decision-status { min-height: 1.25em; margin: 6px 0; color: var(--muted); }
 .q-decision-submit { padding: 9px 16px; font-size: 14.5px; }
 
 .q-fu-list { list-style: none; margin: 8px 0 0; padding: 0; }
-.q-fu-list li { padding: 5px 0; border-top: 1px solid var(--line); font-size: 13.5px; }
+.q-fu-list li { padding: 5px 0; border-top: 1px solid var(--line); }
 .q-fu-list li:first-child { border-top: 0; }
 
 .q-msg { padding: 8px 10px; border-radius: 8px; margin: 6px 0; background: var(--panel2); }
@@ -103,18 +106,35 @@
 .q-msg-who { font-weight: 600; font-size: 12.5px; color: var(--muted); }
 
 .q-sec details { border: 1px solid var(--line); border-radius: 8px; padding: 8px 12px; margin: 6px 0; }
-.q-sec details summary { cursor: pointer; font-weight: 600; font-size: 13.5px; }
-.q-sec details div { margin-top: 8px; white-space: pre-wrap; font-size: 13.5px; }
-.q-pane-muted { color: var(--muted); font-size: 13.5px; }
+.q-sec details summary { cursor: pointer; font-weight: 600; font-size: 16px; }
+.q-sec details div { margin-top: 8px; white-space: pre-wrap; }
+.q-pane-muted { color: var(--muted); }
 .q-atts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 8px; }
-.q-atts img, .q-atts video { max-width: 220px; border-radius: 6px; cursor: zoom-in; }
+.q-atts img, .q-atts video { max-width: 100%; max-height: 440px; border-radius: 6px; cursor: zoom-in; }
 
 .q-acts-big { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
 .q-acts-big button { padding: 9px 16px; font-size: 14.5px; }
 
 /* The reason box sits above the verdicts, because what he writes rides along
    with whichever one he presses — his rule: he must always be able to say why. */
-.q-talk-l { display: block; font-size: 12px; letter-spacing: .04em; text-transform: uppercase;
+.q-talk-l { display: block; font-size: 14px;
             color: var(--muted, #a39c8e); margin-bottom: 4px; }
 .q-talk-n { font-size: 12px; color: var(--muted, #a39c8e); margin-left: 8px; }
 .q-talk-acts { display: flex; align-items: center; flex-wrap: wrap; gap: 6px; }
+
+@media (max-width: 1100px) {
+  .q-app { display: block; }
+  .q-app .q-pane { display: none; }
+  .q-app.q-detail-open .q-list { display: none; }
+  .q-app.q-detail-open .q-pane { display: block; position: static; max-height: none; }
+  .q-back { display: inline-block; margin-bottom: 20px; }
+}
+@media (max-width: 600px) {
+  .q-list .exec-control { display: flex; width: 100%; flex-wrap: wrap; border-radius: 10px; }
+  .q-list .exec-status { min-width: 0; }
+  .q-list .tip::after { max-width: min(280px, calc(100vw - 90px)); transform: none; }
+  .q-list .exec-status::after { left: 0; right: auto; }
+  .q-list .exec-toggle::after { left: auto; right: 0; }
+  .q-list .exec-view { margin: 0; padding: 2px 8px; }
+  .q-pane { padding: 20px 16px; }
+}
