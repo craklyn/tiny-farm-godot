@@ -4251,6 +4251,9 @@
    "verdict": "decode",
    "why": "The reader cannot tell what the candidate is."
   },
+  "dfcdc29bf543cb851857": {
+   "verdict": "ok"
+  },
   "e0773563dad893603556": {
    "instead": "If the player replants the crop",
    "quote": "If she replants it",

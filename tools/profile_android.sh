@@ -8,6 +8,7 @@
 #
 #   tools/profile_android.sh            # to whatever device `adb devices` lists
 #   tools/profile_android.sh --reuse    # the APK from the last run, no rebuild
+#   TINY_FARM_PROFILE_MODE=sim tools/profile_android.sh  # eight busy machines
 #
 # The build happens in a snapshot of the working tree (tracked files plus untracked
 # ones, playtests and raw art aside) under $TMPDIR, so project.godot and
@@ -22,8 +23,18 @@ export JAVA_HOME="${JAVA_HOME:-$HOME/Android/jdk-17.0.2}"
 export ANDROID_HOME="${ANDROID_HOME:-$HOME/Android/Sdk}"
 export PATH="$JAVA_HOME/bin:$ANDROID_HOME/platform-tools:$PATH"
 
-PKG="com.daniel.tinyfarm.profile"
-WORK="${TMPDIR:-/tmp}/tiny-farm-profile"
+MODE="${TINY_FARM_PROFILE_MODE:-door}"
+if [[ "$MODE" == "sim" ]]; then
+	PKG="com.daniel.tinyfarm.simprofile"
+	WORK="${TMPDIR:-/tmp}/tiny-farm-sim-profile"
+	SCENE="res://tools/profile_sim.tscn"
+	DONE="SIM_PROFILE done"
+else
+	PKG="com.daniel.tinyfarm.profile"
+	WORK="${TMPDIR:-/tmp}/tiny-farm-profile"
+	SCENE="res://tools/profile_door_backdrop.tscn"
+	DONE="PROFILE indoors costs"
+fi
 
 APK="$WORK/build/tiny-farm-profile.apk"
 if [[ "${1:-}" == "--reuse" && -f "$APK" ]]; then
@@ -32,12 +43,12 @@ else
 echo ">>> Snapshotting the working tree into $WORK"
 rm -rf "$WORK"
 mkdir -p "$WORK"
-{ git ls-files; git ls-files --others --exclude-standard | grep -v -e '^playtests/' -e '^assets/raw/'; } \
+{ git ls-files; git ls-files --others --exclude-standard | grep -v -e '^playtests/' -e '^assets/raw/' -e '^android/build$'; } \
 	| sort -u | tar -cf - -T - | tar -xf - -C "$WORK"
 mkdir -p "$WORK/android" "$WORK/build"
 ln -s "$PWD/android/build" "$WORK/android/build"
 cp debug.keystore "$WORK/"
-sed -i 's|^run/main_scene=.*|run/main_scene="res://tools/profile_door_backdrop.tscn"|' "$WORK/project.godot"
+sed -i "s|^run/main_scene=.*|run/main_scene=\"$SCENE\"|" "$WORK/project.godot"
 sed -i "s|^package/unique_name=.*|package/unique_name=\"$PKG\"|; s|^package/name=.*|package/name=\"Tiny Farm Profile\"|" \
 	"$WORK/export_presets.cfg"
 
@@ -72,7 +83,7 @@ if [[ -z "$SERIAL" ]]; then
 	echo "No device. On the tablet: Developer options → Wireless debugging → ON, then pair (docs/DEPLOY.md)." >&2
 	exit 1
 fi
-echo ">>> Installing on $SERIAL as $PKG"
+echo ">>> Installing $PKG on the paired tablet"
 adb -s "$SERIAL" install -r "$WORK/build/tiny-farm-profile.apk" | tail -1
 
 echo ">>> Running"
@@ -82,11 +93,11 @@ adb -s "$SERIAL" logcat -c
 adb -s "$SERIAL" shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1
 for _i in $(seq 1 120); do
 	sleep 2
-	if adb -s "$SERIAL" logcat -d -s godot:* 2>/dev/null | grep -q "PROFILE indoors costs"; then
+	if adb -s "$SERIAL" logcat -d -s godot:* 2>/dev/null | grep -q "$DONE"; then
 		break
 	fi
 done
-adb -s "$SERIAL" logcat -d -s godot:* | grep "PROFILE" | sed 's/^.*PROFILE/PROFILE/' || echo "no PROFILE lines in logcat"
+adb -s "$SERIAL" logcat -d -s godot:* | grep -E 'PROFILE|SIM_PROFILE' | sed -E 's/^.*(SIM_PROFILE|PROFILE)/\1/' || echo "no profile lines in logcat"
 
 echo ">>> Removing $PKG from the tablet"
 adb -s "$SERIAL" shell am force-stop "$PKG" >/dev/null 2>&1 || true

@@ -116,17 +116,18 @@ const FLOOR_TICKS_PER_SEC := 5000.0
 #   a frame at 60 fps                                      16.67 ms
 #   × the sim's share of it (the rest is drawing and UI)    ~25%
 #   ÷ the ticks one frame may absorb (SimClock)             ÷ 4
-#   ÷ how much slower the tablet is than this desktop       ÷ 8
-# The first three are facts about the game. The fourth is **an assumption, not a
-# measurement** — a mid-range Android running GDScript against this desktop —
-# and it is the one number here still owed a real figure. Measuring it needs the
-# tablet awake and on the network (`tools/profile_android.sh`, which builds a
-# profile APK under its own package name so the real game and its saves are never
-# touched); it was unreachable the night this was written. It is held as one
-# constant so replacing it with a measured value is a one-line change.
+#   ÷ how much slower the tablet is than this desktop       ÷ 2.36
+# The fourth number was measured 2026-09-24 with the identical 10,000-tick,
+# eight-circle-bot workload in tools/profile_sim.tscn. Two runs of seven fresh-
+# seed samples on each device gave pooled medians of 2.600224 s on the Lenovo
+# TB336FU and 1.102853 s on this desktop: 2.3577x, rounded to 2.36x. The tablet
+# ran Android build TB336FU_ROW_OPEN_USER_M1317.3_W_ZUI_17.5.10.321_ST_260804;
+# both used Godot 4.7.2, with a debug profile APK under its own package name on
+# Android. The per-run median ratios were 2.3576x and 2.3577x. This is a device
+# comparison, so remeasure if either build or benchmark workload changes.
 const FRAME_SECONDS := 1.0 / 60.0
 const SIM_SHARE_OF_FRAME := 0.25
-const DEVICE_FACTOR := 8.0
+const DEVICE_FACTOR := 2.36
 
 # Which run the budget is judged against: the eight busy machines, because that is
 # the farm phase 1 is walking her toward — work delegated to a fleet — and they
@@ -315,7 +316,7 @@ func _start_tile(world: SimWorld) -> Vector2i:
 # The same world and the same tick budget, with `count` bots on it. `config` is
 # empty for the floor run, which is the farm's own cost: the hen thinking, the
 # clock turning, and nothing else.
-func _fleet_run(count: int, config: String) -> Dictionary:
+static func _fleet_run(count: int, config: String) -> Dictionary:
 	var gs = load("res://systems/game_state.gd").new()
 	gs.reset()
 	SimRng.reseed(SEED)
@@ -433,11 +434,11 @@ func _report(work: Dictionary, idle: Dictionary, one: Dictionary, many: Dictiona
 			"PASS" if ticks_per_sec >= FLOOR_TICKS_PER_SEC else "FAIL", ticks_per_sec])
 	print("frame budget (<=%.0f us/tick, %s):  %s (%.0f us/tick)"
 		% [budget_usec, BUDGET_SUBJECT, "PASS" if within_budget else "FAIL", busy_usec])
-	print("  the worst frame it stands for: %d ticks at once = %.2f ms here, %.2f ms on a tablet %dx slower, against %.2f ms of a 60 fps frame"
+	print("  the worst frame it stands for: %d ticks at once = %.2f ms here, %.2f ms on a tablet %.2fx slower, against %.2f ms of a 60 fps frame"
 		% [SimClock.MAX_TICKS_PER_FRAME,
 			busy_usec * SimClock.MAX_TICKS_PER_FRAME / 1000.0,
 			busy_usec * SimClock.MAX_TICKS_PER_FRAME * DEVICE_FACTOR / 1000.0,
-			int(DEVICE_FACTOR), FRAME_SECONDS * 1000.0])
+			DEVICE_FACTOR, FRAME_SECONDS * 1000.0])
 	print("  a parked fleet, for reference: %.0f us/tick (%s the same budget — not the verdict, no shoo bot ships)"
 		% [parked_usec, "within" if parked_usec <= budget_usec else "OVER"])
 

@@ -395,6 +395,13 @@ tablet, and it is reported rather than exit-coded for the same CI reason. Measur
 frame costs 0.42 ms on the desktop and an estimated 3.4 ms on the tablet against 16.7 ms. The
 desktop-to-tablet factor in that estimate is an assumption and is filed for measurement.
 
+**Measured 2026-09-24.** The Lenovo TB336FU took a median 2.600224 seconds for
+the same 10,000-tick, eight-busy-machine scaling run that took 1.102853 seconds
+on this desktop (14 samples per device). The measured factor is 2.36, replacing
+the earlier assumption of 8 in `tools/benchmark_sim.gd`; the desktop frame-budget
+target is now about 441 microseconds per tick. The profile APK used its own
+package and did not touch the installed game or its saves.
+
 ### S-16. Finished work that is verified and revertable lands without the CEO's verdict
 **Ruled 2026-09-20 (docs/QUEUE_TO_ZERO.md §4).** A finished piece of work reaches the CEO only
 when a wrong answer with nobody reviewing it would be hard to walk back, or the answer is his
