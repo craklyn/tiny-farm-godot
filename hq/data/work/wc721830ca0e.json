@@ -7,11 +7,11 @@
   "tier_reason": "The design note now specifies exactly what the sound needs to do; sourcing it is the concrete next step and it's Dmitri's seat.",
   "ask": "Daniel's ruling 2026-09-04: free-to-use sounds are tried first and brought to him as a card he can listen to; foley recording is only for what nothing free can cover, and it is batched because a session costs him an afternoon. So this card is the search, and it is not held by the look pick — only the recording batch is.",
   "first_action": "Search the free/CC0 sources for a soft, low pat-pat — soil closing over a seed, reading as tucking in rather than as a reward, per the design note in docs/design/10-audio-direction.md. Bring back two to four candidates as a decision card in hq/data/decisions/ with each sound attached, each carrying its source URL and licence, and a recommendation. If nothing clears the bar, say so and add plant to the foley batch instead — that is a real result.",
-  "state": "waiting_session",
+  "state": "done",
   "thread": "claude",
   "source": "chat",
   "source_message": "Accepted “Write the design note for the missing plant sound”. The design note now specifies exactly what the sound needs to do; sourcing it is the concrete next step and it's Dmitri's seat.",
-  "result": "",
+  "result": "Searched free CC0 sources for planting and soil sounds. Two short planting recordings met the sourcing brief and are playable on decision card Q-118: “Planting Sounds.wav” by wobesound (Freesound #488393) and “Planting (Seeds).mp3” by wyronroberth (#516249). Both source pages and the Freesound API identify CC0 1.0; their URLs, authors, preview-cut processing and credits are recorded with the WAV files. The card recommends the two-beat wobesound cut provisionally and lets Daniel hear both or reject both. No plant sound was wired into the game, and no foley session was scheduled before his decision. Focused source, format, loudness and live HQ playback checks passed. Gateway, writing, HQ (48/48), process integrity, Godot unit (2,971/0), integration (1,012/0), robot session and benchmark passed locally. GitHub Actions passed for the landed candidate-card commit: https://github.com/craklyn/tiny-farm-godot/actions/runs/35975281166.",
   "started": "",
   "attempts": 0,
   "created": "2026-09-04T09:41",
@@ -29,12 +29,24 @@
       "why": "Daniel ruled the sourcing order: free sounds first and a listening card; foley only as the fallback, batched."
     }
   ],
-  "waiting_for": {
-    "files": [
-      "CREDITS.md",
-      "docs/DESIGNER_QUEUE.md"
-    ],
-    "reason": "another session holds CREDITS.md, docs/DESIGNER_QUEUE.md changed and uncommitted in the working tree; this is retried once that change is committed or put away",
-    "at": "2026-09-21T11:28"
+  "closed": "2026-09-24T08:30:45Z",
+  "landed": {
+    "at": "2026-09-24T08:30:45Z",
+    "by": "Codex interactive",
+    "sha": "b7aa11e9a4c492656b7510c4a58eb50c98d58895",
+    "note": "Two verified CC0 candidate WAVs, provenance and Q-118 listening card landed; Daniel still chooses the sound."
+  },
+  "workflow": {
+    "version": 1,
+    "actions": [],
+    "blockers": [],
+    "candidates": [],
+    "verifications": [],
+    "integrations": [],
+    "ci": {
+      "confirmed": true,
+      "commit_sha": "b7aa11e9a4c492656b7510c4a58eb50c98d58895",
+      "run_url": "https://github.com/craklyn/tiny-farm-godot/actions/runs/35975281166"
+    }
   }
 }
