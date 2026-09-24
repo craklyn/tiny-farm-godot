@@ -7,24 +7,93 @@
   "tier_reason": "Measured on the recording made for the Q-107 card: the story-night music sits near -30 dB RMS while the peck and the scatter peak at 0 dBFS, so they will clip on a tablet speaker and land far louder than the bed they sit in.",
   "first_action": "Play tools/record_story_sounds.sh's crow and robot segments and compare the cue peaks against the music; then trim peck_cc0_248254 and seeder_scatter_cc0_348953 (or their play_sfx gain) by about 6 dB.",
   "ask": "tools/record_story_sounds.sh records the three story-night moments with the game's own audio. On the crow night the music measures about -30 dB RMS and the two pecks peak at 0 dBFS (max_volume 0.0 dB); on the robot night the scatter does the same. Bring the one-shots down so they sit in the bed rather than over it — a trim on the files (keep the raws and note it in CREDITS.md) or a per-sound gain in AudioManager's table, whichever the table already supports — and re-record with the script to check. Do not change the picks; Q-107 is Daniel's.",
-  "state": "waiting_session",
+  "state": "landed",
   "thread": "",
   "source": "chief-of-staff",
   "source_message": "Found by the chief of staff measuring the Q-107 recording, 2026-09-11.",
-  "result": "",
-  "started": "",
-  "attempts": 0,
+  "result": "The two wired recordings had already been trimmed by 6 dB in an earlier commit. I verified their original and wired peaks: crow peck -4.4 to -10.4 dBFS; seed scatter -3.3 to -9.3 dBFS. The originals named in CREDITS.md were missing from Git, so I restored both raw WAVs from the commit before the trim, with their Godot import files. I re-recorded all three Q-107 moments with tools/record_story_sounds.sh. The old combined video peaked at 0.0 dBFS and the new one peaks at -2.6 dBFS. A matched recording with each cue silenced isolates the peck at about -8.5 dBFS and scatter at about -6.7 dBFS; the backing audio in those windows is substantially lower. The robot segment still reaches -2.6 dBFS with scatter muted, so that overall peak is not the scatter. Daniel’s Q-107 picks and the AudioManager routing remain as ruled. Repository gateway, writing, HQ process (46/46), Godot unit, integration, robot session, benchmark and process-isolation gates passed locally; GitHub Actions passed for the landed audio commit.",
+  "started": "2026-09-24T07:51:19Z",
+  "attempts": 1,
   "created": "2026-09-11T08:26",
   "created_ts": 1789140399.5516443,
   "conversation": [],
-  "waiting_for": {
+  "finished": "2026-09-24T07:51:19Z",
+  "closed": "2026-09-24T07:51:19Z",
+  "done_by": {
+    "seat": "dmitri",
+    "model": "codex",
+    "lane": "interactive verified repair"
+  },
+  "diff": {
+    "stat": "Restored 2 raw WAVs and import files; refreshed Q-107 video and credits.",
     "files": [
       "CREDITS.md",
+      "assets/audio/sfx/peck_cc0_248254_raw.wav",
       "assets/audio/sfx/peck_cc0_248254_raw.wav.import",
+      "assets/audio/sfx/seeder_scatter_cc0_348953_raw.wav",
       "assets/audio/sfx/seeder_scatter_cc0_348953_raw.wav.import",
-      "tools/capture_window_view.gd.uid"
+      "docs/design/mockups/story_night_sounds.mp4"
     ],
-    "reason": "another session holds CREDITS.md, assets/audio/sfx/peck_cc0_248254_raw.wav.import, assets/audio/sfx/seeder_scatter_cc0_348953_raw.wav.import and 1 more changed and uncommitted in the working tree; this is retried once that change is committed or put away",
-    "at": "2026-09-21T11:28"
+    "applied": true,
+    "why_not": ""
+  },
+  "suites": {
+    "gateway": "pass",
+    "writing": "pass",
+    "hq_process": "46/46 pass",
+    "godot_unit": "pass",
+    "godot_integration": "pass",
+    "robot_session": "pass",
+    "benchmark": "pass",
+    "process_isolation": "pass",
+    "ci_run": "https://github.com/craklyn/tiny-farm-godot/actions/runs/35971425740"
+  },
+  "attempt_outcome": {
+    "version": 1,
+    "id": "interactive-1274bcc68ee4-w77a563cd908",
+    "status": "complete",
+    "reason": "Audio cue levels measured; missing raw sources restored; in-game recording refreshed; all gates passed.",
+    "result_id": "63c2bd1493d380a5895caa853a3e582b6fef3cf6b6f9f67bf6500093d03ca022",
+    "landing_verified": true
+  },
+  "check": {
+    "verdict": "pass",
+    "read": true,
+    "complete": true,
+    "attempt_id": "interactive-1274bcc68ee4-w77a563cd908",
+    "summary": "Verified audio source ratios and cue-isolated in-game captures; reviewed exact six-file diff and green repository gates.",
+    "findings": []
+  },
+  "completion": {
+    "version": 1,
+    "attempt_id": "interactive-1274bcc68ee4-w77a563cd908",
+    "at": "2026-09-24T07:51:19Z",
+    "sha": "1274bcc68ee45560e3809c005ca6d7356cb8ab74",
+    "by": "Codex interactive",
+    "kind": "operator_review",
+    "evidence": {
+      "ci_run": "https://github.com/craklyn/tiny-farm-godot/actions/runs/35971425740",
+      "local_gates": "pass",
+      "audio_measurements": "peck -8.5 dBFS; scatter -6.7 dBFS in game"
+    }
+  },
+  "landed": {
+    "at": "2026-09-24T07:51:19Z",
+    "by": "Codex interactive",
+    "sha": "1274bcc68ee45560e3809c005ca6d7356cb8ab74",
+    "note": "The 6 dB trims were already shipped; restored raw sources, refreshed the video, and measured both cues in game."
+  },
+  "workflow": {
+    "version": 1,
+    "actions": [],
+    "blockers": [],
+    "candidates": [],
+    "verifications": [],
+    "integrations": [],
+    "ci": {
+      "confirmed": true,
+      "commit_sha": "1274bcc68ee45560e3809c005ca6d7356cb8ab74",
+      "run_url": "https://github.com/craklyn/tiny-farm-godot/actions/runs/35971425740"
+    }
   }
 }
