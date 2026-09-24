@@ -7,13 +7,13 @@
   "tier_reason": "Daniel's proposal reopens a fork the docs already argued against by name; the reversal has to land in the docs before anyone builds against it.",
   "ask": "Accepted “What the first session becomes if the shop is delayed”. Daniel's proposal reopens a fork the docs already argued against by name; the reversal has to land in the docs before anyone builds against it.\n\nDaniel attached this when he accepted the card that filed this work, and it changes the constraint you are working under: \"I'd like to loosen the belief that everything is wordless. Instead, the game should be generally understandable with minimal literacy. We can show text too, but let's try every time to see how far we can get communicating without the words, since that'll always make the game more accessible to players.\" So wordless is the target to push for, not an absolute to obey — and where words genuinely serve the player better, they are allowed and should be as few as possible.",
   "first_action": "Update the onboarding chapter's rejected-fork note and record the storage-tier numbers (on-person cap, what a silo raises it to) in the design docs and decision log",
-  "state": "waiting_session",
+  "state": "landed",
   "thread": "sam",
   "source": "chat",
   "source_message": "Accepted “What the first session becomes if the shop is delayed”. Daniel's proposal reopens a fork the docs already argued against by name; the reversal has to land in the docs before anyone builds against it.",
-  "result": "",
-  "started": "",
-  "attempts": 0,
+  "result": "The onboarding chapter now promotes harvest-as-seed from its previously rejected fallback, updates the first-session teaching inventory, and preserves the no-soft-lock obligation. DECISION_LOG records that starter wheat can be replanted without selling and buying, alongside Q-113’s 10-per-species carried and future 40-per-species silo limits already on main. Daniel’s minimal-literacy guidance is preserved: communicate without words where possible, allow a few words where they serve the player. This is design documentation, distinct from the already landed seed-economy implementation. Commit 5710597fb6b957bb8f0b61f3fe96b6baffb0235d is on origin/main. Local git diff --check passed; python3 tools/check_writing.py passed with 19 pre-existing suggestions and no new issues. GitHub Actions run 36051373360 passed tests, gateway, and writing jobs. No independent checker or Daniel acceptance is claimed.",
+  "started": "2026-09-24T19:59:43Z",
+  "attempts": 1,
   "created": "2026-09-04T13:59",
   "created_ts": 1788555574.8105981,
   "parent": "w7fde4ef846b",
@@ -24,5 +24,67 @@
       "at": "2026-09-04T14:01",
       "with": "accept"
     }
-  ]
+  ],
+  "_revision": 4,
+  "finished": "2026-09-24T19:59:43Z",
+  "done_by": {
+    "seat": "operator",
+    "model": "codex",
+    "lane": "interactive operator audit"
+  },
+  "attempt_outcome": {
+    "version": 1,
+    "id": "operator-audit-w9b5669dc7f0-2026-09-24",
+    "status": "complete",
+    "reason": "Accepted seed-from-harvest design is recorded in onboarding and decision log, landed and CI verified.",
+    "result_id": "9bd41ee932bc64022efa57d3c3e277027c38145d959a055fb2d006029666d22b",
+    "landing_verified": true,
+    "operator_audit": {
+      "version": 1,
+      "at": "2026-09-24T19:59:43Z",
+      "by": "Codex interactive",
+      "classification": "safe_to_close",
+      "evidence_commits": [
+        "5710597fb6b957bb8f0b61f3fe96b6baffb0235d"
+      ],
+      "ci_url": "https://github.com/craklyn/tiny-farm-godot/actions/runs/36051373360",
+      "test_proof": [
+        "git diff --check: passed",
+        "python3 tools/check_writing.py: passed, no new issues; 19 pre-existing suggestions",
+        "GitHub Actions 36051373360: success; tests, gateway, writing jobs passed"
+      ],
+      "limitations": "Operator audit of committed docs and actual checks; not a native checker verdict or new Daniel acceptance."
+    }
+  },
+  "completion": {
+    "version": 1,
+    "attempt_id": "operator-audit-w9b5669dc7f0-2026-09-24",
+    "at": "2026-09-24T19:59:43Z",
+    "by": "Codex interactive",
+    "kind": "operator_audit",
+    "sha": "5710597fb6b957bb8f0b61f3fe96b6baffb0235d",
+    "evidence": {
+      "version": 1,
+      "at": "2026-09-24T19:59:43Z",
+      "by": "Codex interactive",
+      "classification": "safe_to_close",
+      "evidence_commits": [
+        "5710597fb6b957bb8f0b61f3fe96b6baffb0235d"
+      ],
+      "ci_url": "https://github.com/craklyn/tiny-farm-godot/actions/runs/36051373360",
+      "test_proof": [
+        "git diff --check: passed",
+        "python3 tools/check_writing.py: passed, no new issues; 19 pre-existing suggestions",
+        "GitHub Actions 36051373360: success; tests, gateway, writing jobs passed"
+      ],
+      "limitations": "Operator audit of committed docs and actual checks; not a native checker verdict or new Daniel acceptance."
+    }
+  },
+  "closed": "2026-09-24T19:59:43Z",
+  "landed": {
+    "at": "2026-09-24T19:59:43Z",
+    "by": "Codex interactive",
+    "sha": "5710597fb6b957bb8f0b61f3fe96b6baffb0235d",
+    "note": "Design note on main; CI run 36051373360 passed."
+  }
 }
