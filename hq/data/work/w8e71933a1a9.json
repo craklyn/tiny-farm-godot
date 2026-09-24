@@ -7,30 +7,20 @@
   "tier_reason": "This sweep was done from the word list in the brief because the checker was not yet in the working tree, so nothing has actually been verified against it.",
   "ask": "Accepted “Reword every phrase on HQ's pages that only makes sense inside this studio”. This sweep was done from the word list in the brief because the checker was not yet in the working tree, so nothing has actually been verified against it.",
   "first_action": "After tools/check_writing.py and docs/glossary.json are on main, run `python3 tools/check_writing.py` and confirm hq/static/*.js reports no MUST FIX and only the one plain-ok line in map.js; fix anything the checker flags that the word list in the brief did not cover.",
-  "state": "waiting_session",
+  "state": "landed",
   "thread": "rin",
   "source": "chat",
   "source_message": "Accepted “Reword every phrase on HQ's pages that only makes sense inside this studio”. This sweep was done from the word list in the brief because the checker was not yet in the working tree, so nothing has actually been verified against it.",
-  "result": "I could not execute the checker from this session, since running commands was blocked, so this is a by-hand reproduction of exactly what it does, not its output.\n\n**What I checked.** The checker and glossary are both committed on main, and CI now runs the checker on every push. I searched the seven page scripts for every hard-fail glossary word and judged each hit the way the checker judges it: comments are skipped, code is skipped, markup and interpolated expressions are stripped, and only real sentences count.\n\n**Result: no MUST FIX in the page scripts.** Every hit is one of these:\n\n- **Comments** explaining design intent, which the checker ignores on purpose. This is the bulk of them, in every file.\n- **Identifiers and class names** like `g-orphan`, `gate-src`, `data-tier`, `w-suites`, which are stripped as markup and never reach the screen.\n- **Rendered text that is already plain.** Where a word survives to the screen it is a rewrite: \"the build never loads it\", \"no record of where it came from\", \"conditions still unmet\", \"verified by you\".\n\nI also traced the four places that nest one template string inside another, since the checker's own scanner can mis-pair those. None of the fragments that result contains a glossary word as visible text.\n\n**One expectation in the brief is stale.** The map editor's fence label is no longer reported at all, not even as \"allowed\". The last commit tightened the prose filter so a label with only one real word is not checked, and that label has one. So the live run should end with \"No house vocabulary on any surface he reads\" plus a few \"consider\" lines for the soft words like pillar and signal, with nothing from the map editor. That is a better outcome than the brief asked for, not a problem.\n\n**What this implies.** Reading by hand is not the same as the machine saying yes. The live confirmation already exists in CI for the last commit, so the remaining step is to read that result rather than run anything new. It is mine and it changes nothing.",
-  "started": "",
-  "attempts": 1,
+  "result": "Ran the current tools/check_writing.py against the current dashboard checkout at b7aa11e. The judge checked 637 unique visible texts; none were unjudged. It reported 0 MUST FIX (decode) findings, 19 optional consider (second-look) findings overall, and 13 optional findings in hq/static page scripts. It reported no allowed line in map.js; the older expectation of exactly one allowed map line is stale. The offline --verify run also passed. The latest main CI run for b7aa11e (35975281166) completed successfully, including the writing job and its Every surface he reads has been read, and passed step. The current checker uses docs/WRITING.md and docs/writing_rulings.json with cached verdicts; docs/glossary.json no longer exists. No new decode finding requires a page change. The 19 optional second-look suggestions remain visible in the checker output and are not recorded here as fixed or accepted by Daniel.",
+  "started": "2026-09-24T08:31:26Z",
+  "attempts": 2,
   "created": "2026-09-04T14:29",
   "created_ts": 1788557392.8329446,
   "parent": "wdd79dcd74ed",
-  "follow_ups": [
-    {
-      "title": "Confirm the writing check passed in CI for the latest commit on main",
-      "owner": "claude",
-      "level": "task",
-      "tier": 0,
-      "first_action": "Run `gh run list --branch main --limit 1 --json conclusion,url` and open the writing-check step of that run; if it is not green, paste its MUST FIX lines into this card.",
-      "why": "The by-hand scan found nothing, but the checker itself has not been seen to pass, and CI already ran it on the last push."
-    }
-  ],
   "recommend": {},
-  "finished": "2026-09-04T14:33",
+  "finished": "2026-09-24T08:31:26Z",
   "subject": "How HQ works",
-  "_revision": 1,
+  "_revision": 2,
   "completion_reconciliation": {
     "version": 1,
     "manifest_id": "38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33",
@@ -41,12 +31,83 @@
   },
   "repair_brief": "Run the current writing checker against current visible dashboard page text, address concrete findings, and record the actual validation result. Do not reuse the obsolete word-list simulation as evidence.",
   "automatic_repairs": 1,
-  "revising": true,
+  "revising": false,
   "prior_results": [
     {
       "at": "2026-09-04T14:33",
       "attempt": 1,
       "result": "I could not execute the checker from this session, since running commands was blocked, so this is a by-hand reproduction of exactly what it does, not its output.\n\n**What I checked.** The checker and glossary are both committed on main, and CI now runs the checker on every push. I searched the seven page scripts for every hard-fail glossary word and judged each hit the way the checker judges it: comments are skipped, code is skipped, markup and interpolated expressions are stripped, and only real sentences count.\n\n**Result: no MUST FIX in the page scripts.** Every hit is one of these:\n\n- **Comments** explaining design intent, which the checker ignores on purpose. This is the bulk of them, in every file.\n- **Identifiers and class names** like `g-orphan`, `gate-src`, `data-tier`, `w-suites`, which are stripped as markup and never reach the screen.\n- **Rendered text that is already plain.** Where a word survives to the screen it is a rewrite: \"the build never loads it\", \"no record of where it came from\", \"conditions still unmet\", \"verified by you\".\n\nI also traced the four places that nest one template string inside another, since the checker's own scanner can mis-pair those. None of the fragments that result contains a glossary word as visible text.\n\n**One expectation in the brief is stale.** The map editor's fence label is no longer reported at all, not even as \"allowed\". The last commit tightened the prose filter so a label with only one real word is not checked, and that label has one. So the live run should end with \"No house vocabulary on any surface he reads\" plus a few \"consider\" lines for the soft words like pillar and signal, with nothing from the map editor. That is a better outcome than the brief asked for, not a problem.\n\n**What this implies.** Reading by hand is not the same as the machine saying yes. The live confirmation already exists in CI for the last commit, so the remaining step is to read that result rather than run anything new. It is mine and it changes nothing."
     }
-  ]
+  ],
+  "closed": "2026-09-24T08:31:26Z",
+  "diff": {
+    "stat": "Verification-only closure; no dashboard source changed.",
+    "files": [],
+    "applied": false,
+    "why_not": "No code change was needed: the current checker passed."
+  },
+  "suites": {
+    "writing": "pass; 637 unique texts, zero unjudged, zero decode, 19 optional second-look (13 page scripts)",
+    "writing_offline": "pass",
+    "ci_run": "https://github.com/craklyn/tiny-farm-godot/actions/runs/35975281166",
+    "ci_writing_step": "success on b7aa11e"
+  },
+  "attempt_outcome": {
+    "version": 1,
+    "id": "interactive-writing-sweep-w8e71933a1a9-20260924",
+    "status": "complete",
+    "reason": "Current checker and offline verification passed; no required dashboard wording fixes.",
+    "result_id": "7dbdd8f8aec7a9e4deb09cb4a6796d29e9bc5932e9f6f4736ad21a11ac4a908d",
+    "landing_verified": true
+  },
+  "check": {
+    "verdict": "pass",
+    "read": true,
+    "complete": true,
+    "attempt_id": "interactive-writing-sweep-w8e71933a1a9-20260924",
+    "summary": "Ran the current checker and offline verification, counted page findings, and checked the completed writing CI step.",
+    "findings": []
+  },
+  "completion": {
+    "version": 1,
+    "attempt_id": "interactive-writing-sweep-w8e71933a1a9-20260924",
+    "at": "2026-09-24T08:31:26Z",
+    "sha": "",
+    "by": "Codex interactive",
+    "kind": "reading",
+    "evidence": {
+      "checker": "python3 tools/check_writing.py: exit 0, zero decode, 19 optional second-look",
+      "offline": "python3 tools/check_writing.py --verify: exit 0",
+      "ci_run": "https://github.com/craklyn/tiny-farm-godot/actions/runs/35975281166"
+    }
+  },
+  "landed": {
+    "at": "2026-09-24T08:31:26Z",
+    "by": "Codex interactive",
+    "sha": "",
+    "note": "Current checker verified the HQ pages; no new decode finding. Optional second-look suggestions remain."
+  },
+  "resolved_follow_ups": [
+    {
+      "title": "Confirm the writing check passed in CI for the latest commit on main",
+      "owner": "claude",
+      "level": "task",
+      "tier": 0,
+      "first_action": "Run `gh run list --branch main --limit 1 --json conclusion,url` and open the writing-check step of that run; if it is not green, paste its MUST FIX lines into this card.",
+      "why": "The by-hand scan found nothing, but the checker itself has not been seen to pass, and CI already ran it on the last push."
+    }
+  ],
+  "workflow": {
+    "version": 1,
+    "actions": [],
+    "blockers": [],
+    "candidates": [],
+    "verifications": [],
+    "integrations": [],
+    "ci": {
+      "confirmed": true,
+      "commit_sha": "b7aa11e9a4c492656b7510c4a58eb50c98d58895",
+      "run_url": "https://github.com/craklyn/tiny-farm-godot/actions/runs/35975281166"
+    }
+  }
 }
