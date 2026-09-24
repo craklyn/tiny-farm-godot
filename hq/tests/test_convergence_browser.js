@@ -68,13 +68,21 @@ async function fetch(url) { return {json:async () => url === '/api/work' ? {item
 })().catch(error => document.body.dataset.error = error.stack);
 </script>`, 'utf8');
 
-const run = spawnSync(chrome, ['--headless=new', '--no-sandbox', '--disable-gpu',
-  '--disable-dev-shm-usage', '--window-size=600,800',
-  '--user-data-dir=' + path.join(tmp, 'chrome-profile'),
-  '--virtual-time-budget=1000', '--dump-dom', 'file://' + htmlPath],
-{encoding:'utf8', timeout:30000});
+// Hosted Chrome occasionally stalls before it emits any DOM. One fresh-profile
+// retry distinguishes that startup failure from a page that actually rendered
+// the wrong queue; a rendered failure still fails on its first attempt.
+let run;
+for (let attempt = 1; attempt <= 2; attempt++) {
+  run = spawnSync(chrome, ['--headless=new', '--no-sandbox', '--disable-gpu',
+    '--disable-dev-shm-usage', '--disable-background-networking', '--no-first-run',
+    '--window-size=600,800',
+    '--user-data-dir=' + path.join(tmp, 'chrome-profile-' + attempt),
+    '--virtual-time-budget=1000', '--dump-dom', 'file://' + htmlPath],
+  {encoding:'utf8', timeout:30000});
+  if (!(run.error && run.error.code === 'ETIMEDOUT' && !run.stdout && attempt === 1)) break;
+}
 try {
-  assert.equal(run.status, 0, run.stderr || 'Chrome did not render the queue');
+  assert.equal(run.status, 0, (run.error && run.error.message) || run.stderr || 'Chrome did not render the queue');
   assert.doesNotMatch(run.stdout, /data-error=/);
   assert.match(run.stdout, /data-ready-titles="[^"]*Approve the new design direction/);
   assert.doesNotMatch(run.stdout, /data-ready-titles="[^"]*Weather reconciliation/);
