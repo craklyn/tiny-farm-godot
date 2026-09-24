@@ -2843,8 +2843,8 @@ func test_crow_raid_survives_a_save() -> void:
 func test_story_loop_shown_survives_a_save() -> void:
 	print("\n--- The overnight's shown-loop flag survives a save (P-15) Tests ---")
 	# Presentation's own record of which story-night loops this farm has seen. The
-	# autosave lands at the sleep tap, before the hold plays, so a session cut short
-	# between the two must reload knowing the loop was already chosen.
+	# flag travels with the farm's next save, independently of the sim's record
+	# that the story night itself has happened.
 	var live := LiveSession.new(3202)
 	live.gs.story_loops_shown[SimWorld.STORY_NIGHT_CROW] = true
 	var saved = JSON.parse_string(JSON.stringify(SaveGame.capture(live.world, live.gs)))

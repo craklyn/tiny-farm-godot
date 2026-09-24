@@ -317,9 +317,8 @@ func _enter_hold_phase() -> void:
 	var already_shown: bool = GameState.story_loops_shown.get(night, false)
 
 	if slug != "" and not already_shown and _prepare_loop(slug):
-		# Marked the moment the loop is chosen, not once it finishes: once per
-		# farm, no skip — a session cut short mid-loop must never offer a second
-		# showing on reload (the flag rides the save, `save_game.gd`).
+		# Marked the moment the loop is chosen, not once it finishes: the
+		# presentation's once-per-farm guard rides the next save (`save_game.gd`).
 		GameState.story_loops_shown[night] = true
 		last_story_loop = slug
 		_ducking = true
