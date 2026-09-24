@@ -18,7 +18,7 @@
   "attempts": 1,
   "created": "2026-09-21T22:43",
   "created_ts": 1790055811.4203398,
-  "_revision": 4,
+  "_revision": 7,
   "promised_by": "w59c6ab05678",
   "promised": {
     "card": "Add how a sprite's edge is drawn to the look session agenda",
@@ -92,11 +92,6 @@
       "evidence_summary": "Q-14 already asks Daniel at the look session whether sprite edges must be hard cuts or may use partly transparent pixels, explains that the fourth look’s softer edges depend on his answer, and links the hand-edits evidence in docs/design/09-art-direction.md. The question landed in bb0e142; no further decision-card edit is needed. Daniel has not chosen an edge treatment.",
       "limitations": "This verifies the agenda text and citation only; it does not approve the guide or choose an edge treatment."
     }
-  },
-  "pending_followups": {
-    "version": 1,
-    "attempt_id": "operator-audit-w6e38772fbe0-2026-09-24",
-    "items": []
   },
   "landed": {
     "at": "2026-09-24T09:24:02Z",

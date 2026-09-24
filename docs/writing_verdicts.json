@@ -2705,6 +2705,12 @@
   "98bfab9353f6ef329ded": {
    "verdict": "ok"
   },
+  "98c3e607f57920141246": {
+   "instead": "Record the final state of the HQ card showing the sprite's edge",
+   "quote": "sprite-edge card state",
+   "verdict": "decode",
+   "why": "The phrase combines internal-sounding terms without saying what changed or what the reader should understand about the card."
+  },
   "98cb7b7d605f05ff8356": {
    "verdict": "ok"
   },
@@ -3952,6 +3958,9 @@
    "verdict": "ok"
   },
   "dbe01701a9a93161924c": {
+   "verdict": "ok"
+  },
+  "dc15900ffb91e74bc58a": {
    "verdict": "ok"
   },
   "dc1ea34b074327526091": {
