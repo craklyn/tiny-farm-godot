@@ -7,11 +7,11 @@
   "tier_reason": "Pausing a scheduled session is a plan change, but it is easily resumed once the look lands.",
   "ask": "Hold the foley session until I've picked a look.",
   "first_action": "Take the foley recording session off the schedule and keep license hygiene and sound-direction prep running in the meantime.",
-  "state": "waiting_session",
+  "state": "landed",
   "thread": "claude",
   "source": "chat",
   "source_message": "Yes - go ahead and get the look session captures rendered for me first, and tell Dmitri to hold the foley session until I've picked a look.",
-  "result": "",
+  "result": "The next foley recording session is deferred until Daniel chooses a visual style at the Q-14 look session. The live Q-31 queue entry and docs/design/10-audio-direction.md already say the recording batch waits while free sound searches, listening cards, source and licence checks, and audio direction preparation continue. The art and audio project plan now names the same condition, with no recording date on its card (dd70cbb). The watering takes recorded on 2026-09-02 remain in use; this work did not schedule or record another session. Q-118 is an open listening card for two CC0 planting candidates, which shows free sourcing continues. No new Daniel ruling or checker approval is claimed.",
   "started": "",
   "attempts": 1,
   "created": "2026-09-02T21:56",
@@ -45,6 +45,20 @@
       "why": "\"Hold\" reads as both delay and conduct, and the queue is read title-first."
     }
   ],
+  "completion": {
+    "version": 1,
+    "attempt_id": "interactive-foley-schedule-wd5b69e9972d-20260924",
+    "at": "2026-09-24T09:50:32Z",
+    "sha": "dd70cbb753cbd172ea71cf5e32d0981c1f958e62",
+    "by": "Codex interactive",
+    "kind": "reading",
+    "evidence": {
+      "project_plan": "dd70cbb: recording session waits until the visual style is chosen",
+      "queue": "docs/DESIGNER_QUEUE.md Q-31: only the recording batch waits on Q-14",
+      "audio_note": "docs/design/10-audio-direction.md: free search and licence tracking continue",
+      "live_api": "GET /api/work/wd5b69e9972d showed the stale waiting_session card before repository closure"
+    }
+  },
   "prior_checks": [
     {
       "verdict": "concerns",
