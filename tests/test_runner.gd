@@ -751,6 +751,25 @@ func test_sim_rng() -> void:
 		seq_c.append(SimRng.randi())
 	_assert(seq_a != seq_c, "Different seed produces different sequence")
 
+	# A moving actor can consume the shared stream between cot taps. It must
+	# not change the sky assigned to any particular day of this seeded farm.
+	GameState.reset()
+	SimRng.reseed(20260910)
+	var skies_without_noise: Array[String] = []
+	for i in 12:
+		GameState.start_new_day()
+		skies_without_noise.append(GameState.weather)
+	GameState.reset()
+	SimRng.reseed(20260910)
+	var skies_with_noise: Array[String] = []
+	for i in 12:
+		for draw in i * 3 + 1:
+			SimRng.randi()
+		GameState.start_new_day()
+		skies_with_noise.append(GameState.weather)
+	_assert(skies_with_noise == skies_without_noise,
+		"Each day's weather ignores shared-stream draws before sleep")
+
 func test_milestones() -> void:
 	print("\n--- Milestone Tests ---")
 

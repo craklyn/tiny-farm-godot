@@ -576,7 +576,9 @@ func start_new_day() -> void:
 	ant_schedule = SimWorld.roll_ant_schedule(play_day())
 	visitor_schedules = SimWorld.roll_visitor_schedules(play_day())
 
-	if SimRng.randf() < 0.2:
+	# The next day's sky depends on the seed and day, not on how many draws
+	# moving actors happened to consume before the player went to bed.
+	if SimRng.stateless(day, 9000) % 100 < 20:
 		weather = "rainy"
 	else:
 		weather = "sunny"
