@@ -84,11 +84,12 @@ function reviewComparison(item, attachments = []) {
       role: att.role || att.tag || "", group});
   }
   const media = [...entries.filter(e => e.kind !== "link"), ...display.filter(e => !entries.some(a => a.href === e.href))];
-  const comparison = item && item.deliverable && item.deliverable.comparison;
+  const comparison = item && (item.deliverable && item.deliverable.comparison || item.comparison);
   const rows = comparison && Array.isArray(comparison.rows) ? comparison.rows : [];
   const copy = comparison && Array.isArray(comparison.copy) ? comparison.copy : [];
   if (!entries.length && !display.length && !legacy && !rows.length && !copy.length) return "";
-  const version = item && item.deliverable && item.deliverable.reviewed_version;
+  const version = item && item.deliverable && (item.deliverable.reviewed_version ||
+    entries.find(e => e.sha256 || e.version)?.sha256 || entries.find(e => e.version)?.version);
   const versionLabel = version ? `Reviewed version: ${esc(version)}` : "Reviewed version was not pinned in this card.";
   const creation = item && item.deliverable && item.deliverable.created_at;
   const evidenceLinks = entries.filter(e => e.kind === "link").map(e =>

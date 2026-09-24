@@ -9,8 +9,10 @@ const root = path.join(__dirname, '../..');
 const chrome = [process.env.CHROME, '/usr/bin/google-chrome', '/usr/bin/chromium']
   .find(p => p && fs.existsSync(p));
 assert.ok(chrome, 'Chrome is required for the layout browser check');
-const css = ['style.css', 'queue.css'].map(name =>
+const css = ['style.css', 'queue.css', 'review_evidence.css'].map(name =>
   fs.readFileSync(path.join(root, 'hq/static', name), 'utf8')).join('\n');
+const review = fs.readFileSync(path.join(root, 'hq/static/review_evidence.js'), 'utf8')
+  .replace(/<\/script/gi, '<\\/script');
 const queue = fs.readFileSync(path.join(root, 'hq/static/queue.js'), 'utf8')
   .replace(/<\/script/gi, '<\\/script');
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'hq-layout-'));
@@ -32,7 +34,7 @@ function updateQueueBadge() {} function attachmentEl() { return document.createE
 function noteVersion() {} function api() { return Promise.resolve({}); }
 function workPost() { return Promise.resolve({ok:true}); }
 function recordDecision() { return Promise.resolve({ok:true}); }
-</script><script>${queue}</script><script>
+</script><script>${review}</script><script>${queue}</script><script>
 const cards = Array.from({length:12}, (_,i) => ({id:'review-'+i,title:i===0?'The revised seeder-bot animation':'Farm review '+(i+1),
   state:'for_review',owner:'rin',tier:2,review_question:'Does this reviewed result stand?',
   recommend:{answer:'Approve this version',why:'The result is ready for inspection at game scale. The revised motion reads clearly and keeps the original farm palette.'},

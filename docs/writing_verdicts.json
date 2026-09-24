@@ -428,6 +428,12 @@
   "15c22d4221e7c340938b": {
    "verdict": "ok"
   },
+  "15d008dafd889ef0c998": {
+   "instead": "Load the review comparisons in HQ and in the browser test setup",
+   "quote": "browser fixture",
+   "verdict": "decode",
+   "why": "“Fixture” is an internal testing term, so a reader cannot tell what browser surface or setup this means."
+  },
   "15da062375f563ef5011": {
    "verdict": "ok"
   },
@@ -4417,6 +4423,9 @@
    "verdict": "ok"
   },
   "eb2166e6f0285c1903b8": {
+   "verdict": "ok"
+  },
+  "eb3bc46605c726f5f07d": {
    "verdict": "ok"
   },
   "ec53440686a57f47a89f": {
