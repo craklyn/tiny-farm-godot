@@ -1018,6 +1018,12 @@
   "3517b12561cff92afa65": {
    "verdict": "ok"
   },
+  "357b9b53edec763ac9aa": {
+   "instead": "Keep the page that shows blocked work in sync with the work queue",
+   "quote": "blocked-work browser check",
+   "verdict": "decode",
+   "why": "A stranger cannot tell what this check does or how it should relate to the queue."
+  },
   "35a5a3b0df723b9d116c": {
    "verdict": "ok"
   },
@@ -2342,6 +2348,9 @@
    "verdict": "ok"
   },
   "7e9c5f0c43bb82474352": {
+   "verdict": "ok"
+  },
+  "7eee8c8d6d921175dffc": {
    "verdict": "ok"
   },
   "7fc195090a053707bde9": {

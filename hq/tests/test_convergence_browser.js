@@ -9,8 +9,10 @@ const { spawnSync } = require('node:child_process');
 const root = path.join(__dirname, '..');
 const app = fs.readFileSync(path.join(root, 'static/app.js'), 'utf8');
 const helper = app.slice(app.indexOf('function workflowView('), app.indexOf('// A work title'));
+const review = fs.readFileSync(path.join(root, 'static/review_evidence.js'), 'utf8');
 const queue = fs.readFileSync(path.join(root, 'static/queue.js'), 'utf8');
-const css = fs.readFileSync(path.join(root, 'static/queue.css'), 'utf8');
+const css = ['queue.css', 'review_evidence.css'].map(name =>
+  fs.readFileSync(path.join(root, 'static', name), 'utf8')).join('\n');
 const view = JSON.parse(fs.readFileSync(path.join(__dirname,
   'fixtures/blocked_reconciliation_view.json'), 'utf8'));
 const chrome = [process.env.CHROME, '/usr/bin/google-chrome', '/usr/bin/chromium']
@@ -46,6 +48,7 @@ async function fetch(url) { return {json:async () => url === '/api/work' ? {item
   : url === '/api/execution/queue' ? {eligible:[{id:${JSON.stringify(view.next_action.id)},work_id:'weather'}],held:[{id:'weather'}]}
   : {paused:false,queued:1,timer:{active:true}}}; }
 </script><script>${helper.replace(/<\/script/gi, '<\\/script')}</script>
+<script>${review.replace(/<\/script/gi, '<\\/script')}</script>
 <script>${queue.replace(/<\/script/gi, '<\\/script')}</script>
 <script>
 (async () => {
@@ -73,7 +76,7 @@ const run = spawnSync(chrome, ['--headless=new', '--no-sandbox', '--disable-gpu'
 try {
   assert.equal(run.status, 0, run.stderr || 'Chrome did not render the queue');
   assert.doesNotMatch(run.stdout, /data-error=/);
-  assert.match(run.stdout, /data-ready-titles="[^"]*Should we proceed\?/);
+  assert.match(run.stdout, /data-ready-titles="[^"]*Approve the new design direction/);
   assert.doesNotMatch(run.stdout, /data-ready-titles="[^"]*Weather reconciliation/);
   assert.match(run.stdout, /data-blocked-open="true"/);
   assert.match(run.stdout, /data-blocked-text="[^"]*Weather reconciliation[^"]*Blocked — Save-lineage edits overlap the old patch; recovery is ready/);
