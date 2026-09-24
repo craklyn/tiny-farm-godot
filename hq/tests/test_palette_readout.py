@@ -18,7 +18,8 @@ class PaletteReadoutTests(unittest.TestCase):
         server._PALETTE_CACHE.update(key=None, data=None)
         data = server.palette_union()
         self.assertEqual(data["failed"], [])
-        self.assertEqual(data["sheets"], 49)  # 48 runtime generated + tool icons
+        self.assertEqual(data["sheets"], 50)  # 49 runtime generated + tool icons
+        self.assertIn("player_chop.png", data["sheet_names"])
         self.assertTrue({"terrain_field.png", "terrain_yard.png", "wheat.png"}
                         <= set(data["sheet_names"]))
         self.assertFalse({"duck.png", "fox.png", "squirrel.png", "terrain_grass.png"}

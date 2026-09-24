@@ -4,7 +4,7 @@
 2026-09-24; Q-14 still awaits the designer's look session and approval.*
 
 ## Current state
-The game draws from 48 of the 52 PNG sheets in `assets/sprites/generated/` and
+The game draws from 49 of the 53 PNG sheets in `assets/sprites/generated/` and
 from `assets/sprites/tool_icons.png`. The other four generated PNGs — `duck.png`,
 `fox.png`, `squirrel.png` and `terrain_grass.png` — have no runtime `res://`
 reference; the last is retained as the source for the generated yard sheet.
@@ -70,7 +70,7 @@ silhouette. Read against the style guide below, there is nothing to read it
 against: the guide fixes the per-material ramps, the coloured outlines, the
 contrast between the ambient world and the things worth touching, and the hues
 held back for overlays, and it says nothing about where a sprite stops. Today
-every sheet in `assets/sprites/generated/` stops hard — across all 52 now present not
+every sheet in `assets/sprites/generated/` stops hard — across all 53 now present not
 one pixel is partly transparent, so an edge is either fully drawn or fully absent
 — but that is what the image pipeline happens to produce, not a rule anyone chose.
 
@@ -379,7 +379,7 @@ close — and no single sheet can show both.
 This is an inventory for making and comparing the four look captures, **not an
 approved rule set or reskin spec**. Measurements are from PNG bytes currently
 under `assets/sprites/generated/`. A scan of runtime `.gd`, `.tscn` and `.tres`
-files for literal `res://assets/sprites/generated/*.png` references finds 48
+files for literal `res://assets/sprites/generated/*.png` references finds 49
 used sheets and excludes the four named above; the ground-source row is marked
 as such. Representative ground, crop, character, bot and structure sheets were
 also viewed at nearest-neighbour enlargement. The renderer references include
@@ -419,7 +419,7 @@ and `#90625d`; the stall uses violet `#5c4e92` and teal `#8cbfc2`. The
 64×96 tower reaches 52 colours, so “every material has a tiny ramp” describes
 some ground and crop art but not every shipped structure.
 
-**Edges and contrast seen in the sheets.** All 48 referenced sheets (and the
+**Edges and contrast seen in the sheets.** All 49 referenced sheets (and the
 four excluded source or unused sheets) have zero pixels with alpha between 1
 and 254: edges are hard at source resolution.
 Outlines and darkest patches vary by subject: violet on the farmer and first
