@@ -299,8 +299,7 @@ async function renderSpriteEditor(path) {
     groundSheet
       ? `The farm repeats these ${frames.length} ground cells in their sheet order, ${cellW}×${cellH} pixels each.`
       : `This is all ${frames.length} cell${frames.length === 1 ? "" : "s"} of the sheet, ${cellW}×${cellH} pixels each.`,
-    nAnim ? `${nAnim} of them ${ent.frames.length > 1
-      ? (nAnim === 1 ? "animates" : "animate") : (nAnim === 1 ? "draws" : "draw")} ${esc(ent.name)}.` : "",
+    nAnim ? `${nAnim} of them ${nAnim === 1 ? "draws" : "draw"} ${esc(ent.name)}.` : "",
     nOther ? `${nOther} ${nOther === 1 ? "draws" : "draw"} ${listNames(otherLinks)}.` : "",
     nStray ? `${nStray} cell${nStray === 1 ? "" : "s"} contain art not shown in the entity gallery.` : "",
     nBlank ? `${nBlank} ${nBlank === 1 ? "is" : "are"} empty.` : "",
@@ -394,8 +393,8 @@ async function renderSpriteEditor(path) {
         </section>
       </div>
       <div class="sp-side">
-        ${clips.length > 1 ? `<h2 style="margin-top:0">Animations</h2>
-        <p class="small muted">Everything this sheet animates. Pick one to preview it and edit its
+        ${clips.length > 1 ? `<h2 style="margin-top:0">Image sets</h2>
+        <p class="small muted">Every set in this sheet. Pick one to preview it and edit its
         frames — a dot marks the ones your unsaved edits touch.</p>
         <div class="sp-clips" id="sp-clips"></div>` : ""}
         <h2 id="sp-pv-head" ${clips.length > 1 ? "" : `style="margin-top:0"`}>${groundSheet ? "Ground as it repeats on the farm" : "Live preview"}</h2>

@@ -2079,6 +2079,9 @@
   "77b57bd90e4f98172d17": {
    "verdict": "ok"
   },
+  "77d61f423364c1f2260e": {
+   "verdict": "ok"
+  },
   "780ee5d02ab5f1eaa5dd": {
    "instead": "Specify the metric: \"The view count that would trigger marketing outreach\" or \"The player count that would prompt marketing efforts\"",
    "quote": "The number that would start marketing work",
