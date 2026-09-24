@@ -1300,6 +1300,7 @@ async function renderSpriteEditor(path) {
     playBtn.title = curClip.assembled
       ? (single ? "One assembled pose — it shows in the live preview."
                 : "Assembled drawings — they play in the live preview.")
+      : curClip.ladder && !single ? "These states are shown together — there is nothing to play."
       : curClip.stills && !single ? "Poses, not a cycle — there is nothing to play."
       : single ? `${ent.name} is drawn from a single frame, so there is nothing to play.` : "";
   };
