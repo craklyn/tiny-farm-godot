@@ -5,6 +5,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
@@ -66,9 +67,12 @@ class WorkflowProjection(unittest.TestCase):
         drain.save_patch(item["id"], "diff --git a/sample.txt b/sample.txt\n--- a/sample.txt\n+++ b/sample.txt\n@@ -1 +1 @@\n-base\n+new\n")
         (self.repo / "sample.txt").write_text("someone else's edit\n")
         before = Path(work._item_path(item["id"])).read_bytes()
-        first = drain.queue_view()
-        second = drain.queue_view()
-        snap = work.snapshot()
+        # Age is a live projection. Keep the clock fixed while comparing these
+        # separate reads so crossing a whole second cannot change age_seconds.
+        with patch.object(time, "time", return_value=time.time()):
+            first = drain.queue_view()
+            second = drain.queue_view()
+            snap = work.snapshot()
         self.assertEqual(first, second)
         self.assertEqual(before, Path(work._item_path(item["id"])).read_bytes())
         self.assertEqual(snap["items"][0]["_revision"], item["_revision"])
