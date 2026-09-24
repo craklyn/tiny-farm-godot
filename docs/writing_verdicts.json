@@ -1918,6 +1918,9 @@
    "verdict": "decode",
    "why": "The sentence is incomplete; an opening word is missing and the reader cannot parse it."
   },
+  "6e9536f24e53036cb2a9": {
+   "verdict": "ok"
+  },
   "6eece977e2f6cf7b8e39": {
    "verdict": "ok"
   },

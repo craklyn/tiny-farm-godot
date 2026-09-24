@@ -9,20 +9,99 @@
   "tier_reason": "A line in the chapter will not be in front of him at the session unless the card carries it.",
   "ask": "Landed without Daniel: “Add how a sprite's edge is drawn to the look session agenda”. A line in the chapter will not be in front of him at the session unless the card carries it.",
   "first_action": "Add the edge question to the Q-14 look-session decision card in hq/data/decisions/: the guide is silent on whether a sprite's edge is a hard cut or may carry part-transparent pixels, and the fourth look's 'softer edges' depends on the answer. Cite docs/design/09-art-direction.md, hand-edits section.",
-  "state": "waiting_session",
+  "state": "landed",
   "thread": "ingrid",
   "source": "chat",
   "source_message": "Landed without Daniel: “Add how a sprite's edge is drawn to the look session agenda”.",
-  "result": "",
-  "started": "",
-  "attempts": 0,
+  "result": "Q-14 already asks Daniel at the look session whether sprite edges must be hard cuts or may use partly transparent pixels, explains that the fourth look’s softer edges depend on his answer, and links the hand-edits evidence in docs/design/09-art-direction.md. The question landed in bb0e142; no further decision-card edit is needed. Daniel has not chosen an edge treatment.",
+  "started": "2026-09-24T09:24:02Z",
+  "attempts": 1,
   "created": "2026-09-21T22:43",
   "created_ts": 1790055811.4203398,
-  "_revision": 2,
+  "_revision": 4,
   "promised_by": "w59c6ab05678",
   "promised": {
     "card": "Add how a sprite's edge is drawn to the look session agenda",
     "title": "Put the sprite-edge question on the look session card",
     "why": "A line in the chapter will not be in front of him at the session unless the card carries it."
+  },
+  "finished": "2026-09-24T09:24:02Z",
+  "done_by": {
+    "seat": "operator",
+    "model": "codex",
+    "lane": "interactive audit"
+  },
+  "closed": "2026-09-24T09:24:02Z",
+  "completion_reconciliation": {
+    "version": 1,
+    "at": "2026-09-24T09:24:02Z",
+    "classification": "safe_to_close",
+    "by": "Codex interactive",
+    "evidence_commits": [
+      "bb0e1429adbe35b5760ffc3dde06daeb67591486"
+    ],
+    "evidence_files": [
+      "hq/data/decisions/Q-14.json",
+      "docs/design/09-art-direction.md"
+    ],
+    "evidence_summary": "Q-14 already asks Daniel at the look session whether sprite edges must be hard cuts or may use partly transparent pixels, explains that the fourth look’s softer edges depend on his answer, and links the hand-edits evidence in docs/design/09-art-direction.md. The question landed in bb0e142; no further decision-card edit is needed. Daniel has not chosen an edge treatment.",
+    "limitations": "This verifies the agenda text and citation only; it does not approve the guide or choose an edge treatment."
+  },
+  "attempt_outcome": {
+    "version": 1,
+    "id": "operator-audit-w6e38772fbe0-2026-09-24",
+    "status": "complete",
+    "reason": "Q-14 already asks Daniel at the look session whether sprite edges must be hard cuts or may use partly transparent pixels, explains that the fourth look’s softer edges depend on his answer, and links the hand-edits evidence in docs/design/09-art-direction.md. The question landed in bb0e142; no further decision-card edit is needed. Daniel has not chosen an edge treatment.",
+    "result_id": "6042af2c82d5781c596c526d1708631be8b675c0906d4a04ed14b43a5295f4d2",
+    "landing_verified": true,
+    "operator_audit": {
+      "version": 1,
+      "at": "2026-09-24T09:24:02Z",
+      "classification": "safe_to_close",
+      "by": "Codex interactive",
+      "evidence_commits": [
+        "bb0e1429adbe35b5760ffc3dde06daeb67591486"
+      ],
+      "evidence_files": [
+        "hq/data/decisions/Q-14.json",
+        "docs/design/09-art-direction.md"
+      ],
+      "evidence_summary": "Q-14 already asks Daniel at the look session whether sprite edges must be hard cuts or may use partly transparent pixels, explains that the fourth look’s softer edges depend on his answer, and links the hand-edits evidence in docs/design/09-art-direction.md. The question landed in bb0e142; no further decision-card edit is needed. Daniel has not chosen an edge treatment.",
+      "limitations": "This verifies the agenda text and citation only; it does not approve the guide or choose an edge treatment."
+    }
+  },
+  "completion": {
+    "version": 1,
+    "attempt_id": "operator-audit-w6e38772fbe0-2026-09-24",
+    "at": "2026-09-24T09:24:02Z",
+    "by": "Codex interactive",
+    "kind": "operator_audit",
+    "sha": "bb0e1429adbe35b5760ffc3dde06daeb67591486",
+    "evidence": {
+      "version": 1,
+      "at": "2026-09-24T09:24:02Z",
+      "classification": "safe_to_close",
+      "by": "Codex interactive",
+      "evidence_commits": [
+        "bb0e1429adbe35b5760ffc3dde06daeb67591486"
+      ],
+      "evidence_files": [
+        "hq/data/decisions/Q-14.json",
+        "docs/design/09-art-direction.md"
+      ],
+      "evidence_summary": "Q-14 already asks Daniel at the look session whether sprite edges must be hard cuts or may use partly transparent pixels, explains that the fourth look’s softer edges depend on his answer, and links the hand-edits evidence in docs/design/09-art-direction.md. The question landed in bb0e142; no further decision-card edit is needed. Daniel has not chosen an edge treatment.",
+      "limitations": "This verifies the agenda text and citation only; it does not approve the guide or choose an edge treatment."
+    }
+  },
+  "pending_followups": {
+    "version": 1,
+    "attempt_id": "operator-audit-w6e38772fbe0-2026-09-24",
+    "items": []
+  },
+  "landed": {
+    "at": "2026-09-24T09:24:02Z",
+    "by": "Codex interactive",
+    "sha": "bb0e1429adbe35b5760ffc3dde06daeb67591486",
+    "note": "Q-14 already asks Daniel at the look session whether sprite edges must be hard cuts or may use partly transparent pixels, explains that the fourth look’s softer edges depend on his answer, and links the hand-edits evidence in docs/design/09-art-direction.md. The question landed in bb0e142; no further decision-card edit is needed. Daniel has not chosen an edge treatment."
   }
 }
