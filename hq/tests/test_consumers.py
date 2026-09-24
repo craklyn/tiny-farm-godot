@@ -21,6 +21,14 @@ class Consumers(unittest.TestCase):
     def test_job_labels_use_the_visible_test_names(self):
         self.assertEqual(server.JOBS['unit']['label'], 'Unit tests')
         self.assertEqual(server.JOBS['integration']['label'], 'Integration tests')
+        pillars = json.loads((Path(__file__).resolve().parents[1] / 'data/pillars.json').read_text())
+        demos = {pillar['id']: pillar['demos'] for pillar in pillars['pillars']}
+        self.assertEqual(demos['engineering'][0]['label'], 'Run the unit tests')
+        self.assertEqual(demos['ops'][0]['label'], 'Where every asset came from')
+        with patch.object(server, 'latest_job_result', return_value=None):
+            for job in ('unit', 'integration'):
+                self.assertEqual(server.eval_measure({'kind': 'job_state', 'job': job})['source_human'],
+                                 server.JOBS[job]['label'])
 
     def test_hold_does_not_claim_or_mutate(self):
         item = {'id': 'held', 'owner': 'sam', 'attempts': 3, 'state': 'doing'}

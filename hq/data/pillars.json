@@ -20,14 +20,14 @@
       ],
       "demos": [
         {
-          "label": "Run the unit suite, live",
+          "label": "Run the unit tests",
           "href": "#/pillar/engineering",
-          "desc": "Grace's demo: the real suite, run from this page, verdict on screen."
+          "desc": "Run the game's unit tests from this page and see the result."
         },
         {
-          "label": "CI on main",
+          "label": "Automated tests for the latest code",
           "href": "https://github.com/craklyn/tiny-farm-godot/actions",
-          "desc": "Every push: unit, integration, robot session, benchmark."
+          "desc": "Every push runs unit and integration tests, a robot session, and a speed check."
         }
       ],
       "commit_feed_label": "the engine and the tests",
@@ -50,7 +50,7 @@
         {
           "label": "Program report",
           "href": "#/program",
-          "desc": "Sofia's demo: every project, prioritized, with definition of done."
+          "desc": "Every project, its priority, and what must be finished."
         },
         {
           "label": "Playtest sessions",
@@ -107,7 +107,7 @@
         {
           "label": "The itch page copy",
           "href": "#/pillar/marketing",
-          "desc": "The one public-facing artifact that exists today, rendered live."
+          "desc": "The current text on the game's public itch.io page."
         }
       ],
       "commit_feed_label": "what the public has not been told about yet",
@@ -156,9 +156,9 @@
       ],
       "demos": [
         {
-          "label": "The provenance ledger",
+          "label": "Where every asset came from",
           "href": "#/pillar/ops",
-          "desc": "Every asset's rights and cost, from CREDITS.md — the real spend record."
+          "desc": "Each asset's source, permission to use it, and cost, from CREDITS.md."
         }
       ],
       "commit_feed_label": "licences, credentials and the deploy runbook",

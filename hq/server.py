@@ -1453,7 +1453,7 @@ def parse_playtest(name):
     tdir = os.path.join(USER_WORKSPACE, "playtests", name)
     trace = os.path.join(tdir, "session_trace.jsonl")
     if not os.path.isfile(trace):
-        return {"name": name, "error": "no trace"}
+        return {"name": name, "error": "session recording missing"}
     taps, acts = [], []
     header = {}
     dropped = 0
@@ -1591,7 +1591,7 @@ def playtest_events(name):
     tdir = os.path.join(USER_WORKSPACE, "playtests", name)
     trace = os.path.join(tdir, "session_trace.jsonl")
     if not os.path.isfile(trace):
-        return {"name": name, "error": "no trace"}
+        return {"name": name, "error": "session recording missing"}
     events = []
     dropped = 0
     with open(trace, "r", encoding="utf-8") as f:
@@ -1911,7 +1911,7 @@ def land_sprite_edit(rec, work_id=""):
     paths = [sheet, ledger]
     if (os.path.realpath(USER_WORKSPACE) != os.path.realpath(REPO)
             or os.path.realpath(DATA) != os.path.realpath(os.path.join(USER_WORKSPACE, "hq", "data"))):
-        return {"ok": False, "why": ("Saved in the user workspace and live ledger; automatic Git commit "
+        return {"ok": False, "why": ("Saved in the user workspace and edit history; automatic Git commit "
                                      "is disabled while HQ uses separate roots.")}
     if run_cmd(["git", "rev-parse", "--git-dir"]) == "":
         return {"ok": False, "why": "not a git repository"}
@@ -3185,7 +3185,7 @@ def gate_scorecard():
     text = _read("docs/ROADMAP.md")
     m = re.search(r"^\*\*Gate run recorded ([0-9-]+)\.\*\*(.*?)(?=^\*\*[A-Z])", text, re.M | re.S)
     if not m:
-        return {"error": "no gate run is recorded in the roadmap"}
+        return {"error": "No release checklist result is recorded in the roadmap."}
     when, body = m.group(1), m.group(2)
     sess = re.search(r"playtests/([0-9_-]+)", body)
     rows = []
@@ -3354,7 +3354,7 @@ def eval_measure(spec, depth=0):
             # The other org members are personas, not people. A persona cannot
             # vouch for something nothing measured — that would be inventing
             # studio activity, which is the one thing HQ may never do.
-            return _reading(None, error="only Daniel may attest; the rest of the org are personas")
+            return _reading(None, error="Only Daniel can confirm this by hand; the other team members are simulated.")
         on = spec.get("attested_on", "")
         exp = spec.get("expires_days")
         age = None
@@ -3547,7 +3547,7 @@ def eval_measure(spec, depth=0):
                 if not ci.get("available"):
                     return _reading(None, error="GitHub is unreachable right now")
                 if field == "in_progress":
-                    return _reading(bool(ci.get("in_progress")), "", "whether a run is in flight",
+                    return _reading(bool(ci.get("in_progress")), "", "whether a test run is underway",
                                     "gh run list --limit 10", "network", stale=ci.get("stale", False))
                 if not ci.get("has_completed"):
                     return _reading("in_progress", "verdict",
@@ -3579,7 +3579,7 @@ def eval_measure(spec, depth=0):
             r = latest_job_result(spec["job"])
             field = spec.get("field", "state")
             if not r:
-                return _reading("never_run", "verdict", f"the {spec['job']} suite", "", "cheap")
+                return _reading("never_run", "verdict", JOBS[spec["job"]]["label"], "", "cheap")
             if field == "state":
                 # How far behind the code this run is decides whether its
                 # verdict still means anything. A pass from eighty commits ago
