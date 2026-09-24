@@ -2454,6 +2454,9 @@
    "verdict": "decode",
    "why": "The reader has to know that a worker session means an automated task is currently running."
   },
+  "8cc5f324bd13d4e730d5": {
+   "verdict": "ok"
+  },
   "8cd1287c4e553e7a3f91": {
    "verdict": "ok"
   },
