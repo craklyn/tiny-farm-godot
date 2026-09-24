@@ -4224,6 +4224,9 @@
    "verdict": "decode",
    "why": "{unassured} and {total} are unfilled template variables; a reader does not know what concrete count is being reported."
   },
+  "f6615d37222be7fa6f52": {
+   "verdict": "ok"
+  },
   "f6791e393e1c6defd387": {
    "verdict": "ok"
   },

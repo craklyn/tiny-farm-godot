@@ -1,0 +1,16 @@
+{
+  "id": "Q-117",
+  "option": "a",
+  "option_label": "Place and rearrange furnishings (Recommended)",
+  "judgment": null,
+  "intent": "choose",
+  "submission_id": "decision-0b3a9bed-895c-498f-9371-0a0b8019e760",
+  "submission_payload": {
+    "intent": "choose",
+    "option": "a",
+    "judgment": null
+  },
+  "ruled_at": "2026-09-24T01:13:20",
+  "status": "pending_integration",
+  "earlier": []
+}

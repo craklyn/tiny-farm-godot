@@ -142,3 +142,7 @@ For chime under the bloom, I'm good with the recommendation. Please add a bit mo
 - Picked: **(a) Nothing at all (Recommended)**
 - In his words: I think unchanged yard is fine. The pixelation is already enough to take focus from it in the case of entering a space with more pixels.
 - Status: pending integration into docs/DESIGNER_QUEUE.md
+
+## Q-117 — ruled 2026-09-24T01:13:20
+- Picked: **(a) Place and rearrange furnishings (Recommended)**
+- Status: pending integration into docs/DESIGNER_QUEUE.md
