@@ -309,7 +309,12 @@ async function route() {
   await surfaceReady;
   const parked = surfaceParked(hash);
   try {
-    if (parked) $view.replaceChildren(h(surfaceParkedPage(parked)));
+    if (parked) {
+      $view.replaceChildren(h(surfaceParkedPage(parked)));
+      // The Sales plan remains parked. A human web-play record is still needed
+      // before a release, so keep that one safety control reachable here.
+      if (parked.key === "/pillar/sales") await renderParkedWebPlay($view);
+    }
     // Exact routes win over the prefix chain, so a page can claim one address
     // out of a family — /pillar/product is its own rebuilt page — by
     // registering it, without this router learning about it.

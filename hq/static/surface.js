@@ -44,11 +44,14 @@ function surfaceDate(iso) {
 /* What a parked route renders instead of itself. */
 function surfaceParkedPage(entry) {
   const reason = entry.reason || surfaceCfg.reason || "";
+  const close = entry.key === "/pillar/sales"
+    ? "The Sales goals remain off. The pre-release web-play record below is still available."
+    : "Nothing was deleted, and nothing on it needs you meanwhile.";
   return `<h1>${esc(entry.title || "This page")}</h1>
     <p class="sub">This page is switched off${entry.since ? ", and has been since " + esc(surfaceDate(entry.since)) : ""}.</p>
     <div class="card parked-card">
       <p>${esc(reason)}</p>
-      <p class="small muted">Nothing was deleted, and nothing on it needs you meanwhile.</p>
+      <p class="small muted">${esc(close)}</p>
     </div>`;
 }
 

@@ -913,6 +913,12 @@
   "31981f22e9a436b86278": {
    "verdict": "ok"
   },
+  "31cf704be3b0787e53f1": {
+   "instead": "Show the web-play history on the inactive Sales page",
+   "quote": "Show web play record on parked Sales page",
+   "verdict": "decode",
+   "why": "A stranger cannot tell what a “web play record” is or what “parked” means here."
+  },
   "31e27b02c0b907d75086": {
    "instead": "The last time the studio spent its monthly budget, it had used [number] on [what cost it that much].",
    "quote": "The last time the studio used up its allowance before the clock reset, it had spent ….",
@@ -3958,6 +3964,9 @@
    "verdict": "ok"
   },
   "dbe01701a9a93161924c": {
+   "verdict": "ok"
+  },
+  "dc0981e09689f5817890": {
    "verdict": "ok"
   },
   "dc15900ffb91e74bc58a": {

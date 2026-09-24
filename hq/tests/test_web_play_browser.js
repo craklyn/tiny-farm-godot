@@ -7,7 +7,7 @@ const path = require('node:path');
 const {spawnSync} = require('node:child_process');
 
 const source = fs.readFileSync(path.join(__dirname, '../static/pillars.js'), 'utf8');
-const start = source.indexOf('async function instSales(');
+const start = source.indexOf('function webPlayRow(');
 const end = source.indexOf('/* The release manifest', start);
 assert.ok(start > 0 && end > start);
 const sales = source.slice(start, end).replace(/<\/script/gi, '<\\/script');
@@ -33,6 +33,9 @@ async function fetch(url, options) {
 ${sales}
 (async()=>{
   const root = document.getElementById('root'), below = document.getElementById('below');
+  await renderParkedWebPlay(root);
+  document.body.dataset.parkedRow = root.querySelector('.web-play-row').textContent;
+  root.replaceChildren();
   await instSales(root, below, {tags:[]}, {goals:[]}, null);
   document.body.dataset.none = root.querySelector('.web-play-state').textContent;
   const button = root.querySelector('.web-play-record');
@@ -58,6 +61,7 @@ ${sales}
   {encoding:'utf8', timeout:30000});
   assert.equal(run.status, 0, run.stderr);
   assert.doesNotMatch(run.stdout, /data-error=/);
+  assert.match(run.stdout, /data-parked-row="[^\"]*Nobody has recorded playing the web build for v9/);
   assert.match(run.stdout, /data-none="Nobody has recorded playing the web build for v9/);
   assert.match(run.stdout, /data-armed="I played the exported v9 web build in a browser; record it"/);
   assert.match(run.stdout, /data-posts-after-first="0"/);

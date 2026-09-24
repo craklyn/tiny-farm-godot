@@ -1012,6 +1012,51 @@ async function instMarketing(root, below, sig, g) {
    checkbox measures whether somebody ticked a checkbox — and this repo's nine
    boxes have not moved since the last release, in every possible state of the
    world. Where a gate genuinely needs a person, it says nobody has looked. */
+function webPlayRow(play) {
+  const button = play.can_attest && play.state !== "holds"
+    ? `<button class="gbtn web-play-record">Record that you played this build</button>` : "";
+  return `<div class="gate-row web-play-row gs-${play.state === "holds" ? "attested" : "red"}">
+    <i class="dot ${play.state === "holds" ? "d-attested" : "d-attn"}"></i>
+    <span>Play the exported web build end to end before the tag</span>
+    <span class="small muted web-play-state">${esc(play.message || "Record unavailable")}${play.dirty_game ? " Commit or discard game changes before recording a new play." : ""}${button}</span>
+  </div>`;
+}
+
+function wireWebPlayRecord(root, play) {
+  const recordButton = root.querySelector(".web-play-record");
+  if (!recordButton) return;
+  let armed = false;
+  recordButton.addEventListener("click", async () => {
+    if (!armed) {
+      armed = true;
+      recordButton.textContent = `I played the exported ${play.tag} web build in a browser; record it`;
+      return;
+    }
+    recordButton.disabled = true;
+    try {
+      const response = await fetch("/api/web-play", {method: "POST",
+        headers: {"Content-Type": "application/json"},
+        body: JSON.stringify({of: "web_play", played: true})});
+      const result = await response.json();
+      if (!response.ok || result.error) throw new Error(result.error || "Save failed");
+      root.querySelector(".web-play-state").textContent = result.status.message;
+      root.querySelector(".web-play-row").classList.add("gs-attested");
+    } catch (error) {
+      armed = false;
+      recordButton.disabled = false;
+      recordButton.textContent = "Record that you played this build";
+      recordButton.title = error.message;
+      root.querySelector(".web-play-state").prepend(`Could not record: ${error.message}. `);
+    }
+  });
+}
+
+async function renderParkedWebPlay(root) {
+  const play = await api("/api/web-play").catch(() => ({state: "error", message: "The web play record could not be read."}));
+  root.append(h(`<h2>Before the next release</h2><div class="card gatecard">${webPlayRow(play)}</div>`));
+  wireWebPlayRecord(root, play);
+}
+
 async function instSales(root, below, sig, g, ctx) {
   const byId = Object.fromEntries((g.goals || []).map(x => [x.id, x]));
   const drift = byId["ship-drift"] || {};
@@ -1032,13 +1077,6 @@ async function instSales(root, below, sig, g, ctx) {
     </div>`;
   }).join("");
   const play = await api("/api/web-play").catch(() => ({ state: "error", message: "The web play record could not be read." }));
-  const playButton = play.can_attest && play.state !== "holds"
-    ? `<button class="gbtn web-play-record">Record that you played this build</button>` : "";
-  const playRow = `<div class="gate-row web-play-row gs-${play.state === "holds" ? "attested" : "red"}">
-    <i class="dot ${play.state === "holds" ? "d-attested" : "d-attn"}"></i>
-    <span>Play the exported web build end to end before the tag</span>
-    <span class="small muted web-play-state">${esc(play.message || "Record unavailable")}${play.dirty_game ? " Commit or discard game changes before recording a new play." : ""}${playButton}</span>
-  </div>`;
 
   // The drift lives beside the verdict, not inside the instrument: it is one
   // fact and it must never be the thing that scrolls away.
@@ -1053,7 +1091,7 @@ async function instSales(root, below, sig, g, ctx) {
 
   root.replaceChildren(h(`
     <h2>The launch check <span class="small muted">— ${gates.length + 1} release checks</span></h2>
-    <div class="card gatecard">${gateRows}${playRow}
+    <div class="card gatecard">${gateRows}${webPlayRow(play)}
     </div>
 
     <div class="card norelease">
@@ -1061,33 +1099,7 @@ async function instSales(root, below, sig, g, ctx) {
       <pre class="inert">git tag -a ${esc(play.tag || "VERSION")} -m "…"  &amp;&amp;  git push origin ${esc(play.tag || "VERSION")}</pre>
       <div class="small muted">You release the game by pushing a version tag.</div>
     </div>`));
-  const recordButton = root.querySelector(".web-play-record");
-  if (recordButton) {
-    let armed = false;
-    recordButton.addEventListener("click", async () => {
-      if (!armed) {
-        armed = true;
-        recordButton.textContent = `I played the exported ${play.tag} web build in a browser; record it`;
-        return;
-      }
-      recordButton.disabled = true;
-      try {
-        const response = await fetch("/api/web-play", {method: "POST",
-          headers: {"Content-Type": "application/json"},
-          body: JSON.stringify({of: "web_play", played: true})});
-        const result = await response.json();
-        if (!response.ok || result.error) throw new Error(result.error || "Save failed");
-        root.querySelector(".web-play-state").textContent = result.status.message;
-        root.querySelector(".web-play-row").classList.add("gs-attested");
-      } catch (error) {
-        armed = false;
-        recordButton.disabled = false;
-        recordButton.textContent = "Record that you played this build";
-        recordButton.title = error.message;
-        root.querySelector(".web-play-state").prepend(`Could not record: ${error.message}. `);
-      }
-    });
-  }
+  wireWebPlayRecord(root, play);
 
   // The ladder: where we can sell it, and what the next storefront would cost.
   // Reference rather than headline — the roll-up is a goal above the fold, and
