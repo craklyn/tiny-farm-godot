@@ -9136,6 +9136,31 @@ func test_bots() -> void:
 		"...and goes back to its patch rather than hounding it forever")
 	q.done()
 
+	# Reusing a patrol choice must preserve the exact breadth-first candidate
+	# order and the single seeded draw, including after terrain changes.
+	var patrol := _bot_yard(9917)
+	BotBrain.deploy(patrol.world, "patrol_bot", BotBrain.CONFIG_SHOO,
+		BOT_HER_TILE + Vector2i(0, 2), { "radius": 4.0 })
+	var patrol_brain := BotBrain.new()
+	var patrol_extra: Dictionary = patrol.world.actor("patrol_bot")["extra"]
+	for change in 3:
+		if change == 2:
+			patrol.world.set_tile_state(BOT_HER_TILE.x + 1, BOT_HER_TILE.y + 2,
+				WorldLayout.FENCE)
+		var candidates: Array[Vector2i] = []
+		var home := Vector2i(int(patrol_extra["home_x"]), int(patrol_extra["home_y"]))
+		for tile in Movement.reachable(patrol.world, SpeciesDefs.GROUND,
+				patrol.world.actor_pos("patrol_bot")):
+			if Vector2(tile - home).length() <= 4.0 \
+					and Movement.can_stop(patrol.world, SpeciesDefs.GROUND, tile):
+				candidates.append(tile)
+		SimRng.reseed(1777)
+		var expected := candidates[SimRng.randi() % candidates.size()]
+		SimRng.reseed(1777)
+		_assert(patrol_brain._patrol_tile(patrol.world, "patrol_bot", patrol_extra) == expected,
+			"shoo patrol keeps its seeded tile on %s" % ["first choice", "cached choice", "changed ground"][change])
+	patrol.done()
+
 	# --- energy: a bot is metered like everybody else --------------------------
 	#
 	# Plan §4's third criterion. The meter is the registry's (`spend_actor_energy`),

@@ -418,6 +418,11 @@ const OBJECT_POSITIONS: Array[Dictionary] = [
 # Tile data: tiles[y][x] = { state, crop_type, growth_stage, watered_today }
 var tiles: Array[Array] = []
 var objects: Array[Array] = []  # objects[y][x] = "" or object type string
+# Patrol choices depend on the reachable tiles' breadth-first order. Keep the
+# result for repeated starts on an unchanged grid; this is runtime scratch, not
+# part of a save or replay. Mutators below discard it before the next choice.
+var patrol_tiles_cache: Dictionary = {}
+var patrol_tiles_order: Array[PackedByteArray] = []
 
 # The sim's tick clock (D-9 / Q-53, M2.5 WI-1). Sim truth, exactly like the grids:
 # owned here, saved with the world, and the only time anything in layer 2 is
@@ -468,6 +473,8 @@ var player_water_actions_today: int = 0
 
 
 func generate(with_layout: Dictionary = WorldLayout.WORLD) -> void:
+	patrol_tiles_cache.clear()
+	patrol_tiles_order.clear()
 	layout = with_layout
 	tiles.clear()
 	objects.clear()
@@ -1197,6 +1204,9 @@ func get_object(tx: int, ty: int) -> String:
 
 func set_object(tx: int, ty: int, obj_type: String) -> void:
 	if ty >= 0 and ty < MAP_HEIGHT and tx >= 0 and tx < MAP_WIDTH:
+		if objects[ty][tx] != obj_type:
+			patrol_tiles_cache.clear()
+			patrol_tiles_order.clear()
 		objects[ty][tx] = obj_type
 
 
@@ -1517,6 +1527,9 @@ func set_tile_state(tx: int, ty: int, new_state: String, crop_type: String = "")
 	var tile := get_tile(tx, ty)
 	if tile.is_empty():
 		return
+	if String(tile.state) != new_state:
+		patrol_tiles_cache.clear()
+		patrol_tiles_order.clear()
 	# A square she has worked is no longer a square a bird emptied (Q-105), so
 	# the mark comes off here — the one place a square's state changes, which
 	# makes tilling it, sowing it and clearing it all the same rule and none of

@@ -1116,10 +1116,21 @@ func _patrol_tile(world: SimWorld, actor_id: String, extra: Dictionary) -> Vecto
 	var home := _home(extra)
 	var radius := float(extra.get("radius", SHOO_RADIUS))
 	var mode := Movement.mode_of(world.species_of(actor_id))
-	var inside: Array[Vector2i] = []
-	for t in Movement.reachable(world, mode, world.actor_pos(actor_id)):
-		if Vector2(t - home).length() <= radius and Movement.can_stop(world, mode, t):
-			inside.append(t)
+	var key := var_to_bytes([mode, world.actor_pos(actor_id), home, radius])
+	var inside: Array[Vector2i]
+	if world.patrol_tiles_cache.has(key):
+		inside = world.patrol_tiles_cache[key]
+	else:
+		inside = []
+		for t in Movement.reachable(world, mode, world.actor_pos(actor_id)):
+			if Vector2(t - home).length() <= radius and Movement.can_stop(world, mode, t):
+				inside.append(t)
+		# A bounded per-world cache fits eight radius-six patrol patches while
+		# avoiding a farm's worth of old starts when owners move their sentries.
+		if world.patrol_tiles_order.size() >= 1024:
+			world.patrol_tiles_cache.erase(world.patrol_tiles_order.pop_front())
+		world.patrol_tiles_cache[key] = inside
+		world.patrol_tiles_order.append(key)
 	if inside.is_empty():
 		return Vector2i(-1, -1)
 	return inside[SimRng.randi() % inside.size()]
