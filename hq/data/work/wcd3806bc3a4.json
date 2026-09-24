@@ -11,7 +11,7 @@
   "thread": "victor",
   "source": "chat",
   "source_message": "A feature on hq/data/releases.json's manifest cannot be traced to a commit or to a project carrying it. Work out whether it was built under a different name, is genuinely not built, or should come off the release, and fix the record either way. A release plan whose contents cannot be verified is a wish.",
-  "result": "Reconciled the release inventory with what players can reach and with the commits that built it. Player Update 1 now lists 11 shipped player features. The unreachable farmhouse interior is off that list; the still-unbuilt stuck-machine notice is off the parked M3 feature list and remains tracked by project machine-distress-state. The shop claim already matched the build and was preserved. This keeps the related three-claim audit from being repeated.\n\nThe manifest now reads a carrying project’s plan steps for readiness: an unfinished plan cannot be made ready by a done label, and a fully checked plan becomes ready despite a stale label. Comma-separated evidence IDs are searched individually, so real robot and workbench commits no longer disappear from Sales. The robot feature cites verified build commit 42592094e1c1147904d20a33c5f6bb3d84ad36b6, preventing a later planning mention from misclassifying shipped work as new inventory.\n\nEvidence: implementation commit e2228900427598e3119f435776440bc08f4f44ba; six focused manifest tests pass; full HQ gate passes 46/46 files with 0 skipped; local release calculation reports Update 1: 11 shipped, Update 1.1: 2 ready, Update 1.2: 3 ready, parked M3: 0 player features. The game code and the separate feature-audit card were not changed.",
+  "result": "Reconciled the release inventory with what players can reach and with the commits that built it. Player Update 1 now lists 11 shipped player features. The unreachable farmhouse interior is off that list; the still-unbuilt stuck-machine notice is off the parked M3 feature list and remains tracked by project machine-distress-state. The shop claim already matched the build and was preserved. This keeps the related three-claim audit from being repeated.\n\nThe manifest now reads a carrying project’s plan steps for readiness: an unfinished plan cannot be made ready by a done label, and a fully checked plan becomes ready despite a stale label. Comma-separated evidence IDs are searched individually, so real robot and workbench commits no longer disappear from Sales. The robot feature cites verified build commit 42592094e1c1147904d20a33c5f6bb3d84ad36b6, preventing a later planning mention from misclassifying shipped work as new inventory.\n\nEvidence: implementation commit e2228900427598e3119f435776440bc08f4f44ba; six focused manifest tests pass; full HQ gate passes 46/46 files with 0 skipped; local release calculation reports Update 1: 11 shipped, Update 1.1: 2 ready, Update 1.2: 3 ready, parked M3: 0 player features. The game code and the separate feature-audit card were not changed.\n\nCI confirmation: the tests workflow succeeded on landing SHA a8e27c4d0ff2b822a5be5948272e3e813886c714 (run 35961381089).",
   "started": "",
   "attempts": 1,
   "created": "2026-09-03T18:10",
@@ -67,7 +67,7 @@
     "seconds": 425.6,
     "list_usd": 3.3962
   },
-  "_revision": 2,
+  "_revision": 3,
   "completion_reconciliation": {
     "version": 1,
     "manifest_id": "38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33",
@@ -110,7 +110,20 @@
   "landed": {
     "at": "2026-09-24T05:43:57Z",
     "by": "Codex interactive",
-    "sha": "e2228900427598e3119f435776440bc08f4f44ba",
+    "sha": "a8e27c4d0ff2b822a5be5948272e3e813886c714",
     "note": "Reconciled release features and verified project-step readiness against the full HQ gate."
+  },
+  "workflow": {
+    "version": 1,
+    "actions": [],
+    "blockers": [],
+    "candidates": [],
+    "verifications": [],
+    "integrations": [],
+    "ci": {
+      "confirmed": true,
+      "commit_sha": "a8e27c4d0ff2b822a5be5948272e3e813886c714",
+      "run_url": "https://github.com/craklyn/tiny-farm-godot/actions/runs/35961381089"
+    }
   }
 }
