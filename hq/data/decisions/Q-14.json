@@ -23,6 +23,11 @@
   ],
   "attachments": [
     {
+      "type": "look",
+      "scenario": "world_colour_station",
+      "caption": "Three game-rendered colour studies at 9:30 AM on day three. The higher-detail fourth look is still pending; this is not the final pick."
+    },
+    {
       "type": "image",
       "src": "assets/sprites/generated/characters.png",
       "caption": "The farmer sheet — current style in practice"

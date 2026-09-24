@@ -141,15 +141,20 @@ in particular `#d1e077`, `#c39a6c` and `#a97959` are the shipped pixels. Q-14
 still needs the four captures and the designer's choice.
 
 **Engine colour study (2026-09-24).** The debug Look Lab and its station-moment
-capture rig now share three game-renderable states: today's ungraded colour,
-grey-green quiet world, and blue cold light. The grade multiplies the world
-canvas after the daylight ramp; HUD and menus retain their colours, and a grade
+capture rig rendered three states at day three, 9:30 AM, seed 12345, with the
+player, well, mixed crops, fence line and open boundary in frame: today's
+ungraded colour, grey-green quiet world, and blue cold light. The grade
+multiplies the world canvas after the daylight ramp; HUD and menus retain their
+colours, and a grade
 change during tuck-in uses the held daylight colour. These two graded states are
 whole-world approximations. They do not yet selectively preserve saturated
 crops and tools or introduce cyan and magenta machine art, so they are evidence
 for the colour direction, not completed captures 2 and 3 as specified above.
-The fourth, more detailed surface treatment remains sheet work. Q-14 remains
-unsigned pending the full four-look session and Daniel's choice.
+The fourth, more detailed surface treatment remains sheet work: its generation
+was approved on 2026-09-04, but the sheet and a way to swap it into the capture
+rig are still absent. The three captures and their measurements are saved in
+`hq/data/looks/world_colour_station/`. Q-14 remains unsigned pending the full
+four-look session and Daniel's choice.
 
 ---
 

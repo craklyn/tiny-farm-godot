@@ -223,7 +223,9 @@ func _stage_ripe_plot() -> void:
 	# Mid-morning, which is when a farmer is out looking at her plot and is the
 	# hour design/09 stages every look session at. The day is measured in energy
 	# (Q-38), so the hour *is* this fraction and there is no clock to set.
-	GameState.set_energy(int(round(GameState.max_energy * 0.86)))
+	# The clock starts at 6:00 AM and one energy unit is one minute.
+	# Spend 210 units to place every draft at 9:30 AM.
+	GameState.set_energy(GameState.max_energy - 210)
 	GameState.watering_can_charges = GameState.max_watering_can_charges
 	if not TeachingFocus.handed_over(farm.sim):
 		farm.apply_action({

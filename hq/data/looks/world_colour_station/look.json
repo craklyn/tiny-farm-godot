@@ -1,0 +1,25 @@
+{
+  "id": "world_colour_station",
+  "axis": "world_tint",
+  "question": "Which colour makes this farm easiest to read?",
+  "note": "Day three, 9:30 AM, seed 12345. Same player, station, mixed crops and fence. Whole-world colour studies; selective object saturation is still open.",
+  "captured": "2026-09-24",
+  "asked_by": [
+    "Q-14"
+  ],
+  "drafts": [
+    {
+      "name": "As it looks today",
+      "blurb": "Unchanged colour"
+    },
+    {
+      "name": "Quiet world",
+      "blurb": "Grey-green whole-world colour study"
+    },
+    {
+      "name": "Cold light",
+      "blurb": "Cool blue whole-world colour study"
+    }
+  ],
+  "sheet": "world_colour_station/sheet.png"
+}

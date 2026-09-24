@@ -60,10 +60,11 @@ const SCENARIOS: Array[Dictionary] = [
 		"id": "world_colour_station",
 		"axis": "world_tint",
 		"question": "Which colour makes this farm easiest to read?",
-		"note": "Day three at mid-morning, by the seed box. These are whole-world colour studies; selective object saturation is still open.",
+		"note": "Day three, 9:30 AM, seed 12345. Same player, station, mixed crops and fence. Whole-world colour studies; selective object saturation is still open.",
 		"stand": Vector2i(9, 7),
 		"focus_object": "seed_box",
-		"crop": Vector2i(720, 460),
+		"crop": Vector2i(800, 600),
+		"include_top_bar": true,
 		"settle": 5,
 	},
 ]
