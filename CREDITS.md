@@ -25,6 +25,11 @@ before the first public build ships.*
     they are undated and revocable-in-place, so re-check if the asset set is
     regenerated. A local copy of the PDF as read is not kept in-repo — retrieve it
     from https://www.retrodiffusion.ai/terms if the wording is ever disputed.*
+- **Spiral Tower** (`assets/sprites/generated/spiral_tower.png`, 2026-09-23): one
+  Retro Diffusion Plus generation at 128×192, $0.037. The original image and API
+  metadata are archived under `assets/raw/2026-09-23-spiral-tower/`. The shipped
+  64×96 sprite was background-keyed, trimmed and scaled with nearest-neighbour
+  sampling. Output rights follow the Retro Diffusion terms verified above.
 - **M1.5 additions, 2026-08-29** (same Retro Diffusion pipeline and rights as above,
   same palette-locking and post-processing steps; prompts and composition recorded in
   the `retro-diffusion-pixel-art` skill's `styles/tiny-farm.md`):

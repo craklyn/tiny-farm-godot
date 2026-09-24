@@ -576,8 +576,10 @@ func _camera_limits_for(tile: Vector2i) -> Dictionary:
 			# off into the dark beyond the backdrop's reach.
 			var origin: Vector2i = room.get("origin", Vector2i.ZERO)
 			var size: Vector2i = room.get("size", Vector2i.ZERO)
-			var pitch: int = maxi(1, int(room.get("pitch", 1)))
-			var reach: int = farm.BACKDROP_REACH * pitch
+			var pitch: float = maxf(0.001, float(room.get("pitch", 1)))
+			# At half pitch the same screen spans more farm, but the room must
+			# still have enough camera margin to sit near the screen centre.
+			var reach: int = maxi(ceili(farm.BACKDROP_REACH * pitch), farm.BACKDROP_REACH)
 			return {
 				"page": SimWorld.MAP_HEIGHT / SimWorld.PAGE_ROWS - 1,
 				"left": (origin.x - reach) * TILE_SIZE,
@@ -737,12 +739,12 @@ func note_page_change(from_tile: Vector2i = Vector2i(-1, -1)) -> void:
 func _door_view(was_room: String, now_room: String, eye: Vector2, zoom: float) -> Dictionary:
 	if now_room != "" and was_room == "":
 		var r: Dictionary = farm.sim.rooms[now_room]
-		var pitch: float = maxf(1.0, float(r.get("pitch", 1)))
+		var pitch: float = maxf(0.001, float(r.get("pitch", 1)))
 		var offset: Vector2 = farm.room_backdrop_offset(r, farm.sim.room_building_rect(r))
 		return { "eye": offset + eye * pitch, "zoom": zoom / pitch }
 	if was_room != "" and now_room == "":
 		var r: Dictionary = farm.sim.rooms[was_room]
-		var pitch: float = maxf(1.0, float(r.get("pitch", 1)))
+		var pitch: float = maxf(0.001, float(r.get("pitch", 1)))
 		var offset: Vector2 = farm.room_backdrop_offset(r, farm.sim.room_building_rect(r))
 		return { "eye": (eye - offset) / pitch, "zoom": zoom * pitch }
 	return {}

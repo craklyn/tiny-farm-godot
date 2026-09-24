@@ -93,6 +93,22 @@ static var TYPES: Dictionary = {
 		"icon": { "sheet": "res://assets/sprites/generated/chicken_coop.png",
 			"region": Rect2(0, 0, 32, 48) },
 	},
+	"spiral_tower": {
+		"name": "Spiral Tower",
+		"price": 120,
+		"species": "",
+		"program": "",
+		"configs": [],
+		"default_config": "",
+		"unlock_requirement": null,
+		"object": WorldLayout.SPIRAL_TOWER,
+		"part": WorldLayout.SPIRAL_TOWER_PART,
+		"footprint": Vector2i(4, 4),
+		"room": { "cells": Vector2i(2, 2), "pitch": 0.5,
+			"edge_walls": true, "exit_offset": Vector2i(1, 1) },
+		"icon": { "sheet": "res://assets/sprites/generated/spiral_tower.png",
+			"region": Rect2(0, 0, 64, 96) },
+	},
 	# The first automation the player meets — `design/03`'s "watch your old job
 	# happen without you". Priced above every seed and below the robot: a day of
 	# good tomatoes buys one, which makes it the natural first purchase after the
@@ -332,7 +348,7 @@ static var TYPES: Dictionary = {
 # with a verb, a state, a refund and 23 passing assertions, and no way to get any.
 # Fencing leads: it is the cheapest thing on the shelf and the only one that is
 # not a machine.
-static var ORDER: Array[String] = ["coop", "fence", "sprinkler", "stall", "bot_mk1",
+static var ORDER: Array[String] = ["coop", "fence", "spiral_tower", "sprinkler", "stall", "bot_mk1",
 		"bot_mk2", "bot_mk3", "workbench"]
 
 

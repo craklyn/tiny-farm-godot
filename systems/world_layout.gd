@@ -155,6 +155,8 @@ const ROOM_DOORWAY := "room_doorway"
 
 const CHICKEN_COOP := "chicken_coop"
 const CHICKEN_COOP_PART := "chicken_coop_part"
+const SPIRAL_TOWER := "spiral_tower"
+const SPIRAL_TOWER_PART := "spiral_tower_part"
 
 # --- the rooms page (P-18, 2026-09-15) ----------------------------------------
 #
@@ -200,23 +202,25 @@ static func room_slot_count() -> int:
 	return ROOM_SLOT_COLUMNS * (PAGE_ROWS / (ROOM_SLOT.y + ROOM_SLOT_GAP))
 
 
-# **The shape of a room**, as tile states, for a room `size` cells across: a
-# one-cell ring of WALL, FLOOR inside it, and one cell of the south wall cut out
-# as GATE_OPEN — which is the home's own vocabulary, unchanged, at a finer pitch.
+# **The shape of a room**, as tile states. Existing rooms use a one-cell ring
+# of WALL with a GATE_OPEN in its south side. An edge-wall room uses every cell
+# as FLOOR; VOID outside the room blocks movement and the renderer draws its
+# boundary directly on the cell edges.
 #
 # The ring is not decoration. It is the building seen from inside: its top row is
 # the roofline, its bottom row is the wall the door is cut in, and because it is
 # made of ordinary boundary states every mover in the game already refuses to walk
 # through it without being told anything (P-18 section 4a).
-static func room_cells(size: Vector2i) -> Array:
+static func room_cells(size: Vector2i, edge_walls: bool = false) -> Array:
 	var rows: Array = []
 	for y in size.y:
 		var row: Array = []
 		for x in size.x:
 			var edge: bool = x == 0 or y == 0 or x == size.x - 1 or y == size.y - 1
-			row.append(WALL if edge else FLOOR)
+			row.append(WALL if edge and not edge_walls else FLOOR)
 		rows.append(row)
-	rows[size.y - 1][size.x / 2] = GATE_OPEN      # the doorway, centre of the south wall
+	if not edge_walls:
+		rows[size.y - 1][size.x / 2] = GATE_OPEN # the doorway in the cell-wide wall
 	return rows
 
 

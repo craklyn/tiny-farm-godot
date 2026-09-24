@@ -870,6 +870,7 @@ const OPEN_OBJECTS := {
 	# reason: a coop the hen cannot step into is a shed with a chicken standing
 	# outside it in the rain.
 	WorldLayout.CHICKEN_COOP: true, WorldLayout.CHICKEN_COOP_PART: true,
+	WorldLayout.SPIRAL_TOWER: true, WorldLayout.SPIRAL_TOWER_PART: true,
 	# ...and a room's doorway, which is the square she arrives on going in and the
 	# square she stands on to ask to leave. A door that blocked its own threshold
 	# would be a room with no way out (fixed 2026-09-16).
@@ -889,6 +890,7 @@ const OPEN_OBJECTS := {
 const OPEN_STRUCTURE_OBJECTS := {
 	WorldLayout.ROBOT_STALL: true, WorldLayout.ROBOT_STALL_SLOT: true,
 	WorldLayout.CHICKEN_COOP: true, WorldLayout.CHICKEN_COOP_PART: true,
+	WorldLayout.SPIRAL_TOWER: true, WorldLayout.SPIRAL_TOWER_PART: true,
 }
 
 # The two catalogue rows the sim refers to by name. A constant rather than a bare
@@ -1010,9 +1012,9 @@ func world_pos_of_cell(t: Vector2i) -> Vector2:
 		return Vector2(t)
 	var r: Dictionary = rooms[id]
 	var o: Vector2i = r.get("origin", Vector2i.ZERO)
-	var a: Vector2i = r.get("anchor", Vector2i.ZERO)
-	var pitch: float = maxf(1.0, float(r.get("pitch", 1)))
-	return Vector2(a) + Vector2(t - o) / pitch
+	var building := room_building_rect(r)
+	var pitch: float = maxf(0.001, float(r.get("pitch", 1)))
+	return Vector2(building.position) + Vector2(t - o) / pitch
 
 
 # The door pair for a tile, or {}, for rooms that were put down rather than laid
@@ -1068,7 +1070,7 @@ func room_door_at(t: Vector2i) -> Dictionary:
 		# picture, not at a cell index, and refusing three quarters of the hut
 		# would be the game being right about something nobody can see.
 		var anchor: Vector2i = r.get("anchor", Vector2i(-1, -1))
-		if anchor.x >= 0 and t in MachineDefs.footprint_cells(String(r.get("item", "")), anchor):
+		if anchor.x >= 0 and room_building_rect(r).has_point(t):
 			return { "at": t, "to": r.get("door", Vector2i(-1, -1)), "face": "up" }
 		if Vector2i(r.get("door", Vector2i(-1, -1))) == t:
 			return { "at": t, "to": leads_to, "face": "down" }
@@ -1100,7 +1102,8 @@ func open_room(item: String, anchor: Vector2i) -> String:
 		return ""    # every slot full: the building still stands, it just has no inside
 	var size: Vector2i = spec.get("cells", WorldLayout.ROOM_SLOT)
 	var origin := WorldLayout.room_slot_origin(slot)
-	var cells := WorldLayout.room_cells(size)
+	var edge_walls := bool(spec.get("edge_walls", false))
+	var cells := WorldLayout.room_cells(size, edge_walls)
 	for y in size.y:
 		for x in size.x:
 			set_tile_state(origin.x + x, origin.y + y, String(cells[y][x]))
@@ -1113,14 +1116,15 @@ func open_room(item: String, anchor: Vector2i) -> String:
 	rooms[id] = {
 		"item": item,
 		"anchor": anchor,
-		"pitch": int(spec.get("pitch", 2)),
+		"pitch": float(spec.get("pitch", 2)),
+		"edge_walls": edge_walls,
 		"size": size,
 		"slot": slot,
 		"origin": origin,
 		"door": origin + WorldLayout.room_door_cell(size),
 		# The square she steps out onto: the tile below the building's own, which
 		# is where she was standing when she reached for the door.
-		"exit": anchor + Vector2i(0, 1),
+		"exit": anchor + Vector2i(spec.get("exit_offset", Vector2i(0, 1))),
 	}
 	return id
 

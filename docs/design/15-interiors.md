@@ -158,11 +158,18 @@ cells at the usual on-screen size would make the farm appear at ×½ scale when 
 inside. Twice as much farm fits across each axis, or four times the area. The boundary
 still registers if everything uses the same transform.
 
-This is a chosen visual target, **not yet implemented**. P-18 and the current room code
-require a *finer* grid with an integer pitch of at least one. The present one-cell wall
-ring would consume every cell of a 2×2 room. To build this target, the room transform
-must support a pitch of ½ and the wall and collision boundary must sit at the room's
-edge rather than occupy its four cells. The room still needs a usable doorway.
+The placeable **Spiral Tower** implements this target. Its 4×4 yard footprint opens
+to a 2×2 room with pitch ½. All four room cells are walkable. A thin boundary is
+drawn on the room's edge, with a gap at the doorway; the surrounding void blocks
+movement. The same fractional pitch drives the live yard backdrop, camera entry
+and exit, world-position mapping, and saved room record.
+
+The real game captures are [outside](evidence/spiral_tower_outside.png) and
+[inside](evidence/spiral_tower_inside.png). The existing
+[coop](evidence/coop_inside_tower_regression.png) and
+[farmhouse](evidence/home_inside_tower_regression.png) captures were regenerated
+on the same build to check their finer rooms still look as designed. The tower
+capture can be reproduced with `tools/capture_spiral_tower.tscn`.
 
 The alternative of a **2×2 walkable floor plus a one-cell wall ring** would total 4×4
 interior cells and leave the camera at ×1. Daniel explicitly does **not** want that
@@ -245,7 +252,9 @@ not touching 538 assertions.
 The invention the CEO asked for on 2026-09-15, and it turns out to need less inventing than
 feared, because the game already contains a room with walls and a door cut in one of them.
 
-**A room is its building's footprint at the room's own pitch, with a one-cell boundary ring.**
+**A room is its building's footprint at the room's own pitch.** The home and coop
+use a one-cell boundary ring. The Spiral Tower keeps its 2×2 cells usable and draws
+its boundary on their outer edge.
 
 For the chicken coop, at pitch 3:
 

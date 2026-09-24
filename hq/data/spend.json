@@ -265,6 +265,19 @@
       "balance_after": 0.062,
       "reconciled": true,
       "recorded_by": "record_spend"
+    },
+    {
+      "id": "2026-09-23-spiral-tower-sprite-128x192-rd-plus",
+      "date": "2026-09-23",
+      "vendor": "Retro Diffusion",
+      "kind": "generation",
+      "purpose": "Spiral Tower sprite, 128x192 rd_plus",
+      "work_item": "wc5f263d37cf",
+      "dollars": 0.037,
+      "credits": 1,
+      "balance_after": 3.332,
+      "reconciled": true,
+      "recorded_by": "record_spend"
     }
   ]
 }

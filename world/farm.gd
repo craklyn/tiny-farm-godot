@@ -572,6 +572,8 @@ func _load_textures() -> void:
 	# stall's shed does. Its three other cells draw nothing (see the object pass).
 	object_regions[WorldLayout.CHICKEN_COOP] = [
 		load("res://assets/sprites/generated/chicken_coop.png"), Rect2(0, 0, 32, 48)]
+	object_regions[WorldLayout.SPIRAL_TOWER] = [
+		load("res://assets/sprites/generated/spiral_tower.png"), Rect2(0, 0, 64, 96)]
 
 	# T-28's pictograms, resolved from `StationPresentation.GLYPH_ATLAS` — which
 	# is pure data, so the table can be asserted headlessly and the two renderers
@@ -1360,8 +1362,30 @@ func _queue_ripe(canvas: CanvasItem, queue: Array[Dictionary], at: Vector2i, tex
 func _draw() -> void:
 	_draw_room_backdrop()
 	_draw_pages(self, WorldLayout.PAGE_ROWS, MAP_HEIGHT)
+	_draw_edge_room_walls()
 	if _page0_node != null:
 		_page0_node.queue_redraw()
+
+
+# A small room keeps all four cells usable. Its boundary is drawn on the cell
+# edges; the surrounding VOID still blocks movement, and the southeast gap is
+# the same doorway that the interaction system uses.
+func _draw_edge_room_walls() -> void:
+	if not _backdrop_active or sim == null:
+		return
+	var id: String = sim.room_of_cell(player_node().get_tile_pos())
+	if id == "" or not bool(sim.rooms[id].get("edge_walls", false)):
+		return
+	var box := Rect2(Vector2(_backdrop_rect.position * TILE_SIZE),
+		Vector2(_backdrop_rect.size * TILE_SIZE))
+	var ink := Color("6f6862")
+	draw_line(box.position, Vector2(box.end.x, box.position.y), ink, 2.0)
+	draw_line(box.position, Vector2(box.position.x, box.end.y), ink, 2.0)
+	draw_line(Vector2(box.end.x, box.position.y), box.end, ink, 2.0)
+	var door: Vector2i = sim.rooms[id].get("door", Vector2i(-1, -1))
+	var gap_x := float(door.x * TILE_SIZE)
+	draw_line(Vector2(box.position.x, box.end.y), Vector2(gap_x, box.end.y), ink, 2.0)
+	draw_line(Vector2(gap_x + TILE_SIZE, box.end.y), box.end, ink, 2.0)
 
 
 # Whether a thing standing at this world y, in pixels, is drawn by the pass that
@@ -1574,7 +1598,7 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 			# because those are out there and she can see them.
 			if _backdrop_active and _backdrop_own.has_point(Vector2i(tx, ty)):
 				continue
-			if obj == WorldLayout.CHICKEN_COOP_PART:
+			if obj == WorldLayout.CHICKEN_COOP_PART or obj == WorldLayout.SPIRAL_TOWER_PART:
 				# The coop's other three cells. Real to the sim — the hen shelters
 				# in them and nothing may be farmed there — and drawn by the
 				# front-left cell, whose picture covers the whole block. A cell of
@@ -2027,6 +2051,11 @@ func _draw_backdrop_texture() -> void:
 		return
 	_backdrop_node.draw_set_transform(_backdrop_offset, 0.0,
 		Vector2(_backdrop_pitch, _backdrop_pitch))
+	if _backdrop_pitch < 1.0:
+		# From the tower the whole live farm fits into a smaller part of the
+		# window. Beyond its edge is distant sky, not the rooms page's darkness.
+		_backdrop_node.draw_rect(Rect2(-1024, -1024, 2560, 2560),
+			Color("b7d7d4"), true)
 	_backdrop_node.draw_texture_rect(_backdrop_view.get_texture(),
 		Rect2(Vector2.ZERO, Vector2(_backdrop_view.size)), false)
 

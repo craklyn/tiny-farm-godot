@@ -224,6 +224,7 @@ func _init() -> void:
 	test_robot_stall()
 	test_chicken_coop()
 	test_coop_interior()
+	test_spiral_tower_interior()
 	test_robot_usefulness()
 	test_one_pouch()
 	test_carry_cap()
@@ -15558,6 +15559,93 @@ func test_chicken_coop() -> void:
 # *interior* is two numbers recorded beside them — the anchor and the pitch — and
 # those are what this test pins, because they are the whole of the idea and the
 # only part a renderer or a later flattening depends on.
+func test_spiral_tower_interior() -> void:
+	print("\n--- Spiral Tower: four cells above a compressed farm ---")
+	var spec := MachineDefs.room_of("spiral_tower")
+	_assert("spiral_tower" in MachineDefs.ORDER
+			and MachineDefs.footprint_of("spiral_tower") == Vector2i(4, 4)
+			and spec.get("cells") == Vector2i(2, 2)
+			and is_equal_approx(float(spec.get("pitch", 0)), 0.5),
+		"tower is four farm tiles wide, with two indoor cells at half pitch")
+	var cells := WorldLayout.room_cells(Vector2i(2, 2), true)
+	var floor_count := 0
+	for row in cells:
+		for cell in row:
+			if cell == WorldLayout.FLOOR:
+				floor_count += 1
+	_assert(floor_count == 4, "all four indoor cells are floor; walls consume none")
+
+	GameState.reset()
+	SimRng.reseed(9152)
+	var world := SimWorld.new()
+	world.generate()
+	GameState.gold = 1000
+	var spot := Vector2i(-1, -1)
+	for y in range(10, 18):
+		for x in range(5, 23):
+			if world.placeable_at(Vector2i(x, y), "spiral_tower"):
+				spot = Vector2i(x, y)
+				break
+		if spot.x >= 0:
+			break
+	_assert(spot.x >= 0, "a four-by-four tower can fit on the generated farm")
+	if spot.x < 0:
+		return
+	for dy in range(-4, 2):
+		for dx in range(-1, 5):
+			world.set_tile_state(spot.x + dx, spot.y + dy, "cleared")
+	_assert(world.apply_action({"verb": "buy_machine", "item": "spiral_tower",
+		"actor": "player"}, GameState).get("ok", false), "tower can be bought")
+	var laid: Dictionary = world.apply_action({"verb": "place", "target": spot,
+		"item": "spiral_tower", "actor": "player"}, GameState)
+	var id := String(laid.get("room", ""))
+	_assert(laid.get("ok", false) and id != "", "placing tower creates its room")
+	if id == "":
+		return
+	var room: Dictionary = world.rooms[id]
+	var origin: Vector2i = room["origin"]
+	_assert(is_equal_approx(float(room["pitch"]), 0.5)
+			and bool(room["edge_walls"]), "tower preserves fractional pitch and edge walls")
+	for y in 2:
+		for x in 2:
+			_assert_quiet(world.is_walkable(origin.x + x, origin.y + y),
+				"indoor cell should be walkable")
+	_flush_quiet("every tower room cell is walkable")
+	_assert(not world.is_walkable(origin.x - 1, origin.y)
+			and not world.is_walkable(origin.x + 2, origin.y),
+		"the surrounding void blocks walking through the edge wall")
+	var building := world.room_building_rect(room)
+	var offset: Vector2 = load("res://world/farm.gd").room_backdrop_offset(room, building)
+	_assert(building.size == Vector2i(4, 4)
+			and offset + Vector2(building.position) * 8.0 == Vector2(origin) * 16.0,
+		"the live yard maps to the tower at half scale")
+	_assert(world.world_pos_of_cell(origin + Vector2i(1, 1))
+			== Vector2(building.position + Vector2i(2, 2)),
+		"an indoor cell maps to the same farm square shown behind it")
+	var entry := world.room_door_at(spot)
+	_assert(entry.get("to") == room["door"], "all tower footprint cells lead inside")
+	var exit := world.room_door_at(room["door"])
+	_assert(exit.get("to") == spot + Vector2i(1, 1),
+		"the indoor doorway returns to the tower's front entrance")
+	world.set_actor_pos(SimWorld.ACTOR_PLAYER, spot + Vector2i(1, 1))
+	var entered: Dictionary = world.apply_action({"verb": "use_door",
+		"target": spot + Vector2i(1, 0), "actor": "player"}, GameState)
+	_assert(entered.get("ok", false)
+			and world.actor_pos(SimWorld.ACTOR_PLAYER) == Vector2i(room["door"]),
+		"the farmer can enter from the tower's front arch")
+	var departed: Dictionary = world.apply_action({"verb": "use_door",
+		"target": Vector2i(room["door"]), "actor": "player"}, GameState)
+	_assert(departed.get("ok", false)
+			and world.actor_pos(SimWorld.ACTOR_PLAYER) == spot + Vector2i(1, 1),
+		"the farmer can leave through the same doorway")
+	var snap: Dictionary = SaveGame.capture(world, GameState)
+	var restored := SimWorld.new()
+	_assert(SaveGame.restore(snap, restored, GameState)
+			and is_equal_approx(float(restored.rooms[id]["pitch"]), 0.5)
+			and bool(restored.rooms[id]["edge_walls"]),
+		"the compressed room survives save and reload")
+
+
 func test_coop_interior() -> void:
 	print("\n--- Inside the coop: a nested room and a door to it (P-18, 2026-09-15) Tests ---")
 

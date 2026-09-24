@@ -555,7 +555,8 @@ static func _capture_rooms(world: SimWorld) -> Dictionary:
 		var r: Dictionary = world.rooms[id]
 		out[id] = {
 			"item": String(r.get("item", "")),
-			"pitch": int(r.get("pitch", 2)),
+			"pitch": float(r.get("pitch", 2)),
+			"edge_walls": bool(r.get("edge_walls", false)),
 			"slot": int(r.get("slot", 0)),
 			"anchor": _pair(r.get("anchor", Vector2i.ZERO)),
 			# Present on the home only: the farmhouse has no catalogue row to read a
@@ -601,7 +602,8 @@ static func _restore_rooms(world: SimWorld, saved) -> void:
 			continue
 		world.rooms[String(id)] = {
 			"item": String(r.get("item", "")),
-			"pitch": int(r.get("pitch", 2)),
+			"pitch": float(r.get("pitch", 2)),
+			"edge_walls": bool(r.get("edge_walls", false)),
 			"slot": int(r.get("slot", 0)),
 			"anchor": _unpair(r.get("anchor", [])),
 			"size": _unpair(r.get("size", [])),
