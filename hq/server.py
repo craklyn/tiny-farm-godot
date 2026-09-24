@@ -6790,6 +6790,11 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, anim.loop_render(payload))
             except Exception as e:
                 return self._send(500, {"error": str(e)[:300]})
+        if path == "/api/loop/promote":
+            try:
+                return self._send(200, anim.loop_promote(payload))
+            except Exception as e:
+                return self._send(500, {"error": str(e)[:300]})
         if path == "/api/map/save":
             try:
                 return self._send(200, save_map(payload))

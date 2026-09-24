@@ -115,6 +115,8 @@ class AnimationLabTests(unittest.TestCase):
             out.mkdir(parents=True, exist_ok=True)
             (out / "params.json").write_text(json.dumps({"values": values}), encoding="utf-8")
             (out / "sprout_sheet.png").write_bytes(b"png")
+            for name in ("sprout.gif", "sprout_contact.png", "sprout_1x.png"):
+                (out / name).write_bytes(name.encode())
             return types.SimpleNamespace(returncode=0, stdout="", stderr="")
 
         with mock.patch.object(anim, "loops_index", return_value=known), \
@@ -137,12 +139,62 @@ class AnimationLabTests(unittest.TestCase):
             (out / "params.json").write_text(json.dumps({"values": {"speed": 2}}),
                                                    encoding="utf-8")
             (out / "sprout_sheet.png").write_bytes(b"png")
+            for name in ("sprout.gif", "sprout_contact.png", "sprout_1x.png"):
+                (out / name).write_bytes(name.encode())
             return types.SimpleNamespace(returncode=0, stdout="", stderr="")
 
         with mock.patch.object(anim, "loops_index", return_value=known), \
                 mock.patch.object(anim.subprocess, "run", side_effect=ignore):
             result = anim.loop_render({"slug": "sprout", "values": {"speed": 4}})
+        self.assertEqual(result["error"], "the script did not produce the requested complete preview")
         self.assertEqual(result["ignored"], ["speed"])
+
+    def test_promote_copies_inspected_preview_and_records_change(self):
+        self.script()
+        target = self.repo / "tools" / "experiments" / "out" / "sprout"
+        target.mkdir()
+        for name in anim._render_names("sprout"):
+            (target / name).write_bytes(b"old")
+        (target / "params.json").write_text(json.dumps({"values": {"speed": 2}}))
+        preview_id = "a" * 32
+        preview = self.data / "loop_previews" / "sprout" / preview_id
+        preview.mkdir(parents=True)
+        for name in anim._render_names("sprout"):
+            (preview / name).write_bytes(b"new")
+        (preview / "params.json").write_text(json.dumps({"values": {"speed": 3}}))
+        record = {"id": preview_id, "slug": "sprout", "values": {"speed": 3},
+                  "source_sha256": anim._hash(str(self.repo / "tools/experiments/vfx_sprout.py")),
+                  "base": anim._manifest(str(target), anim._render_names("sprout")),
+                  "files": anim._manifest(str(preview), anim._render_names("sprout"))}
+        (preview / "preview.json").write_text(json.dumps(record))
+        clean = types.SimpleNamespace(returncode=0, stdout="")
+        with mock.patch.object(anim.subprocess, "run", return_value=clean):
+            result = anim.loop_promote({"slug": "sprout", "preview_id": preview_id})
+        self.assertEqual(result["changes"], {"speed": {"from": 2, "to": 3}})
+        self.assertEqual((target / "sprout_sheet.png").read_bytes(), b"new")
+        history = [json.loads(line) for line in (target / "promotions.jsonl").read_text().splitlines()]
+        self.assertEqual(history[0]["preview_id"], preview_id)
+        with mock.patch.object(anim.subprocess, "run", return_value=clean):
+            again = anim.loop_promote({"slug": "sprout", "preview_id": preview_id})
+        self.assertIn("changed since this preview", again["error"])
+
+    def test_promote_refuses_unfinished_target(self):
+        self.script()
+        preview_id = "b" * 32
+        preview = self.data / "loop_previews" / "sprout" / preview_id
+        preview.mkdir(parents=True)
+        for name in anim._render_names("sprout"):
+            (preview / name).write_bytes(b"new")
+        record = {"id": preview_id, "slug": "sprout", "values": {"speed": 3},
+                  "source_sha256": anim._hash(str(self.repo / "tools/experiments/vfx_sprout.py")),
+                  "base": anim._manifest(str(self.repo / "tools/experiments/out/sprout"),
+                                         anim._render_names("sprout")),
+                  "files": anim._manifest(str(preview), anim._render_names("sprout"))}
+        (preview / "preview.json").write_text(json.dumps(record))
+        dirty = types.SimpleNamespace(returncode=0, stdout="?? tools/experiments/out/sprout/sprout_sheet.png\n")
+        with mock.patch.object(anim.subprocess, "run", return_value=dirty):
+            result = anim.loop_promote({"slug": "sprout", "preview_id": preview_id})
+        self.assertIn("unfinished local changes", result["error"])
 
     def test_index_uses_source_and_render_mtimes_for_staleness(self):
         source = self.repo / "assets" / "sprites" / "generated" / "bird.png"

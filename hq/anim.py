@@ -19,10 +19,12 @@ ever started by a button.
 import execution
 import work
 
+import hashlib
 import json
 import math
 import os
 import re
+import shutil
 import signal
 import subprocess
 import sys
@@ -44,6 +46,7 @@ PREVIEWS = None          # scratch renders from the sliders
 RUNS = None              # one record per drawing run
 
 RENDER_LOCK = threading.Semaphore(2)     # cheap, but not free
+PROMOTE_LOCK = threading.Lock()
 DRAW_LOCK = threading.Semaphore(1)       # drawing is not cheap; one at a time
 DRAW_TIMEOUT = 45 * 60                   # six passes with contact sheets is slow
 DRAW_MODEL = "opus"
@@ -65,6 +68,25 @@ def bind(server_module):
 
 def _repo(*parts):
     return os.path.join(REPO, *parts)
+
+
+def _hash(path):
+    if not os.path.isfile(path):
+        return None
+    digest = hashlib.sha256()
+    with open(path, "rb") as fh:
+        for chunk in iter(lambda: fh.read(1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def _render_names(slug):
+    return ["params.json", f"{slug}_sheet.png", f"{slug}.gif",
+            f"{slug}_contact.png", f"{slug}_1x.png"]
+
+
+def _manifest(directory, names):
+    return {name: _hash(os.path.join(directory, name)) for name in names}
 
 
 def _read(rel):
@@ -232,7 +254,7 @@ def loop_render(payload):
     fenced: the slug must name a loop that already exists, the script path is
     derived rather than accepted, every override must be a number whose key that
     loop declares and is clamped to that key's own range, and the output lands
-    in a scratch directory unless `keep` is set. No model is called and nothing
+    in a unique scratch directory. No model is called and nothing
     is billed — the cost is about a second of CPU."""
     slug = str(payload.get("slug") or "")
     if not re.fullmatch(r"[a-z0-9_]{1,64}", slug):
@@ -253,6 +275,8 @@ def loop_render(payload):
             x = float(v)
         except (TypeError, ValueError):
             row = None
+        if row and not math.isfinite(x):
+            row = None
         if not row:
             bad.append(k)
             continue
@@ -266,13 +290,21 @@ def loop_render(payload):
     if not values:
         return {"error": "no parameters given"}
 
-    keep = bool(payload.get("keep"))
-    out = _repo(LOOPS_DIR, slug) if keep else os.path.join(PREVIEWS, slug)
+    if payload.get("keep"):
+        return {"error": "use preview promotion to save a render"}
+    preview_id = uuid.uuid4().hex
+    out = os.path.join(PREVIEWS, slug, preview_id)
+    target = _repo(LOOPS_DIR, slug)
+    names = _render_names(slug)
+    baseline = _manifest(target, names)
+    source_hash = _hash(script)
+    source_revision = None
+    if os.path.exists(_repo(".git")):
+        revision = subprocess.run(["git", "rev-parse", "HEAD"], cwd=REPO,
+                                  capture_output=True, text=True)
+        source_revision = revision.stdout.strip() if revision.returncode == 0 else None
     os.makedirs(out, exist_ok=True)
-    os.makedirs(os.path.join(PREVIEWS, slug), exist_ok=True)
-    # The overrides file always lives in scratch, never beside a render: a loop's
-    # directory holds the loop, and only what the script itself puts there.
-    ov = os.path.join(PREVIEWS, slug, "overrides.json")
+    ov = os.path.join(out, "overrides.json")
     with open(ov, "w", encoding="utf-8") as fh:
         json.dump(values, fh)
 
@@ -326,17 +358,90 @@ def loop_render(payload):
     # cleanly, which would let the page report a redraw that never happened.
     wrote = m.get("values") or {}
     ignored = sorted(k for k, v in values.items()
-                     if k in wrote and abs(float(wrote[k]) - float(v)) > 1e-9)
-    base = "/loops" if keep else "/loop-preview"
-    if keep:
-        _INDEX_CACHE["key"] = None
+                     if k not in wrote or abs(float(wrote[k]) - float(v)) > 1e-9)
+    if ignored or any(_hash(os.path.join(out, name)) is None for name in names):
+        return {"error": "the script did not produce the requested complete preview",
+                "ignored": ignored}
+    record = {"slug": slug, "id": preview_id, "values": wrote,
+              "source_sha256": source_hash, "source_revision": source_revision,
+              "base": baseline,
+              "files": _manifest(out, names), "created": time.time()}
+    with open(os.path.join(out, "preview.json"), "w", encoding="utf-8") as fh:
+        json.dump(record, fh, indent=2, sort_keys=True)
     return {
-        "slug": slug, "values": wrote or values, "kept": keep,
+        "slug": slug, "preview_id": preview_id, "values": wrote,
         "frames": m.get("frames"), "canvas": m.get("canvas"), "colours": m.get("colours"),
-        "sheet": f"{base}/{slug}/{sheet}?t={int(time.time() * 1000)}",
+        "sheet": f"/loop-preview/{slug}/{preview_id}/{sheet}",
         "seconds": round(time.time() - t0, 2),
         "ignored": ignored,
     }
+
+
+def loop_promote(payload):
+    """Copy exactly the inspected preview into the committed render directory."""
+    slug = str(payload.get("slug") or "")
+    preview_id = str(payload.get("preview_id") or "")
+    if not re.fullmatch(r"[a-z0-9_]{1,64}", slug) or not re.fullmatch(r"[0-9a-f]{32}", preview_id):
+        return {"error": "bad preview identity"}
+    preview = os.path.join(PREVIEWS, slug, preview_id)
+    try:
+        with open(os.path.join(preview, "preview.json"), encoding="utf-8") as fh:
+            record = json.load(fh)
+    except (OSError, ValueError):
+        return {"error": "preview is missing"}
+    if record.get("slug") != slug or record.get("id") != preview_id:
+        return {"error": "preview identity changed"}
+    names = _render_names(slug)
+    target = _repo(LOOPS_DIR, slug)
+    script = _repo(SCRIPTS_DIR, f"vfx_{slug}.py")
+    with PROMOTE_LOCK:
+        if _hash(script) != record.get("source_sha256"):
+            return {"error": "loop script changed since this preview; render it again"}
+        if _manifest(preview, names) != record.get("files"):
+            return {"error": "preview files changed; render it again"}
+        if _manifest(target, names) != record.get("base"):
+            return {"error": "committed render changed since this preview; render it again"}
+        paths = [os.path.join(LOOPS_DIR, slug, name) for name in names]
+        status = subprocess.run(["git", "status", "--porcelain", "--", *paths],
+                                cwd=REPO, capture_output=True, text=True)
+        if status.returncode or status.stdout.strip():
+            return {"error": "render has unfinished local changes; preserve them before promoting"}
+        for path in paths:
+            if os.path.exists(_repo(path)):
+                tracked = subprocess.run(["git", "ls-files", "--error-unmatch", "--", path],
+                                         cwd=REPO, capture_output=True, text=True)
+                if tracked.returncode:
+                    return {"error": "render contains an untracked file; preserve it before promoting"}
+        try:
+            with open(os.path.join(target, "params.json"), encoding="utf-8") as fh:
+                previous = json.load(fh).get("values") or {}
+        except (OSError, ValueError):
+            previous = {}
+        new_values = record.get("values") or {}
+        changes = {k: {"from": previous.get(k), "to": v} for k, v in new_values.items()
+                   if previous.get(k) != v}
+        os.makedirs(target, exist_ok=True)
+        staged = []
+        try:
+            for name in names:
+                dst = os.path.join(target, f".{name}.{preview_id}.tmp")
+                shutil.copyfile(os.path.join(preview, name), dst)
+                staged.append((dst, os.path.join(target, name)))
+            for src, dst in staged:
+                os.replace(src, dst)
+        finally:
+            for src, _ in staged:
+                if os.path.exists(src):
+                    os.remove(src)
+        entry = {"preview_id": preview_id, "promoted": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+                 "source_sha256": record["source_sha256"],
+                 "source_revision": record.get("source_revision"), "changes": changes,
+                 "before": record["base"], "after": record["files"], "values": new_values}
+        with open(os.path.join(target, "promotions.jsonl"), "a", encoding="utf-8") as fh:
+            fh.write(json.dumps(entry, sort_keys=True) + "\n")
+        _INDEX_CACHE["key"] = None
+    return {"slug": slug, "values": new_values, "changes": changes,
+            "sheet": f"/loops/{slug}/{slug}_sheet.png?t={int(time.time() * 1000)}"}
 
 
 # ---------------------------------------------------------------------------

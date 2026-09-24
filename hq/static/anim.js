@@ -14,10 +14,7 @@
    rendered at. A loop this page has never heard of still plays and still
    describes itself.
 
-   Not built, on purpose: re-rendering from here. Tuning means re-running the
-   script, which would mean the dashboard executing Python on Daniel's machine —
-   a decision that is his, not mine. Until then each loop shows the exact command,
-   ready to copy. */
+   Preview renders are kept separately until the inspected version is promoted. */
 "use strict";
 
 routes["/design/anim"] = renderAnimLab;
@@ -440,7 +437,7 @@ async function renderAnimLoop(slug) {
         `<code class="ref">${esc(s.split("/").pop())}</code>`).join(" and ")} changed.</b>
       <div class="small muted">The script reads the sheets live, so redrawing picks up the new art
         at the values below. What is on screen is the older bird until you do.</div></div>
-      <button id="an-redraw">Redraw from the current art</button>
+      <button id="an-redraw">Preview with the current art</button>
     </div>` : ""}
 
     <div class="an-grid">
@@ -490,6 +487,7 @@ async function renderAnimLoop(slug) {
           ${L.params && L.params.length ? `<div class="an-rerun">
             <div class="an-runrow">
               <button id="an-draw">Draw it</button>
+              <button id="an-promote" disabled>Use this preview</button>
               <button id="an-revert" class="ghost" disabled>back to the drawn values</button>
             </div>
             <div class="small muted" id="an-runnote">Moving a control re-runs
@@ -826,12 +824,14 @@ function anWireInstruments(L, w, hh) {
   const params = document.querySelector(".an-params");
   const draw = document.getElementById("an-draw");
   const revert = document.getElementById("an-revert");
+  const promote = document.getElementById("an-promote");
   const note = document.getElementById("an-runnote");
   if (!params || !draw) return;
 
   const drawnAt = {};
   (L.params || []).forEach(([k]) => { drawnAt[k] = Number((L.values || {})[k]); });
   let timer = null, busy = false, queued = false;
+  let preview = null;
 
   const current = () => {
     const out = {};
@@ -851,19 +851,23 @@ function anWireInstruments(L, w, hh) {
       if (moved) tag.textContent = `drawn at ${anNum(drawnAt[k])}`;
     });
     revert.disabled = !dirty();
+    promote.disabled = busy || !preview || Object.entries(current()).some(
+      ([k, v]) => v !== Number(preview.values[k]));
   }
 
-  async function render(keep) {
+  async function render() {
     if (busy) { queued = true; return; }
     busy = true; queued = false;
+    preview = null;
     draw.disabled = true;
+    promote.disabled = true;
     params.classList.add("an-working");
-    note.textContent = keep ? "Redrawing from the current art…" : "Re-running the script…";
+    note.textContent = "Re-running the script…";
     note.className = "small an-busy";
     try {
       const r = await fetch("/api/loop/render", {
         method: "POST", headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ slug: L.slug, values: current(), keep: !!keep }),
+        body: JSON.stringify({ slug: L.slug, values: current() }),
       }).then(x => x.json());
       if (r.error) {
         note.className = "small an-need";
@@ -871,10 +875,9 @@ function anWireInstruments(L, w, hh) {
       } else {
         const img = await anLoadImage(r.sheet);
         const frames = anSlice(img, r.canvas[0], r.canvas[1], r.frames);
-        if (keep) anPlayer.baseFrames = frames;   // this render IS the drawn one now
-        /* Back at the drawn values, the comparison is against itself again, and
-           saying so beats showing two copies that differ by nothing. */
-        anPlayer.frames = (!keep && !dirty()) ? anPlayer.baseFrames : frames;
+        /* Keep the inspected preview visible, even when its values match the
+           old render but its source art has changed. */
+        anPlayer.frames = frames;
         anPlayer.judgedValues = { ...(r.values || {}) };
         anPlayer.idx = anPlayer.idx % anPlayer.frames.length;
         anPlayer.w = r.canvas[0]; anPlayer.hh = r.canvas[1];
@@ -891,17 +894,11 @@ function anWireInstruments(L, w, hh) {
             `and this one is not reading it. The picture is its defaults, not your values.`;
         } else {
           note.className = "small muted";
-          note.textContent = keep
-            ? `Redrawn in ${r.seconds}s · ${r.colours} colours · this is now the render on disk.`
-            : `Redrawn in ${r.seconds}s · ${r.colours} colours · a preview only, ` +
-              `the render on disk is untouched.`;
+          note.textContent = `Redrawn in ${r.seconds}s · ${r.colours} colours · preview ready. ` +
+            `Use this preview to save these exact frames and values.`;
+          preview = r;
         }
-        if (keep) {
-          const bar = document.querySelector(".an-stalebar");
-          if (bar) bar.remove();
-          Object.assign(drawnAt, current());
-          reflect();
-        }
+        reflect();
       }
     } catch (e) {
       note.className = "small an-need";
@@ -914,7 +911,35 @@ function anWireInstruments(L, w, hh) {
     }
   }
   const redraw = document.getElementById("an-redraw");
-  if (redraw) redraw.onclick = () => { clearTimeout(timer); render(true); };
+  if (redraw) redraw.onclick = () => { clearTimeout(timer); render(); };
+  promote.onclick = async () => {
+    if (!preview || busy || promote.disabled) return;
+    busy = true; promote.disabled = true; draw.disabled = true;
+    params.querySelectorAll("input[data-p]").forEach(i => { i.disabled = true; });
+    note.className = "small an-busy";
+    note.textContent = "Saving the inspected preview…";
+    try {
+      const r = await fetch("/api/loop/promote", {
+        method: "POST", headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ slug: L.slug, preview_id: preview.preview_id }),
+      }).then(x => x.json());
+      if (r.error) throw new Error(r.error);
+      anPlayer.baseFrames = anPlayer.frames;
+      Object.assign(drawnAt, r.values);
+      preview = null;
+      const bar = document.querySelector(".an-stalebar");
+      if (bar) bar.remove();
+      note.className = "small muted";
+      note.textContent = `Saved to the loop's render directory. Values and changes recorded in promotions.jsonl.`;
+    } catch (e) {
+      note.className = "small an-need";
+      note.textContent = e.message || "Could not save this preview.";
+    } finally {
+      busy = false; draw.disabled = false;
+      params.querySelectorAll("input[data-p]").forEach(i => { i.disabled = false; });
+      reflect(); anCompareHint();
+    }
+  };
 
   params.addEventListener("input", ev => {
     if (!ev.target.dataset.p) return;
