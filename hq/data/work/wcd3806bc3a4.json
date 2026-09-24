@@ -7,11 +7,11 @@
   "tier_reason": "filed by hand",
   "ask": "The release manifest lists 'A stuck machine tells you it is stuck' (evidence S-10) as still being built — 1 of 5 steps done on hq/data/projects/machine-distress-state.json. When that project finishes, verify the manifest reads it as ready; if the release ships without it, take it off hq/data/releases.json's feature list rather than shipping a claim. A release plan whose contents cannot be verified is a wish.",
   "first_action": "Open #/pillar/sales, find the feature marked not built, and trace its evidence id through git log.",
-  "state": "waiting_session",
+  "state": "landed",
   "thread": "victor",
   "source": "chat",
   "source_message": "A feature on hq/data/releases.json's manifest cannot be traced to a commit or to a project carrying it. Work out whether it was built under a different name, is genuinely not built, or should come off the release, and fix the record either way. A release plan whose contents cannot be verified is a wish.",
-  "result": "Player Update 1 was promising thirteen things and could deliver twelve. I traced every one of them through the history, not just the flagged one.\n\n**The stuck machine was never real.** The manifest showed it as \"1 of 5 steps done,\" which sounds like a fifth of the way built. The one step marked done is *recording the decision in the log* — no code exists. And the single commit in the history that names its evidence id is an HQ dashboard change that mentions the ruling in a footnote. Nothing about a robot showing distress has been written.\n\nNothing was holding the release for it either: it was never on the critical path, and the release closes on the onboarding gate and the green-tester session, neither of which touches it. So Update 1 would have gone out with a feature list claiming a robot that tells you it is stuck. I took it off. The design still stands and the project still exists — it now rides the next content milestone instead of a release that was never waiting for it, and I wrote the reason into the project record so nobody re-adds it by accident.\n\n**The other twelve check out.** Each traces to a commit that actually built it — the shop, the mark-1 robot, the home, the clock, the cot, the pips, the water sound, the wet soil, the field, the icon, the clearing costs, the bedtime prompt. Sales can say all twelve out loud.\n\n**The check you asked for failed, so I fixed it.** You asked me to confirm the manifest would read the feature as ready once its project finished. It would not have. Completion was read from a hand-set status label rather than from the plan, which was wrong in both directions: ticking the final step left the feature reading \"still being built\" until someone remembered to flip a second field, and a project labelled done with four steps outstanding would have handed the wall \"ready to go out\" on work nobody had done. The plan now decides. Ticking the last step is the only act required, and an unfinished plan can no longer be overridden by a label.\n\nYour Sales goal — every claim traces to the build — now reads 12 of 12, at target. It got there by dropping a promise, not by building anything.\n\n**One thing worth knowing.** The manifest infers \"built\" by grepping commit messages for an evidence id, and a commit that *mentions* a decision looks identical to one that *builds* it. The stuck machine only got caught because it named a project, and it was the sole feature on the list that did. The other twelve are real, but nothing keeps them that way.",
+  "result": "Reconciled the release inventory with what players can reach and with the commits that built it. Player Update 1 now lists 11 shipped player features. The unreachable farmhouse interior is off that list; the still-unbuilt stuck-machine notice is off the parked M3 feature list and remains tracked by project machine-distress-state. The shop claim already matched the build and was preserved. This keeps the related three-claim audit from being repeated.\n\nThe manifest now reads a carrying project’s plan steps for readiness: an unfinished plan cannot be made ready by a done label, and a fully checked plan becomes ready despite a stale label. Comma-separated evidence IDs are searched individually, so real robot and workbench commits no longer disappear from Sales. The robot feature cites verified build commit 42592094e1c1147904d20a33c5f6bb3d84ad36b6, preventing a later planning mention from misclassifying shipped work as new inventory.\n\nEvidence: implementation commit e2228900427598e3119f435776440bc08f4f44ba; six focused manifest tests pass; full HQ gate passes 46/46 files with 0 skipped; local release calculation reports Update 1: 11 shipped, Update 1.1: 2 ready, Update 1.2: 3 ready, parked M3: 0 player features. The game code and the separate feature-audit card were not changed.",
   "started": "",
   "attempts": 1,
   "created": "2026-09-03T18:10",
@@ -43,15 +43,15 @@
   "finished": "2026-09-04T09:46",
   "done_by": {
     "seat": "victor",
-    "model": "opus",
-    "lane": "drain"
+    "model": "codex",
+    "lane": "interactive repair"
   },
   "diff": {
-    "stat": "hq/data/projects/machine-distress-state.json |  4 ++--\n hq/data/releases.json                        |  9 +--------\n hq/server.py                                 | 23 +++++++++++++++++------\n 3 files changed, 20 insertions(+), 16 deletions(-)",
+    "stat": "hq/data/releases.json, hq/server.py, hq/tests/test_release_manifest.py",
     "files": [
-      "hq/data/projects/machine-distress-state.json",
       "hq/data/releases.json",
-      "hq/server.py"
+      "hq/server.py",
+      "hq/tests/test_release_manifest.py"
     ],
     "applied": true,
     "why_not": ""
@@ -67,7 +67,7 @@
     "seconds": 425.6,
     "list_usd": 3.3962
   },
-  "_revision": 1,
+  "_revision": 2,
   "completion_reconciliation": {
     "version": 1,
     "manifest_id": "38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33",
@@ -78,7 +78,7 @@
   },
   "repair_brief": "Restore and test step-derived project readiness in the release manifest, reconcile current feature claims with build evidence, and coordinate with w17cbb1e9823 instead of duplicating its audit.",
   "automatic_repairs": 1,
-  "revising": true,
+  "revising": false,
   "prior_results": [
     {
       "at": "2026-09-04T09:46",
@@ -105,5 +105,12 @@
       "escalates": null,
       "escalation_reason": null
     }
-  ]
+  ],
+  "closed": "2026-09-24T05:43:57Z",
+  "landed": {
+    "at": "2026-09-24T05:43:57Z",
+    "by": "Codex interactive",
+    "sha": "e2228900427598e3119f435776440bc08f4f44ba",
+    "note": "Reconciled release features and verified project-step readiness against the full HQ gate."
+  }
 }
