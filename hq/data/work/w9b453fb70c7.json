@@ -1,22 +1,77 @@
 {
- "id": "w9b453fb70c7",
- "title": "Rename the labels the dashboard's server sends so they match the wording on its pages",
- "level": "task",
- "owner": "claude",
- "tier": 1,
- "tier_reason": "The Engineering page currently shows both names for the same test run, because the front-end half was reworded and the server-side labels were not.",
- "ask": "Accepted “Reword every phrase on HQ's pages that only makes sense inside this studio”. The Engineering page currently shows both names for the same test run, because the front-end half was reworded and the server-side labels were not.",
- "first_action": "In hq/server.py, rename the JOBS labels 'Unit suite'/'Integration suite' to 'Unit tests'/'Integration tests' so the run rows match the evidence strip above them; then sweep the ~37 remaining glossary words in rendered strings across hq/server.py and hq/data/pillars.json (start with the ops pillar demo labelled 'The provenance ledger', now titled 'Where every asset came from' on the page).",
- "state": "waiting_session",
- "thread": "rin",
- "source": "chat",
- "source_message": "Accepted “Reword every phrase on HQ's pages that only makes sense inside this studio”. The Engineering page currently shows both names for the same test run, because the front-end half was reworded and the server-side labels were not.",
- "result": "",
- "started": "",
- "attempts": 0,
- "created": "2026-09-04T14:29",
- "created_ts": 1788557392.8323948,
- "parent": "wdd79dcd74ed",
- "model": "opus",
- "model_note": "Opus for now: the week's Fable budget is spent (Daniel, 2026-09-21). Remove this field to return to the seat's default."
+  "id": "w9b453fb70c7",
+  "title": "Rename the labels the dashboard's server sends so they match the wording on its pages",
+  "level": "task",
+  "owner": "claude",
+  "tier": 1,
+  "tier_reason": "The Engineering page currently shows both names for the same test run, because the front-end half was reworded and the server-side labels were not.",
+  "ask": "Accepted “Reword every phrase on HQ's pages that only makes sense inside this studio”. The Engineering page currently shows both names for the same test run, because the front-end half was reworded and the server-side labels were not.",
+  "first_action": "In hq/server.py, rename the JOBS labels 'Unit suite'/'Integration suite' to 'Unit tests'/'Integration tests' so the run rows match the evidence strip above them; then sweep the ~37 remaining glossary words in rendered strings across hq/server.py and hq/data/pillars.json (start with the ops pillar demo labelled 'The provenance ledger', now titled 'Where every asset came from' on the page).",
+  "state": "landed",
+  "thread": "rin",
+  "source": "chat",
+  "source_message": "Accepted “Reword every phrase on HQ's pages that only makes sense inside this studio”. The Engineering page currently shows both names for the same test run, because the front-end half was reworded and the server-side labels were not.",
+  "result": "HQ test names and demo labels now agree. Remaining server messages and pillar demo descriptions use plain wording.",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-04T14:29",
+  "created_ts": 1788557392.8323948,
+  "parent": "wdd79dcd74ed",
+  "model": "opus",
+  "model_note": "Opus for now: the week's Fable budget is spent (Daniel, 2026-09-21). Remove this field to return to the seat's default.",
+  "_revision": 4,
+  "attempt_outcome": {
+    "version": 1,
+    "id": "hq-wording-ede3732871d4d249cf0da09483c473b2368f9f1b54910a5a918a95684c96d12c",
+    "status": "complete",
+    "reason": "HQ test names and demo labels now agree. Remaining server messages and pillar demo descriptions use plain wording.",
+    "result_id": "d94856ad8406da774c18f9965c7b35a31e1f77725c11094543f2f553073b929b",
+    "landing_verified": true,
+    "operator_audit": {
+      "version": 1,
+      "at": "2026-09-23T22:08:04-07:00",
+      "by": "Codex HQ reconciliation",
+      "evidence_commits": [
+        "ede635604c309e602a4ce3cb3ec997c771d1e5c0",
+        "c09a2c0"
+      ],
+      "test_proof": [
+        "python3 hq/tests/test_consumers.py: 15 passed",
+        "python3 hq/tests/test_process_truth.py: 11 passed",
+        "python3 tools/check_writing.py --verify: no new phrases to decode"
+      ],
+      "evidence_summary": "HQ test names and demo labels now agree. Remaining server messages and pillar demo descriptions use plain wording.",
+      "limitations": "Operator audit of committed code and focused local tests; not a native checker verdict or Daniel acceptance."
+    }
+  },
+  "completion": {
+    "version": 1,
+    "attempt_id": "hq-wording-ede3732871d4d249cf0da09483c473b2368f9f1b54910a5a918a95684c96d12c",
+    "at": "2026-09-23T22:08:04-07:00",
+    "by": "Codex HQ reconciliation",
+    "kind": "operator_audit",
+    "evidence": {
+      "version": 1,
+      "at": "2026-09-23T22:08:04-07:00",
+      "by": "Codex HQ reconciliation",
+      "evidence_commits": [
+        "ede635604c309e602a4ce3cb3ec997c771d1e5c0",
+        "c09a2c0"
+      ],
+      "test_proof": [
+        "python3 hq/tests/test_consumers.py: 15 passed",
+        "python3 hq/tests/test_process_truth.py: 11 passed",
+        "python3 tools/check_writing.py --verify: no new phrases to decode"
+      ],
+      "evidence_summary": "HQ test names and demo labels now agree. Remaining server messages and pillar demo descriptions use plain wording.",
+      "limitations": "Operator audit of committed code and focused local tests; not a native checker verdict or Daniel acceptance."
+    }
+  },
+  "closed": "2026-09-23T22:08:04-07:00",
+  "landed": {
+    "at": "2026-09-23T22:08:04-07:00",
+    "by": "Codex HQ reconciliation",
+    "sha": "",
+    "note": "HQ test names and demo labels now agree. Remaining server messages and pillar demo descriptions use plain wording."
+  }
 }
