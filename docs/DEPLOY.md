@@ -32,7 +32,16 @@ tools/deploy_android.sh pair <IP:PAIRPORT> <6-digit-code>   # once per machine+d
 ```
 
 Builds a **debug** APK, connects over wireless debugging, rescues any session already on
-the device, installs, and launches.
+the device, verifies a played session against the recording build, installs, and launches.
+The checkout must be clean before the deploy starts: a dirty build cannot be recreated
+from the build id recorded in a play session. If the tablet contains a session from a
+different build, the script shelves it and stops before installing. Check out that
+recording commit to verify it, then return to the desired build. Successful verification
+writes `verification.sha256` beside the session, so later deploys can recognize the same
+replay and autosave on the tablet without checking them against a newer build. Commit
+the session and receipt before the next deploy. A session stamped `-dirty` cannot be
+verified against an exact recording build and requires manual triage before another
+install.
 
 ### Without a terminal: the button in HQ
 
@@ -76,8 +85,9 @@ laptop's.
 - The APK is `--export-debug`. That is right for the tablet (it enables `run-as`, which
   is how sessions are pulled) and **wrong for public distribution** — a public APK wants
   a release build, the Android SDK, `apksigner`, and a signing keystore. Not built yet.
-- `build_id` is stamped from `git describe` at build time. Do not hand-edit it in
-  `project.godot`; Q-41 stamps replays with that value.
+- `build_id` is stamped from a clean `git describe` at build time. Do not hand-edit it in
+  `project.godot`; Q-41 stamps replays with that value. The deploy restores the project
+  file and generated demo replay after export, leaving the checkout clean for the next build.
 - **The demo replay is regenerated as part of the deploy, after the stamp and before the
   export.** Not optional, and not cosmetic: the title screen refuses to play a demo whose
   `build_id` does not match the running build (a stale one would show a farm that never

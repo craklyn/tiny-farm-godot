@@ -29,29 +29,31 @@ if [[ "${1:-}" == "pair" ]]; then
 	exit 0
 fi
 
-# Q-41 stamps every replay with application/config/build_id, which is useless if
-# that value is hand-edited and stale. Derive it from git at build time so a
-# pulled session says which code actually produced it.
-step "Stamping the build id"
-BUILD_ID="$(git describe --always --dirty 2>/dev/null || echo dev)"
-sed -i "s|^config/build_id=.*|config/build_id=\"$BUILD_ID\"|" project.godot
-echo "Build id: $BUILD_ID"
+# A dirty checkout cannot be reconstructed from the build id in a replay. Check
+# before any generated files or stamps are written, including untracked source.
+step "Checking the build source"
+if [[ -n "$(git status --porcelain --untracked-files=normal)" ]]; then
+	echo "Refusing a tablet build from a dirty checkout. Commit or remove the changes first." >&2
+	exit 1
+fi
+BUILD_ID="$(git describe --always 2>/dev/null)"
+if [[ -z "$BUILD_ID" || "$BUILD_ID" == *-dirty ]]; then
+	echo "Could not identify a clean commit for the tablet build." >&2
+	exit 1
+fi
+cleanup_generated_sidecars() {
+	# Godot can create sidecars for tracked art and scripts during verification or
+	# export. They were absent at the clean-source gate; keep rescued playtests.
+	while IFS= read -r -d '' file; do
+		case "$file" in
+			*.import|*.gd.uid) rm -f -- "$file" ;;
+		esac
+	done < <(git ls-files --others --exclude-standard -z)
+}
+trap cleanup_generated_sidecars EXIT
 
-# T-17 / Q-41: regenerate the demo replay AFTER the stamp above and BEFORE the
-# export, exactly as release.yml does and for the same reason. The title screen
-# refuses to play a demo whose build_id does not match the running build, because
-# apply_to() re-runs actions against today's rules and a stale one would show a
-# farm that never existed. Stamping without regenerating therefore ships an
-# attract loop that silently never appears — which is what the first deploy of
-# this build did.
-step "Regenerating the demo replay"
-godot --headless --path . --script res://tools/gen_demo_replay.gd
-
-step "Exporting the Android APK"
-godot --headless --path . --export-debug "Android" "$APK"
-
-# Connect AFTER the export: the adb daemon can be restarted during a long build,
-# which drops any connection made beforehand.
+# Connect before building so a rescued session can run against these exact
+# sources. Export may restart adb, so reconnect once more before installation.
 step "Finding the tablet"
 LAST_TARGET_FILE=".adb_target"
 
@@ -142,11 +144,71 @@ done
 if [[ "$session_on_device" -eq 1 ]]; then
 	step "Rescuing the play session already on the tablet"
 	echo "Existing session on device — pulling it before install."
-	"$(dirname "$0")/pull_session.sh" >/dev/null 2>&1 \
-		&& echo "  rescued into playtests/" \
-		|| echo "  WARNING: could not pull; continuing anyway." >&2
+	rescue_result=$(mktemp)
+	trap 'rm -f "$rescue_result"; cleanup_generated_sidecars' EXIT
+	if ! PULL_SESSION_RESULT_FILE="$rescue_result" "$(dirname "$0")/pull_session.sh"; then
+		echo "Session rescue failed; leaving the tablet untouched." >&2
+		exit 1
+	fi
+	if [[ -s "$rescue_result" ]]; then
+		rescue_dir=$(cat "$rescue_result")
+		if [[ ! -s "$rescue_dir/session_replay.json" || ! -s "$rescue_dir/autosave.json" ]]; then
+			echo "Rescued session lacks a replay or autosave; leaving the tablet untouched." >&2
+			exit 1
+		fi
+		recorded_build=$(python3 - "$rescue_dir/session_replay.json" <<'PY'
+import json, sys
+with open(sys.argv[1], encoding="utf-8") as stream:
+    replay, _ = json.JSONDecoder().raw_decode(stream.read())
+print(replay.get("build_id", ""))
+PY
+		)
+		verification_receipt="$rescue_dir/verification.sha256"
+		verification_fingerprint="$(printf '%s\n' "$recorded_build"; sha256sum "$rescue_dir/session_replay.json" "$rescue_dir/autosave.json")"
+		if [[ -f "$verification_receipt" ]] \
+				&& [[ "$(cat "$verification_receipt")" == "$verification_fingerprint" ]]; then
+			echo "Already verified: $rescue_dir ($recorded_build)."
+		else
+			if [[ "$recorded_build" != "$BUILD_ID" ]]; then
+				echo "Rescued $rescue_dir from $recorded_build; checkout is $BUILD_ID." >&2
+				echo "Verify with the recording build before installing a different one." >&2
+				exit 1
+			fi
+			step "Verifying the rescued play session"
+			godot --headless --path . --script res://tools/verify_replay.gd -- "$rescue_dir"
+			printf '%s\n' "$verification_fingerprint" > "$verification_receipt"
+		fi
+	fi
 fi
 
+# Stamp only after rescue and verification. Restore generated tracked files on
+# exit so the next deploy starts from a clean checkout again.
+stamp_backup=$(mktemp -d)
+cp project.godot assets/demo/demo_replay.json "$stamp_backup/"
+restore_build_files() {
+	cp "$stamp_backup/project.godot" project.godot
+	cp "$stamp_backup/demo_replay.json" assets/demo/demo_replay.json
+	rm -rf "$stamp_backup"
+	[[ -z "${rescue_result:-}" ]] || rm -f "$rescue_result"
+	cleanup_generated_sidecars
+}
+trap restore_build_files EXIT
+step "Stamping the build id"
+sed -i "s|^config/build_id=.*|config/build_id=\"$BUILD_ID\"|" project.godot
+echo "Build id: $BUILD_ID"
+step "Regenerating the demo replay"
+godot --headless --path . --script res://tools/gen_demo_replay.gd
+step "Exporting the Android APK"
+godot --headless --path . --export-debug "Android" "$APK"
+
+if [[ "$SERIAL" == *:* ]]; then
+	adb connect "$SERIAL" >/dev/null || true
+fi
+if ! connected_serials | grep -Fxq "$SERIAL"; then
+	echo "The verified build is ready, but $SERIAL disconnected before install." >&2
+	echo "The tablet has not been changed; reconnect it and rerun the deploy." >&2
+	exit 1
+fi
 step "Installing on the tablet"
 # `set -e` would catch a non-zero exit, but `adb install` is cheerful about
 # printing a failure and returning 0, so the word is what gets checked.

@@ -1,6 +1,7 @@
 # verify_replay.gd — Live-session replay harness (M2 exit-gate check)
 # Run AFTER playing the game and sleeping at least once:
 #   godot --headless --path . --script res://tools/verify_replay.gd
+#   godot --headless --path . --script res://tools/verify_replay.gd -- playtests/<session>
 # Loads the session's action log and the autosave — both written together at
 # each sleep — replays the log into a fresh world, and verifies the end state
 # matches the autosave. Presentation-only fields (selected tool/seed) are
@@ -13,7 +14,8 @@ extends SceneTree
 
 
 func _init() -> void:
-	var dir := _find_session()
+	var args := OS.get_cmdline_user_args()
+	var dir := args[0] if not args.is_empty() else _find_session()
 	if dir.is_empty():
 		print("MISSING FILES: play a session (and sleep at least once) first.")
 		print("  looked in user://slot1..3 and user:// for session_replay.json + autosave.json")

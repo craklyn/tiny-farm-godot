@@ -242,6 +242,7 @@ if [[ -f "$TRACE" ]]; then
 		[[ "$prior" == "$OUT/session_trace.jsonl" ]] && continue
 		if [[ "$(md5sum < "$prior" | cut -d" " -f1)" == "$MINE" ]]; then
 			rm -rf "$OUT"
+			[[ -n "${PULL_SESSION_RESULT_FILE:-}" ]] && printf '%s\n' "$(dirname "$prior")" > "$PULL_SESSION_RESULT_FILE"
 			echo ""
 			echo "Not shelved: this is the same play as $(dirname "$prior")"
 			echo "(identical tap trace). Already on the shelf; not filing it twice."
@@ -252,6 +253,7 @@ fi
 
 echo ""
 echo "Saved to $OUT/"
+[[ -n "${PULL_SESSION_RESULT_FILE:-}" ]] && printf '%s\n' "$OUT" > "$PULL_SESSION_RESULT_FILE"
 echo ""
 
 if [[ -f "$OUT/session_trace.jsonl" ]]; then
