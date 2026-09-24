@@ -4778,8 +4778,8 @@ func _scenario_al_a_ripe_crop_carries() -> void:
 	var moved := false
 	for step in [0.4, 0.9, 1.5]:
 		if not is_equal_approx(
-				CropPresentation.nod_offset(ripe[0], t0).x,
-				CropPresentation.nod_offset(ripe[0], t0 + step).x):
+				CropPresentation.nod_offset(ripe[0], t0, "wheat").x,
+				CropPresentation.nod_offset(ripe[0], t0 + step, "wheat").x):
 			moved = true
 	_assert(moved, "and it sways — the picture is not the same one a beat later")
 

@@ -1711,6 +1711,12 @@
   "5c1a64fd9702c2f832ae": {
    "verdict": "ok"
   },
+  "5c5886da549115e73e61": {
+   "instead": "This preview shows the crop using the current settings",
+   "quote": "This preview reads values from … and shows the crop",
+   "verdict": "second-look",
+   "why": "It describes the preview's internal data source instead of plainly saying what the preview shows."
+  },
   "5c7f542cb1b88b430b63": {
    "verdict": "ok"
   },
@@ -2780,6 +2786,9 @@
   "94b653533cb4746b6143": {
    "verdict": "ok"
   },
+  "94ef3a10f02aea25f467": {
+   "verdict": "ok"
+  },
   "95244adc2979d6981a80": {
    "verdict": "ok"
   },
@@ -3112,6 +3121,12 @@
   },
   "a3785a300aacdbafcbc5": {
    "verdict": "ok"
+  },
+  "a4419edead1aad90aa04": {
+   "instead": "This crop's sway: … times the normal amount of movement.",
+   "quote": "…× the usual travel",
+   "verdict": "second-look",
+   "why": "“Travel” makes the reader work out that this means how far the crop moves."
   },
   "a45a1700c8a37d636c06": {
    "instead": "Record that the obstacle image was cleaned up and verified",

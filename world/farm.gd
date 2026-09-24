@@ -1324,7 +1324,7 @@ func _queue_ripe(canvas: CanvasItem, queue: Array[Dictionary], at: Vector2i, tex
 	var foot_src := Rect2(region.position + Vector2(0.0, region.size.y * f),
 		Vector2(region.size.x, region.size.y * (1.0 - f)))
 	var head_dst := Rect2(
-		rect.position + CropPresentation.nod_offset(at, Time.get_ticks_msec() / 1000.0),
+		rect.position + CropPresentation.nod_offset(at, Time.get_ticks_msec() / 1000.0, crop_type),
 		Vector2(rect.size.x, rect.size.y * (f + over)))
 	var foot_dst := Rect2(rect.position + Vector2(0.0, rect.size.y * f),
 		Vector2(rect.size.x, rect.size.y * (1.0 - f)))

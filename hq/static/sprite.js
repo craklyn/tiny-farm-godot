@@ -710,11 +710,13 @@ async function renderSpriteEditor(path) {
     try { look = await api("/api/ripe"); } catch (e) { return; }
     if (!look || look.error) return;
     const n = look.nums || {};
-    const need = ["NOD_PERIOD", "NOD_LEAN", "NOD_DROP", "NOD_SPLIT", "NOD_OVERLAP", "BLOOM_RINGS",
+    const need = ["NOD_PERIOD", "NOD_LEAN", "NOD_LEAN_SPREAD", "NOD_DROP", "NOD_SPLIT", "NOD_OVERLAP", "RIPE_SWAY_FALLBACK", "RIPE_SWAY_FLOOR", "BLOOM_RINGS",
                   "BLOOM_INNER_R", "BLOOM_RING_STEP", "BLOOM_RING_A", "BLOOM_DROP"];
     const gone = (look.missing || []).concat(need.filter(k => !(k in n)));
+    if (!Object.hasOwn(look.sway || {}, ent.id)) gone.push(`RIPE_SWAY.${ent.id}`);
     const tile = look.tile || 16;
     const light = (look.light || {})[ent.id] || (look.light || {})._fallback || [1, 1, 1];
+    const sway = (look.sway || {})[ent.id];
 
     const PLANTS = 3, SCALE = 4;
     host.innerHTML = `<h2>How the crop looks when it is ripe</h2>
@@ -722,6 +724,7 @@ async function renderSpriteEditor(path) {
       pool of its own ripe colour. This preview reads values from
       <code class="ref">${esc(look.source)}</code> and shows the crop over the game's tilled soil.
       It includes your unsaved edits — repaint the last cell and watch it here.</p>
+      ${sway === undefined ? "" : `<p class="small">This crop's sway: <strong>${sway.toFixed(2)}×</strong> the usual travel. The field varies each plant a little around that number.</p>`}
       ${gone.length ? `<p class="small" style="color:var(--bad)">Out of date: the game no longer
         has ${esc(gone.join(", "))}. This preview is not showing what ships — update the code that
         reads the sheets, in <code class="ref">hq/server.py</code>.</p>` : ""}
@@ -773,7 +776,9 @@ async function renderSpriteEditor(path) {
       for (let i = 0; i < PLANTS; i++) {
         const phase = i / PLANTS;               // evenly out of step; see the note above
         const a = 2 * Math.PI * (secs / n.NOD_PERIOD + phase);
-        const dx = Math.sin(a) * n.NOD_LEAN, dy = Math.abs(Math.sin(a)) * n.NOD_DROP;
+        const travel = n.NOD_LEAN * sway * (1 + (i - 1) * n.NOD_LEAN_SPREAD);
+        const dx = Math.sin(a) * travel;
+        const dy = Math.abs(Math.sin(a)) * n.NOD_DROP * travel / n.NOD_LEAN;
         const ox = i * tile * SCALE, oy = cy * SCALE;
         // The head's piece reaches past the cut and is drawn second, so the two
         // rectangles cannot leave a hairline between them — see NOD_OVERLAP.

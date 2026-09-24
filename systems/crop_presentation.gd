@@ -56,8 +56,8 @@ class_name CropPresentation
 
 ## The one question the renderer asks. Ripe-ness is tile state and nothing else —
 ## no new flag, no sim change — and it is the same answer for every crop: what
-## differs between them is the colour of the light, below, never whether the cue
-## appears at all.
+## differs between them is the colour of the light and the amount of sway,
+## never whether the cue appears at all.
 static func shows(state: String) -> bool:
 	return state == "ready"
 
@@ -110,6 +110,7 @@ static func spread(tile: Vector2i, salt: int, amount: float) -> float:
 const NOD_PERIOD := 2.97      # [Playtest] seconds for one full sway
 const NOD_SPREAD := 0.5       # [Playtest] how much that period varies square to square
 const NOD_LEAN := 1.0         # [Playtest] world px the head travels either side of centre
+const NOD_LEAN_SPREAD := 0.08 # amplitude varies by square around the crop's own centre
 
 # **The head drops as it leans, and never rises.** Two reasons, and they are the
 # same reason twice.
@@ -148,9 +149,14 @@ static func nod_period(tile: Vector2i) -> float:
 
 ## Where the head of this plant is, relative to where it is drawn at rest.
 ## **Y is never negative** — see `NOD_DROP`.
-static func nod_offset(tile: Vector2i, t_sec: float) -> Vector2:
+static func nod_offset(tile: Vector2i, t_sec: float, crop_type: String) -> Vector2:
 	var a: float = TAU * (t_sec / nod_period(tile) + hash01(tile, 0))
-	return Vector2(sin(a) * NOD_LEAN, absf(sin(a)) * NOD_DROP)
+	var travel: float = nod_travel(tile, crop_type)
+	return Vector2(sin(a) * travel, absf(sin(a)) * NOD_DROP * travel / NOD_LEAN)
+
+
+static func nod_travel(tile: Vector2i, crop_type: String) -> float:
+	return NOD_LEAN * RIPE_SWAY.get(crop_type, RIPE_SWAY_FALLBACK) * (1.0 + spread(tile, 2, NOD_LEAN_SPREAD))
 
 
 # --- The light ----------------------------------------------------------------
@@ -169,6 +175,16 @@ const RIPE_LIGHT := {
 	"tomato": Color(0.784, 0.306, 0.224),   # #c84e39 — the fruit's own red
 	"pea":    Color(0.639, 0.761, 0.388),   # #a3c263 — the brightest green in the pod
 }
+# The crop sets the centre of the sway; the square hash adds a smaller, stable
+# difference between individual plants. Even the least-moving crop at the least
+# favourable hash travels at least 0.75 world px, the cue's legibility floor.
+const RIPE_SWAY := {
+	"wheat":  1.20, # the light ear has a wider swing
+	"tomato": 0.85, # the laden vine moves less
+	"pea":    1.05,
+}
+const RIPE_SWAY_FALLBACK := 1.0
+const RIPE_SWAY_FLOOR := 0.75
 # A crop with no entry still lights up rather than silently losing the cue: a new
 # crop added by someone who never read this file gets a warm neutral and looks
 # slightly wrong, which is a bug that shows itself. The unit suite also asserts

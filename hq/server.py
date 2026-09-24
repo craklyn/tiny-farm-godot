@@ -3243,7 +3243,7 @@ def ripe_look():
     except OSError as e:
         return {"error": f"cannot read {RIPE_SOURCE}: {e}"}
 
-    wanted = ["NOD_PERIOD", "NOD_SPREAD", "NOD_LEAN", "NOD_DROP", "NOD_SPLIT", "NOD_OVERLAP",
+    wanted = ["NOD_PERIOD", "NOD_SPREAD", "NOD_LEAN", "NOD_LEAN_SPREAD", "NOD_DROP", "NOD_SPLIT", "NOD_OVERLAP", "RIPE_SWAY_FALLBACK", "RIPE_SWAY_FLOOR",
               "BLOOM_RINGS", "BLOOM_INNER_R", "BLOOM_RING_STEP", "BLOOM_RING_A",
               "BLOOM_VARY", "BLOOM_DROP"]
     nums, missing = {}, []
@@ -3253,6 +3253,15 @@ def ripe_look():
             nums[name] = float(m.group(1))
         else:
             missing.append(name)
+
+    # The crop-specific sway amplitude and light come from the same game file.
+    sway = {}
+    sway_block = re.search(r"const RIPE_SWAY\s*:=\s*\{(.*?)\n\}", text, re.S)
+    if sway_block:
+        for crop, amount in re.findall(r'"(\w+)":\s*([\d.]+)', sway_block.group(1)):
+            sway[crop] = float(amount)
+    else:
+        missing.append("RIPE_SWAY")
 
     # The per-crop light, and the fallback a crop nobody sampled gets.
     light = {}
@@ -3293,6 +3302,7 @@ def ripe_look():
         "tile": tile,
         "nums": nums,
         "light": light,
+        "sway": sway,
         "missing": missing,
     }
 

@@ -9531,15 +9531,16 @@ func test_crop_presentation() -> void:
 
 	# --- the sway ------------------------------------------------------------
 	var here := Vector2i(6, 11)
+	var here_travel: float = CropPresentation.nod_travel(here, "tomato")
 	var swing: float = 0.0
 	var lifted := false
 	for i in 400:
-		var o: Vector2 = CropPresentation.nod_offset(here, i * 0.05)
+		var o: Vector2 = CropPresentation.nod_offset(here, i * 0.05, "tomato")
 		swing = maxf(swing, absf(o.x))
 		if o.y < 0.0:
 			lifted = true
-		_assert_quiet(absf(o.x) <= CropPresentation.NOD_LEAN + 0.001
-				and o.y >= -0.001 and o.y <= CropPresentation.NOD_DROP + 0.001,
+		_assert_quiet(absf(o.x) <= here_travel + 0.001
+				and o.y >= -0.001 and o.y <= CropPresentation.NOD_DROP * here_travel / CropPresentation.NOD_LEAN + 0.001,
 			"the sway stays inside its stated bounds")
 
 	# **The head never rises**, which is what keeps the plant in one piece. The
@@ -9552,16 +9553,16 @@ func test_crop_presentation() -> void:
 		"the head only ever sinks as it leans — a rising one would part from its own base")
 	_assert(CropPresentation.NOD_OVERLAP >= 1,
 		"and its piece reaches past the cut, so two rounded rectangles cannot leave a hairline")
-	_assert(swing > CropPresentation.NOD_LEAN * 0.9,
+	_assert(swing > here_travel * 0.9,
 		"the head reaches the sway it is drawn for (%.2f of %.2f world px)"
-			% [swing, CropPresentation.NOD_LEAN])
-	_assert(CropPresentation.nod_offset(here, 0.0).is_equal_approx(
-			CropPresentation.nod_offset(here, CropPresentation.nod_period(here))),
+			% [swing, here_travel])
+	_assert(CropPresentation.nod_offset(here, 0.0, "tomato").is_equal_approx(
+			CropPresentation.nod_offset(here, CropPresentation.nod_period(here), "tomato")),
 		"and comes back to where it started, one period later")
 	var apart := false
 	for t in [0.3, 0.9, 1.7]:
-		if not is_equal_approx(CropPresentation.nod_offset(here, t).x,
-				CropPresentation.nod_offset(here + Vector2i(1, 0), t).x):
+		if not is_equal_approx(CropPresentation.nod_offset(here, t, "tomato").x,
+				CropPresentation.nod_offset(here + Vector2i(1, 0), t, "tomato").x):
 			apart = true
 	_assert(apart, "two neighbouring plants are never at the same point of the sway")
 
@@ -9576,6 +9577,14 @@ func test_crop_presentation() -> void:
 	_assert(CropPresentation.NOD_PERIOD > 2.5,
 		"over %.2f seconds, which is weather rather than a heartbeat (the cot owns pulsing)"
 			% CropPresentation.NOD_PERIOD)
+	_assert(CropPresentation.nod_travel(here, "wheat")
+			> CropPresentation.nod_travel(here, "pea")
+			and CropPresentation.nod_travel(here, "pea")
+			> CropPresentation.nod_travel(here, "tomato"),
+		"each crop has its own sway amplitude")
+	_assert(not is_equal_approx(CropPresentation.nod_travel(here, "wheat"),
+		CropPresentation.nod_travel(here + Vector2i(1, 0), "wheat")),
+		"two plants of one crop retain square-to-square amplitude variation")
 
 	# --- the light -----------------------------------------------------------
 	_assert(CropPresentation.bloom_radius(0)
@@ -9605,15 +9614,26 @@ func test_crop_presentation() -> void:
 	# wrong on a farm nobody is inspecting. Growable means it can reach a `ready`
 	# tile at all — the scarecrow is an object and the egg does not grow.
 	var unsampled: Array[String] = []
+	var unswayed: Array[String] = []
+	var below_floor: Array[String] = []
 	for crop in CropDefs.TYPES.keys():
 		var def: Dictionary = CropDefs.TYPES[crop]
 		if not def.has("days_to_grow") or bool(def.get("is_object", false)):
 			continue
 		if not CropPresentation.RIPE_LIGHT.has(crop):
 			unsampled.append(String(crop))
+		if not CropPresentation.RIPE_SWAY.has(crop):
+			unswayed.append(String(crop))
+		else:
+			var minimum: float = CropPresentation.NOD_LEAN * float(CropPresentation.RIPE_SWAY[crop]) * (1.0 - CropPresentation.NOD_LEAN_SPREAD)
+			if minimum < CropPresentation.RIPE_SWAY_FLOOR:
+				below_floor.append(String(crop))
 	_assert(unsampled.is_empty(),
 		"and every crop that can ripen has a colour of its own to give off (missing: %s)"
 			% str(unsampled))
+	_assert(unswayed.is_empty(), "every growable crop has a sway number (missing: %s)" % str(unswayed))
+	_assert(below_floor.is_empty(), "even the least-moving plant of every crop travels at least %.2f world px (below: %s)"
+		% [CropPresentation.RIPE_SWAY_FLOOR, str(below_floor)])
 
 
 func test_home_layout() -> void:
