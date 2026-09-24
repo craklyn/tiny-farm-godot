@@ -1,4 +1,4 @@
-"""The art readout includes shipped RGB sheets and distinguishes near colors."""
+"""The art readout counts runtime sheets and current measured anchors."""
 from pathlib import Path
 import sys
 import unittest
@@ -14,14 +14,19 @@ class PaletteReadoutTests(unittest.TestCase):
         self.assertEqual((width, height, len(rgba)), (320, 240, 320 * 240 * 4))
         self.assertEqual(set(rgba[3::4]), {255})
 
-    def test_near_colours_are_reported_without_claiming_exact_matches(self):
+    def test_measured_anchors_match_runtime_sheets_exactly(self):
         server._PALETTE_CACHE.update(key=None, data=None)
         data = server.palette_union()
         self.assertEqual(data["failed"], [])
-        self.assertEqual(data["named_total"], 16)
-        self.assertEqual(data["named_present"], 13)
-        self.assertEqual(data["named_near"], {
-            "d2e077": "d1e077", "c49a6c": "c39a6c", "aa7959": "a97959"})
+        self.assertEqual(data["sheets"], 49)  # 48 runtime generated + tool icons
+        self.assertTrue({"terrain_field.png", "terrain_yard.png", "wheat.png"}
+                        <= set(data["sheet_names"]))
+        self.assertFalse({"duck.png", "fox.png", "squirrel.png", "terrain_grass.png"}
+                         & set(data["sheet_names"]))
+        self.assertEqual(data["named_total"], 32)
+        self.assertEqual(data["named_present"], 32)
+        self.assertEqual(data["named_missing"], [])
+        self.assertEqual(data["named_near"], {})
 
 
 if __name__ == "__main__":

@@ -2995,7 +2995,7 @@ def _pt_metric(row, metric):
 #
 # Art's central question — "is this still one thing to look at?" — has no answer
 # in git or in a doc. It is in the pixels, so the pixels are what gets read.
-# This decodes the shipped sheets and counts every opaque colour in them, then
+# This decodes the runtime-referenced sheets and counts every opaque colour in them, then
 # asks how many of the colours the style guide names are still present.
 #
 # Decoded with zlib and struct rather than an imaging library, because HQ runs
@@ -3072,11 +3072,22 @@ def _png_rgba(path):
 
 
 def _sheet_paths():
-    paths = []
-    d = os.path.join(REPO, PALETTE_SHEETS_DIR)
-    if os.path.isdir(d):
-        paths += [os.path.join(PALETTE_SHEETS_DIR, f) for f in sorted(os.listdir(d))
-                  if f.endswith(".png")]
+    """Select PNGs loaded by runtime code, excluding source and unused sheets."""
+    referenced = set()
+    pattern = re.compile(r'res://assets/sprites/generated/([a-z0-9_]+\.png)')
+    for base, dirs, files in os.walk(REPO):
+        dirs[:] = [d for d in dirs if d not in (".git", ".godot", "tests", "tools", "hq")]
+        for name in files:
+            if not name.endswith((".gd", ".tscn", ".tres")):
+                continue
+            try:
+                with open(os.path.join(base, name), encoding="utf-8") as source:
+                    referenced.update(pattern.findall(source.read()))
+            except OSError:
+                continue
+    paths = [os.path.join(PALETTE_SHEETS_DIR, name)
+             for name in sorted(referenced)
+             if os.path.isfile(os.path.join(REPO, PALETTE_SHEETS_DIR, name))]
     paths += [p for p in PALETTE_EXTRA if os.path.isfile(os.path.join(REPO, p))]
     return paths
 
@@ -3084,8 +3095,8 @@ def _sheet_paths():
 def _guide_named_colours():
     """The measured palette anchors, excluding discussion elsewhere in the guide."""
     guide = _read("docs/design/09-art-direction.md")
-    start = guide.find("**Palette discipline")
-    end = guide.find("**Shape language", start)
+    start = guide.find("**Measured colour anchors.**")
+    end = guide.find("**Edges and contrast seen in the sheets.**", start)
     if start < 0 or end < 0:
         return []
     seen, out = set(), []
@@ -3187,7 +3198,9 @@ def ripe_look():
 def palette_union():
     """Every opaque colour across the shipped sheets, with its pixel count."""
     paths = _sheet_paths()
-    key = tuple((p, os.path.getmtime(os.path.join(REPO, p))) for p in paths)
+    guide_path = "docs/design/09-art-direction.md"
+    key = tuple((p, os.path.getmtime(os.path.join(REPO, p)))
+                for p in [*paths, guide_path])
     if _PALETTE_CACHE["key"] == key:
         return _PALETTE_CACHE["data"]
     counts, failed = {}, []
