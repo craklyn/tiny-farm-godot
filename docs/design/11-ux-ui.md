@@ -79,6 +79,71 @@ game's **first placement**, and machines (2), towers (3), bots (4) all inherit
 whatever grammar it establishes. Acquisition is Q-82; the interaction itself should be
 the plain tap-command with a visible coverage preview.
 
+### S-7 audit — the screens crossed to farm (2026-09-24)
+
+This inventory starts **after a farm has loaded**. Choosing a farm on the title/save
+screen is an entry step, not a screen revisited by the seven farming verbs; its
+first-time discoverability needs a separate play observation. The path below was
+checked in a running Godot 4.7.2 touch-mode HUD scenario (real `main.tscn`,
+800×600 rendered frames), then against the router and sim. This is a mechanical
+surface audit, **not** an observed pre-reader playtest or a tablet export test.
+
+| Verb | Touch path and surfaces actually crossed | Reading needed? |
+|---|---|---|
+| Clear | Tap debris in the **farm view**; the always-on **HUD** stays up. | No instruction text needed to execute the tap. |
+| Till | Tap cleared ground in the farm view; HUD stays up. | No. The router chooses the hoe. |
+| Plant | Tap tilled ground in the farm view; HUD and selected-item pill stay up. | No for the selected crop: the pill has its crop picture and count. Tapping it cycles the held item. |
+| Water | Tap a seeded/growing tile in the farm view; HUD stays up. | No. The router chooses the can. |
+| Sleep | Tap the pictured cot in the farm, or the HUD's pictured cot button; the **day-transition overlay** appears and returns to the farm. | The overlay displays `Day N`, but reading it is not needed to advance or return. Story nights may add an animation before that card. |
+| Harvest | Tap a ready crop in the farm view; HUD stays up. | No for the tap; the ripe crop is shown in the world. |
+| Buy seeds | Tap the seed box in the farm, then a pictured card in the **shop panel**, then its × close control. | The shelf uses pictures, coin icons and numerals, not crop names. Wheat is no longer on the shelf: harvest supplies replantable wheat; later crops are purchasable when unlocked. |
+
+Thus the seven named verbs use four recurring presentation surfaces: **farm view,
+HUD, shop panel, and day-transition overlay**. They do not open a machine panel.
+Tapping a placed machine opens that panel, but no phase-1 farming verb requires a
+machine; Q-87's paired sprites concern the early-shipped robot ladder beyond this
+core path.
+
+**The money/replant path adds a fifth surface: the shipping-bin panel.** Harvested
+units remain in the pouch. Tapping the bin opens a panel headed `Shipping bin`,
+with `Deposit what I carry`, `Take Wheat (N stored)` and other crop rows, and
+`Close`. A deposit reserves up to ten plantable units per crop; the excess sells
+for gold immediately. Reserved stock can be withdrawn there for replanting.
+The panel's deposit and withdrawal choices currently depend on English labels;
+their position alone is not a demonstrated pre-reader cue. This is an **open S-7
+gap** on the full harvest-to-money loop. Sleeping also processes any *existing*
+`GameState.shipping_bin` entries into gold, but the current tap path deposits
+through the panel and `bin_reserve`; sleep is not a replacement for its controls.
+
+**Visible HUD text is not absent in a release build.** The running touch scenario
+showed `Day 1`, `6:00 AM`, `0g`, a tool name (`Hands`, or `Seeds`), `[wheat x5]`
+when seeds were selected, `Wh:5  To:0`, and the selected-item pill's `x5` beside
+its crop picture. The debug run also showed `Energy: 600/600` and `Build: dev`;
+those are developer readouts, not release-loop evidence. Day, time, tool and crop
+abbreviations provide extra detail, but none is a command the child must decode
+to tap a tile: the world state, auto-selected action, cot picture, crop picture,
+and item count carry those choices. This claim is about the *seven verb path*;
+it does not prove a pre-reader understands every HUD readout. The `g` suffix is
+also visible in the HUD, while the shop pairs a coin picture with the price.
+
+One explicit instruction **does** intrude into that path: when standing by the
+bin, the touch HUD displays `Press SPACE to open the shipping bin`. It is stale
+keyboard wording on a touch surface. The bin still opens on tap and the menu
+still handles deposits, so removing the hint must not remove the bin action or
+its sleep-time legacy settlement. Engineering should correct this cue and give
+the bin's deposit/withdraw controls a usable pictorial treatment, then verify
+them on touch. The bottom bar's redundant tool/seed words are a separate
+minimal-literacy review, not grounds to declare the existing HUD wordless.
+
+**Regression check to add:** reuse `_has_letters` and Scenario J's visible-menu
+walk in `tools/test_runner.gd` for the shop, then exercise the bin with carried
+and reserved crops. Check that every required choice has a tested picture or
+other non-reading cue, that touch mode never shows the SPACE hint, and that
+deposit/withdraw plus the sleep settlement still produce the expected state.
+Record the HUD's actual words separately and assert the icon/count controls used
+by the loop; an assertion that *every* HUD label is empty or numeral-only would
+fail today and would test a stronger rule than S-7.
+
 **Forgiveness layer** (not interactions — properties of the tap language, all ✅):
 the cot halo rescues adjacent dead taps (T-27); far taps degrade to movement instead
 of failing; refused taps get a voice (`blocked_reason`), satisfied tiles answer
