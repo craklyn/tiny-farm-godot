@@ -41,12 +41,12 @@ from collections import deque
 
 from PIL import Image
 
-sys.path.insert(0, "/home/daniel/.claude/skills/retro-diffusion-pixel-art/scripts")
-from postprocess import key_background  # noqa: E402
-
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
 OUT = os.path.join(REPO, "assets", "sprites", "generated", "chicken_coop.png")
+
+sys.path.insert(0, os.path.join(REPO, "tools", "asset_pipeline"))
+from postprocess import check_no_white_edges, erase_white_edges, key_background  # noqa: E402
 
 CELL_W, CELL_H = 32, 48
 SCALE = 3
@@ -66,7 +66,7 @@ DOOR_DARK = (0x6f, 0x4a, 0x45)
 
 
 def key(name):
-    return key_background(Image.open(os.path.join(HERE, name + ".png")))
+    return erase_white_edges(key_background(Image.open(os.path.join(HERE, name + ".png"))))
 
 
 def drop_pockets(im, tol=14):
@@ -193,7 +193,7 @@ def tidy_skirt(im):
     return im
 
 
-def main():
+def build():
     src = keep_largest(drop_pockets(key(os.path.join("coop_0"))))
     x0, y0, x1, y1 = content_box(src)
     body = src.crop((x0, y0, x1, y1))
@@ -214,12 +214,19 @@ def main():
                 seen.add((r, g, b))
     off = seen - set(LOCK_RGB)
     assert not off, "off-lock colours: %s" % sorted(off)
+    return cell
+
+
+def main():
+    cell = build()
+    check_no_white_edges(cell)
     cell.save(OUT)
 
     sheet = Image.new("RGBA", (CELL_W * 8, CELL_H * 8), (0, 0, 0, 0))
     sheet.paste(cell.resize((CELL_W * 8, CELL_H * 8), Image.NEAREST))
     sheet.save(os.path.join(HERE, "contact_sheet.png"))
-    print("wrote %s (%dx%d, %d colours)" % (OUT, CELL_W, CELL_H, len(seen)))
+    print("wrote %s (%dx%d, %d colours)" %
+          (OUT, CELL_W, CELL_H, len({p[:3] for p in cell.getdata() if p[3]})))
 
 
 if __name__ == "__main__":

@@ -33,12 +33,14 @@ import sys
 
 from PIL import Image
 
-sys.path.insert(0, "/home/daniel/.claude/skills/retro-diffusion-pixel-art/scripts")
-from postprocess import contact_sheet, key_background  # noqa: E402
-
 HERE = os.path.dirname(os.path.abspath(__file__))
 REPO = os.path.dirname(os.path.dirname(os.path.dirname(HERE)))
 OUT = os.path.join(REPO, "assets", "sprites", "generated", "workbench.png")
+
+sys.path.insert(0, os.path.join(REPO, "tools", "asset_pipeline"))
+from postprocess import (  # noqa: E402
+    check_no_white_edges, contact_sheet, erase_white_edges, key_background,
+)
 
 CELL_W, CELL_H = 16, 32
 
@@ -70,7 +72,7 @@ VICE = (0, 21, 5, 26)
 
 
 def load(name):
-    return key_background(Image.open(os.path.join(HERE, name + ".png")))
+    return erase_white_edges(key_background(Image.open(os.path.join(HERE, name + ".png"))))
 
 
 def drop_pocket(im, seed, tol=10):
@@ -236,6 +238,7 @@ def check(img):
 if __name__ == "__main__":
     img = build()
     print("palette:", " ".join(check(img)))
+    check_no_white_edges(img)
     img.save(OUT)
     print("wrote", OUT, img.size)
     sheet_src = [os.path.join(HERE, n + ".png")
