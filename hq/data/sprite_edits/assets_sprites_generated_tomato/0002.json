@@ -1,0 +1,55 @@
+{
+  "seq": 2,
+  "kind": "edit",
+  "sheet": "assets/sprites/generated/tomato.png",
+  "key": "assets_sprites_generated_tomato",
+  "group": "crops",
+  "entity": "tomato",
+  "entity_name": "Tomato",
+  "note": "Give planting and the first overnight growth distinct small silhouettes",
+  "diff": {
+    "frames": [
+      {
+        "index": 0,
+        "name": "frame 1",
+        "changed": 49,
+        "added": 4,
+        "erased": 40,
+        "recolored": 5,
+        "silhouette": true,
+        "bbox": [
+          3,
+          6,
+          9,
+          10
+        ]
+      },
+      {
+        "index": 1,
+        "name": "frame 2",
+        "changed": 59,
+        "added": 15,
+        "erased": 34,
+        "recolored": 10,
+        "silhouette": true,
+        "bbox": [
+          3,
+          6,
+          10,
+          10
+        ]
+      }
+    ],
+    "pixels": 108,
+    "colors_added": [],
+    "colors_removed": [],
+    "new_to_sheet": [],
+    "anims": []
+  },
+  "reverted_to": null,
+  "bytes": 579,
+  "png": "0002.png",
+  "created": "2026-09-24T04:33",
+  "created_ts": 1790249637.4286857,
+  "filed": null
+}
