@@ -23,8 +23,9 @@ Name the camera if it matters, e.g. "portrait, the motion travels upward".>
   (see *When the art is not there yet*). Other sessions are running other subjects
   in this same working tree at the same time. Do not edit shared files, do not
   `git add`, do not `git commit`, and do not run the Godot suites — you would be
-  testing someone else's in-flight work, not yours. **The chief of staff lands
-  finished loops**; your output is not orphaned by leaving it uncommitted.
+  testing someone else's in-flight work, not yours. A finished loop currently
+  needs a manual landing handoff. `docs/hq/ANIMATION_LANDING_PLAN.md` specifies
+  the automatic receipt and drain lane, but that lane is not implemented yet.
 - The obligation runs both ways, and has already been broken once in the other
   direction: commit `827cbfa` swept a half-finished draft into the repo while its
   session was still working on it. **Any lane committing near these paths stages

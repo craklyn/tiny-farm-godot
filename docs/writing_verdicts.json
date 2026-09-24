@@ -67,6 +67,12 @@
   "0618fa022409df9ba7f6": {
    "verdict": "ok"
   },
+  "063392d7336e36bb51c7": {
+   "instead": "Define how to automatically check finished animation loops",
+   "quote": "automatic landing",
+   "verdict": "decode",
+   "why": "“Landing” is internal process shorthand and does not tell a stranger what will happen to the finished loops."
+  },
   "06366a1cde5d144beb03": {
    "verdict": "ok"
   },
@@ -3237,6 +3243,9 @@
    "verdict": "second-look",
    "why": "Two clauses are fused; the reader must parse where the statement ends and the next begins."
   },
+  "b2eb817fde0c41a1b598": {
+   "verdict": "ok"
+  },
   "b2eba8f857002527a8e9": {
    "verdict": "ok"
   },
@@ -3629,6 +3638,12 @@
    "quote": "during the temporary switch",
    "verdict": "decode",
    "why": "The reader cannot tell what is being switched or what the temporary change means."
+  },
+  "ca208eda5ed49bef52be": {
+   "instead": "Plan how finished animation loops are automatically added to the game's primary codebase",
+   "quote": "reach main automatically",
+   "verdict": "decode",
+   "why": "“Main” is unexplained engineering shorthand for the project's primary codebase or branch."
   },
   "caf833e131f5e52ef4e1": {
    "verdict": "ok"
