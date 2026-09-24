@@ -2986,6 +2986,9 @@
    "verdict": "decode",
    "why": "This names two components but states no action—as a work item, it does not say what is being done with them."
   },
+  "a9a79586edba1ae0e7c4": {
+   "verdict": "ok"
+  },
   "a9b47b0c6217a4b28763": {
    "verdict": "ok"
   },
