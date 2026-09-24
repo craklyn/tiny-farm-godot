@@ -95,7 +95,7 @@ async function updateNavPillars(sig) {
     .filter(p => !surfaceParked("/pillar/" + p.id))
     .filter(p => Object.prototype.hasOwnProperty.call(EXC, (sig.status[p.id] || {}).level))
     .sort((a, b) => EXC[sig.status[a.id].level] - EXC[sig.status[b.id].level]);
-  const quiet = pillars.pillars.filter(p => !exceptions.includes(p));
+  const quiet = pillars.pillars.filter(p => !surfaceParked("/pillar/" + p.id) && !exceptions.includes(p));
   excEl.replaceChildren(...exceptions.map(row));
   quietEl.replaceChildren(...quiet.map(row));
   surfaceMarkLinks(document.getElementById("sidebar"));

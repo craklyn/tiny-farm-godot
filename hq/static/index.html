@@ -12,60 +12,41 @@
 </head>
 <body>
 <div id="app">
-  <nav id="sidebar">
+  <nav id="sidebar" aria-label="HQ navigation">
     <div class="brand">
       <div class="brand-icon">🌾</div>
       <div>
         <div class="brand-name">Tiny Farm HQ</div>
-        <div class="brand-sub">CEO Operating Surface</div>
+        <div class="brand-sub">Your studio</div>
       </div>
     </div>
-    <div class="nav-group" data-grp="dashboard">
-      <div class="nav-parent">
-        <a href="#/" data-route="/"><span>🏠</span> Dashboard</a>
-        <button class="nav-caret" data-grp="dashboard" aria-label="expand quiet pillars">▸</button>
-      </div>
-      <!-- Exception pillars (fire/attention) never fold: unblocking is the job. -->
-      <div class="nav-sub nav-exc" id="nav-pillars-exc"></div>
-      <div class="nav-sub" id="nav-pillars" hidden></div>
+    <div class="primary-nav">
+      <a href="#/" data-section="overview">Overview</a>
+      <a href="#/work" data-section="decisions">Decisions <b id="work-badge" class="badge" hidden></b></a>
+      <a href="#/work-status" data-section="work">Work</a>
+      <a href="#/design" data-section="studio">Studio</a>
     </div>
-    <a href="#/org" data-route="/org"><span>🧑‍🤝‍🧑</span> Org Chart</a>
-    <div class="nav-group" data-grp="program">
-      <div class="nav-parent">
-        <a href="#/program" data-route="/program"><span>🗂️</span> Program Report</a>
-        <button class="nav-caret" data-grp="program" aria-label="expand program pages">▸</button>
+    <details class="nav-tools">
+      <summary>Tools</summary>
+      <div class="nav-tools-menu">
+        <button class="nav-layout-toggle" type="button" id="nav-layout-toggle">Try compact sidebar</button>
+        <a href="#/playtests" data-route="/playtests">Playtests</a>
+        <a href="#/design/gdd" data-route="/design/gdd">Game Design Doc</a>
+        <a href="#/entities" data-route="/entities">Entities</a>
+        <a href="#/design/anim" data-route="/design/anim">Animation Lab</a>
+        <a href="#/program/goals" data-route="/program/goals">Goals</a>
+        <a href="#/chat/bullpen" data-route="/chat/bullpen">Bullpen</a>
+        <a href="#/work/queue" data-route="/work/queue">Execution queue</a>
+        <a href="#/org" data-route="/org">Org Chart</a>
+        <a href="#/program" data-route="/program">Program Report</a>
+        <a href="#/maps" data-route="/maps">Map Editor</a>
+        <a href="#/chat" data-route="/chat">Chief of Staff</a>
+        <div class="nav-tools-label">Studio status</div>
+        <div id="nav-pillars-exc"></div>
+        <div id="nav-pillars"></div>
       </div>
-      <div class="nav-sub" hidden>
-        <a href="#/program/goals" data-route="/program/goals"><span>🎯</span> Goals</a>
-      </div>
-    </div>
-    <a href="#/playtests" data-route="/playtests"><span>🧪</span> Playtests</a>
-    <div class="nav-group" data-grp="design">
-      <div class="nav-parent">
-        <a href="#/design" data-route="/design"><span>🎨</span> Design Studio</a>
-        <button class="nav-caret" data-grp="design" aria-label="expand design tools">▸</button>
-      </div>
-      <!-- The design tools: pages where an artifact of the game is worked on
-           directly — sprites, maps — as opposed to pages that report on it. -->
-      <div class="nav-sub" hidden>
-        <a href="#/design/gdd" data-route="/design/gdd"><span>📖</span> Game Design Doc</a>
-        <a href="#/entities" data-route="/entities"><span>🐔</span> Entities</a>
-        <a href="#/maps" data-route="/maps"><span>🗺️</span> Map Editor</a>
-        <a href="#/design/anim" data-route="/design/anim"><span>🌻</span> Animation Lab</a>
-      </div>
-    </div>
-    <a href="#/work" data-route="/work"><span>🧾</span> Your Queue <b id="work-badge" class="badge" hidden></b></a>
-    <div class="nav-group" data-grp="chief">
-      <div class="nav-parent">
-        <a href="#/chat" data-route="/chat"><span>💬</span> Chief of Staff</a>
-        <button class="nav-caret" data-grp="chief" aria-label="expand the chief of staff's pages">▸</button>
-      </div>
-      <!-- The chief of staff's own pages: the chat, and the bullpen where the
-           studio's workers can be watched as they work. -->
-      <div class="nav-sub" hidden>
-        <a href="#/chat/bullpen" data-route="/chat/bullpen"><span>🔭</span> The bullpen</a>
-      </div>
-    </div>
+    </details>
+    <a class="nav-request" href="#/request" data-section="request">＋ New request</a>
     <div class="sidebar-foot">
       <div class="nav-legend">
         <span><i class="dot d-ok"></i>under control</span>
@@ -92,6 +73,8 @@
 <script src="/static/design.js"></script>
 <script src="/static/anim.js"></script>
 <script src="/static/work.js"></script>
+<script src="/static/work_status.js"></script>
+<script src="/static/request.js"></script>
 <script src="/static/queue.js"></script>
 <script src="/static/workers.js"></script>
 </body>
