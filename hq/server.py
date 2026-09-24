@@ -44,6 +44,8 @@ import time
 from contextlib import contextmanager
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlparse
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
 
 import anim  # sibling module: the Animation Lab (see its docstring)
 import roots  # one set of code, data, user-workspace and authoritative-main roots
@@ -2847,6 +2849,94 @@ def _ci_history_thread():
         _t.sleep(CI_HISTORY_TTL)
 
 
+# Network readings are written by background threads, never by a page request.
+# The profile/games response documents cumulative views and downloads; it does
+# not document browser plays or a daily breakdown.
+def _itch_key():
+    key = os.environ.get("ITCH_API_KEY", "").strip()
+    if key:
+        return key
+    try:
+        with open(os.path.join(USER_WORKSPACE, ".env"), encoding="utf-8") as f:
+            for line in f:
+                name, sep, value = line.strip().partition("=")
+                if sep and name.strip() == "ITCH_API_KEY":
+                    return value.strip().strip('"\'')
+    except FileNotFoundError:
+        pass
+    return ""
+
+
+def _write_probe(name, doc):
+    directory = os.path.join(DATA, "probes")
+    os.makedirs(directory, exist_ok=True)
+    path = os.path.join(directory, name + ".json")
+    fd, temporary = tempfile.mkstemp(prefix="." + name + "-", dir=directory)
+    try:
+        with os.fdopen(fd, "w", encoding="utf-8") as f:
+            json.dump(doc, f)
+        os.replace(temporary, path)
+    finally:
+        if os.path.exists(temporary):
+            os.unlink(temporary)
+
+
+def _poll_itch_daily():
+    path = os.path.join(DATA, "probes", "itch_daily.json")
+    key = _itch_key()
+    if not key:
+        # A removed key must not leave yesterday's numbers looking current.
+        try:
+            os.unlink(path)
+        except FileNotFoundError:
+            pass
+        return
+    doc = {"polled_at": datetime.datetime.now(datetime.timezone.utc).isoformat(timespec="seconds"),
+           "source_human": "itch.io profile/games (cumulative totals)"}
+    try:
+        request = Request("https://api.itch.io/profile/games",
+                          headers={"Authorization": "Bearer " + key,
+                                   "Accept": "application/json"})
+        with urlopen(request, timeout=20) as response:
+            payload = json.load(response)
+        if payload.get("errors"):
+            raise ValueError("itch.io rejected the API key or game access")
+        games = payload.get("games")
+        if not isinstance(games, list):
+            raise ValueError("itch.io returned no games list")
+        game = next((g for g in games if isinstance(g, dict)
+                     and urlparse(g.get("url") or "").hostname == "craklyn.itch.io"
+                     and urlparse(g.get("url") or "").path.rstrip("/") == "/tiny-farm"), None)
+        if game is None:
+            raise ValueError("Tiny Farm was not found among games accessible to this itch.io key")
+        for field in ("views_count", "downloads_count"):
+            value = game.get(field)
+            if type(value) is not int or value < 0:
+                raise ValueError("itch.io did not return a valid " + field)
+            doc[field] = value
+        doc["available"] = True
+    except HTTPError as exc:
+        doc["error"] = ("itch.io rejected the API key (HTTP " + str(exc.code) + ")"
+                        if exc.code in (401, 403) else "itch.io returned HTTP " + str(exc.code))
+    except (URLError, TimeoutError, ValueError, OSError) as exc:
+        # Do not include response bodies or request headers: they may contain a key.
+        doc["error"] = str(exc) if isinstance(exc, ValueError) else "itch.io could not be reached"
+    _write_probe("itch_daily", doc)
+
+
+def _probes_thread():
+    while True:
+        for name, spec in PROBES.items():
+            try:
+                spec["poll"]()
+            except Exception as exc:
+                print(f"probe {name} failed: {type(exc).__name__}: {exc}", file=sys.stderr, flush=True)
+        time.sleep(min(spec["interval"] for spec in PROBES.values()))
+
+
+PROBES = {"itch_daily": {"poll": _poll_itch_daily, "interval": 3600}}
+
+
 # ---------------------------------------------------------------------------
 # Goals: the one status pipeline.
 #
@@ -4010,6 +4100,9 @@ def eval_measure(spec, depth=0):
             if not os.path.isfile(path):
                 return _reading(None, error="not polled yet — no credential or no poller")
             doc = load_json(path)
+            if doc.get("error"):
+                return _reading(None, error=doc["error"],
+                                extra={"polled_at": doc.get("polled_at")})
             return _reading(doc.get(spec.get("field", "value")), spec.get("unit", ""),
                             doc.get("source_human", spec["probe"]), "", "cached",
                             extra={"polled_at": doc.get("polled_at")})
@@ -6571,6 +6664,10 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, load_org())
             if path == "/api/feedback":
                 return self._send(200, feedback.read_feedback())
+            if path == "/api/probes/itch_daily":
+                probe = os.path.join(DATA, "probes", "itch_daily.json")
+                return self._send(200, load_json(probe) if os.path.isfile(probe)
+                                  else {"absent": True})
             if path == "/api/entities":
                 return self._send(200, load_json(os.path.join(DATA, "entities.json")))
             if path == "/api/projects":
@@ -6897,6 +6994,7 @@ def main():
     # a strip nobody is looking at yet.
     if not canary:
         threading.Thread(target=_ci_history_thread, daemon=True).start()
+        threading.Thread(target=_probes_thread, daemon=True).start()
     # Two of the four escalation tests are about time, which needs more than one
     # reading. Hourly, off the request path, because it writes a tracked file.
     if not canary:

@@ -990,7 +990,7 @@ async function instMarketing(root, below, sig, g) {
         </div>
         <div class="small muted">${esc(audience.measured_human || "not polled")}. One public build has been
           live for weeks and nobody in this studio can say whether anyone has opened it. With an itch.io API key, this page could
-          show how many people have viewed the page and played the game.${filedLine(audience, ORG)}</div>
+          show cumulative page views and downloads. Itch.io does not document a browser-play count in this API.${filedLine(audience, ORG)}</div>
       </div>
     </div>`));
 

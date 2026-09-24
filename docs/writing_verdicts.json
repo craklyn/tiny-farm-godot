@@ -4225,6 +4225,12 @@
    "verdict": "decode",
    "why": "\"The one\" has no object — the one what? Needs the thing being described named."
   },
+  "dcc280d3fd5f6b1df8cf": {
+   "instead": "Itch.io does not document a count of people who played the game in a browser.",
+   "quote": "browser-play count",
+   "verdict": "second-look",
+   "why": "This technical phrase makes the reader translate the mechanism instead of stating plainly that the page cannot show how many people played in a browser."
+  },
   "dcd14f9ff984f74345ba": {
    "verdict": "ok"
   },

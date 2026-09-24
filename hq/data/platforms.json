@@ -66,10 +66,11 @@
         {
           "label": "Store analytics we can read",
           "check": {
-            "kind": "file_exists",
-            "path": "hq/data/probes/itch_daily.json"
+            "kind": "probe_cache",
+            "probe": "itch_daily",
+            "field": "available"
           },
-          "note": "The API key exists as a product; we have not asked for one. This is the only demand signal available to this studio today.",
+          "note": "The itch.io API provides cumulative page views and downloads. It does not document browser plays.",
           "blocks_publish": false
         }
       ]

@@ -47,12 +47,31 @@ function surfaceParkedPage(entry) {
   const close = entry.key === "/pillar/sales"
     ? "The Sales goals remain off. The pre-release web-play record below is still available."
     : "Nothing was deleted, and nothing on it needs you meanwhile.";
+  const itch = ["/pillar/sales", "/pillar/marketing"].includes(entry.key)
+    ? `<div class="card"><h2>Storefront numbers</h2><p id="itch-probe">Checking the last itch.io reading…</p>
+       <p class="small muted">To enable this reading, sign in to the account that owns craklyn.itch.io, create an API key at
+       <a class="plain" href="https://itch.io/user/settings/api-keys" target="_blank" rel="noopener noreferrer">itch.io API keys</a>,
+       and put ITCH_API_KEY=&lt;key&gt; in the project .env file; restart tiny-farm-hq.</p></div>` : "";
   return `<h1>${esc(entry.title || "This page")}</h1>
     <p class="sub">This page is switched off${entry.since ? ", and has been since " + esc(surfaceDate(entry.since)) : ""}.</p>
     <div class="card parked-card">
       <p>${esc(reason)}</p>
       <p class="small muted">${esc(close)}</p>
-    </div>`;
+    </div>${itch}`;
+}
+
+async function surfaceItchReading(root) {
+  const target = root.querySelector("#itch-probe");
+  if (!target) return;
+  try {
+    const response = await fetch("/api/probes/itch_daily");
+    const doc = await response.json();
+    target.textContent = doc.error ? `Reading failed: ${doc.error}`
+      : doc.absent ? "No API key or reading yet; views and downloads are absent."
+      : `${doc.views_count.toLocaleString()} page views and ${doc.downloads_count.toLocaleString()} downloads (cumulative; checked ${doc.polled_at}).`;
+  } catch {
+    target.textContent = "The storefront reading could not be loaded.";
+  }
 }
 
 /* The way out of a page is the one link that can never be a dead end, so a

@@ -352,6 +352,8 @@ async function route() {
   try {
     if (parked) {
       $view.replaceChildren(h(surfaceParkedPage(parked)));
+      if (parked.key === "/pillar/sales" || parked.key === "/pillar/marketing")
+        await surfaceItchReading($view);
       // The Sales plan remains parked. A human web-play record is still needed
       // before a release, so keep that one safety control reachable here.
       if (parked.key === "/pillar/sales") await renderParkedWebPlay($view);
