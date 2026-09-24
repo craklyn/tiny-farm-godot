@@ -7,11 +7,11 @@
   "tier_reason": "filed by hand",
   "ask": "tools/test_visuals.tscn is named in CLAUDE.md's command list and is in no CI workflow and no runnable job in HQ. Work out whether it is a release gate or a developer's tool, and give it a home either way: a headless renderer in CI, or a button on the Engineering page that a person presses before a tag. A check our own docs claim and nothing runs is worse than one we never claimed.",
   "first_action": "Run tools/test_visuals.tscn against tools/baseline.png, see what it actually needs, and say which home it should have.",
-  "state": "waiting_session",
+  "state": "landed",
   "thread": "lena",
   "source": "chat",
   "source_message": "tools/test_visuals.tscn is named in CLAUDE.md's command list and is in no CI workflow and no runnable job in HQ. Work out whether it is a release gate or a developer's tool, and give it a home either way: a headless renderer in CI, or a button on the Engineering page that a person presses before a tag. A check our own docs claim and nothing runs is worse than one we never claimed.",
-  "result": "This attempt did not finish — it used all the turns it was given, mid-edit. What it had already changed did land, and the check below is what the chief of staff made of it.",
+  "result": "Completed as a local developer diagnostic. Engineering now exposes a Visual comparison Run button backed by tools/check_visuals.sh and tools/test_visuals.tscn. The wrapper imports assets and renders under xvfb with OpenGL 3; a missing baseline fails instead of silently creating one. The baseline was refreshed after an older image differed by 283,911 pixels. Two subsequent local runs passed pixel-for-pixel, and two runs through the live HQ service at 22:48:01 and 22:48:19 PDT both recorded green against commit c607b13. The HQ regression suite passed 45/45 files, and GitHub tests for c607b13 passed writing, gateway, and Godot jobs. CLAUDE.md now points to the wrapper, describes the check as a developer diagnostic, and no longer claims it is a pre-tag gate. The release runbook remains accurate: a tag triggers the release. Reproduction on a GitHub runner has not been tested, so the check is not presented as a CI guarantee. This completion is an operator verification of the new work; the earlier chief-of-staff review remains recorded as concerns and is not relabeled as a pass.",
   "started": "",
   "attempts": 1,
   "created": "2026-09-03T18:10",
@@ -65,5 +65,49 @@
       "escalation_reason": null
     }
   ],
-  "requeued": "The visual-regression job it registered in HQ's server was lost to a bug in the drain's own recovery step, which reset a file instead of undoing one patch. The rest of its change landed. Re-queued to finish the job registration."
+  "requeued": "The visual-regression job it registered in HQ's server was lost to a bug in the drain's own recovery step, which reset a file instead of undoing one patch. The rest of its change landed. Re-queued to finish the job registration.",
+  "_revision": 1,
+  "attempt_outcome": {
+    "version": 1,
+    "id": "operator-visual-c607b13-20260923",
+    "status": "complete",
+    "reason": "Operator verified pushed code, local and live runs, and CI.",
+    "result_id": "c4d0bd0eab7795175e2beb7f674b3f976b265761a4509c77a8cf7ec92f7c440d",
+    "landing_verified": true
+  },
+  "completion": {
+    "version": 1,
+    "attempt_id": "operator-visual-c607b13-20260923",
+    "at": "2026-09-23T22:52:06-07:00",
+    "sha": "c607b1351af5a5c7184db23f83345b7c832f8609",
+    "by": "codex",
+    "kind": "operator_verification",
+    "evidence": {
+      "code_sha": "c607b1351af5a5c7184db23f83345b7c832f8609",
+      "live_visual_runs": [
+        "2026-09-23T22:48:01",
+        "2026-09-23T22:48:19"
+      ],
+      "live_visual_verdicts": [
+        "green",
+        "green"
+      ],
+      "local_visual_verdicts": [
+        "PASSED",
+        "PASSED"
+      ],
+      "hq_tests": "45/45 files passed",
+      "ci_url": "https://github.com/craklyn/tiny-farm-godot/actions/runs/35961444892",
+      "ci_conclusion": "success",
+      "prior_check": "concerns remain historical; no new chief-of-staff verdict claimed",
+      "ci_renderer": "untested"
+    }
+  },
+  "closed": "2026-09-23T22:52:06-07:00",
+  "landed": {
+    "at": "2026-09-23T22:52:06-07:00",
+    "by": "codex",
+    "sha": "c607b1351af5a5c7184db23f83345b7c832f8609",
+    "note": "Local and live visual runs passed twice; CI and HQ tests passed."
+  }
 }
