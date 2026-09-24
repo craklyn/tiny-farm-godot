@@ -3226,14 +3226,30 @@ def release_manifest(release_id=None):
             after = before = 0
             landed = []
             if ev:
+                evidence_ids = [part.strip() for part in ev.split(",") if part.strip()]
+                grep_args = [arg for evidence_id in evidence_ids
+                             for arg in ("--grep", evidence_id)]
                 rng = f"{newest}..HEAD" if newest else "HEAD"
-                rows = run_cmd(["git", "log", rng, "--grep", ev, "--pretty=%h\x1f%s"]).splitlines()
+                rows = run_cmd(["git", "log", rng, *grep_args,
+                                "--pretty=%h\x1f%s"]).splitlines()
                 after = len(rows)
                 landed = [{"hash": l.split("\x1f")[0], "subject": l.split("\x1f")[1]}
                           for l in rows if "\x1f" in l][:3]
                 if newest:
-                    before = len(run_cmd(["git", "log", newest, "--grep", ev,
+                    before = len(run_cmd(["git", "log", newest, *grep_args,
                                           "--pretty=%h"]).splitlines())
+            # A verified build commit is stronger evidence than a decision id
+            # mentioned later in planning prose. Use it where an audit has
+            # pinned the commit that actually delivered the feature.
+            built_commit = f.get("built_commit")
+            if built_commit:
+                current = set(run_cmd(["git", "rev-list", "HEAD"]).splitlines())
+                tagged = (set(run_cmd(["git", "rev-list", newest]).splitlines())
+                          if newest else set())
+                after = int(built_commit in current and built_commit not in tagged)
+                before = int(built_commit in tagged)
+                landed = ([{"hash": built_commit[:7], "subject": "Verified build commit"}]
+                          if after else [])
             state = ("ready" if after else "shipped" if before else "not_built")
             # A commit that MENTIONS a decision is not a commit that BUILT it —
             # recording S-10 in the log made the grep read "ready" for a feature
@@ -3253,13 +3269,17 @@ def release_manifest(release_id=None):
                 if proj is None:
                     broken_ref = proj_id
                     state = "not_built"
-                elif proj["status"] != "done":
+                else:
                     proj_name = proj["name"]
-                    proj_done = sum(1 for st in proj.get("plan", []) if st.get("done"))
-                    proj_total = len(proj.get("plan", []))
-                    state = "in_progress" if proj_done else "not_built"
-                elif proj["status"] == "done":
-                    proj_name = proj["name"]
+                    plan = proj.get("plan", [])
+                    proj_done = sum(1 for st in plan if st.get("done"))
+                    proj_total = len(plan)
+                    if proj_total and proj_done < proj_total:
+                        state = "in_progress" if proj_done else "not_built"
+                    elif proj_total and proj_done == proj_total:
+                        # The plan, rather than a separately maintained status
+                        # label, is the completion record for project features.
+                        state = "shipped" if before and not after else "ready"
             feats.append({**f, "state": state, "commits": after, "landed": landed,
                           "project": proj_id, "project_name": proj_name,
                           "steps_done": proj_done, "steps_total": proj_total,

@@ -1,11 +1,11 @@
 {
-  "note": "Release trains: the macro units players experience. Projects declare release + release_critical + depends_on; everything else derives. Gates decide when a release is DONE — evidence, not a calendar — so 'schedule risk' renders here as blocked critical-path chains and their ages. The CEO's target dates are a separate, authored file (hq/data/release_plan.json) and are the plan, never the evidence. 'features' is what the release OFFERS A PLAYER, written in their language and not ours: each one cites the decision or story that carries it, and whether it is in the public build is derived by tracing that id through git either side of the newest tag. Sales sells the features; engineering's commit counts are not this list.",
+  "note": "Release trains: the macro units players experience. Projects declare release + release_critical + depends_on; everything else derives. Gates decide when a release is DONE — evidence, not a calendar — so schedule risk renders as blocked critical-path chains and their ages. CEO target dates are separately authored in hq/data/release_plan.json. A release feature is a player-reachable capability, with decision or story evidence and an optional carrying project. Its state is derived from commits and, where a project is named, completed plan steps. Unreachable or unbuilt capabilities stay in project records, not in a player-facing feature list.",
   "releases": [
     {
       "id": "update-1",
       "name": "Player Update 1",
       "tag_intent": "v0.2.0",
-      "goal": "The first public update since v0.1.0. Twelve things a player would notice, led by the shop and the first robot you can teach — the beginning of the delegation arc the whole game is about — on the ship-early-and-often ruling.",
+      "goal": "The first public update since v0.1.0. Eleven things a player would notice, led by the shop and the first robot you can teach — the beginning of the delegation arc the whole game is about — on the ship-early-and-often ruling.",
       "definition_of_done": "Amended by the designer 2026-09-08: v0.2.0 ships on the automated evidence — both suites, the robot session, the replay round-trip, and the release checklist (web build played through, credits screen, readout off). The fresh-tester pass that closes M1.5's exit gate moves to v0.2.1, once a tester is found. A v0.2.0 tag goes out through the deploy runbook.",
       "features": [
         {
@@ -18,14 +18,8 @@
           "id": "robots",
           "evidence": "P-13, S-11",
           "headline": "Robots you buy and teach",
-          "for_players": "A mark-1 robot does exactly the job you show it: point at the tiles you want watered and it waters them. Buy it a stall to live in and it heads out every morning on its own, does its rounds, and walks back to its bay. A mark-2 will chase birds, follow you, or patrol. This is the first taste of handing the farm over."
-        },
-        {
-          "id": "home",
-          "evidence": "T-37, T-39",
-          "headline": "The farmhouse interior is not reachable",
-          "for_players": "The farmhouse interior exists, but players cannot reach it from the farm because the home screen has no working door.",
-          "reachable_in_play": false
+          "for_players": "A mark-1 robot does exactly the job you show it: point at the tiles you want watered and it waters them. Buy it a stall to live in and it heads out every morning on its own, does its rounds, and walks back to its bay. A mark-2 will chase birds, follow you, or patrol. This is the first taste of handing the farm over.",
+          "built_commit": "42592094e1c1147904d20a33c5f6bb3d84ad36b6"
         },
         {
           "id": "clock",
@@ -139,17 +133,7 @@
       "name": "M3 — the next content milestone (parked)",
       "tag_intent": null,
       "goal": "Parked by the CEO on 2026-09-09: the plan entry named 'Machines that pay for themselves' was cryptic and unhelpful, so M3 is off the release plan until its content is re-sketched with him in plain words. The next slice of the five-phase arc, scoped by your ruling and planned on the M2.5 template. What M3 actually contains is itself the opening decision.",
-      "definition_of_done": "Scope ruled; plan written with a measured exit gate; work items delivered and verified.",
-      "features": [
-        {
-          "id": "machine-distress",
-          "evidence": "S-10",
-          "headline": "The stuck-machine notice is not reachable",
-          "for_players": "The notice is not reachable in play. Its project has completed 1 of 5 steps.",
-          "project": "machine-distress-state",
-          "reachable_in_play": false
-        }
-      ]
+      "definition_of_done": "Scope ruled; plan written with a measured exit gate; work items delivered and verified."
     }
   ]
 }
