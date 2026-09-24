@@ -2933,6 +2933,9 @@
    "verdict": "decode",
    "why": "Technical image-processing terms describe the mechanism, not the visual effect; a reader needs to know what it looks like."
   },
+  "ad98658d4dc40167b09e": {
+   "verdict": "ok"
+  },
   "add077cee3d40b573e15": {
    "verdict": "ok"
   },
