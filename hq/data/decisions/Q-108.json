@@ -1,13 +1,13 @@
 {
  "id": "Q-108",
  "title": "How the farm reads through the walls",
- "question": "**The design changed under this card on 2026-09-15 and the question got smaller.**\n\nP-18 now reads: one world, one metric, two grids. A building's interior is a finer grid nested inside the building's own footprint — the house stands on 3 tiles by 2, the room inside is 6 cells by 3 at half that pitch, which is 3 tiles by 1.5 and fits, with the top half-row left for the roof. Going inside is a uniform camera zoom of x2 and nothing else. Nothing stretches, nothing is registered to anything, because nothing ever comes apart.\n\nThe attached panels are that: the same photograph of the running game, the same composition, one zoom between them.\n\nSo the geometric question this card used to ask — registered to the doorway, or a backdrop lining up with nothing — is gone. There is no lie to catch. What is left is **grain**: at x2 the yard is drawn at six screen pixels per art pixel, and whether that reads as *outside, seen through a window* or as *the world came closer* is a matter of treatment.\n\nOn an 800x600 screen at camera scale 3 the room fills 288x144 and there are 2.7 tiles of yard across and 3.2 down — the hen, the shipping bin, the fence and the neighbour's plot all read. That is a real amount of farm, and it is worth deciding how much you want to see of it.",
- "why_now": "The geometry is settled and this is what is left of how it looks. It is cheap to try - all four are a shader or a dither over one layer - and it wants captures rather than paragraphs, which is a day's work once one room is playable.",
+ "question": "**Pick how the live farm should look beyond an interior's walls. Recommendation: draw it unchanged.**\n\nP-18 settled the geometry on 2026-09-15: one world, one metric, two grids. A building's interior is a finer grid nested inside the building's footprint, and going inside is a uniform camera zoom of x2. Nothing stretches or moves independently.\n\nThe new comparison puts both the farmhouse and the coop between ripe wheat and tomatoes on one side, and fencing and a hen on the other. Each building keeps the same room, yard and framing across all four rows; only the treatment changes. The rooms and yard are assembled from the game's shipped art at the sizes the x2 camera draws them. The coop interior does not exist in the running game yet, so these are controlled mockups rather than screenshots.\n\nAt this scale the room itself already says that the player is inside. Leaving the yard unchanged keeps the crop, fence and hen easiest to read. Haze adds a strong checker over the things the player needs to notice; darkening loses the crop first; and the hard-cut wall keeps the yard clear but spends much more of the view on a frame. Pick the stronger separation only if the unchanged yard still feels like the world came closer rather than a view outside.",
+ "why_now": "The geometry is settled, so Daniel can judge the remaining visual treatment against the same house and coop staging. Options (a), (b), and (c) use the existing yard with no treatment or an added dither or colour layer. Option (d) would need new solid wall art for a finished game implementation; its frame here is only a placeholder made from the current wall tile.",
  "options": [
   {
    "key": "a",
-   "label": "Nothing at all",
-   "detail": "Draw the yard exactly as it is drawn outdoors, only twice the size. Honest and free. The risk is that indoors and outdoors look like the same place at different zooms, which is what they are, and nothing says 'you are inside'."
+   "label": "Nothing at all (Recommended)",
+   "detail": "Draw the yard exactly as it is drawn outdoors, only twice the size. The room already supplies the indoor cue, while the ripe plants, fence and hen stay clearest. It is also the only option with no new visual layer or wall art."
   },
   {
    "key": "b",
@@ -42,6 +42,11 @@
  "attachments": [
   {
    "type": "image",
+   "src": "docs/design/mockups/interiors/q108_house_and_coop_treatments.png",
+   "caption": "Four treatments with unchanged staging in each column: farmhouse left, coop right, with ripe wheat and tomatoes, fencing and a hen beside them. A controlled mockup composed from current sprite art at x2 camera scale. The coop interior is not yet a gameplay capture; the hard-cut frame uses a repeated wall tile to stand in for new art."
+  },
+  {
+   "type": "image",
    "src": "docs/design/mockups/interiors/q108_two_zooms.png",
    "caption": "The two zooms. Left: the house on its three tiles by two, the room inside at half pitch. Right: x2, and nothing has moved. Both the same photograph of the game."
   }
@@ -52,6 +57,11 @@
    "at": "2026-09-20T21:23",
    "by": "claude",
    "text": "Checked, and the answer is in two parts.\n\n**What the session settled and what it did not.** The geometry is settled (P-18, 2026-09-15: one world, one metric, two grids) and the yard seen through the walls is the live farm since 2026-09-16 (commit a15cc5e). That shipped with option (a), nothing at all, as the placeholder. The look — haze, desaturate, hard-cut — was never ruled, and the decision log says why: nothing had been seen. So this card is not closed by that work; it is smaller. It comes back to you as four captures of the real room, one per treatment, to pick from, and Sam is shooting them. Nothing needs you until they exist.\n\n**Other stories in the same boat.** Nine cards were waiting for your verdict on work that has been on main since 10–11 September: the four Animation Lab waves (the loops as sheets, the crow morning, the robot's ladder, the story-night frame) and four workbench cards filed off Q-101. Eight are closed today under the new rule that landed work needs no verdict (S-16); the ninth, the overnight loop, is held open by another session mid-edit and closes when it is free."
+  },
+  {
+   "at": "2026-09-23T19:55",
+   "by": "claude",
+   "text": "The card now shows both the farmhouse and coop under all four treatments, each beside ripe wheat and tomatoes, fencing, and a hen. The staging stays fixed within each building column, so the changed treatment is visible without moving the scene. These are controlled mockups using the game's current sprites at x2 camera scale. The coop interior is not built in the running game yet, and the hard-cut frame is a placeholder for wall art that would need to be made.\n\nI recommend leaving the yard unchanged: the room already shows that the player is inside, and the crop, fence and hen retain their full contrast. If the frame itself should create a stronger indoor feeling, hard-cut walls preserve a clear yard but require new art and hide more of the scene. Which treatment should the game use beyond the house and coop walls?"
   }
  ]
 }

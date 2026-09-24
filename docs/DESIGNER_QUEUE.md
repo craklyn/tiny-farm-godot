@@ -85,12 +85,14 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   doorway, or a backdrop lining up with nothing) is **gone**; there is no lie to catch. What
   is left is **grain**: at ×2 the yard is six screen pixels per art pixel, and whether that
   reads as *outside, seen through a window* or as *the world came closer* is treatment.
-  Panels: `docs/design/mockups/interiors/q108_two_zooms.png` — the same photograph of the
-  running game at both zooms. There are 2.7 tiles of yard across and 3.2 down, and the hen,
-  the bin, the fence and the neighbour all read. Options: **(a) nothing at all**, **(b)
+  Panels: `docs/design/mockups/interiors/q108_house_and_coop_treatments.png` — the house
+  and coop between ripe plants and a fence, with the same staging under all four
+  treatments. The coop interior does not exist in the running game, so the panels use
+  shipped game art at the sizes the ×2 camera draws it. Options: **(a) nothing at all**, **(b)
   haze**, **(c) desaturate and darken**, **(d) hard-cut walls with a clear yard**.
-  **Recommendation: (b)** — it is the studio's existing vocabulary for a soft edge, it says
-  "through a window" without hiding a crow, and it costs a dither rather than art.
+  **Recommendation: (a)** — the room already says the player is inside, while the unchanged
+  yard keeps the crop, fence and hen clearest and needs no new visual layer or art. The
+  hard-cut option would need new wall art; the pictured frame is a placeholder.
   Card: `hq/data/decisions/Q-108.json`.
 
 - **Q-111** The one release step that still waits on your hands — **Ruling**. A `v*` tag

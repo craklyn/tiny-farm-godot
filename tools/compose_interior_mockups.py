@@ -1,34 +1,21 @@
 #!/usr/bin/env python3
-"""Draw the interior candidates for Q-108 and Q-109 as pictures.
+"""Compose interior design panels from the game's captures and sprite art.
 
-P-18 says a building dilates in place rather than cutting to a room, and that the farm
-stays visible through the walls. Two things about that are open, and both are questions
-about how something looks:
+The current Q-108 comparison shows four treatments of the yard beyond the house and
+coop walls. Both rooms use the game's sprite art at the x2 camera's pixel scale. The
+coop interior is still a mockup, and the hard-cut frame stands in for new wall art.
+The earlier Q-108 sheets below record the design's prior geometry explorations.
+Q-109's room-size panels also use sprite art because only the farmhouse is playable.
 
-  Q-108  is the outside registered to the doorway — so it magnifies by the same whole
-         number the room grew by — or drawn as a backdrop at its ordinary size?
-  Q-109  how much bigger is a room than the building it stands in?
+    python3 tools/compose_interior_mockups.py --q108-treatments
 
-Q-108 is drawn over a **photograph of the real game**: tools/capture_interior_plate.tscn
-walks the farmer in through her own front door and photographs the room, and everything
-outside its walls is black there today, which is exactly the area P-18 proposes filling
-with the farm. The farm that goes into it is a second real capture. So every pixel in
-those two panels is the running game's, at the running game's scale, and the only thing
-drawn here is which farm goes in the dark and how big it is.
-
-Q-109 cannot be photographed — no room but the farmhouse's exists — so those panels are
-drawn from the same shipped art the game draws them from: terrain_floor.png,
-interior_wall.png, cot.png and characters.png, every one at the size the game uses.
-
-    python3 tools/compose_interior_mockups.py
-
-Writes docs/design/mockups/interiors/. Needs no display; both plates carry the game's
-own rendering. Regenerate the plates with:
+The focused command writes only q108_house_and_coop_treatments.png. The command without
+the flag also rebuilds the historical Q-108 and Q-109 sheets from the stored game
+plates. If those plates need to be refreshed, capture them with:
 
     godot --path . res://tools/capture_interior_plate.tscn
 
-Two rules kept from tools/compose_overnight_frames.py, because they are the studio's
-rules for anything that reaches the screen:
+Two rules kept from tools/compose_overnight_frames.py:
 
 * **Nothing is smoothed.** The haze beyond the walls is an ordered dither of one added
   colour on the art's own three-pixel grid, not a blur. A real implementation may well
@@ -92,6 +79,19 @@ def hazed(im, block=CAM, darken=0.82):
                 g = int(g + (HAZE[1] - g) * 0.55)
                 b = int(b + (HAZE[2] - b) * 0.55)
             px[x, y] = (r, g, b, a)
+    return im
+
+
+def desaturated(im, darken=0.68):
+    """Drain the yard toward grey without changing any of its shapes."""
+    im = im.convert("RGBA")
+    px = im.load()
+    for y in range(im.height):
+        for x in range(im.width):
+            r, g, b, a = px[x, y]
+            grey = int((r * 30 + g * 59 + b * 11) / 100)
+            px[x, y] = tuple(int((c * .28 + grey * .72) * darken)
+                             for c in (r, g, b)) + (a,)
     return im
 
 
@@ -372,6 +372,95 @@ def q109_panel(rw, rh, cell, occupant):
     return canvas
 
 
+# --- Q-108: the four treatments beside things worth seeing -------------------------
+
+TREATMENT_PANEL = (600, 360)
+
+
+def _scaled_cell(name, crop=None, scale=6):
+    im = art(name)
+    if crop is not None:
+        im = im.crop(crop)
+    return im.resize((im.width * scale, im.height * scale), Image.NEAREST)
+
+
+def treatment_yard():
+    """One controlled yard: ripe plants left, fence and hen right."""
+    grass = art("terrain_grass").crop((TILE, TILE, TILE * 2, TILE * 2))
+    grass = grass.resize((TILE * 6, TILE * 6), Image.NEAREST)
+    yard = tiled(grass, *TREATMENT_PANEL)
+
+    dirt = art("terrain_dirt").crop((0, 0, TILE, TILE)).resize((96, 96), Image.NEAREST)
+    wheat = _scaled_cell("wheat", (TILE * 3, 0, TILE * 4, TILE))
+    tomato = _scaled_cell("tomato", (TILE * 3, 0, TILE * 4, TILE))
+    fence = _scaled_cell("fence")
+    hen = _scaled_cell("chicken", (0, 0, TILE, TILE))
+
+    # Keep both ripe crops and the fence fully in view in the house and coop columns.
+    # Their positions do not change between treatments or buildings.
+    for pos, crop in (((30, 90), wheat), ((30, 194), tomato)):
+        yard.paste(dirt, pos)
+        yard.paste(crop, pos, crop)
+    for x in (456, 504):
+        yard.paste(fence, (x, 96), fence)
+    yard.paste(hen, (486, 216), hen)
+    return yard
+
+
+def treatment_panel(occupant, treatment):
+    """A house or coop interior over the identical treated yard."""
+    yard = treatment_yard()
+    if treatment == "haze":
+        yard = hazed(yard, block=6, darken=.88)
+    elif treatment == "desaturate":
+        yard = desaturated(yard)
+
+    rw, rh = (6, 3) if occupant == "house" else (4, 4)
+    room = room_block(rw, rh, occupant, cell_px=48, walls=False)
+    rx = (TREATMENT_PANEL[0] - room.width) // 2
+    ry = (TREATMENT_PANEL[1] - room.height) // 2
+    yard.paste(room, (rx, ry), room)
+
+    if treatment == "hardcut":
+        # A placeholder for new solid wall art. Repeating the game's existing wall
+        # tile shows the opening's footprint, but is not a proposed final wall asset.
+        wall = art("interior_wall").resize((24, 24), Image.NEAREST)
+        for x in range(rx - 24, rx + room.width + 24, 24):
+            yard.paste(wall, (x, ry - 24))
+            yard.paste(wall, (x, ry + room.height))
+        for y in range(ry, ry + room.height, 24):
+            yard.paste(wall, (rx - 24, y))
+            yard.paste(wall, (rx + room.width, y))
+    return yard
+
+
+def treatment_sheet(path):
+    """Four rows by two buildings, with fixed staging in every panel."""
+    treatments = [
+        ("none", "(a) NOTHING AT ALL"),
+        ("haze", "(b) HAZE"),
+        ("desaturate", "(c) DESATURATE AND DARKEN"),
+        ("hardcut", "(d) HARD-CUT WALLS, CLEAR YARD"),
+    ]
+    col_gap, row_gap, header, label = 12, 12, 34, 25
+    out = Image.new("RGBA", (TREATMENT_PANEL[0] * 2 + col_gap,
+                              header + len(treatments) * (TREATMENT_PANEL[1] + label)
+                              + row_gap * (len(treatments) - 1)), BACKING + (255,))
+    draw = ImageDraw.Draw(out)
+    draw.text((6, 10), "HOUSE", fill=INK)
+    draw.text((TREATMENT_PANEL[0] + col_gap + 6, 10), "COOP", fill=INK)
+    y = header
+    for key, caption in treatments:
+        for col, occupant in enumerate(("house", "coop")):
+            x = col * (TREATMENT_PANEL[0] + col_gap)
+            panel = treatment_panel(occupant, key)
+            out.paste(panel, (x, y))
+            draw.text((x + 6, y + TREATMENT_PANEL[1] + 7), caption, fill=INK)
+        y += TREATMENT_PANEL[1] + label + row_gap
+    out.save(path)
+    return path
+
+
 # --- sheets -------------------------------------------------------------------------
 
 def sheet(panels, captions, path, note="", gutter=None):
@@ -394,6 +483,9 @@ def sheet(panels, captions, path, note="", gutter=None):
 def main():
     os.makedirs(OUT, exist_ok=True)
     written = []
+
+    written.append(treatment_sheet(
+        os.path.join(OUT, "q108_house_and_coop_treatments.png")))
 
     # **The two zooms, which is the whole design in two pictures.** The same farm, the
     # same composition, one uniform camera zoom between them. The house stands on three
@@ -445,4 +537,10 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    import sys
+    if sys.argv[1:] == ["--q108-treatments"]:
+        os.makedirs(OUT, exist_ok=True)
+        print("wrote", os.path.relpath(treatment_sheet(
+            os.path.join(OUT, "q108_house_and_coop_treatments.png")), REPO))
+    else:
+        main()
