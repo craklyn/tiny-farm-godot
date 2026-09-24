@@ -1,16 +1,16 @@
 {
   "id": "Q-108",
-  "option": null,
-  "option_label": null,
-  "judgment": "Please show me how the house and a coop next to something interesting (plants and fence on either side for example) would render for each of these so I can make an informed decision.",
-  "intent": "revise",
-  "submission_id": "decision-2ce679e9-e60b-43d0-b2c8-a32b987d0090",
+  "option": "a",
+  "option_label": "Nothing at all (Recommended)",
+  "judgment": "I think unchanged yard is fine. The pixelation is already enough to take focus from it in the case of entering a space with more pixels.",
+  "intent": "choose",
+  "submission_id": "codex-chat-d0b90c97-0b5a-4590-9116-df7543fc7f08",
   "submission_payload": {
-    "intent": "revise",
-    "option": null,
-    "judgment": "Please show me how the house and a coop next to something interesting (plants and fence on either side for example) would render for each of these so I can make an informed decision."
+    "intent": "choose",
+    "option": "a",
+    "judgment": "I think unchanged yard is fine. The pixelation is already enough to take focus from it in the case of entering a space with more pixels."
   },
-  "ruled_at": "2026-09-21T20:31:22",
+  "ruled_at": "2026-09-23T20:24:23",
   "status": "pending_integration",
   "earlier": [
     {
@@ -22,7 +22,22 @@
       "status": "integrated",
       "integrated_at": "2026-09-20T21:23",
       "integrated_note": "Answered on the card; captures filed to Sam; eight stale cards closed under S-16."
+    },
+    {
+      "id": "Q-108",
+      "option": null,
+      "option_label": null,
+      "judgment": "Please show me how the house and a coop next to something interesting (plants and fence on either side for example) would render for each of these so I can make an informed decision.",
+      "intent": "revise",
+      "submission_id": "decision-2ce679e9-e60b-43d0-b2c8-a32b987d0090",
+      "submission_payload": {
+        "intent": "revise",
+        "option": null,
+        "judgment": "Please show me how the house and a coop next to something interesting (plants and fence on either side for example) would render for each of these so I can make an informed decision."
+      },
+      "ruled_at": "2026-09-21T20:31:22",
+      "status": "pending_integration",
+      "revision_work_id": "wbd8f6a0d25b"
     }
-  ],
-  "revision_work_id": "wbd8f6a0d25b"
+  ]
 }

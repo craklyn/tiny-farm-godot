@@ -1855,15 +1855,11 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 # separates the hut from the shipping bin outdoors separates the room from the bin in
 # here, multiplied by the pitch and not otherwise touched.
 #
-# **Ground and objects only.** Crops, effects and the actors' own nodes are not drawn:
-# the actors are separate scene nodes rather than part of this canvas, and a second
-# pass over the crop rules would be a second place those rules live. What she sees out
-# there is the shape of her farm, not its state — enough to know where she is, which
-# is what the walls are for.
+# The backdrop view reuses the live farm-page rendering for ground, crops, effects,
+# and actors. There is no separate paint pass for a simplified yard.
 #
-# The dim is `[Playtest]` and provisional: **Q-108** is open on what the yard should
-# look like through a wall — nothing at all, haze, desaturation, or a hard-cut frame —
-# and this is the cheapest honest stand-in until that is ruled.
+# Q-108 chose the unchanged yard. The room and the camera's whole-number zoom are
+# the only separation; no colour layer is painted over the farm beyond its walls.
 # **Where the farm has to be drawn so the room lands inside its own building.**
 #
 # Pulled out of the draw and made pure because it is arithmetic, and arithmetic is
@@ -1887,7 +1883,6 @@ static func room_backdrop_offset(r: Dictionary, building: Rect2i) -> Vector2:
 	return Vector2(origin) * TILE_SIZE - Vector2(building.position) * TILE_SIZE * pitch
 
 
-const BACKDROP_DIM := Color(0.035, 0.035, 0.055, 0.30)
 const BACKDROP_REACH := 9      # farm tiles the camera may look out over, each way
 const BACKDROP_LAYER := 2      # the visibility layer the live view must not draw
 
@@ -1944,24 +1939,8 @@ var _backdrop_pitch := 1.0
 var _backdrop_view: SubViewport = null
 var _backdrop_layer: CanvasLayer = null
 var _backdrop_node: Node2D = null
-# The square the dim leaves lit on the way out: the building she has just stepped
-# out of, its roof, and the square she is standing on — the threshold, which is
-# the one place the swap is allowed to change the picture.
-var _exit_hole := Rect2i()
-var _dim_node: Node2D = null
-var _page_dim_node: Node2D = null
 var _page0_node: Node2D = null
 const PAGE0_LAYER := 4          # the farm page's items: what the backdrop view draws
-
-# How much of BACKDROP_DIM lies on the yard this frame — 1 at rest indoors, and
-# ramped through a door by `main.gd`'s glide so it never pops on: the swap frame
-# is drawn from the picture she was already looking at, dim included.
-var backdrop_dim_strength := 1.0
-# The same dim over the farm page while she is outdoors: the exit glide's other
-# half, where the room's dim lifts off the yard as the walls fall away.
-var page_dim_strength := 0.0
-
-
 
 func _build_views() -> void:
 	# The farm page, as an item of its own (see `_draw`).
@@ -2009,42 +1988,6 @@ func _build_views() -> void:
 	_backdrop_node.draw.connect(_draw_backdrop_texture)
 	_backdrop_layer.add_child(_backdrop_node)
 
-	# Over the yard and under the room, so the room she is standing in is the lit
-	# thing and the wall is a real edge rather than a change of subject. A flat dim
-	# for now — the treatment of the yard seen through the walls is Q-108's. Its
-	# own item because the texture's material would paint it white, and on the
-	# backdrop node's layer so the backdrop view never dims the yard it renders.
-	_dim_node = Node2D.new()
-	_dim_node.name = "RoomBackdropDim"
-	_dim_node.z_index = -1
-	_dim_node.visibility_layer = 2
-	_dim_node.draw.connect(_draw_backdrop_dim)
-	add_child(_dim_node)
-
-	_page_dim_node = Node2D.new()
-	_page_dim_node.name = "FarmPageDim"
-	_page_dim_node.z_index = 1           # over the yard and whoever stands in it
-	_page_dim_node.visibility_layer = 2
-	_page_dim_node.draw.connect(_draw_page_dim)
-	add_child(_page_dim_node)
-
-
-# The door glide's hand on the two dims (`main.gd`), each 0..1.
-func set_door_dim(indoor: float, page: float) -> void:
-	backdrop_dim_strength = indoor
-	page_dim_strength = page
-	# Asked for the first time on the swap frame itself, before this farm has
-	# redrawn — so the room on record is still the one she has just left, and her
-	# tile is already the one she stepped out onto.
-	if page > 0.0 and _backdrop_active and player_node() != null:
-		var hole := Rect2i(_backdrop_own.position - Vector2i(0, 1), _backdrop_own.size + Vector2i(0, 1))
-		_exit_hole = hole.expand(player_node().get_tile_pos())
-	if _dim_node != null:
-		_dim_node.queue_redraw()
-	if _page_dim_node != null:
-		_page_dim_node.queue_redraw()
-
-
 func _set_backdrop_live(on: bool) -> void:
 	if _backdrop_view == null:
 		return
@@ -2056,12 +1999,10 @@ func _set_backdrop_live(on: bool) -> void:
 	_page0_node.visibility_layer = layer
 	_ripe_glow_node.visibility_layer = layer
 	_backdrop_node.queue_redraw()
-	_dim_node.queue_redraw()
 
 
 # Decides, for this frame, whether she is in a room and where the farm goes; the
-# farm itself is the live texture `_backdrop_node` draws beneath this item, and
-# the dim is `_dim_node`'s.
+# farm itself is the live texture `_backdrop_node` draws beneath this item.
 func _draw_room_backdrop() -> void:
 	_backdrop_active = false
 	if sim == null or sim.rooms.is_empty() or player_node() == null:
@@ -2079,7 +2020,6 @@ func _draw_room_backdrop() -> void:
 	_backdrop_offset = room_backdrop_offset(r, _backdrop_own)
 	_set_backdrop_live(true)
 	_backdrop_node.queue_redraw()
-	_dim_node.queue_redraw()
 
 
 func _draw_backdrop_texture() -> void:
@@ -2089,38 +2029,6 @@ func _draw_backdrop_texture() -> void:
 		Vector2(_backdrop_pitch, _backdrop_pitch))
 	_backdrop_node.draw_texture_rect(_backdrop_view.get_texture(),
 		Rect2(Vector2.ZERO, Vector2(_backdrop_view.size)), false)
-
-
-func _draw_backdrop_dim() -> void:
-	if not _backdrop_active or backdrop_dim_strength <= 0.0:
-		return
-	var dim := BACKDROP_DIM
-	dim.a *= clampf(backdrop_dim_strength, 0.0, 1.0)
-	_dim_node.draw_set_transform(_backdrop_offset, 0.0, Vector2(_backdrop_pitch, _backdrop_pitch))
-	_dim_node.draw_rect(Rect2(0, 0, MAP_WIDTH * TILE_SIZE, WorldLayout.PAGE_ROWS * TILE_SIZE),
-		dim, true)
-
-
-func _draw_page_dim() -> void:
-	if page_dim_strength <= 0.0:
-		return
-	var dim := BACKDROP_DIM
-	dim.a *= clampf(page_dim_strength, 0.0, 1.0)
-	var page := Rect2i(0, 0, MAP_WIDTH, WorldLayout.PAGE_ROWS)
-	var hole := _exit_hole.intersection(page)
-	# Four rects around the hole rather than one over the page, so the building
-	# and the threshold she is standing on stay as lit as the room was.
-	var rects: Array[Rect2i] = []
-	if hole.has_area():
-		rects.append(Rect2i(page.position, Vector2i(page.size.x, hole.position.y - page.position.y)))
-		rects.append(Rect2i(Vector2i(page.position.x, hole.end.y), Vector2i(page.size.x, page.end.y - hole.end.y)))
-		rects.append(Rect2i(Vector2i(page.position.x, hole.position.y), Vector2i(hole.position.x - page.position.x, hole.size.y)))
-		rects.append(Rect2i(Vector2i(hole.end.x, hole.position.y), Vector2i(page.end.x - hole.end.x, hole.size.y)))
-	else:
-		rects.append(page)
-	for r in rects:
-		if r.has_area():
-			_page_dim_node.draw_rect(Rect2(r.position * TILE_SIZE, r.size * TILE_SIZE), dim, true)
 
 
 func _draw_ripe_glow() -> void:

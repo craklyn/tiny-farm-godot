@@ -727,15 +727,7 @@ func note_page_change(from_tile: Vector2i = Vector2i(-1, -1)) -> void:
 		"frame": Engine.get_process_frames(),
 		"eye0": start["eye"],
 		"zoom0": float(start["zoom"]),
-		"going_in": now_room != "",
 	}
-	# The yard's dim travels with the glide rather than popping on with the room:
-	# none of it on the way in until the walls start to open, all of it on the way
-	# out until they have fallen away (`Farm.set_door_dim`).
-	if now_room != "":
-		farm.set_door_dim(0.0, 0.0)
-	else:
-		farm.set_door_dim(1.0, 1.0)
 	_camera_page = int(_camera_limits_for(player.get_tile_pos())["page"])
 	_update_rain()
 
@@ -771,10 +763,6 @@ func _step_door_glide(delta: float) -> void:
 	_door_glide["t"] = float(_door_glide["t"]) + minf(delta, 1.0 / 30.0)
 	var u: float = clampf(float(_door_glide["t"]) / DOOR_ZOOM_SECONDS, 0.0, 1.0)
 	var e: float = 1.0 - pow(1.0 - u, 3.0)
-	if bool(_door_glide["going_in"]):
-		farm.set_door_dim(e, 0.0)
-	else:
-		farm.set_door_dim(1.0, 1.0 - e)
 	var lim: Dictionary = _camera_limits_for(player.get_tile_pos())
 	var rest: Vector2 = _clamped_centre(player.global_position, float(CAMERA_SCALE), lim)
 	var z: float = lerpf(float(_door_glide["zoom0"]), float(CAMERA_SCALE), e)
@@ -786,7 +774,6 @@ func _step_door_glide(delta: float) -> void:
 		# a move: its offset returns to her, the limits go on, and smoothing resumes
 		# from exactly here.
 		_door_glide = {}
-		farm.set_door_dim(1.0, 0.0)
 		camera.position = Vector2.ZERO
 		camera.position_smoothing_enabled = true
 		_camera_page = -1

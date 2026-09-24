@@ -132,13 +132,36 @@ twice the size needs twice the zoom, which leaves a quarter of the yard on scree
 CEO's numbers are modest and that is what makes the outside worth looking at; the ×3 and ×4
 rooms an earlier draft reached for leave about one tile of yard, magnified past recognition.
 
-### The perceptual question that remains (Q-108)
+### The perceptual question (Q-108, ruled 2026-09-23)
 
 Under a uniform zoom there is no geometric lie to catch, so what is left is a question of
 grain rather than of truth: at ×2 the yard is drawn at six screen pixels per art pixel, and
 whether that reads as *outside, seen through a window* or as *the world came closer* is a
-matter of treatment — haze, desaturation, how hard the walls cut. That is what Q-108 now
-asks, and it wants captures rather than paragraphs.
+matter of treatment — haze, desaturation, how hard the walls cut. The house-and-coop
+comparison is `mockups/interiors/q108_house_and_coop_treatments.png`. Daniel chose the
+**unchanged yard** on 2026-09-23: the yard's larger pixels already take focus away from it
+when entering a finer-grid room.
+
+A hard-cut edge need not consume additional yard. A one-art-pixel trim could be drawn over
+the existing seam between room and yard (six screen pixels at the house's ×2 view). It
+would cover pixels *at* that boundary but would not change the room's footprint or camera.
+That remains an optional visual detail, not part of the chosen yard treatment. The thick
+frame in the comparison was one illustration of the unchosen option, not a geometric
+requirement.
+
+### What if the interior grid were coarser?
+
+A 4×4-tile building containing **2×2 total interior cells** reverses the current rule:
+each room cell spans 2×2 farm tiles, so the pitch is ½ cell per farm tile. Keeping those
+cells at the usual on-screen size would make the farm appear at ×½ scale when viewed from
+inside. Twice as much farm fits across each axis, or four times the area. The boundary
+still registers if everything uses the same transform.
+
+That is a thought experiment, not a supported room size. P-18 specifies a *finer* interior
+grid with an integer pitch, and the current room code stores pitch as an integer of at
+least one. A 2×2 room also has no walkable floor after reserving a one-cell wall ring.
+If “2×2 interior” means a **2×2 walkable floor plus walls**, the total is 4×4 cells in a
+4×4 footprint: pitch one, so the farm stays at its ordinary scale rather than zooming out.
 
 ---
 
@@ -466,10 +489,9 @@ in the room's space, at the room's pitch — and never also at its own world pos
 pixels above her room, which the low zoom of a door used to reach into. The texture is drawn on a
 canvas layer of its own that follows the camera, because the sub-view renders the day tint and an
 item in the world's canvas would be tinted a second time on the way to the screen (measured: the
-yard came back 8% darker, most in green, on the first attempt). The dim — still Q-108's
-placeholder — ramps with the glide instead of popping: none of it on the swap frame going in,
-all of it going out until the walls have fallen away, and on the way out it leaves the building
-and her doorstep as lit as the room was.
+yard came back 8% darker, most in green, on the first attempt). A provisional dim was
+originally drawn over that texture and across the exit glide. Q-108's unchanged-yard ruling
+removed both overlays; the room and the yard now retain their own colours through the door.
 
 **The two unknowns, answered.** A `SubViewport` with `world_2d` shared and a `Camera2D` inside it
 renders the farm in 4.7; `CanvasLayer` content — the HUD, the build stamp — does not reach it,
@@ -498,16 +520,10 @@ and comes back out the same way.
 **What the swap still changes, on purpose:** the building itself. Outside it is a hut with a roof;
 inside it is a room with walls; the frame she steps through trades one for the other on the
 footprint. §3's picture — *"the room that was a smudge inside its walls"* — would need the hut
-drawn open from outside, which is art and taste, not camera work, and sits with Q-108.
-
-**Still a placeholder:** the treatment of the yard through the walls, a flat dim pending
-**Q-108**.
+drawn open from outside, which is a separate art question rather than camera work.
 
 **Open, and filed:**
 
-- **Q-108** — the treatment of the yard seen through the walls at ×2: haze, desaturation,
-  how hard the walls cut. A question about grain, now that it is no longer a question about
-  geometry.
 - **Q-109, ruled 2026-09-21** — each building may have its own whole-number room
   multiplier. The farmhouse keeps its provisional dimensions. Size the coop when its
   room becomes playable; a single multiplier need not fit both buildings.

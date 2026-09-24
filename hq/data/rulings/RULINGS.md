@@ -137,3 +137,8 @@ For chime under the bloom, I'm good with the recommendation. Please add a bit mo
 - Picked: **(a) Keep ten per species at the bin, separate from what she carries (Recommended)**
 - In his words: Keep up to 10 seeds of each species before any sell. The reserve lives at the bin, separate from carrying capacity. These are prototype numbers to tune later.
 - Status: integrated 2026-09-23 — S-20, the designer queue, and the landed bin reserve agree; main CI passed.
+
+## Q-108 — ruled 2026-09-23T20:24:23
+- Picked: **(a) Nothing at all (Recommended)**
+- In his words: I think unchanged yard is fine. The pixelation is already enough to take focus from it in the case of entering a space with more pixels.
+- Status: pending integration into docs/DESIGNER_QUEUE.md

@@ -78,7 +78,7 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
   Bears on `design/03` and `design/04`; follows Q-105.
 
-- **Q-108** How the farm reads through the walls — **Ruling**, and much smaller than it was.
+- **Q-108** How the farm reads through the walls — **Ruled (a): unchanged yard**.
   P-18 was corrected on 2026-09-15: one world, one metric, two grids — a building's interior
   is a finer grid nested inside its own footprint, and going inside is a uniform camera zoom
   of ×2 and nothing else. So the geometric question this item used to ask (registered to the
@@ -90,9 +90,11 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   treatments. The coop interior does not exist in the running game, so the panels use
   shipped game art at the sizes the ×2 camera draws it. Options: **(a) nothing at all**, **(b)
   haze**, **(c) desaturate and darken**, **(d) hard-cut walls with a clear yard**.
-  **Recommendation: (a)** — the room already says the player is inside, while the unchanged
-  yard keeps the crop, fence and hen clearest and needs no new visual layer or art. The
-  hard-cut option would need new wall art; the pictured frame is a placeholder.
+  Daniel chose (a) on 2026-09-23: the larger pixels already take focus from the yard when
+  entering. A thin trim could later be drawn over the room-yard seam without taking
+  additional width, but it is not part of this ruling. The 4×4-building/2×2-cell inverse
+  scale thought experiment is recorded in design/15; the current finer-grid room rule does
+  not support it.
   Card: `hq/data/decisions/Q-108.json`.
 
 - **Q-111** The one release step that still waits on your hands — **Ruling**. A `v*` tag
