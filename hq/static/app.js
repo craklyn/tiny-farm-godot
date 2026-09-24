@@ -529,6 +529,10 @@ async function renderDashboard() {
           ${work ? `<a class="plain" href="#/work">${landed.length} work item${landed.length === 1 ? " has" : "s have"} a commit merged into the main code branch${landed.some(item => (workflowView(item).shipped_evidence || {}).ci_confirmed) ? ` · ${landed.filter(item => (workflowView(item).shipped_evidence || {}).ci_confirmed).length} passed automated checks` : ""}</a>`
             : `<span>Evidence that work was merged is unavailable.</span>`}
         </div>
+        <div class="feedback-card" id="dash-feedback" aria-live="polite">
+          <h2>Player feedback</h2>
+          <p class="small muted">Checking itch comments…</p>
+        </div>
         <details class="side-fold" id="dash-pillars-fold">
           <summary class="side-head">The pillars <span class="small muted">· ${pillars.pillars.every(p => surfaceParked("/pillar/" + p.id)) ? "detail pages are switched off" : "click for detail"}</span></summary>
           <div id="dash-pillars"></div>
@@ -543,6 +547,26 @@ async function renderDashboard() {
       </div>
     </div>
   `));
+  fetch("/api/feedback").then(r => r.json()).then(data => {
+    const box = document.getElementById("dash-feedback");
+    if (!box) return;
+    const link = `<a class="plain" href="https://craklyn.itch.io/tiny-farm#comments" target="_blank" rel="noopener noreferrer">Open itch comments</a>`;
+    if (data.status !== "checked") {
+      box.replaceChildren(h(`<h2>Player feedback</h2><p class="small">Itch comments could not be checked. ${link}</p>`));
+      return;
+    }
+    const comments = (data.comments || []).map(c => `<article class="feedback-comment">
+      <div class="small muted">${esc(c.author)}${c.date ? ` · ${esc(c.date)}` : ""}</div>
+      <p>${esc(c.body)}</p>
+      <a class="plain small" href="${esc(c.url)}" target="_blank" rel="noopener noreferrer">Open this comment on itch</a>
+    </article>`).join("");
+    box.replaceChildren(h(`<h2>Player feedback</h2>
+      ${comments || `<p class="small">No public comments were on the page when HQ checked.</p>`}
+      <div class="small muted">Checked ${esc(data.checked_at ? new Date(data.checked_at).toLocaleString() : "just now")} · ${link}</div>`));
+  }).catch(() => {
+    const box = document.getElementById("dash-feedback");
+    if (box) box.replaceChildren(h(`<h2>Player feedback</h2><p class="small">Feedback is unavailable right now. <a class="plain" href="https://craklyn.itch.io/tiny-farm#comments" target="_blank" rel="noopener noreferrer">Open itch comments</a></p>`));
+  });
   $view.querySelectorAll("[data-href]").forEach(el =>
     el.addEventListener("click", () => location.hash = el.dataset.href));
   const dp = document.getElementById("dash-pillars");

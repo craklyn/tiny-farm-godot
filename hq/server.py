@@ -27,6 +27,7 @@ Zero-dependency stdlib server:
 Run: python3 hq/server.py   (or via the tiny-farm-hq systemd user service)
 """
 import execution
+import feedback
 
 import copy
 import datetime
@@ -6398,6 +6399,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, studio.api_get(path, query))
             if path == "/api/org":
                 return self._send(200, load_org())
+            if path == "/api/feedback":
+                return self._send(200, feedback.read_feedback())
             if path == "/api/entities":
                 return self._send(200, load_json(os.path.join(DATA, "entities.json")))
             if path == "/api/projects":

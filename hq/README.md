@@ -39,6 +39,22 @@ section 2).
   - what the last run did: `journalctl --user -u tiny-farm-drain`
   - stop draining unattended: `systemctl --user disable --now tiny-farm-drain.timer`
 
+## Player feedback (Q-89)
+
+Amara, the community manager, reviews the public comments on
+[Tiny Farm's itch page](https://craklyn.itch.io/tiny-farm#comments) every Monday
+morning and after each public release. She brings any feedback to Daniel in
+the **Player feedback** panel on HQ's dashboard. Each item shows the player's
+words and a direct itch permalink. The panel reads the public page when the
+dashboard opens; it does not mark a human review as done. If itch cannot be
+read, HQ says the check is unavailable instead of claiming there are no
+comments. The itch page copy stays as it is under Daniel's ruling.
+
+The email alias Daniel mentioned is a possible later source, and in-game
+feedback is a possible later feature. Neither is an active intake channel now.
+At this volume the round-up is the comments themselves; there are no feedback
+statistics, escalation rules, or filters.
+
 ## Goals — the one status pipeline
 
 Every pillar's status is computed from goals it declares in

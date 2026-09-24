@@ -383,6 +383,11 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 .pillar-row .pr-name { font-weight: 600; min-width: 0; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pillar-row .pr-meta { margin-left: auto; white-space: nowrap; font-variant-numeric: tabular-nums; }
 .side-nums { display: flex; flex-direction: column; gap: 7px; margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.feedback-card { margin-top: 16px; padding: 14px; border: 1px solid var(--line); border-radius: 8px; }
+.feedback-card h2 { font-size: 14px; margin: 0 0 9px; }
+.feedback-card p { margin: 6px 0; line-height: 1.45; white-space: pre-line; overflow-wrap: anywhere; }
+.feedback-comment { padding: 10px 0; border-top: 1px solid var(--line); }
+.feedback-comment:first-of-type { border-top: 0; }
 .brief { margin-top: 18px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
 .brief summary { padding: 12px 16px; cursor: pointer; font-size: 13.5px; color: var(--muted); list-style: none; }
 .brief summary::-webkit-details-marker { display: none; }

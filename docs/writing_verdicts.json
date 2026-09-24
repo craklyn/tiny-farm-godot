@@ -242,6 +242,9 @@
   "0e747bbbdac5bc93e6c6": {
    "verdict": "ok"
   },
+  "0ec2962c85ffaa3e3743": {
+   "verdict": "ok"
+  },
   "0f035e2ca167f386a041": {
    "verdict": "ok"
   },
@@ -660,6 +663,9 @@
    "why": "\"Banks the sheet\" is not clear to someone who hasn't heard this term; the plain word is \"saves\"."
   },
   "2600afb628029fc0ac5b": {
+   "verdict": "ok"
+  },
+  "262be3b8ba2c56d9b06d": {
    "verdict": "ok"
   },
   "27310bee322cbc6bfaeb": {
@@ -1565,6 +1571,9 @@
    "verdict": "ok"
   },
   "5d0df16d08cc2f518129": {
+   "verdict": "ok"
+  },
+  "5d2e385a42c256910566": {
    "verdict": "ok"
   },
   "5d3db6c474daf5fc099b": {
@@ -2579,6 +2588,9 @@
   "967842a805edf0ae02c8": {
    "verdict": "ok"
   },
+  "97128bad0d452b3f03a0": {
+   "verdict": "ok"
+  },
   "973ad9b63870768d4c7a": {
    "verdict": "ok"
   },
@@ -3060,6 +3072,9 @@
    "verdict": "ok"
   },
   "b08568d4e64fa6adaa43": {
+   "verdict": "ok"
+  },
+  "b0ee4cebc6c9f48a7d85": {
    "verdict": "ok"
   },
   "b11fa2497de69c26ff4d": {
@@ -3731,6 +3746,12 @@
   "d8824234da3b622c59fd": {
    "verdict": "ok"
   },
+  "d888b3794c396adeeb6b": {
+   "instead": "underway",
+   "quote": "in flight",
+   "verdict": "second-look",
+   "why": "This metaphor makes the reader translate it into the plain status that work is underway."
+  },
   "d8934fa79a1f561f53af": {
    "instead": "we are still building checks for X of Y areas (with actual numbers)",
    "quote": "we are still building checks for {unassured} of the {total} areas",
@@ -3748,6 +3769,9 @@
    "quote": "awaiting integration",
    "verdict": "second-look",
    "why": "“Integration” makes the reader work out that the reviewed work is waiting to be merged."
+  },
+  "d8ddea56dde3158f7c06": {
+   "verdict": "ok"
   },
   "d8e990c8c947fc120198": {
    "instead": "Guide colours without an exact match: … · The guide's own note says its colour ranges were measured from a set of game images that is no longer in this project. So this is not necessarily drift in the art — the guide may be describing a game we no longer have. The art review's first question is which of the two it is.",
