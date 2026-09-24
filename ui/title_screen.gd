@@ -144,6 +144,8 @@ var _bloom: Sprite2D = null
 var _bloom_frames: int = 16
 var _bloom_ms_per_frame: int = 90
 var _bloom_cell := Vector2i(64, 104)
+var _bloom_reveal_frames: int = 16
+var _bloom_idle_frame: int = 15
 var _menu_root: Control = null
 var _intro_shield: Control = null  # swallows taps until the menu has settled in
 var _plate: TextureRect = null     # the icon, held over everything until the game is live
@@ -300,6 +302,8 @@ func _build_boot_bloom() -> void:
 		return  # nothing to render into, or already played this launch
 	var manifest := _load_bloom_manifest()
 	_bloom_frames = int(manifest.get("frame_count", _bloom_frames))
+	_bloom_reveal_frames = int(manifest.get("reveal_frames", _bloom_frames))
+	_bloom_idle_frame = int(manifest.get("idle_frame", _bloom_reveal_frames - 1))
 	_bloom_ms_per_frame = int(manifest.get("ms_per_frame", _bloom_ms_per_frame))
 	_bloom_cell = Vector2i(
 		int(manifest.get("cell_width", _bloom_cell.x)),
@@ -442,7 +446,7 @@ func _play_boot_bloom() -> void:
 	AudioManager.play_sfx("bloom_chime")
 	_fade_bgm_in_after_chime()
 
-	for i in _bloom_frames:
+	for i in _bloom_reveal_frames:
 		if not is_instance_valid(self) or _bloom == null:
 			return
 		_bloom.region_rect = Rect2(i * _bloom_cell.x, 0, _bloom_cell.x, _bloom_cell.y)
@@ -478,9 +482,9 @@ func _play_boot_bloom() -> void:
 		if back != null:
 			reveal.tween_property(back, "color", ATTRACT_EDGE_COLOUR, BLOOM_FARM_FADE_SEC)
 	else:
-		# First boot, no session to play behind the menu yet: the bloom keeps
-		# looping rather than fading out to nothing.
-		_loop_bloom_forever()
+		# First boot, no session to play behind the menu yet: keep the
+		# fully bloomed pose. Replaying the reveal would repeatedly erase her.
+		_hold_bloom_idle()
 
 
 # Q-107: waits out the chime's own length (its `AudioStream.get_length()`, so
@@ -501,15 +505,9 @@ func _fade_bgm_in_after_chime() -> void:
 	bgm_tween.tween_property(AudioManager.bgm_player, "volume_db", -10.0, MUSIC_FADE_UP_SEC)
 
 
-func _loop_bloom_forever() -> void:
-	while is_instance_valid(self) and _bloom != null:
-		for i in _bloom_frames:
-			if not is_instance_valid(self) or _bloom == null:
-				return
-			_bloom.region_rect = Rect2(i * _bloom_cell.x, 0, _bloom_cell.x, _bloom_cell.y)
-			await get_tree().create_timer(_bloom_ms_per_frame / 1000.0).timeout
-			if not is_instance_valid(self):
-				return
+func _hold_bloom_idle() -> void:
+	if _bloom != null:
+		_bloom.region_rect = Rect2(_bloom_idle_frame * _bloom_cell.x, 0, _bloom_cell.x, _bloom_cell.y)
 
 
 # --- The three farms ----------------------------------------------------------

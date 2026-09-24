@@ -1,9 +1,15 @@
 """EXPERIMENT, not a shipping tool. Feeds work item wa41d7c9e2b3 (Yuki).
 
 Asked whether a showcase animation could be authored directly in our own palette
-instead of generated, this builds a 16-frame portrait loop: she stands with her
-hands on her hips, a sunflower opens beneath her, and its seeds spiral
-counterclockwise up past her head, sprouting into sunflowers that bloom.
+instead of generated, this builds a 16-frame portrait loop. A sealed bud holds,
+opens beneath her, and its seeds spiral counterclockwise upward. The last
+three frames close the flower back to the same bud for a clean gallery wrap;
+the boot plays frames 0-12 once and idles on fully bloomed frame 12.
+
+Anchor: the stem and bud at the centre of the canvas.
+Motion: a cubic unfurl, her rise, and a seed helix around her silhouette.
+Stages: sealed 0-1, opening 2-7, seeds 5-11, open idle 12, reset 13-15.
+Depth: seeds behind her and brighter seeds in front of her.
 
 What it proves: parametric motion (a helix, an unfurling, a growth curve) is cheap
 and exact to author this way, costs nothing, and cannot leave the palette — the
@@ -35,8 +41,8 @@ PARAMS = [
      "How far a seed travels before it has fully bloomed."),
     ("count", 28, 6, 48, 1,
      "More reads as abundance, fewer as a few things you can follow."),
-    ("open", 7, 2, 16, 1,
-     "Frames the sunflower beneath her takes to unfurl."),
+    ("open", 7, 4, 12, 1,
+     "Frame when the sunflower finishes opening after the sealed-bud hold."),
     ("sink", 14.0, 0.0, 24.0, 1.0,
      "How far below her standing height she starts. This is what makes her rise, rather than just being unmasked in place as the bud falls away."),
     ("bud_w", 10.0, 4.0, 16.0, 0.5,
@@ -103,6 +109,13 @@ def ease_out(t):
 def big_flower(im, t):
     cy = GROUND + 6
     ease = ease_out(t)
+    # The same narrow stalk remains visible under the sealed and open heads.
+    for y in range(cy + 1, H - 2):
+        px(im, CX, y, STEM_D)
+        px(im, CX + 1, y, STEM_M)
+    for d in range(1, 6):
+        px(im, CX - d, cy + 6 - d // 2, LEAF_D)
+        px(im, CX + d + 1, cy + 6 - d // 2, LEAF_L)
     for i in range(11):
         a = math.pi + (i + 0.5) * math.pi / 11
         petal(im, CX, cy, a, int(4 + 16 * ease), 1.3 + 1.7 * ease, True)
@@ -139,7 +152,8 @@ def closed_bud(im, tip_y):
         return
     for row in range(h):
         f = row / max(h - 1, 1)                       # 0 at the base, 1 at the sealed tip
-        rw = P["bud_w"] if f < 0.7 else P["bud_w"] * (1 - (f - 0.7) / 0.3)
+        rw = (P["bud_w"] * (0.55 + 0.45 * math.sin(f / 0.7 * math.pi / 2))
+              if f < 0.7 else P["bud_w"] * (1 - (f - 0.7) / 0.3))
         y = base - row
         for k in range(-int(rw), int(rw) + 1):
             if f > 0.85: c = PETAL_D                  # a sliver of petal colour showing at the seal
@@ -178,14 +192,26 @@ def particle(im, x, y, t, front):
 
 # ------------------------------------------------------------------- the loop
 N, RISE, TURNS, RAD = int(P["count"]), P["rise"], P["turns"], P["rad"]
+REVEAL_FRAMES = 13  # boot stops on frame 12; frames 13-15 reset the gallery loop
+IDLE_FRAME = 12
+
+def bloom_progress(f, open_frame):
+    if f < 2:
+        return 0.0
+    if f <= IDLE_FRAME:
+        return min(1.0, (f - 1) / max(1, open_frame - 1))
+    return (F - 1 - f) / (F - 1 - IDLE_FRAME)
 
 def build():
     frames = []
-    open_n = max(int(P["open"]), 1)
+    open_n = max(4, min(IDLE_FRAME, int(P["open"])))
     for f in range(F):
-        u = f / F
+        u = max(0.0, (f - 5) / 8.0)
         back, front = blank(), blank()
-        for i in range(N):
+        # Nothing rises out of the sealed bud. Seeds thin out before the
+        # gallery reset, leaving a still, fully opened frame for the menu.
+        visible = 0 if f < 5 or f >= IDLE_FRAME else min(N, int(N * min((f - 4) / 3.0, (IDLE_FRAME - f) / 2.0)))
+        for i in range(visible):
             t = (u + i / N) % 1.0
             ease = t ** 0.85
             y = GROUND - 6 - ease * RISE
@@ -194,10 +220,9 @@ def build():
             x = CX + math.cos(a) * r
             fr = math.sin(a) > 0
             particle(front if fr else back, x, y, t, fr)
-        # Bud progress: 0 at the first frame (sealed), 1 once it has opened —
-        # held there for the rest of the loop, same shape as the old (f+1)/open
-        # ramp but starting a frame earlier so frame 0 is genuinely closed.
-        bloom_t = f / (open_n - 1) if open_n > 1 else 1.0
+        # A distinct closed hold precedes the opening. The gallery reset is a
+        # visible closing gesture, so frame 15 equals frame 0 pixel for pixel.
+        bloom_t = bloom_progress(f, open_n)
         p = ease_out(bloom_t)
         im = blank()
         big_flower(im, bloom_t)
@@ -220,9 +245,15 @@ def build():
             closed_bud(im, reveal_y)
         im.alpha_composite(front)
         frames.append(im)
+    # GIF coalesces byte-identical adjacent frames into one long frame. A
+    # single shaded pixel within the sealed bud preserves both 90 ms beats;
+    # its silhouette and position remain completely still.
+    px(frames[1], CX, GROUND + 4, STEM_D)
     return frames
 
 frames = build()
+assert frames[0].getchannel("A").tobytes() == frames[1].getchannel("A").tobytes(), "closed bud silhouette must hold"
+assert frames[0].tobytes() == frames[-1].tobytes(), "gallery wrap must be seamless"
 os.makedirs(S, exist_ok=True)
 sheet = Image.new("RGBA", (W * F, H), (0, 0, 0, 0))
 for i, fr in enumerate(frames): sheet.paste(fr, (i * W, 0), fr)
@@ -241,6 +272,7 @@ cols = {x[1][:3] for x in sheet.getcolors(1 << 20) if x[1][3] == 255}
 alpha = sorted({x[1][3] for x in sheet.getcolors(1 << 20)})
 assert set(alpha) <= {0, 255}, f"partial alpha: {alpha}"
 json.dump({"params": [list(p) for p in PARAMS], "values": P,
-           "frames": F, "canvas": [W, H], "colours": len(cols)},
+           "frames": F, "canvas": [W, H], "colours": len(cols),
+           "reveal_frames": REVEAL_FRAMES, "idle_frame": IDLE_FRAME},
           open(S + "/params.json", "w"), indent=2)
 print(f"{F} frames, {W}x{H}, {len(cols)} colours, alpha {alpha}")

@@ -35,10 +35,10 @@
     [
       "open",
       7,
-      2,
-      16,
+      4,
+      12,
       1,
-      "Frames the sunflower beneath her takes to unfurl."
+      "Frame when the sunflower finishes opening after the sealed-bud hold."
     ],
     [
       "sink",
@@ -71,5 +71,7 @@
     64,
     104
   ],
-  "colours": 19
+  "colours": 19,
+  "reveal_frames": 13,
+  "idle_frame": 12
 }

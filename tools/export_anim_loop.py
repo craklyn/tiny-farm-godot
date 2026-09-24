@@ -103,6 +103,15 @@ def export_loop(slug):
         "sky_colour": list(SKY_COLOUR),
         "edge": edge,
     }
+    # Some gallery loops include a return gesture solely to close their wrap.
+    # The boot can stop at the finished pose and idle there instead.
+    if "reveal_frames" in params:
+        reveal_frames = int(params["reveal_frames"])
+        idle_frame = int(params["idle_frame"])
+        if not (0 <= idle_frame < reveal_frames <= frame_count):
+            raise ValueError(f"{slug}: invalid reveal/idle frame metadata")
+        manifest["reveal_frames"] = reveal_frames
+        manifest["idle_frame"] = idle_frame
     (dest / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     return manifest
 

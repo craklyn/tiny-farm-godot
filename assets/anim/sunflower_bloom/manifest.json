@@ -11,5 +11,7 @@
     31,
     32
   ],
-  "edge": "clean"
+  "edge": "clean",
+  "reveal_frames": 13,
+  "idle_frame": 12
 }
