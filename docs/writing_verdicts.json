@@ -106,6 +106,9 @@
   "07304682335f7381fa4b": {
    "verdict": "ok"
   },
+  "073761985b27df001c6c": {
+   "verdict": "ok"
+  },
   "0746ef255d2387a1c522": {
    "verdict": "ok"
   },
@@ -256,6 +259,12 @@
   },
   "0dbaf5b52c3edcf44b80": {
    "verdict": "ok"
+  },
+  "0dbf9f01b3f3083d3ca7": {
+   "instead": "Fix the failing test for the studio dashboard in the latest version",
+   "quote": "HQ test",
+   "verdict": "decode",
+   "why": "“HQ test” is unexplained internal shorthand, so the reader cannot tell what is being tested."
   },
   "0dc54adc33f4a496c2fd": {
    "verdict": "ok"
@@ -1645,6 +1654,9 @@
   "580ba0fbb68e0e09c967": {
    "verdict": "ok"
   },
+  "582134e95da4d2551a4d": {
+   "verdict": "ok"
+  },
   "58a3aeee4282d39d34a2": {
    "verdict": "ok"
   },
@@ -2932,6 +2944,9 @@
   "9c257d5641d1b5b2e45e": {
    "verdict": "ok"
   },
+  "9c35dd0ae15c7bab9819": {
+   "verdict": "ok"
+  },
   "9c67bf164c655053c59b": {
    "verdict": "ok"
   },
@@ -3155,6 +3170,12 @@
   },
   "a797d14b633d736b9068": {
    "verdict": "ok"
+  },
+  "a7b579ff21490b26ec4d": {
+   "instead": "Restore the main branch to the last version that built successfully",
+   "quote": "Restore the failed build on main",
+   "verdict": "decode",
+   "why": "The reader cannot tell whether to fix the game or return the main branch to an earlier working version."
   },
   "a7daadfb0973e2ee682b": {
    "verdict": "ok"
@@ -4487,6 +4508,9 @@
    "verdict": "ok"
   },
   "eea6b8865b26e7f0c73c": {
+   "verdict": "ok"
+  },
+  "eeba39eac4cf71c455d9": {
    "verdict": "ok"
   },
   "eeea616f8ed4b3530ea2": {

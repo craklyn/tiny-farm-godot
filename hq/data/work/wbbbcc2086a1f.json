@@ -8,8 +8,76 @@
   "ask": "Only one lane can write hq/data/staff/<id>/memory.md: take_remembered() at server.py:4637, which runs on the CHAT lane — a persona wraps a note in <remember> and it is appended. The DRAIN lane has no write path at all. drain.py:135 loads the seat's memory into the worker's prompt and nothing ever writes back, so anything a seat works out while doing a real piece of work is lost when the worker exits. This is the lane that processes Daniel's sprite-editor edits: he edits a sheet, leaves a note, HQ files the measured diff to the art director, she reads it and answers — and if that answer contains a durable rule about his taste, nothing keeps it. He believes the seat is learning from his feedback; today it only learns when he happens to talk to it in chat. Give the drain the same contract the chat lane has: a worker may emit <remember>...</remember>, it is stripped from the result Daniel reads and appended to that seat's memory with the date. Reuse take_remembered rather than writing a second parser — one contract, two lanes. Two things to get right that the chat lane does not have to: the drain runs a worker in a worktree, so the append must happen in the main tree after the diff is checked, not inside the sandbox; and a memory written by an item Daniel later rejects should not survive, so tie the append to the item reaching accepted rather than to the worker finishing.",
   "first_action": "Read take_remembered and REMEMBER_RE in hq/server.py, then _process_item in hq/drain.py, and decide where in the item lifecycle the append belongs so a rejected item leaves no memory behind.",
   "why": "Daniel asked today whether the graphics seat still learns his art rules from his sprite-edit notes. The filing and the reading still work — an item was raised and answered within three minutes this morning — but the learning step does not exist on that lane. A loop that only closes when he remembers to chat is a manual step, which is the shape of defect his own doctrine names.",
-  "state": "waiting_session",
+  "state": "landed",
   "source": "chat",
   "created": "2026-09-07T09:47",
-  "created_ts": 1788799647.011435
+  "created_ts": 1788799647.011435,
+  "_revision": 4,
+  "process_completion_reconciliation": {
+    "version": 1,
+    "manifest_id": "3e356087ee76542a298579daa7e4d1097c9af1f9f825d455b3c3c6c40bf97dcc",
+    "at": "2026-09-24T03:34:08-07:00",
+    "classification": "safe_to_close",
+    "by": "Chief of Staff operator audit of landed process commits; not a native checker pass or Daniel acceptance",
+    "evidence_commits": [
+      "64399ce820f730b7fa6a0b9d25510766abae07ea"
+    ],
+    "test_proof": [
+      "python3 hq/tests/test_durable_memory.py: 6 tests passed"
+    ],
+    "evidence_summary": "Accepted and auto-landed work now commits attributed lessons idempotently; rejection, revision, supersession, drop, and undo remove or replace them.",
+    "limitations": "This audit links bounded card asks to committed source and focused local test results. It does not recreate a drain checker verdict, claim Daniel accepted the work, or treat unfinished portions as complete."
+  },
+  "attempt_outcome": {
+    "version": 1,
+    "id": "process-audit-3e356087ee76542a298579daa7e4d1097c9af1f9f825d455b3c3c6c40bf97dcc-wbbbcc2086a1f",
+    "status": "complete",
+    "reason": "Accepted and auto-landed work now commits attributed lessons idempotently; rejection, revision, supersession, drop, and undo remove or replace them.",
+    "result_id": "12ae32cb1ec02d01eda3581b127c1fee3b0dc53572ed6baf239721a03d82e126",
+    "landing_verified": true,
+    "operator_audit": {
+      "version": 1,
+      "manifest_id": "3e356087ee76542a298579daa7e4d1097c9af1f9f825d455b3c3c6c40bf97dcc",
+      "at": "2026-09-24T03:34:08-07:00",
+      "classification": "safe_to_close",
+      "by": "Chief of Staff operator audit of landed process commits; not a native checker pass or Daniel acceptance",
+      "evidence_commits": [
+        "64399ce820f730b7fa6a0b9d25510766abae07ea"
+      ],
+      "test_proof": [
+        "python3 hq/tests/test_durable_memory.py: 6 tests passed"
+      ],
+      "evidence_summary": "Accepted and auto-landed work now commits attributed lessons idempotently; rejection, revision, supersession, drop, and undo remove or replace them.",
+      "limitations": "This audit links bounded card asks to committed source and focused local test results. It does not recreate a drain checker verdict, claim Daniel accepted the work, or treat unfinished portions as complete."
+    }
+  },
+  "completion": {
+    "version": 1,
+    "attempt_id": "process-audit-3e356087ee76542a298579daa7e4d1097c9af1f9f825d455b3c3c6c40bf97dcc-wbbbcc2086a1f",
+    "at": "2026-09-24T03:34:08-07:00",
+    "by": "Chief of Staff operator audit of landed process commits; not a native checker pass or Daniel acceptance",
+    "kind": "operator_audit",
+    "evidence": {
+      "version": 1,
+      "manifest_id": "3e356087ee76542a298579daa7e4d1097c9af1f9f825d455b3c3c6c40bf97dcc",
+      "at": "2026-09-24T03:34:08-07:00",
+      "classification": "safe_to_close",
+      "by": "Chief of Staff operator audit of landed process commits; not a native checker pass or Daniel acceptance",
+      "evidence_commits": [
+        "64399ce820f730b7fa6a0b9d25510766abae07ea"
+      ],
+      "test_proof": [
+        "python3 hq/tests/test_durable_memory.py: 6 tests passed"
+      ],
+      "evidence_summary": "Accepted and auto-landed work now commits attributed lessons idempotently; rejection, revision, supersession, drop, and undo remove or replace them.",
+      "limitations": "This audit links bounded card asks to committed source and focused local test results. It does not recreate a drain checker verdict, claim Daniel accepted the work, or treat unfinished portions as complete."
+    }
+  },
+  "closed": "2026-09-24T03:34:08-07:00",
+  "landed": {
+    "at": "2026-09-24T03:34:08-07:00",
+    "by": "Chief of Staff operator audit of landed process commits; not a native checker pass or Daniel acceptance",
+    "sha": "",
+    "note": "Accepted and auto-landed work now commits attributed lessons idempotently; rejection, revision, supersession, drop, and undo remove or replace them."
+  }
 }

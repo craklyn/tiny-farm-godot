@@ -1,0 +1,84 @@
+{
+  "id": "wd5843f1c18c",
+  "title": "Fix the failing studio dashboard test",
+  "level": "task",
+  "owner": "elena",
+  "tier": 1,
+  "tier_reason": "A failed build on main blocks every release and is safe to repair without a product ruling.",
+  "ask": "The newest finished tests workflow on main failed. Diagnose and repair the first failed check without weakening it. Failing run: https://github.com/craklyn/tiny-farm-godot/actions/runs/36002749160",
+  "first_action": "Open https://github.com/craklyn/tiny-farm-godot/actions/runs/36002749160 and reproduce the first failed job from a clean checkout.",
+  "state": "landed",
+  "thread": "elena",
+  "source": "automatic",
+  "source_message": "The newest finished tests workflow on main failed. Diagnose and repair the first failed check without weakening it. Failing run: https://github.com/craklyn/tiny-farm-godot/actions/runs/36002749160",
+  "result": "Repaired the intermittent failure in test_workflow_projection.py without disabling its read-only, revision, or queue assertions. Run 36002749160 failed in writing / Every HQ process regression: test_reads_do_not_write_or_refresh_card_revision compared live age_seconds across separate reads and differed by one. Reproduced from clean b30722a. Commit 1531c7b freezes the clock only during that comparison. The focused test passed 11/11; the full local HQ suite passed 52/52. Main CI run 36006083826 passed writing, gateway, and tests.",
+  "started": "",
+  "attempts": 0,
+  "created": "2026-09-24T06:05:46-07:00",
+  "created_ts": 1790255146.0924654,
+  "_revision": 6,
+  "source_ref": "ci:https://github.com/craklyn/tiny-farm-godot/actions/runs/36002749160",
+  "urgent": true,
+  "incident": {
+    "kind": "ci_failure",
+    "identity": "ci:https://github.com/craklyn/tiny-farm-godot/actions/runs/36002749160",
+    "detected": "2026-09-24T06:05:46-07:00"
+  },
+  "deliverable": {
+    "name": "Main build restored with stable HQ read-only regression",
+    "evidence": [
+      {
+        "href": "https://github.com/craklyn/tiny-farm-godot/actions/runs/36002749160"
+      },
+      {
+        "href": "https://github.com/craklyn/tiny-farm-godot/commit/1531c7b7e19edf4eaf501a702b117b39e939b642"
+      },
+      {
+        "href": "https://github.com/craklyn/tiny-farm-godot/actions/runs/36006083826"
+      }
+    ]
+  },
+  "attempt_outcome": {
+    "version": 1,
+    "id": "operator-audit-ci-36002749160",
+    "status": "complete",
+    "result_id": "a6de760a362dbc54d3dc9c4ce9ed695d8346684ad91e1f17f18a88a508d8dd18",
+    "landing_verified": true,
+    "operator_audit": {
+      "version": 1,
+      "at": "2026-09-24T06:34:30-07:00",
+      "by": "codex",
+      "classification": "repaired",
+      "failed_run": "https://github.com/craklyn/tiny-farm-godot/actions/runs/36002749160",
+      "repair_commit": "https://github.com/craklyn/tiny-farm-godot/commit/1531c7b7e19edf4eaf501a702b117b39e939b642",
+      "repair_run": "https://github.com/craklyn/tiny-farm-godot/actions/runs/36006083826",
+      "local_reproduction": "Clean archive of b30722a: workflow projection age_seconds changed across a one-second read interval; the original equality assertion failed although the durable card was unchanged.",
+      "local_validation": "Focused workflow projection test: 11/11 passed. Full HQ regression runner: 52/52 files passed, 0 failed, 0 skipped. GitHub run 36006083826: writing, gateway, and tests jobs all passed."
+    }
+  },
+  "completion": {
+    "version": 1,
+    "attempt_id": "operator-audit-ci-36002749160",
+    "at": "2026-09-24T06:34:30-07:00",
+    "kind": "operator_audit",
+    "by": "codex",
+    "evidence": {
+      "version": 1,
+      "at": "2026-09-24T06:34:30-07:00",
+      "by": "codex",
+      "classification": "repaired",
+      "failed_run": "https://github.com/craklyn/tiny-farm-godot/actions/runs/36002749160",
+      "repair_commit": "https://github.com/craklyn/tiny-farm-godot/commit/1531c7b7e19edf4eaf501a702b117b39e939b642",
+      "repair_run": "https://github.com/craklyn/tiny-farm-godot/actions/runs/36006083826",
+      "local_reproduction": "Clean archive of b30722a: workflow projection age_seconds changed across a one-second read interval; the original equality assertion failed although the durable card was unchanged.",
+      "local_validation": "Focused workflow projection test: 11/11 passed. Full HQ regression runner: 52/52 files passed, 0 failed, 0 skipped. GitHub run 36006083826: writing, gateway, and tests jobs all passed."
+    }
+  },
+  "closed": "2026-09-24T06:34:30-07:00",
+  "landed": {
+    "at": "2026-09-24T06:34:30-07:00",
+    "by": "codex",
+    "sha": "1531c7b7e19edf4eaf501a702b117b39e939b642",
+    "note": "Scoped test repair verified by passing main CI run 36006083826."
+  }
+}

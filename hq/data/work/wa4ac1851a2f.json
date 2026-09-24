@@ -9,20 +9,63 @@
   "tier_reason": "The boundary is where the CEO's own hand edits keep landing, and the current staging would show him four pictures that do not contain it.",
   "ask": "Landed without Daniel: “Read Daniel's hand edit to Obstacle Set”. The boundary is where the CEO's own hand edits keep landing, and the current staging would show him four pictures that do not contain it.",
   "first_action": "Amend the staging paragraph in the look-session section of docs/design/09-art-direction.md so all four captures frame the fence line and an open boundary alongside the player and one station, keeping seed 12345 and everything else identical.",
-  "state": "waiting_session",
+  "state": "landed",
   "thread": "ingrid",
   "source": "chat",
   "source_message": "Landed without Daniel: “Read Daniel's hand edit to Obstacle Set”.",
-  "result": "",
+  "result": "Already completed by commit e76a472cf9c2cfb1a221bd04f250a33bea47b62c. The look-session staging paragraph specifies the same four captures at mid-morning on day three, seed 12345, mixed-growth crops, the player, one station, the fence line, an open boundary, and the same camera and frame. The commit changed only docs/design/09-art-direction.md. No captures were made and Q-14 remains open for Daniel's look session and approval.",
   "started": "",
   "attempts": 0,
   "created": "2026-09-21T22:43",
   "created_ts": 1790055811.534649,
-  "_revision": 2,
+  "_revision": 6,
   "promised_by": "wae35fb20cb7",
   "promised": {
     "card": "Read Daniel's hand edit to Obstacle Set",
     "title": "Put the fence line and an open boundary in every look-session capture",
     "why": "The boundary is where the CEO's own hand edits keep landing, and the current staging would show him four pictures that do not contain it."
+  },
+  "attempt_outcome": {
+    "version": 1,
+    "id": "operator-already-shipped-wa4ac1851a2f-e76a472cf9c2",
+    "status": "complete",
+    "reason": "Exact requested staging already shipped; no new documentation edit needed.",
+    "result_id": "69f775c474a290261ffe48779cab1ceb560fddb2db9db6340cc4710a7d5f10d3",
+    "landing_verified": true,
+    "operator_audit": {
+      "version": 1,
+      "at": "2026-09-24T11:14:40.871240+00:00",
+      "kind": "operator_audit",
+      "by": "Codex interactive",
+      "evidence_commit": "e76a472cf9c2cfb1a221bd04f250a33bea47b62c",
+      "evidence_file": "docs/design/09-art-direction.md",
+      "finding": "Exact requested staging already shipped; no new documentation edit needed.",
+      "verification": "Commit ancestry, one-file diff, current staging paragraph, and offline writing verification; no model checker or new CI run claimed."
+    }
+  },
+  "completion": {
+    "version": 1,
+    "attempt_id": "operator-already-shipped-wa4ac1851a2f-e76a472cf9c2",
+    "at": "2026-09-24T11:14:40.871240+00:00",
+    "kind": "operator_audit",
+    "by": "Codex interactive",
+    "sha": "e76a472cf9c2cfb1a221bd04f250a33bea47b62c",
+    "evidence": {
+      "version": 1,
+      "at": "2026-09-24T11:14:40.871240+00:00",
+      "kind": "operator_audit",
+      "by": "Codex interactive",
+      "evidence_commit": "e76a472cf9c2cfb1a221bd04f250a33bea47b62c",
+      "evidence_file": "docs/design/09-art-direction.md",
+      "finding": "Exact requested staging already shipped; no new documentation edit needed.",
+      "verification": "Commit ancestry, one-file diff, current staging paragraph, and offline writing verification; no model checker or new CI run claimed."
+    }
+  },
+  "closed": "2026-09-24T11:14:40.871240+00:00",
+  "landed": {
+    "at": "2026-09-24T11:14:40.871240+00:00",
+    "by": "Codex interactive",
+    "sha": "e76a472cf9c2cfb1a221bd04f250a33bea47b62c",
+    "note": "Exact requested staging already shipped; no new documentation edit needed."
   }
 }

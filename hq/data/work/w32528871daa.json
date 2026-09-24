@@ -7,13 +7,63 @@
   "tier_reason": "Sim-layer code behind tests and the replay round-trip; git reverts it. Changing the derivation changes existing seeds' days, so it must be versioned or replays of old sessions diverge.",
   "ask": "Found 2026-09-09 while building the Mark III's policy sampler: SimRng.stateless(salt, index) hashes the string 'seed:salt:index', and Godot's string hash moves by exactly one when the index moves by one, so consecutive indices give consecutive hash values (measured: 62% of 5,000 draws in one tenth of the range). Every per-day roll that takes stateless(...) % n over a running index — crow schedules, ant schedules, visitor schedules, crow targets — may therefore cycle rather than vary. Check whether the schedules a player sees are regular enough to predict (the CEO rejects anything that reads as a pattern), and if so, scramble the index before hashing the way Policy.draw_u does — behind a replay-format or save-version guard so old logs still replay.",
   "first_action": "Print 30 days of roll_crow_schedule and roll_visitor_schedules for three seeds and look for cycles; then decide whether stateless itself changes (with a versioned guard) or only new callers use Policy.draw_u.",
-  "state": "waiting_session",
+  "state": "landed",
   "thread": "tomas",
   "source": "session",
   "source_message": "Chief of staff session 2026-09-09: WI-2 worker's finding while building the Mark III sampler.",
-  "result": "",
+  "result": "Commit bdbbe00 already fixes the predictable per-day crow schedule. The Godot measurement tool printed 30 days for seeds 1, 42, and 20260909 under both revisions: each legacy seed has a +9 crow timing step on 24 of 27 transitions; each current seed's most frequent step occurs only four times. Visitor schedules are empty on all 30 days because shipping visitor counts are zero. Fresh farms use stateless revision 2; v5 saves and v2 seed replays retain revision 1; v6 saves and v3 replays carry the current revision, with continued replays inheriting their base save. Local unit suite: 2,946 passed, 0 failed. Local integration suite: 999 passed, 0 failed. Main CI run 36004431062 passed at 3e19899, which contains bdbbe00. A newer run at 1531c7b7 is queued; the separate CI-failure card owns failed run 36002749160.",
   "started": "",
   "attempts": 0,
   "created": "2026-09-09T20:47",
-  "created_ts": 1789012023.9639666
+  "created_ts": 1789012023.9639666,
+  "_revision": 4,
+  "attempt_outcome": {
+    "version": 1,
+    "id": "operator-audit-w32528871daa-bdbbe00",
+    "status": "complete",
+    "result_id": "081032a2adeae60cb28c3117ebfde3c1dee95d9a92ed43765a210d6c24f6240c",
+    "landing_verified": true,
+    "operator_audit": {
+      "version": 1,
+      "at": "2026-09-24T06:32:29-07:00",
+      "by": "Codex operator audit of existing main commit; no native checker pass or Daniel acceptance",
+      "classification": "already_landed",
+      "commit": "bdbbe00a4a8c3fe262b931df8b8a16100b8ea74a",
+      "measurement": "30 days × 3 seeds × 2 revisions; legacy +9 on 24/27 transitions per seed; current maximum repeated step 4/27 per seed; visitors empty in shipping build",
+      "tests": [
+        "Godot unit: 2946 passed, 0 failed",
+        "Godot integration: 999 passed, 0 failed"
+      ],
+      "ci": "https://github.com/craklyn/tiny-farm-godot/actions/runs/36004431062",
+      "limitations": "No native HQ checker run or Daniel acceptance; current newer CI run queued."
+    }
+  },
+  "completion": {
+    "version": 1,
+    "attempt_id": "operator-audit-w32528871daa-bdbbe00",
+    "at": "2026-09-24T06:32:29-07:00",
+    "by": "Codex operator audit of existing main commit; no native checker pass or Daniel acceptance",
+    "kind": "operator_audit",
+    "evidence": {
+      "version": 1,
+      "at": "2026-09-24T06:32:29-07:00",
+      "by": "Codex operator audit of existing main commit; no native checker pass or Daniel acceptance",
+      "classification": "already_landed",
+      "commit": "bdbbe00a4a8c3fe262b931df8b8a16100b8ea74a",
+      "measurement": "30 days × 3 seeds × 2 revisions; legacy +9 on 24/27 transitions per seed; current maximum repeated step 4/27 per seed; visitors empty in shipping build",
+      "tests": [
+        "Godot unit: 2946 passed, 0 failed",
+        "Godot integration: 999 passed, 0 failed"
+      ],
+      "ci": "https://github.com/craklyn/tiny-farm-godot/actions/runs/36004431062",
+      "limitations": "No native HQ checker run or Daniel acceptance; current newer CI run queued."
+    }
+  },
+  "closed": "2026-09-24T06:32:29-07:00",
+  "landed": {
+    "at": "2026-09-24T06:32:29-07:00",
+    "by": "Codex operator audit of existing main commit; no native checker pass or Daniel acceptance",
+    "sha": "bdbbe00a4a8c3fe262b931df8b8a16100b8ea74a",
+    "note": "Existing versioned schedule fix and 30-day measurement verified; local suites and containing main CI run passed."
+  }
 }

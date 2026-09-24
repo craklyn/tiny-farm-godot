@@ -7,12 +7,96 @@
   "tier_reason": "filed by hand",
   "ask": "The sim benchmark's frame-budget target divides by a desktop-to-tablet factor of 8 (tools/benchmark_sim.gd, DEVICE_FACTOR). That 8 is an assumption about a mid-range Android running GDScript, not a measurement — everything else in that budget is a fact about the game (a 60 fps frame, the sim's quarter of it, SimClock.MAX_TICKS_PER_FRAME), so this constant is the only soft number in a target the studio now holds itself to. Build the profile APK the way tools/profile_android.sh does — its own package name, so the tablet's real game and saves are never touched — run the scaling half of the benchmark on the device, and compare per-tick cost with eight busy machines against the desktop figure. Replace DEVICE_FACTOR with the measured ratio and say in the comment what device and build it came from. If the real factor is worse than 8 the target may start failing, which is the point: it would mean the tablet genuinely cannot absorb a busy frame, and that is a thing the player feels.",
   "first_action": "Wake the tablet and put it on the network, then adb connect to the address in the repo's .adb_target (adb lives in ~/Android/Sdk/platform-tools and is not on PATH). It was off the network on the night of 2026-09-19, which is why this is a work item rather than a measurement.",
-  "state": "queued",
+  "state": "landed",
   "thread": "tomas",
   "source": "chief-of-staff",
   "source_message": "Raised while rebuilding the benchmark's target around a real in-game behaviour. Everything in the budget is measured except how slow the tablet is, and that is the one number the verdict swings on.",
   "started": "",
   "attempts": 0,
   "created": "2026-09-19T00:38",
-  "created_ts": 1789803501.2836828
+  "created_ts": 1789803501.2836828,
+  "_revision": 4,
+  "result": "Measured the eight-busy-machine scaling workload on a Lenovo TB336FU (Android build TB336FU_ROW_OPEN_USER_M1317.3_W_ZUI_17.5.10.321_ST_260804) and this desktop using Godot 4.7.2. Across two seven-sample runs per device, each sample advanced 10,000 ticks with all eight machines moving. Tablet median: 2.600224 s (range 2.572433–2.686003 s; CV 1.08%). Desktop median: 1.102853 s (range 1.073483–1.157647 s; CV 2.38%). Median ratio: 2.3577×, rounded to DEVICE_FACTOR 2.36. The two run-level median ratios were 2.3576× and 2.3577×. The separate sim profile APK was uninstalled; the regular game remains installed. Commit 93bf39439812a7da7273567539c09e1d750442dc passed local unit (2,946 assertions), integration (999), robot replay, benchmark, unchanged demo replay, gateway, writing, and HQ test runner checks. GitHub Actions passed all jobs: https://github.com/craklyn/tiny-farm-godot/actions/runs/36029025370.",
+  "attempt_outcome": {
+    "version": 1,
+    "id": "operator-audit-wfd1627b62ab2-93bf394",
+    "status": "complete",
+    "result_id": "47c645448244e91cb8868210f882a40abf14893c5deb63f5d472bec4609f42ab",
+    "landing_verified": true,
+    "operator_audit": {
+      "version": 1,
+      "at": "2026-09-24T09:45:18-07:00",
+      "by": "Codex operator audit of measured tablet run; no native checker pass or Daniel acceptance",
+      "classification": "implemented_and_ci_confirmed",
+      "commit": "93bf39439812a7da7273567539c09e1d750442dc",
+      "ci_run": "https://github.com/craklyn/tiny-farm-godot/actions/runs/36029025370",
+      "measurement": {
+        "tablet_median_seconds": 2.600224,
+        "desktop_median_seconds": 1.102853,
+        "ratio": 2.3577,
+        "device_factor": 2.36,
+        "samples_per_device": 14
+      },
+      "tests": [
+        "unit 2946 passed",
+        "integration 999 passed",
+        "robot replay passed",
+        "benchmark passed",
+        "demo replay unchanged",
+        "gateway and writing passed",
+        "GitHub Actions all jobs passed"
+      ],
+      "limitations": "Measured on one Lenovo TB336FU build and one desktop under this workload; remeasure if device, build, or workload changes."
+    }
+  },
+  "completion": {
+    "version": 1,
+    "attempt_id": "operator-audit-wfd1627b62ab2-93bf394",
+    "at": "2026-09-24T09:45:18-07:00",
+    "by": "Codex operator audit of measured tablet run; no native checker pass or Daniel acceptance",
+    "kind": "operator_audit",
+    "sha": "93bf39439812a7da7273567539c09e1d750442dc",
+    "evidence": {
+      "version": 1,
+      "at": "2026-09-24T09:45:18-07:00",
+      "by": "Codex operator audit of measured tablet run; no native checker pass or Daniel acceptance",
+      "classification": "implemented_and_ci_confirmed",
+      "commit": "93bf39439812a7da7273567539c09e1d750442dc",
+      "ci_run": "https://github.com/craklyn/tiny-farm-godot/actions/runs/36029025370",
+      "measurement": {
+        "tablet_median_seconds": 2.600224,
+        "desktop_median_seconds": 1.102853,
+        "ratio": 2.3577,
+        "device_factor": 2.36,
+        "samples_per_device": 14
+      },
+      "tests": [
+        "unit 2946 passed",
+        "integration 999 passed",
+        "robot replay passed",
+        "benchmark passed",
+        "demo replay unchanged",
+        "gateway and writing passed",
+        "GitHub Actions all jobs passed"
+      ],
+      "limitations": "Measured on one Lenovo TB336FU build and one desktop under this workload; remeasure if device, build, or workload changes."
+    }
+  },
+  "workflow": {
+    "version": 1,
+    "ci": {
+      "confirmed": true,
+      "commit_sha": "93bf39439812a7da7273567539c09e1d750442dc",
+      "run_url": "https://github.com/craklyn/tiny-farm-godot/actions/runs/36029025370",
+      "status": "success",
+      "checked_at": "2026-09-24T09:45:18-07:00"
+    }
+  },
+  "closed": "2026-09-24T09:45:18-07:00",
+  "landed": {
+    "at": "2026-09-24T09:45:18-07:00",
+    "by": "Codex operator audit of measured tablet run; no native checker pass or Daniel acceptance",
+    "sha": "93bf39439812a7da7273567539c09e1d750442dc",
+    "note": "Measured 2.36× tablet factor; local gates and matching main CI passed."
+  }
 }

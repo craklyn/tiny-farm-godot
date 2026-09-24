@@ -18,7 +18,7 @@
   "attempts": 1,
   "created": "2026-09-21T22:43",
   "created_ts": 1790055811.5161881,
-  "_revision": 3,
+  "_revision": 4,
   "promised_by": "wae35fb20cb7",
   "promised": {
     "card": "Read Daniel's hand edit to Obstacle Set",
@@ -32,5 +32,16 @@
     ],
     "applied": true,
     "stat": "gate.png: 98 alpha-only pixels cleared in closed gate (52 #bfd470, 46 #a3c263)."
-  }
+  },
+  "follow_ups": [
+    {
+      "title": "Run visual regression for the cleaned closed fence sprite",
+      "owner": "grace",
+      "level": "task",
+      "tier": 0,
+      "first_action": "Run the display visual-regression runner in an environment with working X11 or Wayland and record the screenshot verdict for gate.png.",
+      "why": "The sandbox could not render screenshots, leaving the player-visible cleanup without a visual regression result."
+    }
+  ],
+  "recommend": {}
 }

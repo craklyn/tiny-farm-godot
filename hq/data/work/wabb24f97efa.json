@@ -79,13 +79,14 @@
       "pixel_check": "7 erasures, 0 additions, 0 recolors; shipped PNG equals 0001.png",
       "guide": "docs/design/09-art-direction.md, shipped-sprite baseline re-measured 2026-09-24",
       "verification": "Operator pixel comparison; no native HQ checker verdict or Daniel approval claimed"
-    }
+    },
+    "sha": "59f4cb4934593994bc4c0a3329b97805f5c5217a"
   },
   "closed": "2026-09-24T10:49:13+00:00",
   "landed": {
     "at": "2026-09-24T10:49:13+00:00",
     "by": "Codex interactive",
-    "sha": "",
+    "sha": "59f4cb4934593994bc4c0a3329b97805f5c5217a",
     "note": "Read-only crow edit interpretation recorded; routine cream-backdrop cleanup."
   }
 }
