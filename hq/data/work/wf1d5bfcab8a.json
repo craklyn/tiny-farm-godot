@@ -7,11 +7,11 @@
   "tier_reason": "filed by hand",
   "ask": "A sound file ships that systems/audio_manager.gd never loads. From outside, a forgotten cut and a wiring bug look identical — work out which this is, then either wire it up or delete it and say why in the commit.",
   "first_action": "Compare assets/audio/sfx against the preloads in systems/audio_manager.gd, then listen to the orphan and decide.",
-  "state": "waiting_session",
+  "state": "landed",
   "thread": "dmitri",
   "source": "chat",
   "source_message": "A sound file ships that systems/audio_manager.gd never loads. From outside, a forgotten cut and a wiring bug look identical — work out which this is, then either wire it up or delete it and say why in the commit.",
-  "result": "I found the orphan and worked out which kind it is: a forgotten cut, not a wiring bug. `water.wav` was the synthesized watering sound `systems/audio_manager.gd` used before Q-31 (the foley session where you recorded three real can-on-soil pours, 2026-09-02). The wiring was already correct — `audio_manager.gd` plays the pours, exactly as ruled. The synthesized file just kept shipping in `assets/` after nothing referenced it anymore.\n\nI deleted `water.wav` and its `.import` file. `tools/gen_sfx.py` keeps the `water()` recipe (marked \"superseded... kept for reference\") but no longer writes the file — the same treatment `harvest()` already got when the CC0 recordings replaced it, so this follows precedent already in the repo rather than inventing a new one.\n\nDeleting it exposed three other spots still pointing at the dead file, which I fixed so nothing silently 404s: the Sound Test entity registry (`hq/data/entities.json`) still listed `water.wav` for the player, watering can, and well; and two HQ decision cards (Q-13, Q-31) had it as an audio attachment. All four now point at `water_pour_01.wav`. CREDITS.md's watering-can entry no longer claims the deleted file is \"kept as a fallback\" — there was no fallback code, so that line was already wrong.\n\nBoth suites are green (1983 + 528 tests) after a fresh `--import`.\n\nOne thing worth naming while I was in the audio table: the sprinkler has a built entity and zero sound wired — no \"sprinkler\" row exists in the mixer at all. You already ruled the shape of that fix on 2026-09-02 (one shared cue per morning, not one per machine, with density handled in the mix), but it was never filed as work, so I'm filing it now rather than letting it sit as something only I remember.",
+  "result": "I found the orphan and worked out which kind it is: a forgotten cut, not a wiring bug. `water.wav` was the synthesized watering sound `systems/audio_manager.gd` used before Q-31 (the foley session where you recorded three real can-on-soil pours, 2026-09-02). The wiring was already correct — `audio_manager.gd` plays the pours, exactly as ruled. The synthesized file just kept shipping in `assets/` after nothing referenced it anymore.\n\nI deleted `water.wav` and its `.import` file. `tools/gen_sfx.py` keeps the `water()` recipe (marked \"superseded... kept for reference\") but no longer writes the file — the same treatment `harvest()` already got when the CC0 recordings replaced it, so this follows precedent already in the repo rather than inventing a new one.\n\nDeleting it exposed three other spots still pointing at the dead file, which I fixed so nothing silently 404s: the Sound Test entity registry (`hq/data/entities.json`) still listed `water.wav` for the player, watering can, and well; and two HQ decision cards (Q-13, Q-31) had it as an audio attachment. All four now point at `water_pour_01.wav`. CREDITS.md's watering-can entry no longer claims the deleted file is \"kept as a fallback\" — there was no fallback code, so that line was already wrong.\n\nBoth suites are green (1983 + 528 tests) after a fresh `--import`.\n\nOne thing worth naming while I was in the audio table: the sprinkler has a built entity and zero sound wired — no \"sprinkler\" row exists in the mixer at all. You already ruled the shape of that fix on 2026-09-02 (one shared cue per morning, not one per machine, with density handled in the mix), but it was never filed as work, so I'm filing it now rather than letting it sit as something only I remember.\n\n2026-09-24 reconciliation: The cleanup already reached main as commit `5b320b1`. Current files confirm `water.wav` and its `.import` are absent; `audio_manager.gd` preloads all three recorded pours; the generator no longer writes the synthetic file; CREDITS.md, the three Sound Test entity paths, and Q-13/Q-31 point at the recorded sound. Q-31 now names the recorded pour directly. The earlier 1983 + 528 counts are the original worker’s report; this reconciliation did not rerun Godot because it changed no code or assets. GitHub Actions run 35855047979 for the audio cleanup commit completed successfully. The separate sprinkler cue subsequently landed in `5e8e614`; this card does not claim that work.",
   "started": "",
   "attempts": 1,
   "created": "2026-09-03T18:10",
@@ -79,5 +79,27 @@
       },
       "why": "Reworded in plain language: the old title used words that mean something precise inside this studio and nothing outside it."
     }
-  ]
+  ],
+  "closed": "2026-09-24T09:05:22Z",
+  "completion": {
+    "version": 1,
+    "attempt_id": "orphan-audio-reconciliation-wf1d5bfcab8a-20260924",
+    "at": "2026-09-24T09:05:22Z",
+    "sha": "5b320b1979f6511b9c4a01ae4a44393373b9ed31",
+    "by": "Codex interactive",
+    "kind": "change",
+    "evidence": {
+      "audio_commit": "5b320b1979f6511b9c4a01ae4a44393373b9ed31",
+      "ci_tests_run": "https://github.com/craklyn/tiny-farm-godot/actions/runs/35855047979",
+      "ci_tests_status": "completed: success",
+      "verification": "Current main has no water.wav or water.wav.import; audio preloads, generator, credits, entity registry, and Q-13/Q-31 references checked; Q-31 caption is clear.",
+      "local_godot": "Not run in this reconciliation; no code or assets changed."
+    }
+  },
+  "landed": {
+    "at": "2026-09-24T09:05:22Z",
+    "by": "Codex interactive",
+    "sha": "5b320b1979f6511b9c4a01ae4a44393373b9ed31",
+    "note": "Original synthesized watering sound was removed in 5b320b1; current references and successful audio-commit CI verified."
+  }
 }
