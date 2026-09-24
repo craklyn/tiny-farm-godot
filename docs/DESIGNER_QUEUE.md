@@ -603,6 +603,11 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   processing are in `CREDITS.md`. Daniel can choose either or reject both; only
   a ruling licenses wiring a pick into the verb's shared cue path. If a further
   free search still finds nothing, plant joins the batched Q-31 foley list.
+- **Q-120** When should dedicated marketing start? — **Ruling, open
+  2026-09-24.** Carmen prepared three checkable triggers and the work each would
+  start in `hq/data/decisions/Q-120.json`. The next public update is recommended
+  for one measured announcement. The standing dormancy instruction remains in
+  force until Daniel chooses; no campaign starts from this recommendation alone.
 - **Q-29** ~~Verb animation depth~~ — ✅ **ruled 2026-09-02: tier (b), actor +
   reaction, for the five core verbs.** Full per-verb choreography (c) is not closed:
   the designer asked for an explicit revisit trigger, recorded under D-8.

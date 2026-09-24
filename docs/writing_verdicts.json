@@ -224,6 +224,9 @@
   "0c5608a471644d1ae101": {
    "verdict": "ok"
   },
+  "0cdbe4f40b61c66a2fc3": {
+   "verdict": "ok"
+  },
   "0cedaa55fd7b2bd2ed74": {
    "verdict": "ok"
   },
@@ -528,6 +531,9 @@
    "verdict": "ok"
   },
   "1a1c7be9a72d02cbfc14": {
+   "verdict": "ok"
+  },
+  "1a23a3a8cdd0cf089e4e": {
    "verdict": "ok"
   },
   "1a5942056df6383d948f": {
@@ -1478,6 +1484,9 @@
   "4f5a3d7a57c0fd4dabc6": {
    "verdict": "ok"
   },
+  "4f69e7dea325eb322a6e": {
+   "verdict": "ok"
+  },
   "4f988db3c9511dea7d56": {
    "verdict": "ok"
   },
@@ -1894,6 +1903,9 @@
    "verdict": "ok"
   },
   "6650f8b0e9321adc675d": {
+   "verdict": "ok"
+  },
+  "6659a451955f11043d62": {
    "verdict": "ok"
   },
   "665a2a244517321270fd": {
@@ -2336,6 +2348,9 @@
    "verdict": "ok"
   },
   "7c12900196f78d4a2b48": {
+   "verdict": "ok"
+  },
+  "7c2222fcddf5c0b379a6": {
    "verdict": "ok"
   },
   "7c23adf64920e8bea113": {
@@ -3195,6 +3210,9 @@
   "a6cffb635f6fe4d6539e": {
    "verdict": "ok"
   },
+  "a78e6ec9fcc86be4982e": {
+   "verdict": "ok"
+  },
   "a797d14b633d736b9068": {
    "verdict": "ok"
   },
@@ -3358,6 +3376,9 @@
   "aee6253f6a8183fb2e59": {
    "verdict": "ok"
   },
+  "af13915f7e9d921077e6": {
+   "verdict": "ok"
+  },
   "af423b3aba3d3571b62c": {
    "verdict": "ok"
   },
@@ -3506,6 +3527,9 @@
    "verdict": "ok"
   },
   "b98626455d516005a7a7": {
+   "verdict": "ok"
+  },
+  "b98e990b653f6882af75": {
    "verdict": "ok"
   },
   "b9bff2a0e715ab40f03c": {
@@ -4005,6 +4029,9 @@
    "verdict": "decode",
    "why": "\"Ramps\" is technical design vocabulary—likely color ramps or timing ramps—not defined for someone arriving cold."
   },
+  "d16d31aef1a129f9fdce": {
+   "verdict": "ok"
+  },
   "d1d7c0282d410e0ad2ca": {
    "verdict": "ok"
   },
@@ -4271,6 +4298,9 @@
    "quote": "Onion skin",
    "verdict": "second-look",
    "why": "Animation software terminology not explained for a reader unfamiliar with the tool."
+  },
+  "dd5c488477ce118d0a2d": {
+   "verdict": "ok"
   },
   "dd9c32a51ca07fb49736": {
    "verdict": "ok"

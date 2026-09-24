@@ -1,0 +1,44 @@
+{
+  "id": "Q-120",
+  "owner": "carmen",
+  "pillar": "marketing",
+  "title": "When should dedicated marketing start?",
+  "question": "You asked the studio to keep dedicated marketing dormant until Tiny Farm has more players. The game is public and has shipped v0.2.0, but the studio still has no chosen event to start a campaign. Which event should start a campaign? Recommendation: use the next public update for one small, measured announcement. This card prepares the choice; marketing remains dormant until you rule.",
+  "why_now": "Without a trigger, the standing instruction has no test. The next planned update is v0.2.1, the robot that learns. The store-page draft describes the game, but publishing page text is still a manual release step. The studio has no recorded itch.io visitor or download count to use as an automatic trigger today.",
+  "options": [
+    {
+      "key": "a",
+      "label": "The next public update (Recommended)",
+      "detail": "Trigger: the first new version after your ruling is uploaded as a playable build on the public itch.io page; the planned v0.2.1 update qualifies if it is next. That week Carmen checks the live build against the store-page copy, Daniel publishes the accurate copy, and the channel team posts one real gameplay clip with a link to the free build. No paid ads, press outreach or access codes for creators. After 30 days Carmen reports the itch.io page views and downloads for that period, or explicitly reports that the account data was unavailable, before asking whether to widen the campaign.",
+      "recommended": true
+    },
+    {
+      "key": "b",
+      "label": "100 downloads in seven days",
+      "detail": "Trigger: the itch.io owner verifies at least 100 downloads of the public build during one rolling seven-day period in the itch.io dashboard. Views alone do not count, and no number is assumed while account analytics are unavailable. Within the following week Carmen checks the store-page claims against the live build, publishes one gameplay clip on each active channel, and prepares a press kit and a small creator list for Daniel to review. Outreach and spending still need a separate decision. This choice may wait indefinitely if downloads never reach 100."
+    },
+    {
+      "key": "c",
+      "label": "A new player uses a robot to water",
+      "detail": "Trigger: a person who did not build the game starts a fresh public build, plants and harvests, buys a robot, teaches it a watering patch, sleeps, and sees it work the next morning; a dated session note records the build and result. Within the following week Carmen updates the store page against that build and the team prepares a trailer and press kit for Daniel to approve. Weekly posting, creator outreach and any spending would each require a later decision. This checks the promise players will see, but depends on finding a tester and does not show that an audience has arrived."
+    }
+  ],
+  "links": [
+    {
+      "label": "Marketing dormancy record",
+      "href": "#/pillar/marketing"
+    },
+    {
+      "label": "The public store-page draft",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/ITCH_PAGE.md"
+    },
+    {
+      "label": "The planned public updates",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/hq/data/releases.json"
+    },
+    {
+      "label": "The work that prepared this choice",
+      "href": "#/work/wb95a0985e33"
+    }
+  ]
+}
