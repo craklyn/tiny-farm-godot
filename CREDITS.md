@@ -547,6 +547,8 @@ before the first public build ships.*
       crow-night recording measured the peck peaking at 0 dBFS over a music
       bed sitting near -30 dB RMS. The wired file is now the trimmed take;
       the untrimmed source is kept as `peck_cc0_248254_raw.wav`, unwired.
+      The source was restored from the commit before the trim on 2026-09-24;
+      its peak is -4.4 dBFS versus -10.4 dBFS for the wired take.
     - **Seeder robot treads (bed, timed to the frames it drives on, not the
       whole loop)** — ruled: swap to "mehackit robot 5" and stop running it
       under the whole loop. `seeder_tread_cc0_415564.wav` — Freesound #415564
@@ -572,7 +574,10 @@ before the first public build ships.*
       **Trimmed 6 dB (2026-09-20)**: the robot-night recording measured the
       scatter peaking at 0 dBFS over the same -30 dB RMS bed. The wired file
       is now the trimmed take; the untrimmed source is kept as
-      `seeder_scatter_cc0_348953_raw.wav`, unwired.
+      `seeder_scatter_cc0_348953_raw.wav`, unwired. The source was restored
+      from the commit before the trim on 2026-09-24; its peak is -3.3 dBFS
+      versus -9.3 dBFS for the wired take. The three-moment Q-107 video was
+      re-recorded from the running game after verifying both trims.
     - **Boot bloom chime** — ruled: keep the recommendation, and add a longer
       pause after it finishes before the music ramps up (now
       `ui/title_screen.gd`'s `POST_CHIME_PAUSE_SEC`, 0.4s, read against the
