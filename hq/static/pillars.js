@@ -1023,7 +1023,6 @@ async function instSales(root, below, sig, g, ctx) {
   const gateIds = ["debug-text-is-off", "credits-screen-opens", "release-is-reproducible",
                    "web-build-played-through", "visual-regression-runs"];
   const gates = gateIds.map(id => byId[id]).filter(Boolean);
-  const machine = gates.filter(x => ["green", "amber", "red"].includes(x.state));
   const gateRows = gates.map(x => {
     const m = GOAL_META[x.state] || GOAL_META.green;
     return `<div class="gate-row gs-${x.state}">
@@ -1032,6 +1031,14 @@ async function instSales(root, below, sig, g, ctx) {
       <span class="small muted">${esc(x.measured_human)}</span>
     </div>`;
   }).join("");
+  const play = await api("/api/web-play").catch(() => ({ state: "error", message: "The web play record could not be read." }));
+  const playButton = play.can_attest && play.state !== "holds"
+    ? `<button class="gbtn web-play-record">Record that you played this build</button>` : "";
+  const playRow = `<div class="gate-row web-play-row gs-${play.state === "holds" ? "attested" : "red"}">
+    <i class="dot ${play.state === "holds" ? "d-attested" : "d-attn"}"></i>
+    <span>Play the exported web build end to end before the tag</span>
+    <span class="small muted web-play-state">${esc(play.message || "Record unavailable")}${play.dirty_game ? " Commit or discard game changes before recording a new play." : ""}${playButton}</span>
+  </div>`;
 
   // The drift lives beside the verdict, not inside the instrument: it is one
   // fact and it must never be the thing that scrolls away.
@@ -1045,15 +1052,42 @@ async function instSales(root, below, sig, g, ctx) {
   }
 
   root.replaceChildren(h(`
-    <h2>The launch check <span class="small muted">— ${machine.length} of ${gates.length} monitored</span></h2>
-    <div class="card gatecard">${gateRows}
+    <h2>The launch check <span class="small muted">— ${gates.length + 1} release checks</span></h2>
+    <div class="card gatecard">${gateRows}${playRow}
     </div>
 
     <div class="card norelease">
       <div class="small muted">To publish, from a terminal:</div>
-      <pre class="inert">git tag -a v0.2.0 -m "…"  &amp;&amp;  git push origin v0.2.0</pre>
+      <pre class="inert">git tag -a ${esc(play.tag || "VERSION")} -m "…"  &amp;&amp;  git push origin ${esc(play.tag || "VERSION")}</pre>
       <div class="small muted">You release the game by pushing a version tag.</div>
     </div>`));
+  const recordButton = root.querySelector(".web-play-record");
+  if (recordButton) {
+    let armed = false;
+    recordButton.addEventListener("click", async () => {
+      if (!armed) {
+        armed = true;
+        recordButton.textContent = `I played the exported ${play.tag} web build in a browser; record it`;
+        return;
+      }
+      recordButton.disabled = true;
+      try {
+        const response = await fetch("/api/web-play", {method: "POST",
+          headers: {"Content-Type": "application/json"},
+          body: JSON.stringify({of: "web_play", played: true})});
+        const result = await response.json();
+        if (!response.ok || result.error) throw new Error(result.error || "Save failed");
+        root.querySelector(".web-play-state").textContent = result.status.message;
+        root.querySelector(".web-play-row").classList.add("gs-attested");
+      } catch (error) {
+        armed = false;
+        recordButton.disabled = false;
+        recordButton.textContent = "Record that you played this build";
+        recordButton.title = error.message;
+        root.querySelector(".web-play-state").prepend(`Could not record: ${error.message}. `);
+      }
+    });
+  }
 
   // The ladder: where we can sell it, and what the next storefront would cost.
   // Reference rather than headline — the roll-up is a goal above the fold, and

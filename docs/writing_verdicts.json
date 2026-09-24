@@ -172,6 +172,9 @@
   "0ae1a5aa794964b6bcfc": {
    "verdict": "ok"
   },
+  "0b0f19f19392d4f5e4bb": {
+   "verdict": "ok"
+  },
   "0b2c4e886db53ed12ad7": {
    "verdict": "ok"
   },
@@ -1503,6 +1506,9 @@
   "559e514e67a7a116ce47": {
    "verdict": "ok"
   },
+  "55d3dd9dd5229d81f564": {
+   "verdict": "ok"
+  },
   "55f28a7e8cb8a388013f": {
    "instead": "Egg income pays for the early purchases",
    "quote": "eggs carry the early purchases",
@@ -1550,6 +1556,9 @@
    "verdict": "ok"
   },
   "58b9e84387db3fe71724": {
+   "verdict": "ok"
+  },
+  "58e1e4f74c6baf4ca367": {
    "verdict": "ok"
   },
   "591cbebef07b7b63eea0": {
@@ -1764,6 +1773,9 @@
   "654d0680863d42de1bdb": {
    "verdict": "ok"
   },
+  "654f1a6935f317fd0b13": {
+   "verdict": "ok"
+  },
   "65afd7b6fab012b252f7": {
    "verdict": "ok"
   },
@@ -1814,6 +1826,9 @@
    "quote": "Landed on main; CI confirmed",
    "verdict": "decode",
    "why": "“Landed on main” and “CI” are engineering shorthand for a change being merged and automatically checked."
+  },
+  "67f694a2826735f319e7": {
+   "verdict": "ok"
   },
   "68a3539225cfff3214ef": {
    "verdict": "ok"
@@ -2296,6 +2311,9 @@
    "verdict": "ok"
   },
   "81cd8fafc277fe523019": {
+   "verdict": "ok"
+  },
+  "81ee2f74d1f733717964": {
    "verdict": "ok"
   },
   "821546048b445324bb1b": {
@@ -3240,6 +3258,12 @@
   },
   "b81c7adf051af84411ca": {
    "verdict": "ok"
+  },
+  "b83380d0c5d83f5e3f99": {
+   "instead": "I played the exported … web build in a browser; record that play",
+   "quote": "record it",
+   "verdict": "second-look",
+   "why": "The sentence does not say whether “it” means the web build or the play session."
   },
   "b8cc67e303e7956c12b2": {
    "verdict": "ok"

@@ -3390,6 +3390,99 @@ def release_manifest(release_id=None):
     return data
 
 
+# A browser play is a human act. The record is deliberately separate from the
+# release workflow: a local HQ button cannot prove that a browser was played.
+WEB_PLAY_PATHS = ("assets", "autoload", "crops", "effects", "entities", "player",
+                  "systems", "ui", "world", "project.godot", "main.gd",
+                  "main.tscn", "export_presets.cfg", "icon.png", "icon.png.import")
+_WEB_PLAY_LOCK = threading.Lock()
+
+
+def _web_play_git(*args):
+    result = subprocess.run(["git", *args], cwd=REPO, capture_output=True,
+                            text=True, timeout=10)
+    if result.returncode:
+        raise ValueError("Cannot check the current game source")
+    return result.stdout.strip()
+
+
+def _web_play_target():
+    releases = load_json(os.path.join(DATA, "releases.json"))["releases"]
+    for release in releases:
+        tag = release.get("tag_intent")
+        if tag and not _web_play_git("tag", "-l", tag):
+            return tag, release.get("name", tag)
+    return None, None
+
+
+def _web_play_dirty():
+    return bool(_web_play_git("status", "--porcelain=v1", "--untracked-files=all",
+                              "--", *WEB_PLAY_PATHS))
+
+
+def web_play_status():
+    """Current release's human claim; never infer that a play happened."""
+    tag, name = _web_play_target()
+    if not tag:
+        return {"state": "no_release", "can_attest": False,
+                "message": "No upcoming tag is recorded."}
+    head = _web_play_git("rev-parse", "HEAD")
+    dirty = _web_play_dirty()
+    path = os.path.join(DATA, "attestations.json")
+    records = load_json(path).get("records", []) if os.path.isfile(path) else []
+    record = next((r for r in reversed(records) if r.get("kind") == "web_play"
+                   and r.get("for_tag") == tag), None)
+    base = {"tag": tag, "release": name, "can_attest": not dirty,
+            "dirty_game": dirty}
+    if not record:
+        return {**base, "state": "none", "message": f"Nobody has recorded playing the web build for {tag}."}
+    commit = record.get("commit", "")
+    try:
+        if not re.fullmatch(r"[0-9a-f]{40}", commit):
+            raise ValueError("Invalid recorded commit")
+        # A vanished or unrelated commit cannot support the current build.
+        _web_play_git("merge-base", "--is-ancestor", commit, head)
+        changed = bool(_web_play_git("diff", "--name-only", commit, head,
+                                     "--", *WEB_PLAY_PATHS))
+    except ValueError:
+        changed = True
+    if changed or dirty:
+        why = "uncommitted game content" if dirty else "game content changed since the play"
+        return {**base, "state": "lapsed", "on": record.get("on"),
+                "message": f"The {tag} play record lapsed: {why}."}
+    return {**base, "state": "holds", "on": record.get("on"),
+            "message": f"You recorded playing the web build for {tag} on {record.get('on')}."}
+
+
+def record_web_play(payload):
+    if not isinstance(payload, dict) or payload.get("of") != "web_play" or payload.get("played") is not True:
+        raise ValueError("Confirm that you personally played the exported web build")
+    with _WEB_PLAY_LOCK:
+        status = web_play_status()
+        if status["state"] == "no_release":
+            raise ValueError("No upcoming tag is recorded")
+        if status["dirty_game"]:
+            raise ValueError("Game content is uncommitted; play a clean build before recording it")
+        tag = status["tag"]
+        head = _web_play_git("rev-parse", "HEAD")
+        path = os.path.join(DATA, "attestations.json")
+        doc = load_json(path) if os.path.isfile(path) else {"records": []}
+        record = {"kind": "web_play", "for_tag": tag, "commit": head,
+                  "on": datetime.date.today().isoformat(), "by": "daniel"}
+        doc.setdefault("records", []).append(record)
+        fd, temporary = tempfile.mkstemp(prefix="attestations-", suffix=".json", dir=DATA)
+        try:
+            with os.fdopen(fd, "w", encoding="utf-8") as out:
+                json.dump(doc, out, indent=2)
+                out.write("\n")
+            os.replace(temporary, path)
+        finally:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
+        signals_dirty()
+        return {"record": record, "status": web_play_status()}
+
+
 # ---------------------------------------------------------------------------
 # The platform ladder.
 #
@@ -6530,6 +6623,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, ci_history() or {"error": "not polled yet"})
             if path == "/api/gate":
                 return self._send(200, gate_scorecard())
+            if path == "/api/web-play":
+                return self._send(200, web_play_status())
             if path == "/api/platforms":
                 return self._send(200, platform_ladder())
             if path.startswith("/api/manifest"):
@@ -6603,6 +6698,13 @@ class Handler(BaseHTTPRequestHandler):
             payload = json.loads(self.rfile.read(length) or b"{}")
         except Exception:
             return self._send(400, {"error": "bad JSON"})
+        if path == "/api/web-play":
+            try:
+                return self._send(200, record_web_play(payload))
+            except ValueError as e:
+                return self._send(400, {"error": str(e)})
+            except Exception as e:
+                return self._send(500, {"error": str(e)[:300]})
         if path == "/api/goal/save":
             return self._send(200, save_goal(payload))
         if path == "/api/goal/commitment":
