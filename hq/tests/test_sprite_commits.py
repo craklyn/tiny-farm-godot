@@ -168,6 +168,46 @@ class SpriteCommits(unittest.TestCase):
         self.assertEqual(card["withdrawn"]["reason"], "reverted at step 4")
         self.assertEqual(studio.history(SHEET)[-1]["kind"], "revert")
 
+    def test_revert_withdraws_all_undone_cards_from_the_actionable_queue(self):
+        for seq, state in ((1, "doing"), (2, "for_review"), (3, "accepted")):
+            card_id = f"w{seq:011x}"
+            work.save_item({"id": card_id, "state": state, "tier": 0,
+                            "title": f"Step {seq}", "owner": "ingrid"})
+            studio.record(SHEET, PNG + bytes([seq - 1]), PNG + bytes([seq]),
+                          {"kind": "edit"})
+            studio.attach_filing(KEY, seq, {"work_id": card_id})
+        before = {item["id"] for item in work.items()
+                  if item["state"] in work.OPEN_STATES}
+        self.assertEqual(before, {"w00000000001", "w00000000002"})
+
+        reverted = server.revert_sprite({"sheet": SHEET, "seq": 0})
+        self.assertEqual(reverted["withdrawn"], ["w00000000001", "w00000000002"])
+        after = {item["id"] for item in work.items()
+                 if item["state"] in work.OPEN_STATES}
+        self.assertEqual(after, set())
+        for card_id in before:
+            card = work.load_item(card_id)
+            self.assertEqual(card["state"], "dropped")
+            self.assertEqual(card["withdrawn"]["reason"], "reverted at step 4")
+        self.assertEqual(work.load_item("w00000000003")["state"], "accepted")
+        self.assertEqual([step["seq"] for step in studio.history(SHEET)], list(range(5)))
+
+    def test_noop_revert_keeps_the_art_request_open(self):
+        server.save_sprite({
+            "sheet": SHEET,
+            "data_url": "data:image/png;base64," + base64.b64encode(PNG + b"x").decode(),
+            "note": "test",
+        })
+        card_id = "w00000000001"
+        work.save_item({"id": card_id, "state": "doing", "tier": 0,
+                        "title": "Step 1", "owner": "ingrid"})
+        studio.attach_filing(KEY, 1, {"work_id": card_id})
+
+        self.assertEqual(server.revert_sprite({"sheet": SHEET, "seq": 1})["error"],
+                         "already at that step")
+        self.assertEqual(work.load_item(card_id)["state"], "doing")
+        self.assertEqual([step["seq"] for step in studio.history(SHEET)], [0, 1])
+
 
 if __name__ == "__main__":
     unittest.main()
