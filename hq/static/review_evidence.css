@@ -18,4 +18,8 @@
 .review-numbers { width: 100%; margin-top: 12px; border-collapse: collapse; font-variant-numeric: tabular-nums; }
 .review-numbers th, .review-numbers td { padding: 8px; border-bottom: 1px solid var(--line); text-align: left; }
 .review-numbers thead th { font-size: .85rem; }
+.review-export { margin: 10px 0; padding: 12px; border: 1px solid var(--line); border-radius: 8px; }
+.review-export > b { display: block; margin-bottom: 4px; }
+.review-export p { margin: 0 0 8px; font-size: .85rem; color: var(--muted); }
+.review-export canvas { display: block; max-width: 100%; height: auto; image-rendering: pixelated; margin-bottom: 6px; }
 @media (max-width: 560px) { .review-media-grid, .review-copy-grid { grid-template-columns: 1fr; } }

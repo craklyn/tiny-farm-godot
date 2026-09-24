@@ -36,7 +36,7 @@ function reviewLegacyAnimation(item) {
   const match = /^Open #\/design\/anim\/([a-z0-9_]{1,64}) and watch it at both sizes$/.exec(item.first_action || "");
   if (!match) return null;
   return {href: `#/design/anim/${match[1]}`, label: `Open ${match[1].replaceAll("_", " ")} in the Animation Lab`,
-    legacy: true};
+    slug: match[1], legacy: true};
 }
 
 function reviewHeadingArtifact(item) {
@@ -97,11 +97,52 @@ function reviewComparison(item, attachments = []) {
   return `<section class="review-evidence" aria-label="Result evidence">
     <h4>Result to review</h4>
     <p class="review-provenance">${creation ? `Created: ${esc(creation)} · ` : ""}Displayed here: ${media.length ? "playable or readable evidence" : "linked artifact"} · ${versionLabel}</p>
-    ${legacy ? `<p class="review-version-gap"><a href="${esc(legacy.href)}">${esc(legacy.label)}</a> · This opens the live Lab result; this older card does not identify the exact render originally reviewed.</p>` : ""}
+    ${legacy ? `<p class="review-version-gap">This older card does not identify the exact render originally reviewed. <a href="${esc(legacy.href)}">${esc(legacy.label)}</a>.</p>
+      <div class="review-export"><b>Currently exported game animation</b><p>This is the sheet available in the game code today. It may differ from the original review.</p>
+        <canvas data-review-slug="${esc(legacy.slug)}" aria-label="Currently exported ${esc(legacy.slug.replaceAll("_", " "))} animation at game scale"></canvas>
+        <a href="/assets/anim/${esc(legacy.slug)}/sheet.png">Open exported sheet</a></div>` : ""}
     ${media.length ? [...new Set(media.map(e => e.group || ""))].map(name =>
       `<div class="review-media-group">${name ? `<h5>${esc(name)}</h5>` : ""}<div class="review-media-grid">${media.filter(e => (e.group || "") === name).map(e => reviewMediaCard(e)).join("")}</div></div>`).join("") : ""}
     ${copy.length ? `<div class="review-copy-grid">${copy.map(e => `<div><h5>${esc(e.label || "Version")}</h5><div class="review-copy">${esc(e.text || "")}</div></div>`).join("")}</div>` : ""}
     ${rows.length ? reviewNumberTable(rows) : ""}
     ${evidenceLinks ? `<p class="review-links">${evidenceLinks}</p>` : ""}
   </section>`;
+}
+
+function reviewMountPreviews(root = document) {
+  for (const canvas of root.querySelectorAll("canvas[data-review-slug]:not([data-review-mounted])")) {
+    const slug = canvas.dataset.reviewSlug;
+    if (!/^[a-z0-9_]{1,64}$/.test(slug)) continue;
+    canvas.dataset.reviewMounted = "true";
+    Promise.all([
+      fetch(`/assets/anim/${slug}/manifest.json`).then(r => { if (!r.ok) throw Error("No export"); return r.json(); }),
+      new Promise((resolve, reject) => { const img = new Image(); img.onload = () => resolve(img);
+        img.onerror = reject; img.src = `/assets/anim/${slug}/sheet.png`; }),
+    ]).then(([manifest, sheet]) => {
+      const width = Number(manifest.cell_width), height = Number(manifest.cell_height);
+      const count = Number(manifest.frame_count), delay = Number(manifest.ms_per_frame);
+      if (!Number.isInteger(width) || !Number.isInteger(height) || !Number.isInteger(count)
+          || width < 1 || height < 1 || count < 1 || width * count > sheet.width
+          || height > sheet.height || !Number.isFinite(delay) || delay < 16) throw Error("Invalid export");
+      canvas.width = width; canvas.height = height;
+      const ctx = canvas.getContext("2d");
+      let frame = 0;
+      const draw = () => { if (!canvas.isConnected) return;
+        ctx.clearRect(0, 0, width, height);
+        ctx.drawImage(sheet, frame * width, 0, width, height, 0, 0, width, height);
+        frame = (frame + 1) % count;
+        setTimeout(draw, delay);
+      };
+      draw();
+    }).catch(() => {
+      canvas.replaceWith(Object.assign(document.createElement("span"), {
+        textContent: "The exported preview is unavailable. Open the linked sheet to inspect it."}));
+    });
+  }
+}
+
+if (typeof document !== "undefined" && document.body && typeof MutationObserver !== "undefined") {
+  const observer = new MutationObserver(() => reviewMountPreviews());
+  observer.observe(document.body, {childList: true, subtree: true});
+  reviewMountPreviews();
 }

@@ -246,6 +246,8 @@ const actualDesign = readCard("decisions", "Q-107");
 const seeder = queue.qPaneHtml(queue.qWorkItem(actualAnimation, {}, "Recorded review"), {});
 assert.ok(seeder.includes('href="#/design/anim/seeder_bot"'), "seeder review links to the real Lab result beside its heading");
 assert.ok(seeder.includes("does not identify the exact render originally reviewed"), "legacy display does not claim a pinned version");
+assert.ok(seeder.includes('data-review-slug="seeder_bot"') && seeder.includes("Currently exported game animation"),
+  "seeder review offers the playable game export while distinguishing it from the unpinned original");
 const audioChoice = readCard("decisions", "Q-102");
 const audioHtml = queue.qPaneHtml(queue.qDecisionItem(audioChoice, {}, { seats: [] }), {});
 assert.equal((audioHtml.match(/<audio /g) || []).length, 3, "all recorded rival sounds are listenable");
