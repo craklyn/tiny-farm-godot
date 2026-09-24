@@ -7,12 +7,12 @@
   "tier_reason": "Five of Daniel's seven hand edits are the same defect on different sheets, so the ones he has not opened yet almost certainly carry it too.",
   "ask": "Accepted “Read Daniel's hand edit to Neighbour”. Five of Daniel's seven hand edits are the same defect on different sheets, so the ones he has not opened yet almost certainly carry it too.",
   "first_action": "Script a read-only scan of assets/sprites/generated/*.png for fully-opaque pixels at or near #ffffff that sit outside a drawn shape (edge-connected to the transparent region). Report per sheet: file, frame index, pixel count, coordinates. Include neighbour.png frames 4 and 14 specifically — the hand edit left 53 pixels where the identical Farmer sweep took 56, and the 3-pixel gap is frame 4 (2px) plus one pixel of frame 14.",
-  "state": "waiting_session",
+  "state": "landed",
   "thread": "ingrid",
   "source": "chat",
   "source_message": "Accepted “Read Daniel's hand edit to Neighbour”.",
-  "result": "I hit a hard wall: this session's shell only allows trivial filesystem checks (`ls`, `file`) — every command that actually executes logic (`python3`, `godot`, even `awk`) is blocked pending an approval that isn't available in an unattended run. I can't decode PNG pixel data by hand, so I can't produce the per-sheet/frame/pixel-count/coordinate table you asked for from this session.\n\nWhat I did instead: wrote the actual scan script, ready to run —\n`/tmp/claude-1000/-home-daniel-dev-tiny-farm-godot/59440ba9-4637-4601-a2df-fe1bf81986b5/scratchpad/scan_white_edges.py`\n\nIt does exactly what you specified: for each sheet in `assets/sprites/generated/*.png`, flood-fills from the sheet's four edges across pixels that are either transparent or opaque near-white (R,G,B ≥ 245, alpha ≥ 250), so it only flags near-white pixels that are actually connected to the outside — not white paint that's part of a drawn shape. It reports file, per-frame pixel counts, and (x,y) coordinates local to each frame. I aimed it at `neighbour.png` and the frame-square assumption specifically so frames 4 and 14 fall out naturally, but I haven't been able to execute it, so I can't confirm the 53-vs-56 gap you described — that's still unverified.\n\nWhat blocks it: no approved way to run an interpreter in this session. What it needs: one normal engineering session (interactive, or a build worktree with Bash execution approved) to run `python3 scan_white_edges.py` — it needs Pillow, which may need `pip install pillow` first — and capture the printed report.\n\nWhat this implies: the inventory step is stalled on a tooling gap, not on the defect itself — the defect (five of seven hand edits hitting the same thing) is credible enough that the real fix is still the pipeline's alpha step, which is already queued as its own item. This scan is diagnostic evidence for that fix, not a separate fix in itself.",
-  "started": "",
+  "result": "Ran a corrected read-only scan of all 52 generated PNGs. The checked-in report gives each candidate sheet, zero-based frame, count, and every frame-local coordinate: docs/design/evidence/generated_white_inventory.md and generated_white_inventory.json. It found 730 edge-connected light pixels across 12 sheets; visual review found these to be intentional feathers, clothing, walls, and icon fills, with no confirmed unwanted cream left. The earlier scratch scanner returned zero because its blue threshold excluded shipped cream #f8f4e6. A check against Neighbour before Daniel's edit finds 162 candidates versus 110 now, detecting the 52 cream pixels that were erased. Comparing current Neighbour with the Farmer finds three remaining opaque pixels at frame 4 (22,42) #f6ddc4, (22,43) #5c4e92 and frame 14 (24,43) #f6ddc4. Their intent is unverified; they are recorded for art review, and no shipped PNG was changed. The pipeline alpha fix remains separate on card w6ef64f2e6dd. The scanner and report landed on main at 3e3c3ca; the focused scan and historical comparison passed, and GitHub Actions run 35976347574 passed all jobs. This is an interactive operator review, not a native HQ checker verdict.",
+  "started": "2026-09-24T08:46:01Z",
   "attempts": 1,
   "created": "2026-09-19T16:39",
   "created_ts": 1789861168.3487298,
@@ -28,25 +28,52 @@
     }
   ],
   "recommend": {},
-  "finished": "2026-09-19T16:41",
+  "finished": "2026-09-24T08:46:01Z",
   "subject": "The sprite pipeline",
-  "_revision": 1,
+  "_revision": 2,
   "completion_reconciliation": {
     "version": 1,
-    "manifest_id": "38bb688252099d3f8dc679c6d536b9e1ea6197db010adb6fa2b9030b59e42f33",
-    "at": "2026-09-21T22:43",
-    "classification": "return_to_owner",
-    "by": "Codex interactive independent read-only audit by subagent build_adapter; operator review, not native checker approval",
-    "evidence_summary": "Result reports blocked execution and supplies no per-sheet, frame or coordinate inventory. Existing cleanup work is w5426d0d8fac."
+    "at": "2026-09-24T08:46:01Z",
+    "classification": "safe_to_close",
+    "by": "Codex interactive operator review; not a native HQ checker verdict",
+    "evidence_summary": "Reproducible full-coordinate inventory and focused historical comparison passed; commit 3e3c3ca and CI run 35976347574 passed."
   },
   "repair_brief": "Run the generated-sheet white-pixel scan and attach a per-sheet, frame and coordinate inventory, distinguishing intentional palette colors from unwanted opaque background. Coordinate findings with w5426d0d8fac.",
   "automatic_repairs": 1,
-  "revising": true,
+  "revising": false,
   "prior_results": [
     {
       "at": "2026-09-19T16:41",
       "attempt": 1,
       "result": "I hit a hard wall: this session's shell only allows trivial filesystem checks (`ls`, `file`) — every command that actually executes logic (`python3`, `godot`, even `awk`) is blocked pending an approval that isn't available in an unattended run. I can't decode PNG pixel data by hand, so I can't produce the per-sheet/frame/pixel-count/coordinate table you asked for from this session.\n\nWhat I did instead: wrote the actual scan script, ready to run —\n`/tmp/claude-1000/-home-daniel-dev-tiny-farm-godot/59440ba9-4637-4601-a2df-fe1bf81986b5/scratchpad/scan_white_edges.py`\n\nIt does exactly what you specified: for each sheet in `assets/sprites/generated/*.png`, flood-fills from the sheet's four edges across pixels that are either transparent or opaque near-white (R,G,B ≥ 245, alpha ≥ 250), so it only flags near-white pixels that are actually connected to the outside — not white paint that's part of a drawn shape. It reports file, per-frame pixel counts, and (x,y) coordinates local to each frame. I aimed it at `neighbour.png` and the frame-square assumption specifically so frames 4 and 14 fall out naturally, but I haven't been able to execute it, so I can't confirm the 53-vs-56 gap you described — that's still unverified.\n\nWhat blocks it: no approved way to run an interpreter in this session. What it needs: one normal engineering session (interactive, or a build worktree with Bash execution approved) to run `python3 scan_white_edges.py` — it needs Pillow, which may need `pip install pillow` first — and capture the printed report.\n\nWhat this implies: the inventory step is stalled on a tooling gap, not on the defect itself — the defect (five of seven hand edits hitting the same thing) is credible enough that the real fix is still the pipeline's alpha step, which is already queued as its own item. This scan is diagnostic evidence for that fix, not a separate fix in itself."
     }
-  ]
+  ],
+  "closed": "2026-09-24T08:46:01Z",
+  "attempt_outcome": {
+    "version": 1,
+    "id": "interactive-3e3c3ca-wd191fa66a85",
+    "status": "complete",
+    "result_id": "8b940f81e01cdd15d2ec582ac4660dda871257bf87644cc41e3b516b5a8f3517"
+  },
+  "completion": {
+    "version": 1,
+    "attempt_id": "interactive-3e3c3ca-wd191fa66a85",
+    "at": "2026-09-24T08:46:01Z",
+    "sha": "3e3c3ca2a06358e107a9130095a795bd3e46b4ea",
+    "by": "Codex interactive",
+    "kind": "operator_review",
+    "evidence": {
+      "scan": "52 sheets; 12 candidate sheets; 730 reviewed light pixels; full coordinates in repository",
+      "historical_neighbour": "162 before edit, 110 now; 52 cream pixels detected",
+      "alpha_gap": "3 noncream pixels: frame 4 (22,42), (22,43); frame 14 (24,43)",
+      "ci_run": "https://github.com/craklyn/tiny-farm-godot/actions/runs/35976347574",
+      "checker": "No new native HQ checker verdict claimed"
+    }
+  },
+  "landed": {
+    "at": "2026-09-24T08:46:01Z",
+    "by": "Codex interactive",
+    "sha": "3e3c3ca2a06358e107a9130095a795bd3e46b4ea",
+    "note": "Read-only inventory and reproducible scanner are on main; CI passed. Three Neighbour pixels remain documented for art review."
+  }
 }
