@@ -350,6 +350,16 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
 .also-row:hover { background: var(--panel); }
 .also-rank { color: var(--muted); font-weight: 700; width: 14px; flex-shrink: 0; text-align: right; }
 .also-text { min-width: 0; }
+.dash-checks { margin-top: 20px; padding: 16px 18px; background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius); }
+.dash-checks h2 { font-size: 16px; margin: 0 0 5px; }
+.dash-checks > p { margin: 3px 0 12px; color: var(--muted); font-size: 13px; }
+.dash-issue { padding: 10px 0; border-top: 1px solid var(--line); line-height: 1.5; }
+.dash-issue > div + div { margin-top: 3px; }
+.dash-state { font-size: 11px; font-weight: 700; margin-right: 5px; }
+.dash-state-red, .dash-state-broken { color: #ff8a70; }
+.dash-state-amber { color: #d9c26a; }
+.dash-state-unchecked, .dash-state-attested { color: var(--muted); }
+.dash-state-green { color: var(--green); }
 .kchip { display: inline-block; padding: 1px 8px; border-radius: 8px; font-size: 11px; font-weight: 800; letter-spacing: 1px; flex-shrink: 0; }
 .k-fire { background: #43221c; color: #ff8a70; }
 .k-action { background: #3d3418; color: var(--accent); }

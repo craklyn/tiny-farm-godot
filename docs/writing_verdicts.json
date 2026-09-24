@@ -34,6 +34,9 @@
   "01d4c7643d1faca8e7a0": {
    "verdict": "ok"
   },
+  "01fcf04d7daf82034cbd": {
+   "verdict": "ok"
+  },
   "024510a54199bf243a1b": {
    "verdict": "ok"
   },
@@ -606,6 +609,9 @@
   "1fc52226a1f41f0700bd": {
    "verdict": "ok"
   },
+  "1fcb3c91eaa36e1230a6": {
+   "verdict": "ok"
+  },
   "1fd4f28fb5e35fc91594": {
    "instead": "Player Update 1 — the next public release — goes out with no way for players to reply",
    "quote": "Player Update 1 goes out with no route back",
@@ -912,6 +918,9 @@
    "verdict": "second-look",
    "why": "The sentence 'Who has opened the public build no source' is grammatically broken; it should read as a question or statement, not both."
   },
+  "2fa6a055b9ae0a1f2713": {
+   "verdict": "ok"
+  },
   "302e151a03d80cb9dbac": {
    "verdict": "ok"
   },
@@ -1055,6 +1064,9 @@
    "verdict": "second-look",
    "why": "“Runnable” is engineering shorthand for something that can start."
   },
+  "37b3589f059bbcd6ebd1": {
+   "verdict": "ok"
+  },
   "37b6854a559b14c585f8": {
    "verdict": "ok"
   },
@@ -1074,6 +1086,9 @@
    "verdict": "ok"
   },
   "39175b6cfb4598bf71bb": {
+   "verdict": "ok"
+  },
+  "397000310cbf0eb76b1c": {
    "verdict": "ok"
   },
   "397b84cc030313ea3260": {
@@ -1467,6 +1482,9 @@
   "50e56f539e2ac023ca2e": {
    "verdict": "ok"
   },
+  "51b18ce6211cc7714581": {
+   "verdict": "ok"
+  },
   "51d31c69d1290c470410": {
    "baselined": "2026-09-19",
    "instead": "plans are still being filed for {unassured} of {total} checks a release has to pass",
@@ -1604,6 +1622,9 @@
    "verdict": "ok"
   },
   "580ba0fbb68e0e09c967": {
+   "verdict": "ok"
+  },
+  "58a3aeee4282d39d34a2": {
    "verdict": "ok"
   },
   "58b9e84387db3fe71724": {
@@ -1880,6 +1901,9 @@
    "quote": "Landed on main; CI confirmed",
    "verdict": "decode",
    "why": "“Landed on main” and “CI” are engineering shorthand for a change being merged and automatically checked."
+  },
+  "67f239f7680441ea0dba": {
+   "verdict": "ok"
   },
   "67f694a2826735f319e7": {
    "verdict": "ok"
@@ -2397,6 +2421,9 @@
   "8331c648fb5d195b717c": {
    "verdict": "ok"
   },
+  "8340897c128673261f8a": {
+   "verdict": "ok"
+  },
   "836be81c34aef1a5e839": {
    "verdict": "ok"
   },
@@ -2690,7 +2717,13 @@
   "939a668ca79269d651a7": {
    "verdict": "ok"
   },
+  "93a675e862120f74ab5d": {
+   "verdict": "ok"
+  },
   "93ab0384c44be5d0ab19": {
+   "verdict": "ok"
+  },
+  "93e7ccbab50d5ffb8971": {
    "verdict": "ok"
   },
   "941ccf35f3cae6bdc81e": {
@@ -2847,6 +2880,9 @@
   "9b8a7ac35a35ca49150e": {
    "verdict": "ok"
   },
+  "9b983c4215137fcc228b": {
+   "verdict": "ok"
+  },
   "9bad0d908c8c690484cd": {
    "baselined": "2026-09-19",
    "instead": "the player's current 10x7 room is almost the same size",
@@ -2864,6 +2900,9 @@
    "verdict": "ok"
   },
   "9c1191a15097ea8be947": {
+   "verdict": "ok"
+  },
+  "9c257d5641d1b5b2e45e": {
    "verdict": "ok"
   },
   "9c67bf164c655053c59b": {
@@ -3653,6 +3692,9 @@
    "verdict": "second-look",
    "why": "The robot is ambiguous when multiple robots are mentioned in this list."
   },
+  "c671d6c4434d8806241a": {
+   "verdict": "ok"
+  },
   "c6a6eeef4f43a7b8aae1": {
    "verdict": "ok"
   },
@@ -3849,6 +3891,9 @@
    "verdict": "ok"
   },
   "d0576ee3c651dd1b59ce": {
+   "verdict": "ok"
+  },
+  "d0b3ce64a3f98c5958d4": {
    "verdict": "ok"
   },
   "d0cc430b64a4dc08447a": {
@@ -4330,6 +4375,9 @@
    "verdict": "ok"
   },
   "e8c093b03d059ec8b611": {
+   "verdict": "ok"
+  },
+  "e8fedc3d30692e2e3d0f": {
    "verdict": "ok"
   },
   "e91d80bd0bd258aaea36": {

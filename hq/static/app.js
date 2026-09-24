@@ -440,7 +440,7 @@ $view.addEventListener("click", ev => {
    rather than under "the one thing", because it will read red every day until
    the queue is empty and the front of the page is for what moved today. */
 function waitingCard(w) {
-  if (!w || w.count == null) return "";
+  if (!w || w.count == null) return `<div class="waiting-card"><div class="wc-head">What waits on you</div><p class="small">Attention count unavailable. <a class="plain" href="#/work">Open decisions</a> to inspect the queue.</p></div>`;
   const rows = [
     ["decisions you have not ruled on", w.decisions],
     ["finished work waiting for your verdict", w.work],
@@ -459,10 +459,45 @@ function waitingCard(w) {
   </div>`;
 }
 
-/* The landing page, on Rin's first principles: one visual hierarchy —
-   (1) the single thing only the CEO can do, large; (2) the short ranked rest,
-   dense; (3) the state of the world, glanceable; (4) the narrative brief,
-   folded unless something changed since he last read it. */
+function dashboardGoals(sig) {
+  return Object.entries(sig.goals || {}).flatMap(([pillar, area]) =>
+    (area.goals || []).map(goal => ({ ...goal, pillar })));
+}
+
+function dashboardOwner(goal) {
+  return goal.owner_person_name || goal.owner_seat_label || goal.owner_human || "The studio";
+}
+
+function dashboardNext(goal) {
+  const path = goal.path_to_green || {};
+  const target = goal.route_target || {};
+  if (target.state === "pending integration") return "The studio integrates the recorded ruling";
+  if (path.action && path.action.label) return path.action.label;
+  if (goal.situation && goal.situation.doing) return goal.situation.doing;
+  return "Open full status and available options";
+}
+
+function dashboardIssue(goal) {
+  const state = goal.state || "unchecked";
+  const label = ({ green: "Passing", red: "Failing", amber: "Failing, being fixed",
+    unchecked: "Unmeasured", broken: "Check unavailable", attested: "Human verified" })[state] || "Unmeasured";
+  const href = surfaceParked("/pillar/" + goal.pillar) ? "#/program/goals" : "#/pillar/" + goal.pillar;
+  const stamp = goal.reading && goal.reading.as_of;
+  return `<div class="dash-issue">
+    <div><span class="dash-state dash-state-${esc(state)}">${label}</span> <a class="plain" href="${esc(href)}">${esc(goal.statement_short || goal.statement || goal.id)}</a></div>
+    <div class="small muted">${esc(goal.measured_human || "No reading available")} · Owner: ${esc(dashboardOwner(goal))}</div>
+    <div class="small">Next: <a class="plain" href="${esc(href)}">${esc(dashboardNext(goal))}</a>${stamp ? ` · checked ${esc(new Date(stamp).toLocaleString())}` : " · check time unknown"}</div>
+  </div>`;
+}
+
+function dashboardBriefText(raw) {
+  // Older cached briefs contain agent memory directives. Keep the record on
+  // disk, but never put those directives in the human-facing brief.
+  return String(raw || "").replace(/<remember\b[^>]*>[\s\S]*?<\/remember>/gi, "")
+    .replace(/<remember\b[^>]*>[\s\S]*$/gi, "").trim();
+}
+
+/* Current actions first, check states second, cached narrative on demand. */
 async function renderDashboard() {
   const [org, pillars, sig, executionQueue, work] = await Promise.all([
     api("/api/org"), api("/api/pillars"), signals(true),
@@ -481,49 +516,61 @@ async function renderDashboard() {
   } : null;
   const hour = new Date().getHours();
   const greet = hour < 12 ? "Good morning" : hour < 18 ? "Good afternoon" : "Good evening";
-  // Pills mark EXCEPTIONS only (Rin's rule): everything in this list is for
-  // the CEO by definition, so a "for you" pill is noise. FIRE = emergency,
-  // WATCH = awareness not action, FYI = nothing to do. Plain items get none.
-  const KIND = {
-    fire: ["FIRE", "k-fire"], watch: ["WATCH", "k-watch"], info: ["FYI", "k-info"],
+  const goals = dashboardGoals(sig);
+  const issueRank = { red: 0, broken: 1, amber: 2, unchecked: 3 };
+  const issues = goals.filter(g => !["green", "attested"].includes(g.state))
+    .sort((a, b) => (issueRank[a.state] ?? 3) - (issueRank[b.state] ?? 3));
+  const checks = {
+    passing: goals.filter(g => g.state === "green").length,
+    failing: goals.filter(g => ["red", "amber"].includes(g.state)).length,
+    unmeasured: goals.filter(g => !["green", "red", "amber", "attested"].includes(g.state)).length,
+    humanVerified: goals.filter(g => g.state === "attested").length,
   };
-  const eye = sig.eye || [];
-  const hero = eye[0];
-  const rest = eye.slice(1, 8);
-  const ownerOf = id => {
-    const e = org.employees.find(x => x.id === id);
-    return e ? e.name.split(" ")[0] : (id || "");
-  };
-  // A referenced project renders as a resolvable row — link, priority,
-  // blocked-since age, owner — never as a name buried in prose.
-  const ubRow = u => `<div class="ub-row">
-      <a class="plain" href="${esc(u.href)}">${esc(u.name)}</a>
-      <span class="ub-meta">P${u.priority ?? "?"}${u.days_blocked != null ? ` · blocked ${u.days_blocked}d${u.days_blocked > 7 ? ' <span class="ub-old">⚠</span>' : ""}` : ""}${u.owner ? ` · <a class="plain" data-person="${esc(u.owner)}">${esc(ownerOf(u.owner))}</a>` : ""}</span>
-    </div>`;
-  const ubBlock = it => (it.unblocks && it.unblocks.length)
-    ? `<div class="ub"><span class="ub-label">unblocks</span>${it.unblocks.map(ubRow).join("")}</div>` : "";
+  const humanGoals = issues.filter(g => g.needs_you);
+  const projectActions = (sig.eye || []).filter(e => e.kind === "action" && e.unblocks && e.unblocks.length);
+  const actions = [
+    ...(!sig.waiting || sig.waiting.count == null ? [{
+      headline: "Attention count is unavailable", owner: "The studio",
+      next: "Open decisions to inspect the queue", href: "#/work",
+    }] : sig.waiting && sig.waiting.count > 0 ? [{
+      headline: `${sig.waiting.count} item${sig.waiting.count === 1 ? "" : "s"} ready for your decision`,
+      owner: "Daniel", next: "Open your decisions", href: "#/work",
+    }] : []),
+    ...humanGoals.map(g => ({ headline: g.statement_short || g.statement,
+      owner: dashboardOwner(g), next: dashboardNext(g),
+      href: surfaceParked("/pillar/" + g.pillar) ? "#/program/goals" : "#/pillar/" + g.pillar })),
+    ...projectActions.map(e => ({ headline: e.headline, owner: "Daniel",
+      next: e.headline, href: e.href })),
+  ];
+  const hero = actions[0];
+  const rest = actions.slice(1, 8);
   $view.replaceChildren(h(`
     <div class="dash-head">
       <h1>${greet}, Daniel</h1>
-      <span class="small muted">derived live · ${esc(sig.generated_at)} · <a class="plain" id="dash-refresh" href="#/">refresh</a></span>
+      <span class="small muted">Loaded ${esc(new Date().toLocaleString())} · source checked ${esc(sig.generated_at || "time unknown")} (may lag up to 60 seconds) · <a class="plain" id="dash-refresh" href="#/">Reload view</a></span>
     </div>
     <div class="dash-grid">
       <div class="dash-main">
-        ${hero ? `<div class="hero-card" ${hero.href ? 'data-href="' + esc(hero.href) + '"' : ""}>
-          <div class="hero-eyebrow">THE ONE THING ${KIND[hero.kind] ? `<span class="kchip ${KIND[hero.kind][1]}">${KIND[hero.kind][0]}</span>` : ""}</div>
-          <div class="hero-text">${esc(hero.headline || hero.text)}</div>
-          ${hero.why_you ? `<div class="hero-why">${esc(hero.why_you)}.</div>` : ""}
-          ${ubBlock(hero)}
+        ${hero ? `<div class="hero-card" data-href="${esc(hero.href)}">
+          <div class="hero-eyebrow">Next action</div>
+          <div class="hero-text">${esc(hero.headline)}</div>
+          <div class="hero-why">Owner: ${esc(hero.owner)} · Next: ${esc(hero.next)}</div>
         </div>` : `<div class="hero-card hero-calm">
-          <div class="hero-eyebrow">THE ONE THING</div>
-          <div class="hero-text">Nothing needs you. Genuinely — every signal is green or dormant by your own ruling.</div>
+          <div class="hero-eyebrow">Your next action</div>
+          <div class="hero-text">No prepared decision or action is waiting for you.</div>
         </div>`}
-        ${rest.length ? `<div class="also"><div class="also-head">Also needs you, in order</div>${rest.map((it, i) => `
-          <div class="also-row" ${it.href ? 'data-href="' + esc(it.href) + '"' : ""}>
+        ${rest.length ? `<div class="also"><div class="also-head">Other actions</div>${rest.map((it, i) => `
+          <div class="also-row" data-href="${esc(it.href)}">
             <span class="also-rank">${i + 2}</span>
-            ${KIND[it.kind] ? `<span class="kchip ${KIND[it.kind][1]}">${KIND[it.kind][0]}</span>` : ""}
-            <span class="also-text">${esc(it.headline || it.text)}${it.why_you ? `<span class="small muted"> — ${esc(it.why_you)}</span>` : ""}${ubBlock(it)}</span>
+            <span class="also-text">${esc(it.headline)} <span class="small muted">· Owner: ${esc(it.owner)} · Next: ${esc(it.next)}</span></span>
           </div>`).join("")}</div>` : ""}
+        <section class="dash-checks" aria-label="Current checks">
+          <h2>Current checks</h2>
+          <p>${checks.passing} passing · ${checks.failing} failing · ${checks.unmeasured} unmeasured${checks.humanVerified ? ` · ${checks.humanVerified} human verified` : ""}</p>
+          ${issues.slice(0, 6).map(dashboardIssue).join("") || `<p class="small">No open check issues.</p>`}
+          ${issues.length > 6 ? `<p class="small">${issues.length - 6} more issues in full status.</p>` : ""}
+          <a class="plain small" href="#/program/goals">Open all goals and their records</a>
+        </section>
         <div id="dash-standup"></div>
       </div>
       <div class="dash-side">
@@ -600,10 +647,8 @@ async function renderDashboard() {
   // Through route(), not renderDashboard() directly, so the seq guard can
   // cancel it if the user navigates away mid-refresh.
   if (refresh) refresh.addEventListener("click", ev => { ev.preventDefault(); route(); });
-  // The brief costs tokens to write, so it is never rewritten just because he
-  // opened the page: the cached one renders instantly, says when it was
-  // written and whether the picture has moved since, and he asks for a new one
-  // when he wants one.
+  // Opening the disclosure reads only the saved brief. Writing a new one is
+  // an explicit second action; navigation never launches a model.
   const renderBriefCard = (r, writing) => {
     const box = document.getElementById("dash-standup");
     if (!box) return;
@@ -615,18 +660,11 @@ async function renderDashboard() {
     if (!r || !r.brief) {
       box.replaceChildren(h(`<div class="brief brief-writing small muted">No brief written yet. ${button}</div>`));
     } else {
-      let seen = null;
-      try { seen = localStorage.getItem("hq-brief-seen"); } catch { }
-      const isNew = r.fingerprint && r.fingerprint !== seen;
-      box.replaceChildren(h(`<details class="brief" ${isNew || open ? "open" : ""}>
-        <summary>Chief of staff's brief · ${esc(r.generated || "")}${isNew ? ' <span class="kchip k-action">NEW</span>' : ""}${stale ? ' <span class="small muted">· written before the latest changes</span>' : ""}</summary>
-        <div class="brief-body">${md(r.brief)}</div>
+      box.replaceChildren(h(`<details class="brief" ${open ? "open" : ""}>
+        <summary>Cached brief · written ${esc(r.generated || "at an unknown time")}${stale ? ' · older than current status' : ""}</summary>
+        <div class="brief-body">${md(dashboardBriefText(r.brief))}</div>
         <div class="brief-foot">${button}</div>
       </details>`));
-      const det = box.querySelector("details");
-      const markSeen = () => { try { localStorage.setItem("hq-brief-seen", r.fingerprint || ""); } catch { } };
-      if (isNew) markSeen();
-      det.addEventListener("toggle", () => { if (det.open) markSeen(); });
     }
     const btn = document.getElementById("brief-write");
     if (btn) btn.addEventListener("click", async () => {
@@ -635,7 +673,18 @@ async function renderDashboard() {
       catch { renderBriefCard(r, false); }
     });
   };
-  fetch("/api/standup").then(r => r.json()).then(r => renderBriefCard(r, false)).catch(() => { });
+  const briefBox = document.getElementById("dash-standup");
+  briefBox.replaceChildren(h(`<details class="brief"><summary>Cached brief · open to load</summary>
+    <div class="brief-body small muted">Loading the saved brief…</div></details>`));
+  briefBox.querySelector("details").addEventListener("toggle", async ev => {
+    if (!ev.target.open) return;
+    try { renderBriefCard(await (await fetch("/api/standup")).json(), false); }
+    catch {
+      const box = document.getElementById("dash-standup");
+      if (box) box.replaceChildren(h(`<details class="brief" open><summary>Cached brief unavailable</summary>
+        <div class="brief-body">The saved brief could not be loaded. Current checks above are still available.</div></details>`));
+    }
+  }, { once: true });
 }
 
 /* ---------------- org chart ---------------- */
