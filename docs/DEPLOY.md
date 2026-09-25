@@ -268,6 +268,9 @@ trace mislabelled its own categories and where the crow schedule desynced replay
       that is not the intent, pick first and delete the other two
       (`systems/cot_presentation.gd`).
 - [ ] Page copy and settings: `ITCH_PAGE.md`.
+      Pasted into itch.io's page editor by hand for now. Q-111 (ruled 2026-09-19, S-21)
+      replaces this box with a release step that fills the editor from a headless
+      browser; delete the box when that step has run on a real tag.
 
 ---
 

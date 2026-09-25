@@ -98,7 +98,13 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   design/15 as a target; current finer-grid room code does not support it yet.
   Card: `hq/data/decisions/Q-108.json`.
 
-- **Q-111** The one release step that still waits on your hands — **Ruling**. A `v*` tag
+- **Q-111** ~~The one release step that still waits on your hands~~ — ✅ **ruled
+  2026-09-19: (b), drive itch.io's editor in a headless browser.** Daniel chose full
+  automation over the recommended guarded paste, accepting the repair burden and his
+  itch.io login as a CI secret. Recorded as S-21. Not built yet: the step goes to Ravi
+  (build and release pipeline), and until it lands the runbook's paste box in
+  `docs/DEPLOY.md` still applies. Daniel adds the login secret to CI himself; no
+  agent handles the password. Original entry: **Ruling**. A `v*` tag
   already builds the game and uploads it to itch.io by itself; the store page's text does not
   follow. That copy lives in `ITCH_PAGE.md` and the runbook's last box says to paste it into
   itch.io's page editor. It stayed a hand-step for a reason nobody had written down: itch.io
@@ -377,6 +383,13 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   different word. Also unchanged: a `build` verb rather than `place` (a fence is terrain,
   not an actor); stock in the crate, refunded on take-back; ground level and a drag; worth
   only against rabbits. Ready to build on request — no open questions left.
+  **Picked again 2026-09-19 on the dashboard: (a), "give her fence its own look".**
+  The card had already recorded the 2026-09-07 answer as (a) carried out with existing
+  art: her fence is the domestic fence cell, and the hedge keeps meaning "not yours
+  yet". So the pick confirms what is built and commissions no new tile. It was made
+  the same night the dashboard's pick button was found to be settling cards by
+  accident (commit 709d569); if Daniel wants a new post-and-rail tile on top of the
+  existing fence, that is a fresh art request, not this ruling.
 
   Original entry: **How does a player put up a fence?** Designed 2026-09-07 on request, not yet
   built. A fence today is not an object but a tile *state* laid at worldgen, and it is the
@@ -503,7 +516,13 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
 ## M1 — phase 1 detail (active now)
 
-- **Q-117 — What should players put inside a room?** — **Ruling, open 2026-09-24.**
+- **Q-117** ~~What should players put inside a room?~~ — ✅ **ruled 2026-09-24:
+  (a), players place and rearrange furnishings.** Fittings are individual shop items
+  placed on room floors; a machine goes indoors only when its catalogue entry names
+  that room; picking up the building returns each nonliving item to the crate
+  separately with its state kept; living occupants stay outside; no room inside a
+  room. Recorded as S-22 and in `design/15-interiors.md` §9a. Not built: the
+  all-room placement refusal stays until the furnishing work lands. Original entry:
   A coop and a farmhouse have walkable interiors, but placement there is currently refused:
   an object left in a room slot would disappear when its building is picked up. P-17 already
   says the hen stays outside; Q-98 says taking up an object is repositioning, not resetting
@@ -585,8 +604,14 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   release — the shipped set is complete and licence-clean.* Candidates drop into
   `assets/audio/sfx/` and appear in the in-game Sound Test for A/B on device;
   `tools/gen_sfx.py` remains the source for anything left synthesized.
-- **Q-119 — Should a bottom-bar inventory button open a pictured item picker?**
-  — **Look, revised 2026-09-24; awaiting Daniel's choice.** Daniel suggested a
+- **Q-119** ~~Should a bottom-bar inventory button open a pictured item picker?~~
+  — ✅ **ruled 2026-09-24: (a), an inventory pop-up opens from the bottom bar.** A
+  button beside the selected-item card opens a pop-up with larger item pictures and
+  exact counts; tapping an item makes it active and closes the pop-up; tapping the
+  selected-item card still cycles. The tiny-basket-marks proposal is dropped. How
+  counts show on the main game screen is settled during the build. Recorded as S-23
+  and in `design/11-ux-ui.md`. Not built yet. Original entry: **Look, revised
+  2026-09-24.** Daniel suggested a
   button beside the currently selected item. It would open an inventory modal
   with larger item pictures and exact counts, where tapping an item selects it
   directly; tapping the current selected-item button would still cycle. The
@@ -596,8 +621,13 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   noun-and-tick ruling for taps that change nothing remains settled; Q-78's can
   gauge remains permanent. **No inventory choice or gameplay change is assumed.**
 
-- **Q-118 — Which soft soil sound belongs to planting?** — **Audio, open
-  2026-09-24.** Plant remains silent while Daniel hears two CC0 candidates on
+- **Q-118** ~~Which soft soil sound belongs to planting?~~ — ✅ **ruled
+  2026-09-24: (a), wobesound's two-beat planting cut**
+  (`assets/audio/sfx/plant_cc0_488393.wav`). This licenses wiring it as the `plant`
+  verb's sound for every actor, through the same shared cue path the other verbs
+  use. Not wired yet; the unchosen cut can be removed when that change lands.
+  Original entry: **Audio, open 2026-09-24.** Plant remains silent while Daniel
+  hears two CC0 candidates on
   `hq/data/decisions/Q-118.json`. The recommended first listen is the two-beat
   opening of “Planting Sounds.wav” by wobesound; “Planting (Seeds).mp3” by
   wyronroberth is the other option. Their source URLs, authors, CC0 licences and

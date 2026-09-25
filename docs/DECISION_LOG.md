@@ -470,6 +470,38 @@ or take reserved units at the bin; planting draws only from what she carries.
 The reserve persists through sleep. Ten is `[Playtest]`. Eggs still sell at
 their previous price and never enter the crop reserve.
 
+### S-21. The itch.io store page is updated by a browser the release drives
+**Ruled 2026-09-19 (Q-111, option b).** A `v*` tag already builds the game and
+uploads it; the store page's text in `ITCH_PAGE.md` is the one release step still
+pasted by hand, because itch.io offers no scripted way to change page text. The
+release will log in to itch.io and fill the page editor from a headless browser.
+Daniel accepted the known costs: the step breaks without warning when itch.io
+changes its form or login, it is the studio's to repair, and his itch.io login
+becomes a CI secret that only he enters. The studio adds one condition of its own,
+not part of the ruling: a failure stops the release loudly and says what to paste,
+and the step never passes silently or tries to get past a bot check.
+Until the step is built, `docs/DEPLOY.md`'s paste box stands.
+
+### S-22. Players furnish rooms with separate, movable fittings
+**Ruled 2026-09-24 (Q-117, option a).** Room fittings such as nest boxes, perches
+and household furniture are individual items the player acquires and places on a
+compatible room's floor. A machine may go indoors only if its catalogue entry
+names that room and its work makes sense there; the default is outdoors only.
+Picking up a building returns each nonliving item inside it to the crate as its
+own item, state kept (Q-98), before the room closes. Living occupants stay
+outside (P-17). A room may not hold another room. Detail in
+`design/15-interiors.md` §9a. Until this is built, `SimWorld.placeable_at` keeps
+refusing all indoor placement.
+
+### S-23. A bottom-bar button opens a pictured inventory for direct selection
+**Ruled 2026-09-24 (Q-119, option a),** on Daniel's own suggestion. A button
+beside the selected-item card opens a pop-up with a larger picture and an exact
+count for each item she holds; tapping one makes it the active item and closes
+the pop-up. Tapping the selected-item card still cycles, so both paths work.
+The earlier proposal to replace crop-count text with tiny basket marks is
+dropped; how counts appear on the main game screen is decided while building.
+Choosing an item is UI navigation, not an Action. Detail in `design/11-ux-ui.md`.
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported

@@ -521,7 +521,7 @@ before the first public build ships.*
     and redistribution are permitted with no attribution required. Credit is given
     here by choice. Fetched via `tools/fetch_sfx_candidates.py`, which re-checks
     each result's licence field rather than trusting the search filter.
-- **Plant (2 candidates, not wired; Q-118 listening card)** — two Freesound
+- **Plant (Q-118 ruled 2026-09-24: the wobesound cut is chosen, not yet wired)** — two Freesound
   recordings offered for Daniel to hear before a sound is chosen. Both uploads'
   API licence fields were checked as CC0 1.0 Universal, a public-domain
   dedication permitting commercial use, modification and redistribution without
@@ -530,7 +530,7 @@ before the first public build ships.*
   `tools/fetch_sfx_candidates.py`; neither changes the current silent `plant`
   action. The first cut takes the opening two beats of a longer source and is
   reduced another 6 dB to match the quieter second candidate for comparison.
-    - `plant_cc0_488393.wav` — “Planting Sounds.wav” by **wobesound**; first
+    - `plant_cc0_488393.wav` — **chosen** — “Planting Sounds.wav” by **wobesound**; first
       1.5 seconds of a 4.77-second planting-effects recording. The creator says
       it was assembled from other CC0 sounds. Source and licence:
       https://freesound.org/people/wobesound/sounds/488393/ — CC0 1.0.

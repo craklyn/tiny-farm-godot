@@ -85,6 +85,11 @@ frame, and the attract farm remains silent. The source and level are
 `[Playtest]` until they have been heard in a real field of sprinklers; replacing
 that one mixer entry will not change the simulation or the one-cue rule.
 
+**Chosen 2026-09-24, not yet wired (Q-118, option a):** the opening two beats of
+“Planting Sounds.wav” by wobesound (Freesound #488393, CC0), cut to
+`assets/audio/sfx/plant_cc0_488393.wav`. The gap described next closes when that file
+is in the mixer and the cue table, for every actor that plants.
+
 **Open gap: `plant` has no foley at all** — nothing in the mixer and no entry in the cue
 table. Under the 2026-09-02 rule above that a verb sounds the same whoever performs it,
 that silence is everybody's: the cold open's neighbour, a replay re-applying the action,

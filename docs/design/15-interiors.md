@@ -368,7 +368,7 @@ Recorded so the estimate is honest. Nothing here has been built.
 their building's footprint at a declared pitch; entering changes the camera scale; the farm
 stays visible throughout; the farmhouse is 3×2 outside and 6×3 inside. The later Spiral
 Tower target in §3 is the opposite scale: a 4×4 footprint with 2×2 total room cells at
-pitch ½. Neither furnishing proposal below changes either building's geometry.
+pitch ½. The furnishing model chosen below (Q-117) changes neither building's geometry.
 
 **Proposed, awaiting the CEO's yes:** the leftover-band rule in §2 — room width is the
 footprint's width times the pitch, room depth is free under it, and the strip that leaves is
@@ -427,15 +427,19 @@ goes when its host is picked up, and where a hen sheltering in it is standing on
 she was in has stopped existing. So `placeable_at` refuses the whole class, which is what
 P-13's deliberately weak first version is for, and a farm that already got into that state
 comes out of it: picking a hut up takes every hut nested inside it and pays the crate for
-each. **What may go in a room is proposed in §9a and put to Daniel in Q-117.** The guard
-remains until that decision is made and its consequences are implemented.
+each. **What may go in a room is set out in §9a; Daniel chose it on 2026-09-24 (Q-117,
+S-22).** The guard remains until that model is implemented.
 
-## 9a. What a room may hold — proposed, not built
+## 9a. What a room may hold — ruled 2026-09-24, not built
+
+**Ruled 2026-09-24 (Q-117, option a; S-22): portable, player-placed fittings.** Daniel
+chose the model below over built-in fittings (b) and decoration only (c). Everything in
+this section is now the design to build; none of it is in the game yet.
 
 The current ban in `SimWorld.placeable_at` is a safety rule. It stops a placed object from
 being erased when its host's room slot is cleared. It does not say that an empty coop or an
-empty home is the desired finished design. Q-117 asks Daniel to choose the furnishing model;
-the following is a concrete proposal, not a ruling or a change to play.
+empty home is the desired finished design. The ban stays in force until the furnishing
+model below is implemented.
 
 **Furnishing.** Give each room type a small set of compatible, individually placed fittings:
 nest boxes, perches and bedding in a coop; household furniture in the farmhouse. A fitting
@@ -451,11 +455,11 @@ The default is outdoors only. A sprinkler needs outdoor soil in its own space, s
 in a bedroom would neither water the yard nor earn an exception. A future workbench could
 declare barn compatibility if its action really operates in that room. A room tag alone must
 not bypass its doorway, placement footprint, actor occupancy or the `space_of` guards on
-sensing and work. This is a proposed compatibility rule, not permission for today's machines
+sensing and work. This is the chosen compatibility rule, not permission for today's machines
 to move indoors.
 
 **Picking up the host.** The room slot cannot keep independent objects after its building
-leaves: it is reused by the next room. Under the proposed portable-fittings model, taking up
+leaves: it is reused by the next room. Under the chosen portable-fittings model, taking up
 a building first moves each nonliving room item into the player's crate as its *own* item,
 preserving any state that ordinary pickup preserves (Q-98), then clears the room and takes
 up the building. No item is silently destroyed or left at a stale slot coordinate. Dropping
@@ -479,11 +483,11 @@ old nested-coop rescue is migration behavior, not a placement affordance.
 occupants are not pocketed. Q-98 settles that pickup is repositioning, not a reset. Room
 slots being destroyed with their hosts means no object may be abandoned there, and the
 `space_of` guards mean an indoor machine may not act on the yard by reading raw room-cell
-coordinates. Those are constraints on any option. Daniel must choose whether furnishings
-are player-placed and portable, built into the building, or limited to decoration; that
-choice determines whether individual catalogue items and crate handling are wanted at all.
-Q-117 presents those options and recommends the portable model. Until he rules, the current
-all-room placement guard stays in force and none of this proposal is implemented.
+coordinates. Those are constraints on any option. Daniel was asked whether furnishings
+are player-placed and portable, built into the building, or limited to decoration, since
+that choice decides whether individual catalogue items and crate handling are wanted at
+all. He chose the portable model (Q-117, 2026-09-24), so they are. Until it is built, the
+all-room placement guard stays in force.
 
 ## 8a. Going through a door is still a cut, and it should not be
 
