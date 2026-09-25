@@ -150,13 +150,21 @@ def bind(server_module, *, sanitize=True):
     HOST = server_module
     WORK = os.path.join(HOST.DATA, "work")
     CAPTURES = os.path.join(HOST.DATA, "captures")
-    POLICY_PATH = os.path.join(HOST.DATA, "work_policy.json")
+    POLICY_PATH = _host_cfg("work_policy.json")
     os.makedirs(WORK, exist_ok=True)
     os.makedirs(CAPTURES, exist_ok=True)
-    if not os.path.isfile(POLICY_PATH):
+    # The policy is checked-in configuration; seed a default only into a data
+    # root that still holds its own configuration, never into the code checkout.
+    if not os.path.isfile(POLICY_PATH) and os.path.dirname(POLICY_PATH) == HOST.DATA:
         _write_json(POLICY_PATH, DEFAULT_POLICY)
     if sanitize:
         _sanitize()
+
+
+def _host_cfg(name):
+    """A checked-in HQ file: beside the code when the host says so (Q-125 a)."""
+    cfg = getattr(HOST, "cfg", None)
+    return cfg(name) if callable(cfg) else os.path.join(HOST.DATA, name)
 
 
 # ---------------------------------------------------------------------------
@@ -292,6 +300,78 @@ def save_item(item):
         return item
 
 
+def _decision_owner(decision):
+    """The person who owns a decision card; an unowned card falls to the Chief of Staff."""
+    try:
+        org = HOST.load_org()
+    except Exception:
+        org = {"employees": []}
+    owner = str(decision.get("owner") or "")
+    people = {e.get("id") for e in org.get("employees", [])}
+    if owner not in people:
+        try:
+            seat = HOST.seat_for(owner)
+            owner = seat.get("held_by", "") if seat else ""
+        except Exception:
+            owner = ""
+    return owner if owner in people else "claude"
+
+
+def file_ruling_integration(decision, ruling):
+    """File the work a ruling unblocks the moment Daniel records it (Q-125 a).
+
+    Before this a ruling sat as ``pending_integration`` until some session
+    happened to look in the rulings folder.  Now recording the ruling puts an
+    "integrate ruling" card in the queue, owned by the decision's owner, with
+    his words on it.  Closing that card (``hq/card.py close``) marks the ruling
+    integrated.  One card per submission: a repeated post files nothing new.
+    """
+    with mutation_lock():   # the look-up and the filing are one step across processes
+        return _file_ruling_integration(decision, ruling)
+
+
+def _file_ruling_integration(decision, ruling):
+    decision_id = str(decision.get("id") or "")
+    submission_id = str(ruling.get("submission_id") or "")
+    for item in items():
+        if (item.get("ruling_id") == decision_id
+                and item.get("ruling_submission_id") == submission_id):
+            return item
+    owner = _decision_owner(decision)
+    item = {"id": "w" + uuid.uuid4().hex[:11], "title": ruling_work_title(decision, ruling)}
+    words = str(ruling.get("judgment") or "").strip()
+    label = re.sub(r"\s*\(recommended\)\s*$", "", str(ruling.get("option_label") or ""), flags=re.I)
+    ruling_text = (f"Daniel chose ({ruling.get('option')}) {label}."
+                   + (f"\nIn his words: “{words}”" if words else ""))
+    item.update({
+        "level": "task", "owner": owner, "tier": 1,
+        "tier_reason": ("Folding a ruling into the design docs and building what it "
+                        "unblocks changes the repository; git can revert it."),
+        "ask": (f"Daniel ruled on decision {decision_id}. Integrate the ruling: strike or annotate "
+                f"{decision_id} in docs/DESIGNER_QUEUE.md (and docs/DECISION_LOG.md if it settles a "
+                "decision), then do or file the work it unblocks. Close this card with "
+                "`python3 hq/card.py close`; that marks the ruling integrated.\n\n"
+                f"{ruling_text}")[:2400],
+        "first_action": (f"Read decision card {decision_id} and the ruling, then find its entry "
+                         "in docs/DESIGNER_QUEUE.md."),
+        "state": "waiting_session", "thread": owner, "source": "ruling",
+        "source_message": ruling_text[:2000], "result": "", "started": "", "attempts": 0,
+        "created": _now_iso(), "created_ts": time.time(), "parent": decision_id,
+        # ``decision_id`` stays reserved for revision hand-offs, which return
+        # the decision to him; this card closes the ruling instead.
+        "ruling_id": decision_id, "ruling_submission_id": submission_id,
+    })
+    return save_item(item)
+
+
+def ruling_work_title(decision, ruling):
+    """The queue row Daniel reads: which of his rulings, and what he chose."""
+    subject = str(decision.get("subject") or decision.get("title") or decision.get("id") or "a decision")
+    label = re.sub(r"\s*\(recommended\)\s*$", "", str(ruling.get("option_label") or ""), flags=re.I)
+    title = f"Act on your ruling: {subject.rstrip('.?')} — you chose {label or ruling.get('option')}"
+    return title if len(title) <= 160 else title[:157].rstrip() + "..."
+
+
 def file_decision_revision(decision, feedback, ruled_at, submission_id):
     """File one durable owner handoff for a decision Daniel sent back.
 
@@ -305,20 +385,7 @@ def file_decision_revision(decision, feedback, ruled_at, submission_id):
         if (item.get("decision_id") == decision_id
                 and item.get("revision_submission_id") == submission_id):
             return item
-    try:
-        org = HOST.load_org()
-    except Exception:
-        org = {"employees": []}
-    owner = str(decision.get("owner") or "")
-    people = {e.get("id") for e in org.get("employees", [])}
-    if owner not in people:
-        try:
-            seat = HOST.seat_for(owner)
-            owner = seat.get("held_by", "") if seat else ""
-        except Exception:
-            owner = ""
-    if owner not in people:
-        owner = "claude"
+    owner = _decision_owner(decision)
     now = _now_iso()
     item = {
         "id": "w" + uuid.uuid4().hex[:11],
@@ -783,6 +850,16 @@ def work_view(item, repo_facts=None, now=None):
     """
     facts = repo_facts or {}
     instant = time.time() if now is None else float(now)
+    # A session HQ did not launch can claim a card (hq/card.py claim, Q-125).
+    # While its lease is live the card is being worked exactly as if the drain
+    # held it: the queue shows it as working and the drain does not start it.
+    outside = item.get("outside_claim") if isinstance(item.get("outside_claim"), dict) else {}
+    try:
+        outside_live = float(outside.get("expires_ts") or 0) > instant
+    except (TypeError, ValueError):
+        outside_live = False
+    if outside_live and not facts.get("active_session"):
+        facts = {**facts, "active_session": "outside: " + str(outside.get("by") or "a session")}
     workflow = item.get("workflow") or {}
     actions = [dict(action) for action in workflow.get("actions") or []]
     active_actions = [a for a in actions if a.get("state") != "done"]
@@ -981,7 +1058,9 @@ def work_view(item, repo_facts=None, now=None):
     return {"version": WORKFLOW_VERSION, "phase": phase, "availability": availability,
             "next_action": next_action, "actions": all_actions, "blocker": blocker,
             "last_moved": last_moved, "candidate_status": candidate_status,
-            "shipped_evidence": shipped}
+            "shipped_evidence": shipped,
+            **({"outside_claim": {k: outside.get(k) for k in ("by", "since", "heartbeat", "expires")}}
+               if outside_live and not terminal else {})}
 
 
 def attempt_outcome(text, error="", limited=False):
@@ -2784,7 +2863,7 @@ def reconcile_legacy_completion(manifest=None, *, apply=False):
 def _reconcile_legacy_completion(manifest=None, *, apply=False):
     """Apply only the reviewed historical manifest; preflight every card first."""
     if manifest is None:
-        manifest = os.path.join(HOST.DATA, "completion_reconciliation.json")
+        manifest = _host_cfg("completion_reconciliation.json")
     if isinstance(manifest, (str, os.PathLike)):
         with open(manifest, encoding="utf-8") as source:
             manifest = json.load(source)
@@ -2888,7 +2967,7 @@ def reconcile_process_completion(manifest=None, *, apply=False):
 
 def _reconcile_process_completion(manifest=None, *, apply=False):
     if manifest is None:
-        manifest = os.path.join(HOST.DATA, "process_completion_reconciliation.json")
+        manifest = _host_cfg("process_completion_reconciliation.json")
     if isinstance(manifest, (str, os.PathLike)):
         with open(manifest, encoding="utf-8") as source:
             manifest = json.load(source)

@@ -143,7 +143,9 @@ def main():
                                       "judgment": "Show the smaller-room option beside the others."})
         conflict = server.record_ruling({"id": "Q-900", "intent": "revise", "submission_id": submission(7),
                                          "judgment": "Use a different evidence sheet."})
-        children = server.work.items()
+        # Rulings that picked an option file their own "act on your ruling" card
+        # (Q-125); count only the revision hand-offs here.
+        children = [i for i in server.work.items() if i.get("source") == "decision_revision"]
         check(first.get("revision_work_id") == retry.get("revision_work_id") and len(children) == 2,
               "a retried revision creates exactly one linked work item")
         check("different decision content" in conflict.get("error", ""),

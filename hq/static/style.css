@@ -251,6 +251,9 @@ button.exec-toggle { width: 27px; height: 27px; padding: 0; border-radius: 50%; 
 .exec-queue-row:hover { background: var(--panel); }
 .exec-queue-row small { display: block; margin-top: 3px; color: var(--muted); }
 .exec-rank { color: var(--muted); font-variant-numeric: tabular-nums; text-align: right; }
+.exec-rulings { border-left: 3px solid var(--accent); padding-left: 12px; }
+.exec-rulings .exec-rank { color: var(--accent); font-weight: 700; }
+.exec-ruling-words { display: block; margin-top: 3px; font-style: italic; }
 
 /* status chips */
 .chip {

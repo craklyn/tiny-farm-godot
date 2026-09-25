@@ -28,11 +28,20 @@
    "verdict": "decode",
    "why": "The reader must infer what “it” refers to and what the prerequisite is."
   },
+  "011bfd92c79d9a3310d7": {
+   "verdict": "ok"
+  },
   "0131fcc64f069c52ccd6": {
    "verdict": "ok"
   },
   "015d91ed73d359ae5ab4": {
    "verdict": "ok"
+  },
+  "018256c2b9276cf72135": {
+   "instead": "Choosing the picture is a design decision, not an engineering decision.",
+   "quote": "a taste call rather than an engineering one",
+   "verdict": "second-look",
+   "why": "“Taste call” is informal shorthand for a subjective design decision."
   },
   "01b1506064351fda7066": {
    "verdict": "ok"
@@ -46,10 +55,25 @@
   "024510a54199bf243a1b": {
    "verdict": "ok"
   },
+  "024ca8a598bb75c5a6be": {
+   "instead": "a session with adults who have not seen the game before",
+   "quote": "fresh-adult session",
+   "verdict": "decode",
+   "why": "This internal phrase does not plainly say what kind of session is meant."
+  },
   "02647fa7550fb1d88983": {
    "verdict": "ok"
   },
+  "02d1ac271cb62264c648": {
+   "instead": "Keeps a little unpredictability; accepts that some players will misunderstand the hen's egg rule.",
+   "quote": "misread it",
+   "verdict": "second-look",
+   "why": "“It” does not identify whether players might misunderstand the coin flip or the hen's egg rule."
+  },
   "02d3c53650dcf844e021": {
+   "verdict": "ok"
+  },
+  "02dc6d2630c7d27dc041": {
    "verdict": "ok"
   },
   "0368530aab1f28a6192f": {
@@ -60,6 +84,12 @@
   },
   "03f15dd215b2ad25eebd": {
    "verdict": "ok"
+  },
+  "03fe5e0d5c375618dbb9": {
+   "instead": "It would show players every pest before they encounter one, weakening the intended order in which they meet creatures.",
+   "quote": "it hands players the answer to every pest before the pest is a question — against the meet-things-in-order pacing",
+   "verdict": "decode",
+   "why": "This clever construction makes the concern and the intended pacing order harder to understand."
   },
   "04152781488ddc7affa4": {
    "instead": "at bedtime instead (or name the specific game moment)",
@@ -73,7 +103,29 @@
   "04bb224a923c6ee6721c": {
    "verdict": "ok"
   },
+  "04c38b09e2bf51aa75e8": {
+   "verdict": "ok"
+  },
   "04cbd4273be66eef6e7d": {
+   "verdict": "ok"
+  },
+  "05021f1d8ebd796e9a2e": {
+   "baselined": "2026-09-25",
+   "instead": "Write what must change in the judgment box; once the document is revised, mark this decision complete.",
+   "quote": "this closes",
+   "verdict": "decode",
+   "why": "The reader has to infer what is being closed and when."
+  },
+  "054b12be715df9885b39": {
+   "instead": "Leave the machine as it is",
+   "quote": "Leave it as it is",
+   "verdict": "decode",
+   "why": "The reader cannot tell what “it” refers to."
+  },
+  "0556f67396e062f72894": {
+   "verdict": "ok"
+  },
+  "05b8419c04fd4a217e9d": {
    "verdict": "ok"
   },
   "06177d95a3bdb091bb00": {
@@ -97,6 +149,9 @@
    "verdict": "decode",
    "why": "Passive voice hides the actor; rule 6 requires naming whose move it is on an operations surface."
   },
+  "0652c547b89826d73456": {
+   "verdict": "ok"
+  },
   "066967e5f29da16e5c83": {
    "verdict": "ok"
   },
@@ -105,6 +160,9 @@
    "quote": "The number of players or wishlists that would start marketing work",
    "verdict": "decode",
    "why": "The phrase does not say what metric is measured — whether players who opened the build, wishlists accumulated, or a threshold value. A reader cannot tell what quantity this represents."
+  },
+  "06daf2610dc428e099ec": {
+   "verdict": "ok"
   },
   "07060d73176276e2e2bd": {
    "verdict": "ok"
@@ -148,6 +206,9 @@
   "07bfae196c2836beca70": {
    "verdict": "ok"
   },
+  "07ccda9dcd06a7d3d937": {
+   "verdict": "ok"
+  },
   "0800f7f73f760824569c": {
    "verdict": "ok"
   },
@@ -164,6 +225,9 @@
    "why": "The pronoun \"it\" has no clear referent in the sentence—the reader cannot determine what being started."
   },
   "0878f4d491c631be4354": {
+   "verdict": "ok"
+  },
+  "08b6d824b71a4bf95832": {
    "verdict": "ok"
   },
   "08bce8f1e91639c02eab": {
@@ -263,10 +327,20 @@
   "0c3b0d89c1dbaf5db958": {
    "verdict": "ok"
   },
+  "0c40f23012840c349613": {
+   "baselined": "2026-09-25",
+   "instead": "Stop, show that the machine is blocked, and wait.",
+   "quote": "Stop, show it, wait",
+   "verdict": "decode",
+   "why": "The title does not say what “it” is or what the player should be shown."
+  },
   "0c5608a471644d1ae101": {
    "verdict": "ok"
   },
   "0cdbe4f40b61c66a2fc3": {
+   "verdict": "ok"
+  },
+  "0ce64bcb8e6f3d16d0c6": {
    "verdict": "ok"
   },
   "0cedaa55fd7b2bd2ed74": {
@@ -296,6 +370,9 @@
   "0d29f3bc7971745f32a8": {
    "verdict": "ok"
   },
+  "0d6e6d0ba7f99e387022": {
+   "verdict": "ok"
+  },
   "0d9fc34bb72b643da17a": {
    "verdict": "ok"
   },
@@ -312,6 +389,9 @@
    "why": "“HQ test” is unexplained internal shorthand, so the reader cannot tell what is being tested."
   },
   "0dc54adc33f4a496c2fd": {
+   "verdict": "ok"
+  },
+  "0e1f90dd11a51a20fedf": {
    "verdict": "ok"
   },
   "0e2ab9b40a4c3d2e287d": {
@@ -339,6 +419,9 @@
    "verdict": "ok"
   },
   "0f035e2ca167f386a041": {
+   "verdict": "ok"
+  },
+  "0f2d4ba45145dd81d7aa": {
    "verdict": "ok"
   },
   "0fa1ac65ddfcc954c09f": {
@@ -374,6 +457,9 @@
   "10c3248cf73ee478dd4e": {
    "verdict": "ok"
   },
+  "1102434d38b6d0d0d0eb": {
+   "verdict": "ok"
+  },
   "110394eefed855aa260b": {
    "verdict": "ok"
   },
@@ -399,11 +485,23 @@
   "1204885cd3189f81e96e": {
    "verdict": "ok"
   },
+  "120ec72f996bc6222f02": {
+   "instead": "What does the Mark III show when it learns overnight?",
+   "quote": "she",
+   "verdict": "decode",
+   "why": "The sentence does not say whether “she” means the robot or the player."
+  },
   "1222a8269caad2b55cc1": {
    "verdict": "ok"
   },
   "1239a386fefadb1cd53c": {
    "verdict": "ok"
+  },
+  "123ebb41f7e6fe241f0d": {
+   "instead": "A tile planted by the player pays more.",
+   "quote": "Her",
+   "verdict": "decode",
+   "why": "The reader is not told whose tile this is."
   },
   "1269c7d926a6e8f9cb6a": {
    "verdict": "ok"
@@ -431,10 +529,16 @@
    "verdict": "decode",
    "why": "Multiple problems: the opening repeats itself, \"ships as once\" is awkward, \"sitting\" is unclear (or a typo), and the final fragment \"of steps done\" does not connect to anything."
   },
+  "13147ef182116b8f12d1": {
+   "verdict": "ok"
+  },
   "133b2e1b2fb3a977eb1f": {
    "verdict": "ok"
   },
   "1357a324f01b4fb9378d": {
+   "verdict": "ok"
+  },
+  "1375cc5990acdf27ca95": {
    "verdict": "ok"
   },
   "13821985312c124efbe6": {
@@ -461,6 +565,9 @@
    "verdict": "second-look",
    "why": "“This” has no referent in the sentence and makes the reader look elsewhere for the change being confirmed."
   },
+  "13acc99357ffc90d3fec": {
+   "verdict": "ok"
+  },
   "13ba7265133da7095099": {
    "instead": "Keep reports from people playing in a browser anonymous until the dashboard supports logins",
    "quote": "browser play claims anonymous",
@@ -470,8 +577,18 @@
   "13c1a988f9444684d722": {
    "verdict": "ok"
   },
+  "13c999bd94e1fe53be8d": {
+   "verdict": "ok"
+  },
   "13f25afd53a45a973a95": {
    "verdict": "ok"
+  },
+  "1475b40723aa5b3e79f3": {
+   "baselined": "2026-09-25",
+   "instead": "The bot is drawn the same way as the player, using a different texture.",
+   "quote": "its renderer *is* her renderer with the texture swapped",
+   "verdict": "decode",
+   "why": "The sentence assumes both an engineering term and an unexplained referent for “her.”"
   },
   "1489061201872c6b9065": {
    "verdict": "ok"
@@ -521,8 +638,17 @@
   "16309f97681c1fc3a011": {
    "verdict": "ok"
   },
+  "1667accdf3de6d974ca5": {
+   "verdict": "ok"
+  },
   "166c119cfa3e4edf2829": {
    "verdict": "ok"
+  },
+  "16799e098aff3c7212d5": {
+   "instead": "The only remaining decision is whether anything should surround the animations, and one engineer needs a day to build the chosen version.",
+   "quote": "A frame is the last open thing about how they are shown, and building the winner is a day of work for one engineer.",
+   "verdict": "second-look",
+   "why": "“The last open thing” makes the remaining decision less direct than it needs to be."
   },
   "167e970ae9f91266c300": {
    "verdict": "ok"
@@ -548,6 +674,9 @@
   "17b10d510f430b5419fe": {
    "verdict": "ok"
   },
+  "17c199b09ee3e8be4cd0": {
+   "verdict": "ok"
+  },
   "17fa447e256d0df46b18": {
    "verdict": "ok"
   },
@@ -569,6 +698,13 @@
    "verdict": "second-look",
    "why": "“Her” refers to the player from an earlier sentence rather than naming her here."
   },
+  "190cd46148dab6624398": {
+   "baselined": "2026-09-25",
+   "instead": "As machines take over more work, the music replaces the sounds of that work",
+   "quote": "The delegation arc gets scored",
+   "verdict": "second-look",
+   "why": "This clever phrase makes the reader translate an abstract design idea before reaching the concrete audio change."
+  },
   "190ce0060f32a8b3f4e3": {
    "instead": "where it came from",
    "quote": "provenance",
@@ -589,6 +725,12 @@
   },
   "19747de4a67c600d859f": {
    "verdict": "ok"
+  },
+  "198f7f590f84af252adc": {
+   "instead": "This decides whether the meal lasts 3.7 seconds everywhere or changes according to where she planted.",
+   "quote": "This decides whether that stays one number or bends to where she planted.",
+   "verdict": "decode",
+   "why": "The metaphor does not plainly say whether the meal duration changes with the planting location."
   },
   "19dc1daff45c835321a3": {
    "verdict": "ok"
@@ -644,6 +786,9 @@
   "1b566635d87cc74bc23a": {
    "verdict": "ok"
   },
+  "1b86bc372fd989b7b2fe": {
+   "verdict": "ok"
+  },
   "1b8bb021cc6bdb7e5030": {
    "verdict": "ok"
   },
@@ -672,6 +817,9 @@
   "1c6f19a350111a0459fb": {
    "verdict": "ok"
   },
+  "1c796f463a81298d37fd": {
+   "verdict": "ok"
+  },
   "1cac4b9eb232320dc37c": {
    "verdict": "ok"
   },
@@ -694,6 +842,15 @@
    "why": "“Candidate” and “recovery” are internal process terms that do not say what is on hold or what must be restored."
   },
   "1d7d1f5065a6588426be": {
+   "verdict": "ok"
+  },
+  "1d7db5cd15513327bc0e": {
+   "instead": "the next panel would use this decision as its justification",
+   "quote": "the next panel argues from this one",
+   "verdict": "second-look",
+   "why": "The sentence uses a clever construction where it should simply say what the next panel assumes."
+  },
+  "1db7f88d1e548fdb1f5f": {
    "verdict": "ok"
   },
   "1e12eeddbc603de9944d": {
@@ -744,6 +901,12 @@
   "1ff0fdb53e257ad216a5": {
    "verdict": "ok"
   },
+  "2027a6e64accaef7761c": {
+   "instead": "Picking up the Mark III erases its learning",
+   "quote": "Picking it up resets it",
+   "verdict": "decode",
+   "why": "The pronouns leave the reader to work out what is reset and whose state is lost."
+  },
   "2028616c667d9aa4a557": {
    "verdict": "ok"
   },
@@ -786,6 +949,12 @@
   "2252c250bd84ec763ae5": {
    "verdict": "ok"
   },
+  "225f1189fc1319a3dbe1": {
+   "instead": "Should tiles planted by the player pay more than tiles tilled by the robot?",
+   "quote": "her squares",
+   "verdict": "decode",
+   "why": "The reader cannot tell who “her” is or what squares means here."
+  },
   "22668bcb1d58422764ab": {
    "instead": "a period with no crop income while the reserve fills",
    "quote": "a quiet unpaid stretch while the reserve fills",
@@ -807,6 +976,15 @@
    "quote": "these actions",
    "verdict": "second-look",
    "why": "“These” points outside the sentence, leaving the reader to work out which actions the automated task can start."
+  },
+  "23c18e07153005d41cb2": {
+   "verdict": "ok"
+  },
+  "23d13fee4ea4bfe98961": {
+   "verdict": "ok"
+  },
+  "2401b0416d5d54b0b797": {
+   "verdict": "ok"
   },
   "241e3072dac915145c28": {
    "instead": "both test suites and automated checks passing",
@@ -832,6 +1010,9 @@
   "24a55c838265368ba00b": {
    "verdict": "ok"
   },
+  "24e58d573d94f15c98f0": {
+   "verdict": "ok"
+  },
   "24e9cb88720358fdd923": {
    "verdict": "ok"
   },
@@ -839,6 +1020,9 @@
    "verdict": "ok"
   },
   "2557ff4de89d2f03d1a0": {
+   "verdict": "ok"
+  },
+  "255b0bd3c648e1705f36": {
    "verdict": "ok"
   },
   "256731102a312726bd2d": {
@@ -866,7 +1050,16 @@
    "verdict": "decode",
    "why": "\"Banks the sheet\" is not clear to someone who hasn't heard this term; the plain word is \"saves\"."
   },
+  "25f54f7699914bd08c49": {
+   "instead": "Changing it requires a small code change and checking the comparison image again.",
+   "quote": "Changing it is one line plus a re-baseline.",
+   "verdict": "decode",
+   "why": "“Re-baseline” is engineering shorthand for a follow-up check that the reader has to decode."
+  },
   "2600afb628029fc0ac5b": {
+   "verdict": "ok"
+  },
+  "260ee850a26044c2ef83": {
    "verdict": "ok"
   },
   "262be3b8ba2c56d9b06d": {
@@ -878,8 +1071,26 @@
   "2679e3b4b0bec7e573e3": {
    "verdict": "ok"
   },
+  "269bf93373d0e1062b6f": {
+   "instead": "the existing art process",
+   "quote": "the style pipeline that already exists",
+   "verdict": "second-look",
+   "why": "“Style pipeline” is internal process shorthand for the existing art process."
+  },
+  "26ff79ab3fab0631dc7b": {
+   "instead": "The robot keeps what it has learned, but its current score and starting reference reset",
+   "quote": "Weights survive, the running score and baseline reset",
+   "verdict": "decode",
+   "why": "“Weights,” “running score,” and “baseline” are internal terms whose meanings are not stated."
+  },
   "270e95f908c745cb9684": {
    "verdict": "ok"
+  },
+  "271f24eb5c162bd89385": {
+   "instead": "when an update changes how the world is saved",
+   "quote": "when the world format moves on",
+   "verdict": "second-look",
+   "why": "The phrase makes the reader translate a technical change into its consequence."
   },
   "27310bee322cbc6bfaeb": {
    "verdict": "ok"
@@ -900,6 +1111,9 @@
    "verdict": "ok"
   },
   "27e03bde95dcb867185d": {
+   "verdict": "ok"
+  },
+  "27ebcedd2b29bc26a569": {
    "verdict": "ok"
   },
   "2823400c3c0bce0f1884": {
@@ -936,8 +1150,17 @@
   "290acc1efd1762d8a545": {
    "verdict": "ok"
   },
+  "290adadcecbb375c95fc": {
+   "verdict": "ok"
+  },
   "2918a339b178dac8ac5b": {
    "verdict": "ok"
+  },
+  "2962f6f30fa64879e5e8": {
+   "instead": "This choice decides whether v0.2.1 needs a new screen",
+   "quote": "It decides whether v0.2.1 needs any new screen",
+   "verdict": "decode",
+   "why": "“It” has no clear referent in the sentence."
   },
   "2979ff1f9186833b2028": {
    "verdict": "ok"
@@ -981,6 +1204,9 @@
    "quote": "playtests … on your team chase anything via your chief of staff",
    "verdict": "decode",
    "why": "The reader has to work out whether this is a playtest status, a team relationship, or an instruction."
+  },
+  "2b1553174c7d2b9c191b": {
+   "verdict": "ok"
   },
   "2b2d3689d26528457b66": {
    "baselined": "2026-09-19",
@@ -1043,6 +1269,12 @@
   "2ca31c0246b0d517295c": {
    "verdict": "ok"
   },
+  "2cb3807bf0c884af657c": {
+   "instead": "Let the machine say it has no work to do",
+   "quote": "Let it say it has nothing to do",
+   "verdict": "decode",
+   "why": "Neither use of “it” identifies the machine being discussed."
+  },
   "2cc1d64a97161b4be797": {
    "verdict": "ok"
   },
@@ -1073,6 +1305,12 @@
   "2d6515b60d826026fecc": {
    "verdict": "ok"
   },
+  "2d6bd6edde7dd013567b": {
+   "instead": "Delay the whole feature until fencing has a job worth doing",
+   "quote": "Hold the whole feature until fencing has a job worth doing",
+   "verdict": "decode",
+   "why": "“Hold” can mean either delay the feature or keep it in place, so the title is ambiguous on its own."
+  },
   "2d9faee3751fb0486875": {
    "verdict": "ok"
   },
@@ -1086,6 +1324,9 @@
    "verdict": "ok"
   },
   "2dfa13f4c6b365169277": {
+   "verdict": "ok"
+  },
+  "2dfddb401000a1b45f3d": {
    "verdict": "ok"
   },
   "2e2c662e2ae729085fad": {
@@ -1122,6 +1363,9 @@
   "2fa6a055b9ae0a1f2713": {
    "verdict": "ok"
   },
+  "2fffcd88143c372eda7e": {
+   "verdict": "ok"
+  },
   "302e151a03d80cb9dbac": {
    "verdict": "ok"
   },
@@ -1133,6 +1377,13 @@
   },
   "305c97a1db9424a400ce": {
    "verdict": "ok"
+  },
+  "30ca7dd3063fcc7a5f97": {
+   "baselined": "2026-09-25",
+   "instead": "The style guide becomes binding; the replacement of the placeholder art can be planned.",
+   "quote": "the reskin",
+   "verdict": "decode",
+   "why": "The reader has to work out that this means replacing the placeholder art."
   },
   "30e5f81e81b2e543cfc3": {
    "baselined": "2026-09-19",
@@ -1171,8 +1422,18 @@
   "31f4dc4613a1e4f7bcc5": {
    "verdict": "ok"
   },
+  "31fbbe8c1393227f7c57": {
+   "verdict": "ok"
+  },
   "3232591e25fb0fb7444e": {
    "verdict": "ok"
+  },
+  "324133d85b7b323b632c": {
+   "baselined": "2026-09-25",
+   "instead": "changes which plants the player sees in the square before replanting",
+   "quote": "changes what the square looks like she has to clear before replanting",
+   "verdict": "decode",
+   "why": "The construction and the bare pronoun make the reader work out both what changes and who must clear it."
   },
   "329d6681ef9d5c02334d": {
    "verdict": "ok"
@@ -1195,6 +1456,9 @@
   "33414a2133384eb679bf": {
    "verdict": "ok"
   },
+  "3414360e09075908fbc9": {
+   "verdict": "ok"
+  },
   "3430f7aff8ba4c6aaf63": {
    "verdict": "ok"
   },
@@ -1211,6 +1475,9 @@
    "verdict": "ok"
   },
   "3480e0b12a8d994464ed": {
+   "verdict": "ok"
+  },
+  "34812684375fae1a19ea": {
    "verdict": "ok"
   },
   "34a44558a05a683e65a7": {
@@ -1289,8 +1556,20 @@
   "36eaecc5e9f226af16b6": {
    "verdict": "ok"
   },
+  "36fc193ee175a30a3aa5": {
+   "instead": "the more capable robot",
+   "quote": "a mark-2 robot",
+   "verdict": "decode",
+   "why": "The robot's name appears before the reader is told what it is."
+  },
   "372247b859dff1b81db4": {
    "verdict": "ok"
+  },
+  "372596da70b8c587d0d1": {
+   "instead": "The randomness currently provides no benefit.",
+   "quote": "The randomness currently buys nothing",
+   "verdict": "second-look",
+   "why": "“Buys nothing” is a metaphor for providing no benefit."
   },
   "3748340bf4da686f7fb4": {
    "verdict": "ok"
@@ -1319,6 +1598,12 @@
   "37b6854a559b14c585f8": {
    "verdict": "ok"
   },
+  "37bc0596ecb6e0bb2966": {
+   "instead": "Buy it with gold",
+   "quote": "gold is the gate",
+   "verdict": "second-look",
+   "why": "This metaphor makes the reader translate “gate” into the fact that gold is the purchase requirement."
+  },
   "38515d6ef103618a22bb": {
    "verdict": "ok"
   },
@@ -1337,6 +1622,13 @@
   "38e6ceb52172fd3bd097": {
    "verdict": "ok"
   },
+  "38f8f91d7dd2b52df0df": {
+   "baselined": "2026-09-25",
+   "instead": "Replacing the placeholder art cannot be scheduled until the style is approved, and every sprite made before approval may need to be made again.",
+   "quote": "full reskin",
+   "verdict": "decode",
+   "why": "The reader has to know that this means replacing the placeholder art."
+  },
   "39067cbe33fe75d5ad77": {
    "verdict": "ok"
   },
@@ -1347,6 +1639,9 @@
    "verdict": "ok"
   },
   "397b84cc030313ea3260": {
+   "verdict": "ok"
+  },
+  "39aefb72cbbd9fdc6586": {
    "verdict": "ok"
   },
   "39bb01aff4b804c7644b": {
@@ -1361,13 +1656,28 @@
    "verdict": "decode",
    "why": "The reader has to work out that this means something else the action needs first."
   },
+  "3a63e62994ee3f5bc1df": {
+   "instead": "a way for the shop to make it available",
+   "quote": "an unlock hook in the shop",
+   "verdict": "decode",
+   "why": "“Unlock hook” is implementation shorthand for the shop's way of making the robot available."
+  },
   "3a9f313fe82326c32a1c": {
    "instead": "State the fact or request in plain words.",
    "quote": "x",
    "verdict": "decode",
    "why": "The reader cannot tell what this text means or refers to."
   },
+  "3aaed742a42883e0e68b": {
+   "instead": "After the hoe landed, the robot earned every point on soil it had tilled itself and never watered the player's planted field. The chief of staff asked whether a tile planted by the player should pay more than one the robot tilled.",
+   "quote": "her sown field",
+   "verdict": "decode",
+   "why": "The sentence does not identify who “her” is."
+  },
   "3abde4495352d55d4af4": {
+   "verdict": "ok"
+  },
+  "3b3ce9a553953351ae68": {
    "verdict": "ok"
   },
   "3b41fc5b17fb5a72b4cb": {
@@ -1381,6 +1691,9 @@
    "quote": "Close autosave isolation card from landed test harness evidence",
    "verdict": "decode",
    "why": "“Card,” “landed,” and “test harness evidence” leave the reader to work out what was completed and why it can be closed."
+  },
+  "3b6b23d04fee0b3399e1": {
+   "verdict": "ok"
   },
   "3b73d82d9afddf1af43f": {
    "verdict": "ok"
@@ -1401,6 +1714,7 @@
    "verdict": "ok"
   },
   "3be9a1e23ce2f772b3c0": {
+   "baselined": "2026-09-25",
    "instead": "Starting tonight, when a bird raids a square, a bitten stalk now appears instead of bare soil.",
    "quote": "Since tonight, a square a bird empties keeps a bitten stalk standing on it instead of going to bare earth.",
    "verdict": "second-look",
@@ -1536,6 +1850,12 @@
    "verdict": "second-look",
    "why": "“In flight” is a metaphor for work that is currently underway."
   },
+  "4514a9a8a6d4694f2a6c": {
+   "verdict": "ok"
+  },
+  "4519ed7c185647eb8fd7": {
+   "verdict": "ok"
+  },
   "4526a478f619fef10c9f": {
    "verdict": "ok"
   },
@@ -1569,11 +1889,23 @@
   "46c0200e3c525377794f": {
    "verdict": "ok"
   },
+  "46c89642297d7d0f33db": {
+   "instead": "the greyed-out farm shows the player that she has chosen eight squares",
+   "quote": "the greyed-out farm says \"full\" for her",
+   "verdict": "second-look",
+   "why": "The farm is made to speak instead of plainly stating what the greyed-out squares show."
+  },
   "46e328bc71620ce2fc61": {
    "verdict": "ok"
   },
   "46fc760b76203f93f83b": {
    "verdict": "ok"
+  },
+  "4702a9e0f1e3c787a22a": {
+   "instead": "where the design has always treated machines: as labour-saving tools",
+   "quote": "the whole delegation arc has them",
+   "verdict": "decode",
+   "why": "“Delegation arc” is internal design shorthand for the role machines are meant to have."
   },
   "47069a9ea70697fcaa56": {
    "verdict": "ok"
@@ -1588,6 +1920,9 @@
    "verdict": "ok"
   },
   "4739dd7f61d44ac05817": {
+   "verdict": "ok"
+  },
+  "4761b7bddc7af7505895": {
    "verdict": "ok"
   },
   "47694a4737ed530f7c4d": {
@@ -1624,6 +1959,12 @@
    "verdict": "decode",
    "why": "\"Pose and variant sets,\" \"entity catalogue,\" and \"fake-cycling\" are all technical terms not defined."
   },
+  "48a8292cfaff016a853a": {
+   "instead": "there is an unusual situation you found",
+   "quote": "it has an edge case you found",
+   "verdict": "decode",
+   "why": "“Edge case” is engineering shorthand for an unusual situation and is not explained here."
+  },
   "48df11628890ba04be2a": {
    "verdict": "ok"
   },
@@ -1636,10 +1977,19 @@
   "493c001672e755b382de": {
    "verdict": "ok"
   },
+  "494b1e5a531abc4dd678": {
+   "instead": "The robot can build them",
+   "quote": "she can build them",
+   "verdict": "decode",
+   "why": "The reader is not told who “she” is."
+  },
   "499570ea44df3f71f6eb": {
    "verdict": "ok"
   },
   "49aa355431716fcce71d": {
+   "verdict": "ok"
+  },
+  "49dac34f2dff340f1e8f": {
    "verdict": "ok"
   },
   "49e22a75912e1e0e75ab": {
@@ -1653,6 +2003,18 @@
   },
   "4a22e1b793920ea2ab63": {
    "verdict": "ok"
+  },
+  "4a5d7e65d0c723c382d4": {
+   "instead": "A separate email address for bug reports",
+   "quote": "A dedicated email alias",
+   "verdict": "decode",
+   "why": "“Alias” is administrative shorthand for an email address used for this purpose."
+  },
+  "4a76ed7e1db9817ac3ff": {
+   "instead": "Explicitly postpone the recording session.",
+   "quote": "Park it explicitly",
+   "verdict": "decode",
+   "why": "“Park it” is process shorthand, and “it” has no referent in the sentence."
   },
   "4af71bd24aeef697b537": {
    "instead": "how much the shipping bin can hold",
@@ -1675,17 +2037,35 @@
   "4b411e54a78ef7cb0421": {
    "verdict": "ok"
   },
+  "4b6372dbe218c6952d80": {
+   "instead": "Zoom out to the whole farm while pointing",
+   "quote": "Step back to point",
+   "verdict": "second-look",
+   "why": "The wording makes the reader infer that the view should zoom out while pointing at squares."
+  },
   "4baaa39458e4d9fe27f5": {
    "instead": "the reply overstated what had actually been completed",
    "quote": "the reply claimed more than it had done",
    "verdict": "second-look",
    "why": "The pronoun 'it' has no clear referent in the sentence."
   },
+  "4bcf1b320f64e02dea0e": {
+   "instead": "For example, make the egg certain only after the hen has been visited, or add more hens later. Write the choice in the judgment box.",
+   "quote": "she's been visited",
+   "verdict": "second-look",
+   "why": "The sentence does not identify who “she” is."
+  },
   "4bdf9760df040744d9c6": {
    "instead": "Fix the asset pipeline so it no longer changes the red colour channel by one value",
    "quote": "shifting red by one",
    "verdict": "decode",
    "why": "The reader cannot tell what red is being shifted in or what the one is counting."
+  },
+  "4c1373eca4218239eb36": {
+   "instead": "Let the machine harvest ripe crops",
+   "quote": "Let it harvest ripe squares",
+   "verdict": "decode",
+   "why": "The reader cannot tell what “it” is, and “ripe squares” names the location rather than the crop to harvest."
   },
   "4c2a7ef4630c8fe66a29": {
    "verdict": "ok"
@@ -1708,6 +2088,12 @@
   "4cc38281e5b79e3c333d": {
    "verdict": "ok"
   },
+  "4cdec643af006f430b3b": {
+   "instead": "The machine walks the list",
+   "quote": "It walks the list",
+   "verdict": "decode",
+   "why": "The reader has not been told what “it” is."
+  },
   "4ced6e11d4c5060a46bc": {
    "verdict": "ok"
   },
@@ -1716,6 +2102,15 @@
   },
   "4d450954088e73ce4adf": {
    "verdict": "ok"
+  },
+  "4d5c03d65411a1230a90": {
+   "verdict": "ok"
+  },
+  "4d717dbdadcc50c69717": {
+   "instead": "every future project you leave waiting for an event",
+   "quote": "every future project you park on a trigger",
+   "verdict": "second-look",
+   "why": "“Park on a trigger” is a metaphor for leaving work waiting for an event."
   },
   "4d8902d99b7f16417065": {
    "instead": "Record what happened when you checked the game in a web browser",
@@ -1728,6 +2123,9 @@
    "quote": "playable comparisons",
    "verdict": "second-look",
    "why": "The reader has to infer that these are working versions they can try and compare."
+  },
+  "4dabe5a9b14c77cfec7c": {
+   "verdict": "ok"
   },
   "4e02899f224f68886e67": {
    "instead": "Name what is open: \"A work card… open on this page\" or \"Decisions… open on this page\"",
@@ -1755,6 +2153,15 @@
    "why": "The bare pronoun 'she' has no referent in the visible context, and 'where she was lost' is a metaphor for the actual consequence the reader cares about."
   },
   "4eb6e4be5f15230de3e1": {
+   "verdict": "ok"
+  },
+  "4ec02cc0c7cb91a94861": {
+   "instead": "A bestiary that adds each species after the player meets it",
+   "quote": "A bestiary that fills in",
+   "verdict": "second-look",
+   "why": "“Fills in” makes the option’s behavior less clear than saying when species appear."
+  },
+  "4edcdeb5740feabbb18f": {
    "verdict": "ok"
   },
   "4efae8f86160948b99f8": {
@@ -1803,7 +2210,13 @@
    "verdict": "second-look",
    "why": "Technical language ('floor') treats the implication as the fact where plainer language would serve."
   },
+  "506bc2dbeb0bebebed62": {
+   "verdict": "ok"
+  },
   "508fde3e87b72dacf93a": {
+   "verdict": "ok"
+  },
+  "50b727a253159e02d41c": {
    "verdict": "ok"
   },
   "50cadd8a4751a1cabe5f": {
@@ -1840,6 +2253,12 @@
   "51e3ada09d27ea3707a7": {
    "verdict": "ok"
   },
+  "525934f561fde09fea6b": {
+   "instead": "Approve the reward and view design, change the numbers",
+   "quote": "Approve the shape, change the numbers",
+   "verdict": "second-look",
+   "why": "“Shape” is vague about which part of the design is being approved."
+  },
   "52a6246b6f531c32018d": {
    "verdict": "ok"
   },
@@ -1858,6 +2277,12 @@
   },
   "5311b955c1dbe2fe8163": {
    "verdict": "ok"
+  },
+  "5336936821713c6b3ced": {
+   "instead": "stops counting how long the work has been waiting",
+   "quote": "stops the stuck clock",
+   "verdict": "second-look",
+   "why": "This metaphor makes the reader work out that the blocked-duration counter stops running."
   },
   "5340ca3d39e0215d63fa": {
    "instead": "Your written confirmation that you checked it yourself stops counting when the rule it confirmed changes",
@@ -1905,7 +2330,13 @@
    "verdict": "decode",
    "why": "The sentence is grammatically incomplete; \"they had\" needs an object, and the reader must infer what is meant."
   },
+  "5433ca29d7a538fc5cfd": {
+   "verdict": "ok"
+  },
   "5480e51c2469982040d8": {
+   "verdict": "ok"
+  },
+  "54bb9250f3c92adbfd6c": {
    "verdict": "ok"
   },
   "54c6c32d37d5df61cf0c": {
@@ -2008,14 +2439,29 @@
   "58e1e4f74c6baf4ca367": {
    "verdict": "ok"
   },
+  "58fb3c1b09a2cc42b1d2": {
+   "instead": "It becomes part of the M3 plan instead of being completed beforehand.",
+   "quote": "rather than a precursor",
+   "verdict": "second-look",
+   "why": "“Precursor” makes the reader translate a simple scheduling relationship."
+  },
   "591cbebef07b7b63eea0": {
    "verdict": "ok"
   },
   "593f8fea9bc7c9f402ca": {
    "verdict": "ok"
   },
+  "59583a43b5d1f0806250": {
+   "verdict": "ok"
+  },
   "59703bd20569b59d410a": {
    "verdict": "ok"
+  },
+  "598eb52be3e550bc0378": {
+   "instead": "The Mark III is on the tablet and its panel already needs the scorecard. The bench decides where every later training surface lives, and four people can build it in about six days.",
+   "quote": "across four seats",
+   "verdict": "decode",
+   "why": "The reader has to work out whether “seats” means people, roles, or something else."
   },
   "599186a63fade8aaa3d2": {
    "instead": "Record the decision made in each review",
@@ -2044,6 +2490,9 @@
   "5a8b0481e8a09b50f745": {
    "verdict": "ok"
   },
+  "5a9b1564ab7031bff876": {
+   "verdict": "ok"
+  },
   "5aada23899fbd3fbf97a": {
    "instead": "Record whether the sprinkler-price change follows the studio's writing rules",
    "quote": "writing verdict",
@@ -2056,8 +2505,17 @@
   "5afa63722fa272974319": {
    "verdict": "ok"
   },
+  "5b09805fd90265f5b55e": {
+   "verdict": "ok"
+  },
   "5b105fed254b2143e558": {
    "verdict": "ok"
+  },
+  "5b31910bb61dfde5efdd": {
+   "instead": "The same creature list already powers it, so a player version would only need a different way to open it.",
+   "quote": "the roster builds itself from the species table",
+   "verdict": "decode",
+   "why": "This relies on internal implementation terms instead of plainly stating why the player version is cheap."
   },
   "5b5de3bd5cf839fab915": {
    "verdict": "ok"
@@ -2086,14 +2544,26 @@
    "verdict": "second-look",
    "why": "It describes the preview's internal data source instead of plainly saying what the preview shows."
   },
+  "5c62436c4d8c17d8b5b8": {
+   "verdict": "ok"
+  },
   "5c7f542cb1b88b430b63": {
    "verdict": "ok"
+  },
+  "5ca93f4a982415035697": {
+   "instead": "Give the robot a home it returns to",
+   "quote": "Give it a home it returns to",
+   "verdict": "second-look",
+   "why": "The reader must infer that “it” means the robot."
   },
   "5cad9fa3a0f1f3ea57ed": {
    "instead": "for players to send feedback",
    "quote": "to send it to",
    "verdict": "decode",
    "why": "'It' refers to 'feedback' from the previous sentence; rule 3 requires the referent be in the same sentence."
+  },
+  "5ccedda7ff2f183c9c84": {
+   "verdict": "ok"
   },
   "5cec18d6e249fecdf06a": {
    "verdict": "ok"
@@ -2111,6 +2581,9 @@
    "verdict": "ok"
   },
   "5d41751c92a1ff99d19a": {
+   "verdict": "ok"
+  },
+  "5d41c03b02e93a3d41c6": {
    "verdict": "ok"
   },
   "5d6ad5b86815cd20553e": {
@@ -2148,6 +2621,18 @@
   },
   "5ea70f73f46acedea9d8": {
    "verdict": "ok"
+  },
+  "5eac7d4466a542b778da": {
+   "instead": "It was the next reward value to set. The CEO answered with a different rule.",
+   "quote": "replacing the question",
+   "verdict": "decode",
+   "why": "This describes the CEO's response indirectly without saying what he decided."
+  },
+  "5ebfa759d0a4b3b786ba": {
+   "instead": "The expensive tier — only if the game lacks enough movement without it.",
+   "quote": "game feels dead",
+   "verdict": "second-look",
+   "why": "This metaphor makes the reader infer that the game lacks enough movement or animation."
   },
   "5f40e1bfefcee5e73870": {
    "verdict": "ok"
@@ -2198,6 +2683,15 @@
   "6096edbda94e92034ecb": {
    "verdict": "ok"
   },
+  "60c94693452513e9dc89": {
+   "instead": "a speckled or coloured overlay",
+   "quote": "an added dither or colour layer",
+   "verdict": "decode",
+   "why": "“Dither” and “colour layer” name visual implementation treatments without saying what the viewer would see."
+  },
+  "60d038c1376e94f983ce": {
+   "verdict": "ok"
+  },
   "61485ceae61c7b996a88": {
    "instead": "Renumber the question about the crop count shown in the bottom bar to Q-123 and add a card recording the decision",
    "quote": "Renumber the bottom-bar crop count question to Q-123 and add its decision card",
@@ -2234,6 +2728,15 @@
   "62ae9d34a885dffb5876": {
    "verdict": "ok"
   },
+  "62afc3f439b35ed26ab7": {
+   "verdict": "ok"
+  },
+  "62b85cce3e4a903020e4": {
+   "instead": "Leave the current cue as it is",
+   "quote": "Leave it as it is",
+   "verdict": "decode",
+   "why": "The reader cannot tell what “it” refers to."
+  },
   "62d525851023f56ab707": {
    "instead": "won't make the tablet stutter",
    "quote": "a frame she would feel",
@@ -2267,7 +2770,16 @@
   "63643f06ed65e21c4f5a": {
    "verdict": "ok"
   },
+  "636a97822e2d0408244f": {
+   "instead": "a small reward for turning bare soil into tilled soil during initial playtesting",
+   "quote": "a 0.1 reward",
+   "verdict": "second-look",
+   "why": "The number has no stated scale or target, so the reader cannot tell what it represents."
+  },
   "639c469dd9e7715ac4dd": {
+   "verdict": "ok"
+  },
+  "63a16993eac508184583": {
    "verdict": "ok"
   },
   "63c4c54fc46a18a0bddc": {
@@ -2294,11 +2806,23 @@
    "verdict": "decode",
    "why": "'Raid's meal' is a metaphor for extent or duration; the reader has to work out what it means."
   },
+  "646e2fe104695780b2c3": {
+   "instead": "What sound should a player hear when turning a dial on the training workbench?",
+   "quote": "when she turns it",
+   "verdict": "decode",
+   "why": "The sentence does not identify who “she” is or what “it” refers to."
+  },
   "64b5b06728658e91f82c": {
    "instead": "Record the completed work that prevents integration from ending before it is ready",
    "quote": "integration exit guard work",
    "verdict": "decode",
    "why": "“Exit guard” is internal engineering shorthand, so a reader cannot tell what the completed work does."
+  },
+  "64d041f3ff64f6d6698d": {
+   "instead": "Give up recording the sounds yourself; someone else finds or records the takes.",
+   "quote": "self-recorded provenance",
+   "verdict": "decode",
+   "why": "“Provenance” is internal shorthand for where the sound came from and its rights."
   },
   "64f0185c9f9a1bf9c3b6": {
    "baselined": "2026-09-19",
@@ -2308,6 +2832,9 @@
    "why": "\"Against the build\" is ambiguous—does it mean \"to match,\" \"in sync with,\" or something else?"
   },
   "6528f2a12c9a4da4c9cf": {
+   "verdict": "ok"
+  },
+  "65377f6c38c73822e311": {
    "verdict": "ok"
   },
   "654d0680863d42de1bdb": {
@@ -2326,6 +2853,15 @@
    "why": "The reader has to work out what the palette test checks and what a sprite is."
   },
   "65afd7b6fab012b252f7": {
+   "verdict": "ok"
+  },
+  "65e254f9a2ecfffc76aa": {
+   "verdict": "ok"
+  },
+  "663f4f366662c330160b": {
+   "verdict": "ok"
+  },
+  "664818b811980981d07f": {
    "verdict": "ok"
   },
   "6650f8b0e9321adc675d": {
@@ -2376,11 +2912,17 @@
   "672b3c3abcf48476e6bd": {
    "verdict": "ok"
   },
+  "6736e037bc06c2193142": {
+   "verdict": "ok"
+  },
   "6747f6854f5f902e9916": {
    "instead": "A shipped asset has no record of where it came from",
    "quote": "ledger line",
    "verdict": "decode",
    "why": "'Ledger line' is internal terminology for a record of where an asset came from."
+  },
+  "6755bec2ded0c093e295": {
+   "verdict": "ok"
   },
   "67c8c568b0dd46379cc4": {
    "instead": "Merged into the main code branch; automated checks confirmed",
@@ -2392,6 +2934,9 @@
    "verdict": "ok"
   },
   "67f694a2826735f319e7": {
+   "verdict": "ok"
+  },
+  "68991bac4ab580f160ea": {
    "verdict": "ok"
   },
   "68a3539225cfff3214ef": {
@@ -2438,6 +2983,12 @@
   "69ace6adfea2cc5c5e1c": {
    "verdict": "ok"
   },
+  "6a04545b8ba50b4030cc": {
+   "instead": "important to how the farm opens up throughout the first phase",
+   "quote": "load-bearing for how the farm opens up over the whole first phase",
+   "verdict": "second-look",
+   "why": "“Load-bearing” is internal shorthand for something important to the progression."
+  },
   "6a238f068fdb36e2f2fd": {
    "verdict": "ok"
   },
@@ -2459,14 +3010,33 @@
    "verdict": "decode",
    "why": "The sentence assumes that “she” means the player before saying so."
   },
+  "6bfc7c0b7fe1cdf9d41e": {
+   "verdict": "ok"
+  },
   "6c13aa0b35c289294801": {
    "verdict": "ok"
+  },
+  "6c8806bfbd4d8e5d0869": {
+   "verdict": "ok"
+  },
+  "6cdfb172a026cae21ec8": {
+   "baselined": "2026-09-25",
+   "instead": "Use movement as the rule, not whether something is a machine.",
+   "quote": "Movement decides it, not machinery",
+   "verdict": "second-look",
+   "why": "The inversion makes the reader work out that movement should determine the visual rule."
   },
   "6ce56daec2e03521f4f0": {
    "instead": "Cancel the queued attempt",
    "quote": "Stops it",
    "verdict": "second-look",
    "why": "\"It\" has no referent — what is being stopped?"
+  },
+  "6cf1302a1c70aff408e5": {
+   "verdict": "ok"
+  },
+  "6d64893f2a6050ce9be3": {
+   "verdict": "ok"
   },
   "6d68bd32b4d203aff094": {
    "instead": "inventory pop-up opened from the bottom bar",
@@ -2505,6 +3075,9 @@
   "6e47b7cdca7d3a0f9bf2": {
    "verdict": "ok"
   },
+  "6e495b96ccc9be8e4e53": {
+   "verdict": "ok"
+  },
   "6e76da981c06ec392ee5": {
    "verdict": "ok"
   },
@@ -2538,6 +3111,15 @@
    "quote": "in a headless browser",
    "verdict": "decode",
    "why": "This engineering term does not tell a cold reader that the browser runs without showing a window."
+  },
+  "6f4c658a084192a7f19a": {
+   "instead": "Schedule the recording session after the audio direction is approved.",
+   "quote": "Schedule it",
+   "verdict": "decode",
+   "why": "“It” has no referent in the sentence."
+  },
+  "6f68f7b73545c6728f22": {
+   "verdict": "ok"
   },
   "6f6c9076eecbcb2b65dd": {
    "instead": "… piece open on this page, and Carmen owns it rather than you.",
@@ -2688,6 +3270,13 @@
   "7548969705c138242ada": {
    "verdict": "ok"
   },
+  "75705d40fce668a271d2": {
+   "baselined": "2026-09-25",
+   "instead": "This assumes players will care more about their bots than about immediately recognizing them as machines.",
+   "quote": "Bets that attachment to your bots (design/06 §2, and the whole of phase 5) is worth more than appliance-legibility.",
+   "verdict": "decode",
+   "why": "“Appliance-legibility” is a coined term for whether players can recognize something as a machine."
+  },
   "757d3ef7c599d8b5d92a": {
    "verdict": "ok"
   },
@@ -2698,6 +3287,15 @@
    "why": "It names the implementation instead of stating how the two features should behave."
   },
   "75b0b56f20e6ec41822b": {
+   "verdict": "ok"
+  },
+  "75caf4738a8be53cfb26": {
+   "instead": "Pick a weekend; record the session to match the approved style. Pairs naturally with approving the audio direction above.",
+   "quote": "targets the approved aesthetic",
+   "verdict": "second-look",
+   "why": "The reader has to translate this into recording the session to match the approved style."
+  },
+  "75eec3813b1470ef1283": {
    "verdict": "ok"
   },
   "75f7a1a4d4b3a1db6887": {
@@ -2727,6 +3325,9 @@
   "76791867283e029d8876": {
    "verdict": "ok"
   },
+  "768802828ad3509bc5e3": {
+   "verdict": "ok"
+  },
   "76aac856117dfb619e77": {
    "verdict": "ok"
   },
@@ -2745,11 +3346,20 @@
   "771e6db7308df5919d2c": {
    "verdict": "ok"
   },
+  "772726b4a16f593e834e": {
+   "verdict": "ok"
+  },
   "77b57bd90e4f98172d17": {
    "verdict": "ok"
   },
   "77d61f423364c1f2260e": {
    "verdict": "ok"
+  },
+  "780ee42e21d393f4715a": {
+   "instead": "the risk list for upcoming releases",
+   "quote": "the release train's risk list",
+   "verdict": "decode",
+   "why": "“Release train” is internal process shorthand for the schedule of upcoming releases."
   },
   "780ee5d02ab5f1eaa5dd": {
    "instead": "Specify the metric: \"The view count that would trigger marketing outreach\" or \"The player count that would prompt marketing efforts\"",
@@ -2787,6 +3397,15 @@
   "795a76bcf943250003a7": {
    "verdict": "ok"
   },
+  "79b2887384d6a2152a33": {
+   "instead": "List every way the player interacts with the game before the next milestone?",
+   "quote": "interaction inventory",
+   "verdict": "decode",
+   "why": "The reader has to work out that this means a list of every way the player interacts with the game."
+  },
+  "79bfb6ee9498e857b162": {
+   "verdict": "ok"
+  },
   "79ea0dd9d95c1735a9bb": {
    "verdict": "ok"
   },
@@ -2815,10 +3434,17 @@
   "7a1fad480b6bc3e5c4b7": {
    "verdict": "ok"
   },
+  "7a2f7af54e3f6382c5ef": {
+   "instead": "It's the only item in the queue assigned to you as the doer, and calendar items without an owner are left undone. One decision resolves it: when to do it, or whether to hand it off.",
+   "quote": "unowned calendar items rot",
+   "verdict": "second-look",
+   "why": "The metaphor makes the reader infer that calendar items without an owner are left undone."
+  },
   "7a82ac21391154fc5f49": {
    "verdict": "ok"
   },
   "7ad995031325e86944b8": {
+   "baselined": "2026-09-25",
    "instead": "saw the marks, and asked what they were and whether they were a bug",
    "quote": "saw them, and asked what they were and whether they were a bug",
    "verdict": "second-look",
@@ -2835,6 +3461,9 @@
    "quote": "it is the pass you asked for when you wrote back",
    "verdict": "decode",
    "why": "\"It\" is undefined, \"the pass\" appears to be house vocabulary (a test run?), and \"when you wrote back\" assumes context from outside this text."
+  },
+  "7b3721113bb566b0f824": {
+   "verdict": "ok"
   },
   "7b3bd0c9c48107ea5cfc": {
    "verdict": "ok"
@@ -2860,10 +3489,25 @@
   "7bd641e2f407182be29d": {
    "verdict": "ok"
   },
+  "7be1b3e159b1f4d1f4fd": {
+   "instead": "How much animation should clearing, tilling, planting, watering, and harvesting get?",
+   "quote": "the five core verbs",
+   "verdict": "decode",
+   "why": "The sentence does not say which five player actions it means."
+  },
   "7bed7e296713211987a4": {
    "verdict": "ok"
   },
+  "7bf0c8f0bc670d09deb8": {
+   "instead": "while it follows its assigned route",
+   "quote": "on its round",
+   "verdict": "second-look",
+   "why": "“Round” makes the reader infer that the robot is following its assigned route."
+  },
   "7c12900196f78d4a2b48": {
+   "verdict": "ok"
+  },
+  "7c142dde9d547a307862": {
    "verdict": "ok"
   },
   "7c2222fcddf5c0b379a6": {
@@ -2890,16 +3534,31 @@
   "7ccb03375da65eb23f99": {
    "verdict": "ok"
   },
+  "7cd4f10bcca0d7fc7af0": {
+   "verdict": "ok"
+  },
   "7ce88793d25bdd43ceab": {
    "verdict": "ok"
   },
   "7d2f28cdfc3a5db7811e": {
    "verdict": "ok"
   },
+  "7d5230c1a4fc042d4918": {
+   "verdict": "ok"
+  },
   "7d5c916502c41ee24c69": {
    "verdict": "ok"
   },
+  "7d6421b7b5d85a44d927": {
+   "instead": "the view centered on the robot",
+   "quote": "the view egocentric",
+   "verdict": "decode",
+   "why": "The reader has to know that this means the view is centered on the robot."
+  },
   "7d711e56025757f4eed4": {
+   "verdict": "ok"
+  },
+  "7de1a46604958f18bba0": {
    "verdict": "ok"
   },
   "7e302981a72a5efe040b": {
@@ -2911,7 +3570,16 @@
   "7e42fe35701c9412b962": {
    "verdict": "ok"
   },
+  "7e6137325f3a504a2eb8": {
+   "instead": "The robot would learn this in a day",
+   "quote": "It would learn in a day",
+   "verdict": "decode",
+   "why": "The sentence does not state what “it” refers to."
+  },
   "7e9c5f0c43bb82474352": {
+   "verdict": "ok"
+  },
+  "7eb23963ebd8f09bf3b0": {
    "verdict": "ok"
   },
   "7eee8c8d6d921175dffc": {
@@ -2922,6 +3590,9 @@
    "quote": "Give HQ's records their own store",
    "verdict": "decode",
    "why": "“Store” leaves the reader to work out whether this means a folder, database, or something else."
+  },
+  "7f53ffabc3a1e4df7a86": {
+   "verdict": "ok"
   },
   "7fc195090a053707bde9": {
    "baselined": "2026-09-19",
@@ -2991,8 +3662,20 @@
   "81b4995d97a4fb8b564d": {
    "verdict": "ok"
   },
+  "81b8a09a3e60fa02fab4": {
+   "instead": "Give the robot the hoe",
+   "quote": "Give it the hoe",
+   "verdict": "second-look",
+   "why": "The reader must infer that “it” means the robot."
+  },
   "81cd8fafc277fe523019": {
    "verdict": "ok"
+  },
+  "81e199df1c93d7e6ae0d": {
+   "instead": "Add the new land to an existing farm",
+   "quote": "A world migration",
+   "verdict": "decode",
+   "why": "This names the engineering mechanism instead of plainly saying what happens to an old farm."
   },
   "81ee2f74d1f733717964": {
    "verdict": "ok"
@@ -3010,6 +3693,9 @@
    "why": "This describes how the status appears instead of plainly saying that the status still says “waiting.”"
   },
   "82b128a90ad2c219fb4c": {
+   "verdict": "ok"
+  },
+  "82b52729e24b0d1b3449": {
    "verdict": "ok"
   },
   "82bc093135391478ee2d": {
@@ -3111,6 +3797,15 @@
    "verdict": "second-look",
    "why": "Same as 18 — word order makes this read as a statement when it is a label."
   },
+  "86493d977e2263ebe6a1": {
+   "verdict": "ok"
+  },
+  "8662529d8a3d83b8a2a6": {
+   "instead": "Use none of these options for one sound",
+   "quote": "None of these for one of the sounds",
+   "verdict": "second-look",
+   "why": "The wording makes the reader reread it to understand that one sound should use no listed option."
+  },
   "86d40a4484923d33c665": {
    "verdict": "ok"
   },
@@ -3143,6 +3838,12 @@
   },
   "87e561cb4fe2028ad316": {
    "verdict": "ok"
+  },
+  "880805c0a44e38486821": {
+   "instead": "finishes the last remaining part of the onboarding milestone",
+   "quote": "scores the last open bar on the onboarding milestone",
+   "verdict": "decode",
+   "why": "“Open bar” is unexplained dashboard shorthand for an unfinished part of the milestone."
   },
   "8829cf3aeb6e82f639b2": {
    "instead": "the bar remains a quick summary you can read without tapping",
@@ -3180,6 +3881,12 @@
   "8903b5577f0fdbdf0b8c": {
    "verdict": "ok"
   },
+  "891b1595f530acf8197a": {
+   "instead": "The call is small, has been waiting for days, and blocks no other work — it will take thirty seconds.",
+   "quote": "Small, but it's been open for days and it gates nothing — a thirty-second call.",
+   "verdict": "decode",
+   "why": "The bare pronoun and the phrase “gates nothing” make the subject and consequence unclear."
+  },
   "899b28ef39a9f578186f": {
    "verdict": "ok"
   },
@@ -3192,11 +3899,23 @@
   "8a5fbaf607f0eafa842c": {
    "verdict": "ok"
   },
+  "8a63d0d4ad77e07eb955": {
+   "instead": "Create a separate animation for each action.",
+   "quote": "Full per-verb choreography",
+   "verdict": "decode",
+   "why": "“Choreography” makes the reader work out that this means a separate animation for each action."
+  },
   "8a7551044d50c59e7eb1": {
    "verdict": "ok"
   },
   "8a81b16d0e4509655347": {
    "verdict": "ok"
+  },
+  "8b13d3d83090dd97236c": {
+   "instead": "Fence it in, give it a home to return to, or add a sensor for dry soil",
+   "quote": "Pen it, home it, or give it a nose?",
+   "verdict": "decode",
+   "why": "The reader has to translate “pen,” “home,” and especially “give it a nose” into three different design changes."
   },
   "8b20e2cd2afb68125b81": {
    "verdict": "ok"
@@ -3212,6 +3931,12 @@
   },
   "8c2ee42643b8b5a2efce": {
    "verdict": "ok"
+  },
+  "8c6b2f8585cf05794779": {
+   "instead": "when the save is from before the current version of the world",
+   "quote": "when the save predates the running build's world",
+   "verdict": "decode",
+   "why": "The reader has to work out that an old save is incompatible with the current world's format."
   },
   "8ca10acefddc1989f0b5": {
    "instead": "An automated task is running now",
@@ -3238,6 +3963,13 @@
    "verdict": "decode",
    "why": "The sentence 'tokens are out until about' is incomplete with no time given, and 'This' is a bare pronoun whose referent is unclear."
   },
+  "8d3ee7be8a4a743a05eb": {
+   "baselined": "2026-09-25",
+   "instead": "Your own recording session for the watering can and harvest sounds",
+   "quote": "Your own foley recording session",
+   "verdict": "decode",
+   "why": "“Foley” is production shorthand that does not tell a stranger what is being recorded."
+  },
   "8d79b443489ef35186ea": {
    "instead": "send this work back to the studio, or move Daniel to the next item",
    "quote": "hand the card back to the studio and move him on",
@@ -3253,6 +3985,12 @@
    "quote": "The menu is the harvest",
    "verdict": "decode",
    "why": "Poetic metaphor instead of stating what this design option does."
+  },
+  "8dca44bdf2ae6a1cfe34": {
+   "instead": "the event that lets it start",
+   "quote": "the event that wakes it",
+   "verdict": "second-look",
+   "why": "The metaphor makes the reader translate “wakes it” into making the waiting work start again."
   },
   "8dd6a1f7de2dd71b9776": {
    "instead": "the player's crops",
@@ -3284,7 +4022,19 @@
   "8ecb04d823678c4f9233": {
    "verdict": "ok"
   },
+  "8ee033f872cbf3d8eedf": {
+   "verdict": "ok"
+  },
   "8eeda774dddaae60b6cd": {
+   "verdict": "ok"
+  },
+  "8efe1abc7e584910f340": {
+   "instead": "a cue that is visible in the plot but not from the robot-directing height",
+   "quote": "a cue that carries in the hand and dies at that height",
+   "verdict": "second-look",
+   "why": "The reader has to decode “carries” and “dies” as being visible up close but not from the robot-directing height."
+  },
+  "8f056a11aeec6fd3a313": {
    "verdict": "ok"
   },
   "8f34b6f54b3613296d57": {
@@ -3305,6 +4055,9 @@
    "verdict": "decode",
    "why": "“HQ” is an internal name with no plain explanation for a reader arriving cold."
   },
+  "8f84737cf7612b374168": {
+   "verdict": "ok"
+  },
   "8fe11165cd394f9d460d": {
    "verdict": "ok"
   },
@@ -3312,6 +4065,12 @@
    "verdict": "ok"
   },
   "9045e59dbb1112724cc2": {
+   "verdict": "ok"
+  },
+  "9058857498fdc69040af": {
+   "verdict": "ok"
+  },
+  "9061b113243cf8d24ecf": {
    "verdict": "ok"
   },
   "906a794e6e83c4285b9b": {
@@ -3327,6 +4086,9 @@
    "verdict": "ok"
   },
   "91757e1af2c66a9d5097": {
+   "verdict": "ok"
+  },
+  "9196638930bcb82a2b28": {
    "verdict": "ok"
   },
   "91a64bebe6e973c5b8cc": {
@@ -3349,6 +4111,12 @@
   },
   "9244cb76fb0aafda6530": {
    "verdict": "ok"
+  },
+  "927358426db4ae79f5ee": {
+   "instead": "Players still cannot see which bare soil is ready for planting.",
+   "quote": "the plant-here-now signal stays invisible",
+   "verdict": "decode",
+   "why": "This names an internal signal instead of saying what the player cannot see."
   },
   "9289308481c74ae7306f": {
    "verdict": "ok"
@@ -3402,6 +4170,9 @@
    "verdict": "ok"
   },
   "946a088ddc4bfffc5025": {
+   "verdict": "ok"
+  },
+  "948adcb64a2242bb7cdf": {
    "verdict": "ok"
   },
   "94b653533cb4746b6143": {
@@ -3491,6 +4262,9 @@
   "97f9a67e1c1d094217ab": {
    "verdict": "ok"
   },
+  "9805811d4bc9ca1a4bb6": {
+   "verdict": "ok"
+  },
   "98160cafeca6990177c4": {
    "verdict": "ok"
   },
@@ -3546,6 +4320,9 @@
   "99f499a48e03cd4e4ecc": {
    "verdict": "ok"
   },
+  "9a05f2ae89b37afe9fe8": {
+   "verdict": "ok"
+  },
   "9a4391b97270c37e17b2": {
    "instead": "ships once someone who has never played the game completes the opening checklist.",
    "quote": "ships as once someone who has never played the game gets through the opening checklist, and the tag goes out. of steps done on its critical work.",
@@ -3555,7 +4332,13 @@
   "9a5da81812097374f2be": {
    "verdict": "ok"
   },
+  "9a696e7cb48dd4f177a8": {
+   "verdict": "ok"
+  },
   "9a7cea62a02ef7635391": {
+   "verdict": "ok"
+  },
+  "9a9bd5358e89d587d46e": {
    "verdict": "ok"
   },
   "9ad61b0d35013783226e": {
@@ -3573,6 +4356,9 @@
    "verdict": "decode",
    "why": "'Fits in a frame' is house vocabulary for rendering performance; the reader cannot tell what actually fits."
   },
+  "9b453732edd82c8436b0": {
+   "verdict": "ok"
+  },
   "9b769a682ca67e657416": {
    "verdict": "ok"
   },
@@ -3589,6 +4375,12 @@
    "verdict": "decode",
    "why": "Bare pronoun with no referent in the sentence; a reader arriving cold would not know who she is."
   },
+  "9bd44448be0a80fb45cd": {
+   "instead": "Moving the robot currently also erases everything it has learned",
+   "quote": "it is what the code does today",
+   "verdict": "decode",
+   "why": "The reader cannot tell what “it” refers to without reconstructing the missing subject."
+  },
   "9bd668f81661d6333906": {
    "verdict": "ok"
   },
@@ -3599,6 +4391,9 @@
    "verdict": "ok"
   },
   "9c1191a15097ea8be947": {
+   "verdict": "ok"
+  },
+  "9c121b654fd87520b779": {
    "verdict": "ok"
   },
   "9c257d5641d1b5b2e45e": {
@@ -3632,6 +4427,12 @@
   "9cfa97f6aeb4a6e05d5b": {
    "verdict": "ok"
   },
+  "9d1c8de228e2586f30d1": {
+   "instead": "The mosaic shows which parts of what the robot sees most influenced its decisions.",
+   "quote": "feature attribution",
+   "verdict": "decode",
+   "why": "The phrase names a technical analysis concept without telling the reader what the display shows."
+  },
   "9d20e547e3b86f332bb3": {
    "verdict": "ok"
   },
@@ -3656,6 +4457,18 @@
    "verdict": "decode",
    "why": "“The same count” does not say what should be counted or where the matching number should appear."
   },
+  "9ec7bc8824400ecdccca": {
+   "instead": "the ripe ones sway",
+   "quote": "the ripe ones nod",
+   "verdict": "second-look",
+   "why": "“Nod” makes the reader work out that the plants sway to show they are ripe."
+  },
+  "9ed2ae01edd542e4f54d": {
+   "instead": "Three CC0 recordings from Freesound meet the requirement for a short, dry, mechanical click.",
+   "quote": "clear the bar",
+   "verdict": "second-look",
+   "why": "This metaphor makes the reader translate “the bar” into the actual requirement."
+  },
   "9ee1456291ee1b2ad2e9": {
    "verdict": "ok"
   },
@@ -3671,7 +4484,16 @@
   "9f670bef80d8dc29b2da": {
    "verdict": "ok"
   },
+  "9f69cbce19b7609cbd7b": {
+   "instead": "Send the audio designer back to Freesound with different search terms, or — if no suitable free recording is found — add the sound to the next recording session's list with the other sounds still waiting to be recorded.",
+   "quote": "Sends the audio designer back to Freesound with different search terms, or — if nothing free lands — onto the foley list for the next recording session, batched with whatever else is waiting on it by then.",
+   "verdict": "decode",
+   "why": "“Lands,” “foley list,” and “batched” are internal production shorthand, and “it” has no clear referent."
+  },
   "9f6e0a5e536669b50c3c": {
+   "verdict": "ok"
+  },
+  "9f7483c9e4f266e19124": {
    "verdict": "ok"
   },
   "9f8d18437fb38b0b744c": {
@@ -3679,6 +4501,9 @@
    "quote": "Worth a line when you are making a call about the look",
    "verdict": "second-look",
    "why": "Making a call about the look is colloquial; a plainer phrase would better explain what visual decision warrants a comment."
+  },
+  "9fb145c55b696ec6234e": {
+   "verdict": "ok"
   },
   "9fb4fb49ad82393b6f3c": {
    "verdict": "ok"
@@ -3719,6 +4544,12 @@
   "a0bc94e710ffb8638e4f": {
    "verdict": "ok"
   },
+  "a0fa9760b4076c2fa3c0": {
+   "instead": "the Mark III's panel",
+   "quote": "its panel",
+   "verdict": "second-look",
+   "why": "The reader must carry the Mark III forward from the question to know what “its” refers to."
+  },
   "a119a4d6848eaa5f25ec": {
    "instead": "the conclusion recorded in Q-100",
    "quote": "Q-100's ruled thesis",
@@ -3743,6 +4574,19 @@
    "quote": "s a note about something I said about an earlier version of the card, and then there",
    "verdict": "decode",
    "why": "Sentence fragment starting with lowercase letter; the opening words are missing and the statement is incomplete."
+  },
+  "a1e916f4b0525c5dab87": {
+   "instead": "The robot keeps what it learned but forgets where it is",
+   "quote": "It keeps its practice but forgets the map",
+   "verdict": "decode",
+   "why": "The reader has to work out that this means the robot keeps what it learned but forgets its location."
+  },
+  "a21f77f1c3cf9588cbe5": {
+   "baselined": "2026-09-25",
+   "instead": "Lock the direction; the foley session and any music commissioning proceed against the approved direction.",
+   "quote": "against it",
+   "verdict": "decode",
+   "why": "The reader cannot tell what “it” refers to from this sentence alone."
   },
   "a2428857b19d68a5d2ee": {
    "verdict": "ok"
@@ -3776,6 +4620,22 @@
   "a3785a300aacdbafcbc5": {
    "verdict": "ok"
   },
+  "a39bc41ce3c5a4d4c34b": {
+   "verdict": "ok"
+  },
+  "a3d85c0f1184e4c18a97": {
+   "verdict": "ok"
+  },
+  "a3dc90ba6a6f5644cd24": {
+   "verdict": "ok"
+  },
+  "a41d8fc1cf5a6377dafe": {
+   "baselined": "2026-09-25",
+   "instead": "Do not set a rule yet.",
+   "quote": "Leave it unruled for now",
+   "verdict": "second-look",
+   "why": "“Unruled” is an indirect way to say that no decision has been made."
+  },
   "a4335ea006861c1cacbf": {
    "instead": "The chosen numbers change how much gold the player has in phase 1",
    "quote": "and it changes what gold means in phase 1",
@@ -3796,6 +4656,12 @@
   },
   "a4935454f57ebd8038fa": {
    "verdict": "ok"
+  },
+  "a4a42c1d54a71f59338a": {
+   "instead": "Draw three icons in the next art session.",
+   "quote": "Three drawn icons on the next art bench",
+   "verdict": "decode",
+   "why": "“Art bench” is internal process shorthand for an art session or queue."
   },
   "a4c828d1149270906b5a": {
    "verdict": "ok"
@@ -3846,6 +4712,12 @@
    "verdict": "second-look",
    "why": "\"The four looks\" assumes prior context; which four, and what kind of testing, are not specified."
   },
+  "a5c4fea7405028bf45c1": {
+   "instead": "Rejected: this proposal invents ownership of tiles.",
+   "quote": "it invents ownership of tiles",
+   "verdict": "second-look",
+   "why": "“It” refers back to the proposal in the previous sentence, making the reader look back to resolve it."
+  },
   "a5cf37a1e813bfd7b66c": {
    "verdict": "ok"
   },
@@ -3858,11 +4730,30 @@
   "a67ff8e7221a0cbb4289": {
    "verdict": "ok"
   },
+  "a69c5f99e0262c1cdf56": {
+   "instead": "pointing while seeing only a small part of the farm",
+   "quote": "pointing through a keyhole",
+   "verdict": "second-look",
+   "why": "This metaphor makes the reader translate the image into the fact that only a small part of the farm is visible."
+  },
+  "a6a203ddc1c82270b448": {
+   "instead": "the machine picks what is ready",
+   "quote": "it picks what is ready",
+   "verdict": "decode",
+   "why": "The sentence makes the round, rather than the machine, appear to be the actor."
+  },
   "a6a2dcd72c5938db46d3": {
    "verdict": "ok"
   },
   "a6cffb635f6fe4d6539e": {
    "verdict": "ok"
+  },
+  "a6e34afbdf1934bb047a": {
+   "baselined": "2026-09-25",
+   "instead": "The art style guide draft is ready: it defines the colors, outlines, shapes, contrast, special overlay colors, animation limits, and the plan for replacing all placeholder art. Everything generated since has followed it informally; your sign-off makes it binding.\n\nAt the look session, also decide whether sprite edges must be fully visible or absent, or may be partly transparent. The fourth look uses softer edges, so it depends on this decision. The art direction guide records the evidence behind the question.",
+   "quote": "measured palette ramps",
+   "verdict": "decode",
+   "why": "This design shorthand makes the reader work out what visual rules the guide contains."
   },
   "a78e6ec9fcc86be4982e": {
    "verdict": "ok"
@@ -3897,6 +4788,12 @@
   "a88f3da253eee1d8204d": {
    "verdict": "ok"
   },
+  "a8d4483a0d1ae55b265b": {
+   "instead": "Show the robot beside the object or person it acts on.",
+   "quote": "Paired sprites — the robot beside the thing it deals with",
+   "verdict": "decode",
+   "why": "“Sprites” is internal art terminology and “the thing it deals with” is vague."
+  },
   "a90825f8bdbbf3c8f308": {
    "instead": "Chase anything on your team via your chief of staff",
    "quote": "on your team chase anything via your chief of staff",
@@ -3928,6 +4825,12 @@
   "a9b47b0c6217a4b28763": {
    "verdict": "ok"
   },
+  "a9f7f0c182a43a730674": {
+   "instead": "A swing, pour, or pull pose per action on the farmer's sprite. Mid-cost; helps if testers can't tell what a tap did.",
+   "quote": "her sprite",
+   "verdict": "second-look",
+   "why": "The sentence does not identify who “her” is."
+  },
   "aa0fa0c42a9921feeb9c": {
    "instead": "Automated checks confirmed this proposed version",
    "quote": "Automated checks confirmed it.",
@@ -3937,8 +4840,23 @@
   "aa55a3c25e810f4e64cd": {
    "verdict": "ok"
   },
+  "aa9a4c5f0951f06bf1c0": {
+   "verdict": "ok"
+  },
+  "aa9e7604a086ad6b4929": {
+   "instead": "Keep the five picks as they are (Recommended)",
+   "quote": "as wired",
+   "verdict": "second-look",
+   "why": "The phrase makes the reader work out that it means keeping the currently configured choices."
+  },
   "aaa63a7a0753a011b719": {
    "verdict": "ok"
+  },
+  "aaca36e2aefac70b23e1": {
+   "instead": "Before the next public release",
+   "quote": "Before the next tag goes out",
+   "verdict": "decode",
+   "why": "“Tag” is release-engineering shorthand, so the reader has to infer that this means the next public release."
   },
   "aae595ac37abaec85705": {
    "instead": "Open the project to see what started running",
@@ -3960,6 +4878,9 @@
    "quote": "Charge the Mark III's night for the day it actually had",
    "verdict": "decode",
    "why": "The reader cannot tell what action “charge” describes or how the Mark III's night relates to its day."
+  },
+  "ab6005ba25ab61c3a5a9": {
+   "verdict": "ok"
   },
   "ab69013a24cffcc898b0": {
    "verdict": "ok"
@@ -4015,6 +4936,9 @@
    "verdict": "second-look",
    "why": "The reader has to pause to work out what “it” refers to and how the drag relates to the card."
   },
+  "ad39ccf20d152b18af0a": {
+   "verdict": "ok"
+  },
   "ad6e0524e7974624f3c8": {
    "verdict": "ok"
   },
@@ -4039,6 +4963,12 @@
   },
   "adde835171338ee22394": {
    "verdict": "ok"
+  },
+  "ae17a2b077b318aadb5e": {
+   "instead": "Move the studio dashboard's current records out of the code repository and close work cards only through the studio dashboard",
+   "quote": "HQ's live records",
+   "verdict": "decode",
+   "why": "HQ is an unexplained internal name, so the reader cannot tell which records or surface this means."
   },
   "ae32e597388e59713049": {
    "baselined": "2026-09-19",
@@ -4075,6 +5005,9 @@
   "af13915f7e9d921077e6": {
    "verdict": "ok"
   },
+  "af2b22d982de1517842e": {
+   "verdict": "ok"
+  },
   "af423b3aba3d3571b62c": {
    "verdict": "ok"
   },
@@ -4088,6 +5021,9 @@
   "afecd6a46261002708b6": {
    "verdict": "ok"
   },
+  "aff73330033b9e2ca9c5": {
+   "verdict": "ok"
+  },
   "b031e78bfedee8b975ec": {
    "verdict": "ok"
   },
@@ -4099,6 +5035,12 @@
   },
   "b08568d4e64fa6adaa43": {
    "verdict": "ok"
+  },
+  "b0c061badf9b8833c4e2": {
+   "instead": "This choice decides what the first Mark III a player buys will do",
+   "quote": "It decides what the first Mark III a player buys will do",
+   "verdict": "decode",
+   "why": "The opening pronoun has no stated referent."
   },
   "b0ee4cebc6c9f48a7d85": {
    "verdict": "ok"
@@ -4114,6 +5056,15 @@
    "why": "Zoom is internal rendering language, not what the player experiences."
   },
   "b15467a69b50d6afb441": {
+   "verdict": "ok"
+  },
+  "b17e3fddc41ee7c32637": {
+   "instead": "This is the last remaining part of the larger fix, which is already released.",
+   "quote": "the last open sliver of a bigger fix that already shipped",
+   "verdict": "second-look",
+   "why": "This metaphor makes the reader infer that one part of a larger released fix remains unresolved."
+  },
+  "b1b6e9006998f3f22f59": {
    "verdict": "ok"
   },
   "b2454a3b82907e6f26e3": {
@@ -4191,6 +5142,9 @@
   "b627496ab018dbac54d4": {
    "verdict": "ok"
   },
+  "b634249bb661ba564273": {
+   "verdict": "ok"
+  },
   "b635bd594dfdf7c01df2": {
    "baselined": "2026-09-19",
    "instead": "The Mark III's charts: revenue earned, actual performance versus target, whether it's still trying different strategies, changes since yesterday, and idle time",
@@ -4243,6 +5197,12 @@
   "b96c8904bc97c5c06147": {
    "verdict": "ok"
   },
+  "b972fbedd2dc319b62b7": {
+   "instead": "A first list will be added to the user-experience document for your review before M3 scope is set.",
+   "quote": "lands in the UX doc",
+   "verdict": "decode",
+   "why": "The reader has to decode both “UX” and the metaphor “lands” to understand where the list will go."
+  },
   "b98626455d516005a7a7": {
    "verdict": "ok"
   },
@@ -4285,6 +5245,12 @@
   "bb175be984895ec2bde1": {
    "verdict": "ok"
   },
+  "bb314d95282be16d1646": {
+   "instead": "Give the robot a sensor that detects dry soil",
+   "quote": "Give it a nose for dry soil",
+   "verdict": "decode",
+   "why": "The reader has to translate “a nose” into a sensor and infer what “it” refers to."
+  },
   "bb32f446076def86956e": {
    "verdict": "ok"
   },
@@ -4295,6 +5261,9 @@
    "why": "The reader must work out what “it” is and what “the right shape” means."
   },
   "bbcb48de7f161c274c31": {
+   "verdict": "ok"
+  },
+  "bbd4dc3c89d664359f88": {
    "verdict": "ok"
   },
   "bc4246bc17701563e5fe": {
@@ -4318,6 +5287,12 @@
   "bd52a35426cee86d7add": {
    "verdict": "ok"
   },
+  "bd7265dc6a01eb4523be": {
+   "instead": "Delegate the recording session to the person responsible for audio.",
+   "quote": "audio role",
+   "verdict": "decode",
+   "why": "The internal role label does not tell a stranger who should receive the task."
+  },
   "bd79b4bf4b7de3abb605": {
    "instead": "Name the thing: '[Tool name] points nowhere' or '[Reference name] does not exist in the system'",
    "quote": "Something named on this page does not exist",
@@ -4333,6 +5308,12 @@
    "verdict": "decode",
    "why": "\"Art-director card\" is internal terminology; a reader would not know whether this refers to a UI element, a work task, a person's card, or something else"
   },
+  "bdd1df1d0e1e842b6a6b": {
+   "instead": "What's in the build. Spend the art budget on changing the game's appearance instead.",
+   "quote": "reskin",
+   "verdict": "decode",
+   "why": "“Reskin” is development shorthand for changing the game's appearance."
+  },
   "bdd782e68ce6659f4a28": {
    "verdict": "ok"
   },
@@ -4340,6 +5321,9 @@
    "verdict": "ok"
   },
   "be02bbbc007c23bcd5dc": {
+   "verdict": "ok"
+  },
+  "be4f4118e955d316d812": {
    "verdict": "ok"
   },
   "be6ae3460f1c37e38b99": {
@@ -4350,6 +5334,12 @@
   },
   "be9154e956dd46206ad3": {
    "verdict": "ok"
+  },
+  "bead712cb1521a1dc9f5": {
+   "instead": "a round of colour adjustment",
+   "quote": "a palette pass",
+   "verdict": "second-look",
+   "why": "The reader has to translate this production term into changing the image's colours."
   },
   "beb192d2238ac4254198": {
    "instead": "The metric that signals this pillar needs attention",
@@ -4365,6 +5355,18 @@
   },
   "bf7119555ed3bff1c975": {
    "verdict": "ok"
+  },
+  "bf9a6406ff12432fe5f1": {
+   "instead": "Below, each candidate is shown in the same moment from the running game, with only that sound changed and all other sounds set to the chosen versions, so each chosen sound appears beside the version it replaces.",
+   "quote": "Below, each sound is shown as the same moment recorded from the running game once per candidate, with only that one sound changed and everything else at the picks, so the pick sits beside what it beat.",
+   "verdict": "decode",
+   "why": "“At the picks” and “what it beat” require the reader to work out that the sounds are being compared with the chosen versions they replace."
+  },
+  "bfbe0bdf07eea48c51e8": {
+   "instead": "Schedule your sound-effects recording session (or delegate it).",
+   "quote": "foley recording session",
+   "verdict": "decode",
+   "why": "“Foley” is audio-production shorthand for recording sound effects."
   },
   "bfe9a19772acebbf0430": {
    "instead": "Since the tracking started on [date], the studio has not exhausted its monthly budget, so we still don't know what a typical [period] costs.",
@@ -4384,6 +5386,12 @@
   "c05074a4a56e8adc523c": {
    "verdict": "ok"
   },
+  "c06888dd7f57d0c89f18": {
+   "instead": "a developer-only button on the title screen",
+   "quote": "a debug door on the title screen",
+   "verdict": "second-look",
+   "why": "“Debug door” is developer shorthand for a feature ordinary players can access during testing."
+  },
   "c072e5cb366aec040228": {
    "instead": "Use a different daily random result so the schedule does not visibly repeat",
    "quote": "Version per-day stateless rolls to break visible schedule cycle",
@@ -4393,10 +5401,25 @@
   "c085b7ce1d42754c7386": {
    "verdict": "ok"
   },
+  "c0e0fb430ab94714d26b": {
+   "instead": "When the player clears, tills, plants, waters, or harvests, how much should the game animate the action? The current build only animates the affected tile. The next option also animates the farmer's body for each action. The most elaborate option gives each action its own complete animation. Playtests should answer whether a player can tell what the tap did.",
+   "quote": "full per-verb choreography",
+   "verdict": "decode",
+   "why": "The reader has to work out how this animation level differs from the other choices."
+  },
+  "c0f64ba82aa39f2aff70": {
+   "instead": "Fence the robot in with fences it can build",
+   "quote": "Pen it with her own fences",
+   "verdict": "decode",
+   "why": "“Pen” is figurative and “her” has no stated referent."
+  },
   "c1061dc6985647a3dab3": {
    "verdict": "ok"
   },
   "c119d566c2794ad712ef": {
+   "verdict": "ok"
+  },
+  "c132222f8173e456bd1a": {
    "verdict": "ok"
   },
   "c150b65b2ccd94b2fd5d": {
@@ -4466,6 +5489,9 @@
    "verdict": "decode",
    "why": "\"Paste\" is not a standard term—the reader would have to ask what it refers to."
   },
+  "c3ae73757e0edd6e4629": {
+   "verdict": "ok"
+  },
   "c3c5c31f2803ffd603b4": {
    "verdict": "ok"
   },
@@ -4477,6 +5503,12 @@
   },
   "c3e3fa514615099752ed": {
    "verdict": "ok"
+  },
+  "c4060f31d64309439fe1": {
+   "instead": "reaching the required phase",
+   "quote": "the phase gate",
+   "verdict": "decode",
+   "why": "This internal milestone term is unexplained on first contact."
   },
   "c42935c07e3d7c64a9b5": {
    "verdict": "ok"
@@ -4531,6 +5563,12 @@
    "verdict": "second-look",
    "why": "Passive construction hides the actor (what would stop holding? what agent spoils the games?) and the sentence is rearranged for effect rather than clarity."
   },
+  "c55a555ee4b21ba497d7": {
+   "instead": "How should a player see that a crop is ripe?",
+   "quote": "How should a ripe crop announce itself?",
+   "verdict": "second-look",
+   "why": "“Announce itself” makes the reader translate a visual cue into a statement about showing that the crop is ready."
+  },
   "c55be8e0adefa5e8cff9": {
    "verdict": "ok"
   },
@@ -4544,6 +5582,28 @@
   "c58af920b885bd0a7c46": {
    "verdict": "ok"
   },
+  "c58e3c2658d89cd82fa2": {
+   "instead": "The game's main progression can be bought with enough wheat",
+   "quote": "the game's central arc is purchasable",
+   "verdict": "second-look",
+   "why": "The metaphor makes the reader translate the game's progression into something that can be bought."
+  },
+  "c592c3c5bf48a3409319": {
+   "verdict": "ok"
+  },
+  "c5f74b772187c8442ce2": {
+   "baselined": "2026-09-25",
+   "instead": "The player's farm has two raided squares on it right now",
+   "quote": "Her farm has two raided squares on it right now",
+   "verdict": "second-look",
+   "why": "“Her” refers back to an unspecified person rather than naming the player in this sentence."
+  },
+  "c60c72884186dc588894": {
+   "instead": "Stop loading old saves after major updates",
+   "quote": "Retire old saves at major updates",
+   "verdict": "decode",
+   "why": "“Retire” does not say whether old saves are deleted, blocked, or merely no longer changed."
+  },
   "c623b62678ef330d899f": {
    "instead": "The crow's peck and the Mark III's seed scatter are far louder than the background music.",
    "quote": "the robot's seed scatter",
@@ -4551,6 +5611,9 @@
    "why": "The robot is ambiguous when multiple robots are mentioned in this list."
   },
   "c671d6c4434d8806241a": {
+   "verdict": "ok"
+  },
+  "c686fd056d051225a106": {
    "verdict": "ok"
   },
   "c6a6eeef4f43a7b8aae1": {
@@ -4599,17 +5662,35 @@
    "verdict": "decode",
    "why": "Placeholder symbols (% and s) replace actual numeric values; a reader cannot understand the targets without the real numbers."
   },
+  "c8d3977241bf43ec2287": {
+   "verdict": "ok"
+  },
+  "c8db36099789bae92c50": {
+   "verdict": "ok"
+  },
   "c973394566833875b632": {
    "verdict": "ok"
   },
   "c9797a3ce11a836525f7": {
    "verdict": "ok"
   },
+  "c9cb66306ae4ea29271f": {
+   "instead": "This decision must be made before the next public release",
+   "quote": "The next public tag is the trigger the item was filed against",
+   "verdict": "decode",
+   "why": "The sentence relies on release and work-tracking terms instead of plainly saying what decision must happen when."
+  },
   "c9e5f256fd2a0d3b427c": {
    "instead": "Document which AI models HQ uses while HQ is temporarily using different models",
    "quote": "during the temporary switch",
    "verdict": "decode",
    "why": "The reader cannot tell what is being switched or what the temporary change means."
+  },
+  "ca12aa7eb19f1e1f7e44": {
+   "instead": "Update old farms when they are opened",
+   "quote": "Renovate old farms on load",
+   "verdict": "decode",
+   "why": "“Renovate” is a metaphor and “on load” is engineering language for changing a farm when it is opened."
   },
   "ca208eda5ed49bef52be": {
    "instead": "Plan how finished animation loops are automatically added to the game's primary codebase",
@@ -4646,16 +5727,28 @@
   "cb3cf67cf1ceb7a6957d": {
    "verdict": "ok"
   },
+  "cb5bb51e3575fccf9750": {
+   "instead": "The robot keeps its learning",
+   "quote": "The crate remembers",
+   "verdict": "decode",
+   "why": "The metaphor does not say whether the robot keeps its learning when it is picked up."
+  },
   "cb811c4681baae83f29a": {
    "verdict": "ok"
   },
   "cbb8b323fcc104ce6735": {
    "verdict": "ok"
   },
+  "cbf47ae76a4d7a992501": {
+   "verdict": "ok"
+  },
   "cc0212a8354b1398d5a5": {
    "verdict": "ok"
   },
   "cc47b40ee77df3fb6961": {
+   "verdict": "ok"
+  },
+  "cc492139614780a256d1": {
    "verdict": "ok"
   },
   "ccae41ca9883e4dd2ef8": {
@@ -4676,6 +5769,12 @@
   "cd2d1acad78e367f6b20": {
    "verdict": "ok"
   },
+  "cd3cddddf6aad69ddee9": {
+   "instead": "The boxed item carries the robot's learned knowledge and the days it has lived",
+   "quote": "Its weights and its days travel with the boxed item",
+   "verdict": "second-look",
+   "why": "“Weights” is an engineering term that makes the reader translate it into learned knowledge."
+  },
   "cde5abb49ad1cf908f47": {
    "verdict": "ok"
   },
@@ -4691,6 +5790,9 @@
    "verdict": "decode",
    "why": "A stranger may not know that this means one square of ground in the farm map."
   },
+  "cdee78a12eddfa4ed45d": {
+   "verdict": "ok"
+  },
   "cdf49db80682a1c70333": {
    "verdict": "ok"
   },
@@ -4705,6 +5807,12 @@
   },
   "ce2169ab230b8fac7aa2": {
    "verdict": "ok"
+  },
+  "ce484863526ef4b4afe4": {
+   "instead": "how future updates will change old saved farms",
+   "quote": "how save migrations are written from here on",
+   "verdict": "decode",
+   "why": "“Save migrations” is engineering shorthand for changing old saved farms when updates arrive."
   },
   "ce7b96bb6df38c55eee9": {
    "verdict": "ok"
@@ -4812,6 +5920,13 @@
   "d16d31aef1a129f9fdce": {
    "verdict": "ok"
   },
+  "d1d6bd65fb08be5c5eb2": {
+   "baselined": "2026-09-25",
+   "instead": "If neither rule fits, write a different option in the decision card.",
+   "quote": "a different cut in the judgment box",
+   "verdict": "decode",
+   "why": "“Cut” and “judgment box” are internal shorthand whose meaning is not clear here."
+  },
   "d1d7c0282d410e0ad2ca": {
    "verdict": "ok"
   },
@@ -4826,6 +5941,18 @@
   },
   "d2d294b3e723514a4d57": {
    "verdict": "ok"
+  },
+  "d2f182e306326c7dea5b": {
+   "instead": "Freesound #120844, CC0 1.0. 0.13s, containing only the click with no trailing sound — the whole file is the hit. The title also says what it is. Added to the game now as the `dial` sound.",
+   "quote": "all click, no tail",
+   "verdict": "second-look",
+   "why": "The reader has to know that “tail” means any sound after the main click."
+  },
+  "d30c60947048741997ae": {
+   "instead": "a crow that eats slower because the farm is bigger would make the game visibly change the raid based on the player's farm.",
+   "quote": "a crow that eats slower because the farm is bigger would be the game doing arithmetic about the player where she can see it.",
+   "verdict": "second-look",
+   "why": "“The game doing arithmetic about the player” is a clever description of the game changing the raid based on farm size."
   },
   "d3107b9098b38adccc4d": {
    "verdict": "ok"
@@ -4851,6 +5978,12 @@
   "d426d6c79c5bdc58c991": {
    "verdict": "ok"
   },
+  "d43401afd293ee3f01ab": {
+   "verdict": "ok"
+  },
+  "d46a4fd723fc4ff506c3": {
+   "verdict": "ok"
+  },
   "d4875459974e83279721": {
    "verdict": "ok"
   },
@@ -4859,6 +5992,13 @@
   },
   "d4b70a637bc7d28bb1ef": {
    "verdict": "ok"
+  },
+  "d4bb6e6bda75f9d2a950": {
+   "baselined": "2026-09-25",
+   "instead": "the rule that lets the shipping bin keep some crops aside",
+   "quote": "the shipping bin's keep-back rule",
+   "verdict": "decode",
+   "why": "This internal term does not tell a cold reader that the bin must retain some crops instead of selling them."
   },
   "d4db77d8ed0bc7d582cf": {
    "verdict": "ok"
@@ -4890,6 +6030,7 @@
    "why": "Per rule 5, a number carries its denominator; 0.1 of what unit?"
   },
   "d530ca026ef32b72f039": {
+   "baselined": "2026-09-25",
    "instead": "it changes what the square looks like, and what she has to clear before replanting",
    "quote": "it changes what the square looks like she has to clear before replanting",
    "verdict": "second-look",
@@ -4915,6 +6056,12 @@
   },
   "d62cdfeb483891967665": {
    "verdict": "ok"
+  },
+  "d673cfd735742b23345d": {
+   "instead": "Acknowledge that the recording is post-release polish and take the recording task off the active queue.",
+   "quote": "it's",
+   "verdict": "second-look",
+   "why": "The sentence does not identify what “it” refers to."
   },
   "d69ae61da5b7b617ae96": {
    "verdict": "ok"
@@ -4982,8 +6129,17 @@
    "verdict": "decode",
    "why": "“Sprite pack” and “repo” are internal terms for a set of game images and the project, so a stranger may need to ask what they mean."
   },
+  "d928f2fe9a1d7cd634f3": {
+   "verdict": "ok"
+  },
   "d9519560c37cef9bf363": {
    "verdict": "ok"
+  },
+  "d951fac55101a38d2a47": {
+   "instead": "The birds keep eating until she reaches them",
+   "quote": "The meal lasts as long as her walk",
+   "verdict": "second-look",
+   "why": "The reader has to infer that the birds keep eating until she reaches them."
   },
   "d95d2645301a2a5f7008": {
    "verdict": "ok"
@@ -5031,6 +6187,9 @@
   "dad7e716650f36f83680": {
    "verdict": "ok"
   },
+  "dadea0225d16169a5f37": {
+   "verdict": "ok"
+  },
   "daea025f3fdade217396": {
    "verdict": "ok"
   },
@@ -5043,8 +6202,20 @@
   "db8bd257bb812dd3f5e5": {
    "verdict": "ok"
   },
+  "dba69d8a6686e64abe7b": {
+   "instead": "The robot menu uses words. Should it use pictures instead?",
+   "quote": "The robot's menu talks. Should it point instead?",
+   "verdict": "decode",
+   "why": "“Talks” and “point” are metaphors that leave the reader to infer words versus pictures."
+  },
   "dbc455fefa1f84044adf": {
    "verdict": "ok"
+  },
+  "dbc745f641708fac3b82": {
+   "instead": "the reward and what the robot can see",
+   "quote": "the reward and view shape",
+   "verdict": "second-look",
+   "why": "“View shape” is internal design shorthand for what the robot can see and how it is arranged."
   },
   "dbe01701a9a93161924c": {
    "verdict": "ok"
@@ -5058,11 +6229,20 @@
   "dc1ea34b074327526091": {
    "verdict": "ok"
   },
+  "dc4aea08801d34552b95": {
+   "verdict": "ok"
+  },
   "dc5768712c9c9bd53bcc": {
    "verdict": "ok"
   },
   "dc5a1eae3a9908b15f50": {
    "verdict": "ok"
+  },
+  "dc5a4028c25d4cf62cda": {
+   "instead": "one-third slower",
+   "quote": "a third again as slow",
+   "verdict": "second-look",
+   "why": "The reader has to calculate what this unusual comparison means."
   },
   "dcb624718dfc8ef984df": {
    "verdict": "ok"
@@ -5073,6 +6253,9 @@
    "quote": "That is the one a player has to notice from across the plot.",
    "verdict": "decode",
    "why": "\"The one\" has no object — the one what? Needs the thing being described named."
+  },
+  "dcbefc7812baf8bbe75c": {
+   "verdict": "ok"
   },
   "dcc280d3fd5f6b1df8cf": {
    "instead": "Itch.io does not document a count of people who played the game in a browser.",
@@ -5099,6 +6282,13 @@
    "verdict": "decode",
    "why": "A reader unfamiliar with version control would have to ask what it means for sessions to be waiting there."
   },
+  "dd300e6052d5d4e2210a": {
+   "baselined": "2026-09-25",
+   "instead": "The visual style can change when its parts are drawn months apart without a shared rule.",
+   "quote": "A look drifts",
+   "verdict": "second-look",
+   "why": "This metaphor makes the reader translate “look” into visual style changing."
+  },
   "dd40587a97a3d217c753": {
    "baselined": "2026-09-19",
    "instead": "Show previous frame faintly",
@@ -5118,13 +6308,22 @@
    "verdict": "second-look",
    "why": "“Carry its deliverable” makes the reader translate a metaphor instead of plainly saying the card must include the deliverable."
   },
+  "de112e01979756fdf956": {
+   "verdict": "ok"
+  },
   "de173edd283083d6cd07": {
    "instead": "When the player taps the basket without changing anything, the game needs a response. One proposed response also replaced the basket's crop counts with pictures; Daniel rejected that tap response, but the team has not decided whether the basket should show pictures or crop counts. A previous decision already made the can gauge permanent. Because the game is designed for people who may read little, decide which basket display to keep before deleting the picture option.",
    "quote": "An earlier comparison asked how the game should answer a tap that changes nothing.",
    "verdict": "decode",
    "why": "The paragraph refers to an earlier discussion and several unnamed options, so a cold reader cannot tell what decision still needs to be made."
   },
+  "dee117497447474bed4d": {
+   "verdict": "ok"
+  },
   "dee15b89307447b19d07": {
+   "verdict": "ok"
+  },
+  "defe0d6276b50b3edb71": {
    "verdict": "ok"
   },
   "df02be0603edbcc28eab": {
@@ -5149,6 +6348,9 @@
    "why": "The reader cannot tell what the candidate is."
   },
   "dfcdc29bf543cb851857": {
+   "verdict": "ok"
+  },
+  "dfe629888602b3cfc4e0": {
    "verdict": "ok"
   },
   "e05f90c05ec048d44315": {
@@ -5211,11 +6413,17 @@
   "e21a8e3eda2ba3c66c4e": {
    "verdict": "ok"
   },
+  "e243f327de64715224b7": {
+   "verdict": "ok"
+  },
   "e25c96077ac9015d94e4": {
    "instead": "Rewrite the storage-full signal requirements now that each crop has its own limit",
    "quote": "spec",
    "verdict": "second-look",
    "why": "“Spec” is internal shorthand for a specification; a cold reader should be told to rewrite the requirements instead."
+  },
+  "e287bf641f2a0bfffbe3": {
+   "verdict": "ok"
   },
   "e2b366c261d53529e945": {
    "verdict": "ok"
@@ -5226,6 +6434,12 @@
    "quote": ": esc(p2g.owner)} owns it",
    "verdict": "decode",
    "why": "Template syntax was not rendered; the reader sees machine code instead of the owner's name."
+  },
+  "e33077c65e3c88bdd6da": {
+   "instead": "the robot is getting better",
+   "quote": "it is getting better",
+   "verdict": "second-look",
+   "why": "The reader has to resolve whether “it” means the robot or the panel."
   },
   "e35693e9351d09ab0869": {
    "verdict": "ok"
@@ -5252,6 +6466,9 @@
    "verdict": "ok"
   },
   "e3f0e39f458a63c98f1c": {
+   "verdict": "ok"
+  },
+  "e4150772aa28b412cfb9": {
    "verdict": "ok"
   },
   "e4797344f999572542d9": {
@@ -5287,7 +6504,16 @@
   "e5740122ee7bc8378e85": {
    "verdict": "ok"
   },
+  "e5912a6c67966b01cbd3": {
+   "instead": "Build starts with the game simulation: make the dial work and record the robot's metrics, then build the user interface.",
+   "quote": "Build starts at the sim side (the dial as an Action, the metrics the robot keeps) and the shell.",
+   "verdict": "decode",
+   "why": "“Sim side,” “Action,” and “shell” are implementation terms that do not tell the reader what will be built."
+  },
   "e59c3d1246c88a276961": {
+   "verdict": "ok"
+  },
+  "e5edd54801cc33ac938f": {
    "verdict": "ok"
   },
   "e613370f5f6713c1c288": {
@@ -5302,6 +6528,12 @@
    "quote": "loose sprites",
    "verdict": "second-look",
    "why": "Loose does not tell the reader whether this refers to unorganized, uncompiled, or unreferenced sprites."
+  },
+  "e658a4ed6637377e5e4a": {
+   "instead": "A previous decision about movement controls requires us to list every interaction in the game, phase by phase, and match each one to its best input method — touch first, with desktop controls too. The first list was due before M3, with a review at the start of each phase. M3 planning is next, so approve this work now.",
+   "quote": "movement-scheme ruling",
+   "verdict": "decode",
+   "why": "The reader has to reconstruct the earlier decision and the work it requires."
   },
   "e6a47f97a1c40d675200": {
    "instead": "Say what is wrong.",
@@ -5367,6 +6599,9 @@
   "e930ce4ab968d7b855ec": {
    "verdict": "ok"
   },
+  "e975448b6e66ffa7afe1": {
+   "verdict": "ok"
+  },
   "e9bde8325e7d30b41d17": {
    "verdict": "ok"
   },
@@ -5381,6 +6616,9 @@
    "quote": "Remove background color the art's own shape was hiding it behind",
    "verdict": "second-look",
    "why": "The sentence makes the reader untangle what is hiding what before the request is clear."
+  },
+  "ea6e38222336cc4283a3": {
+   "verdict": "ok"
   },
   "ead7228104c4e84ca19e": {
    "verdict": "ok"
@@ -5425,6 +6663,12 @@
    "verdict": "decode",
    "why": "Butler is itch.io's deployment tool, not introduced, leaving the reader unable to understand what is being referenced."
   },
+  "ed494ffe29a18dcea4ce": {
+   "instead": "the robot walks back to at the end of each day",
+   "quote": "it walks back to at the end of each day",
+   "verdict": "second-look",
+   "why": "The reader must infer that “it” means the robot."
+  },
   "ed4c155c4873ad212577": {
    "verdict": "ok"
   },
@@ -5438,6 +6682,9 @@
    "verdict": "ok"
   },
   "ee07ce06baf3f9a0ee6e": {
+   "verdict": "ok"
+  },
+  "ee535dfc6f953d2a77f0": {
    "verdict": "ok"
   },
   "ee6ac975e54332f72113": {
@@ -5477,13 +6724,32 @@
   "efd3aa79ffd26ff5865d": {
    "verdict": "ok"
   },
+  "f02b0ca0ff2921e99c5f": {
+   "instead": "Show the message plainly on the Continue screen",
+   "quote": "Say it plainly at Continue",
+   "verdict": "decode",
+   "why": "The reader is not told what “it” is or what the Continue control should say."
+  },
   "f09d2dac476fb0bcb175": {
    "verdict": "ok"
   },
   "f0e93677ce6a35f18cb5": {
    "verdict": "ok"
   },
+  "f10853b7fcd2f993c511": {
+   "baselined": "2026-09-25",
+   "instead": "Compare the new art with the current build side by side first.",
+   "quote": "render session",
+   "verdict": "second-look",
+   "why": "The reader has to infer that this means comparing the new art with the current game."
+  },
   "f10a30745648451534e8": {
+   "verdict": "ok"
+  },
+  "f14709a22e81601886b8": {
+   "verdict": "ok"
+  },
+  "f1987d9b6db08586618c": {
    "verdict": "ok"
   },
   "f1bc69260955ec76771f": {
@@ -5537,6 +6803,21 @@
    "verdict": "second-look",
    "why": "“Waits” makes the reader translate the process into the plain fact that the work is paused."
   },
+  "f32f08cfcab151bea65e": {
+   "instead": "What does a Mark III keep when a player picks it up?",
+   "quote": "she picks it up",
+   "verdict": "decode",
+   "why": "The sentence does not identify who “she” is, and the robot's gender is not established."
+  },
+  "f33966c6ca1c85b7e85a": {
+   "verdict": "ok"
+  },
+  "f3db77d763bc60e47a28": {
+   "instead": "does not retain any learned behavior",
+   "quote": "keeps nothing worth keeping",
+   "verdict": "second-look",
+   "why": "The phrase makes the reader translate a value judgment into whether the robot retains learned behavior."
+  },
   "f4de393165d1a7f7a375": {
    "verdict": "ok"
   },
@@ -5571,6 +6852,12 @@
    "verdict": "decode",
    "why": "{unassured} and {total} are unfilled template variables; a reader does not know what concrete count is being reported."
   },
+  "f62848e6d009547db58b": {
+   "instead": "the demonstration used to estimate the Mark I's cost",
+   "quote": "the demo that priced the Mark I",
+   "verdict": "decode",
+   "why": "The reader has to work out that this means the demonstration used to estimate the Mark I's cost."
+  },
   "f659de2c294b0d66d7dd": {
    "verdict": "ok"
   },
@@ -5591,6 +6878,12 @@
   },
   "f6b68f2a1848449a1ee5": {
    "verdict": "ok"
+  },
+  "f716342fa3d259298a6f": {
+   "instead": "How does the player reach a tile she cannot see while teaching a robot?",
+   "quote": "she",
+   "verdict": "decode",
+   "why": "The sentence does not say who “she” is."
   },
   "f73d0ca511d156accb3d": {
    "baselined": "2026-09-19",
@@ -5623,6 +6916,12 @@
   "f818ce7c647fc7736c48": {
    "verdict": "ok"
   },
+  "f82b2a93824d6d04bdb5": {
+   "instead": "creating a new mailbox",
+   "quote": "standing up a fresh mailbox",
+   "verdict": "second-look",
+   "why": "The phrase makes the reader translate an idiom into creating a new mailbox."
+  },
   "f8400215fa513cd9e53d": {
    "verdict": "ok"
   },
@@ -5650,11 +6949,21 @@
   "f9516a321efed70156ea": {
    "verdict": "ok"
   },
+  "f9551a06fc5de9ee07e6": {
+   "verdict": "ok"
+  },
   "f95ac2a48b7b315b54c0": {
    "verdict": "ok"
   },
   "f95d5cf62850672b68dc": {
    "verdict": "ok"
+  },
+  "f963af74220ec0a76735": {
+   "baselined": "2026-09-25",
+   "instead": "Not yet — I want to compare the possible art styles first.",
+   "quote": "a look session",
+   "verdict": "decode",
+   "why": "The reader cannot tell what will happen in this session."
   },
   "f98b0e51ed711f866678": {
    "verdict": "ok"
@@ -5720,6 +7029,9 @@
   "fbe8c648b04c8a026601": {
    "verdict": "ok"
   },
+  "fc32bf8a4e798eba7781": {
+   "verdict": "ok"
+  },
   "fc8dd2358121f40a18ae": {
    "instead": "then a much larger income",
    "quote": "then a jump into real income",
@@ -5763,7 +7075,19 @@
    "verdict": "second-look",
    "why": "\"Before is\" has an odd word order that costs a re-read to parse as a label."
   },
+  "fd8ea604d4fb88a61bbf": {
+   "instead": "Kids may want to collect every species, and this requires saving one additional piece of progress.",
+   "quote": "Strong pull for a kid; costs one set of saved flags.",
+   "verdict": "decode",
+   "why": "“Strong pull” is an indirect judgment and “saved flags” is internal implementation language."
+  },
   "fdb6a93cfcaebe4f62eb": {
+   "verdict": "ok"
+  },
+  "fdc0f99e0632cc18ad9f": {
+   "verdict": "ok"
+  },
+  "fde5416e509f2aaa9f4d": {
    "verdict": "ok"
   },
   "fe52efd7c89d1d417cb7": {
@@ -5798,6 +7122,9 @@
    "verdict": "second-look",
    "why": "Observation language about what the visual communicates, not what the player actually sees."
   },
+  "ff37d599b91fed64eb7e": {
+   "verdict": "ok"
+  },
   "ff530cf8a1918fb03393": {
    "verdict": "ok"
   },
@@ -5809,6 +7136,9 @@
    "quote": "for the decision request changes",
    "verdict": "second-look",
    "why": "The reader has to parse whether the request itself changes or whether this means changes to the request."
+  },
+  "ff9ea705ba53e992bbc3": {
+   "verdict": "ok"
   },
   "ffd85f370a76b68d1dbf": {
    "verdict": "ok"

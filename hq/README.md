@@ -39,6 +39,37 @@ section 2).
   - what the last run did: `journalctl --user -u tiny-farm-drain`
   - stop draining unattended: `systemctl --user disable --now tiny-farm-drain.timer`
 
+## Where HQ's records live, and how a card is closed (Q-125)
+
+HQ's live records — work cards, rulings, goals, seat notes, and the runs and history
+HQ writes while it works — live in their own store, `~/tiny-farm-hq-data`, outside
+this repository. The store is its own Git repository: HQ commits its own writes there,
+once per burst of changes, with a message naming what changed (`store.py`). Main keeps
+only checked-in configuration and curated material (org, pillars, decision cards,
+projects, look sheets), which HQ reads beside its code. `roots.py` lists which is which,
+and `docs/hq/HQ_DATA_MIGRATION.md` gives the reason for each entry, the cut-over and
+the rollback.
+
+Nobody edits a card file. A session works a card through HQ:
+
+```bash
+python3 hq/card.py claim   <id> --by "Codex session"     # shows under Working now; lapses unless renewed
+python3 hq/card.py close   <id> --by "Codex session" --sha <commit> --ci-run <run id> \
+                           --result "What changed, in plain sentences."
+python3 hq/card.py release <id> --by "Codex session"
+```
+
+`close` is refused unless the commit is on origin/main and the CI run is the tests
+workflow, finished with success on that commit or a later main. The card records who
+closed it and that no checker or Daniel approval was recorded. The same actions are
+`POST /api/work/close`, `/api/work/claim` and `/api/work/release`.
+`tests/test_live_records.py` fails CI if a card file is committed to the repository.
+
+When Daniel picks an option on a decision card, HQ files an "Act on your ruling" card
+for the decision's owner at once, and on start for any ruling still waiting. The task
+queue page (`#/work/queue`) lists every ruling until it is integrated. Closing that
+card marks the ruling integrated.
+
 ## Player feedback (Q-89)
 
 Amara, the community manager, reviews the public comments on

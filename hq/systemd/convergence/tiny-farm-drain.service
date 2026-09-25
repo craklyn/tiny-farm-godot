@@ -12,7 +12,7 @@ WorkingDirectory=/home/daniel/dev/tiny-farm-godot-main
 Environment=PATH=/home/daniel/.local/bin:/usr/local/bin:/usr/bin:/bin:/snap/bin
 Environment=CLAUDE_CODE_DISABLE_AUTOUPDATE=1
 Environment=HQ_REQUIRE_EXPLICIT_ROOTS=1
-Environment=HQ_DATA_ROOT=/home/daniel/dev/tiny-farm-godot/hq/data
+Environment=HQ_DATA_ROOT=/home/daniel/tiny-farm-hq-data
 Environment=HQ_USER_WORKSPACE_ROOT=/home/daniel/dev/tiny-farm-godot
 Environment=HQ_MAIN_ROOT=/home/daniel/dev/tiny-farm-godot-main
 ExecStart=/usr/bin/python3 /home/daniel/dev/tiny-farm-godot-main/hq/drain.py --unattended

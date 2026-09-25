@@ -1,4 +1,0 @@
-{
-  "note": "A human claim that the exported web build was played before a tag. The Sales launch-check button records the next intended tag, current commit and date. A new tag needs a new record; game changes, including uncommitted ones, lapse an existing record. HQ cannot observe the browser play itself.",
-  "records": []
-}

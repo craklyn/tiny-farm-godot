@@ -448,8 +448,11 @@ def collect(repo=REPO):
             # A decision he has already ruled on is a record of a decision, not a
             # question still being put to him. Rewriting the wording he answered
             # would change what the record says he was asked.
-            if what == "decision card" and os.path.isfile(
-                    os.path.join(repo, "hq", "data", "rulings", os.path.basename(path))):
+            # Since Q-125 the rulings live in HQ's own store, not here, so the
+            # card's own "ruled" record is what says so on main; a ruling file
+            # beside it still counts where the old layout remains.
+            if what == "decision card" and (doc.get("ruled") or os.path.isfile(
+                    os.path.join(repo, "hq", "data", "rulings", os.path.basename(path)))):
                 continue
             for field in fields:
                 for text in walk(doc, field):

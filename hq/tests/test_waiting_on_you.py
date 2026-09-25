@@ -239,9 +239,11 @@ for (const html of [schemaQueue, schemaLegacy]) {
   assert.ok(!html.includes("Absolute path"));
   assert.ok(!html.includes("Private repo data"));
 }
-// These are recorded repository cards, not invented example rows. Their missing
+// These are recorded cards, not invented example rows. Their missing
 // deliverable fields must remain missing; the positive cases above test new evidence.
-const readCard = (kind, id) => JSON.parse(fs.readFileSync(root + "/hq/data/" + kind + "/" + id + ".json", "utf8"));
+// Work cards are live records outside the repository since Q-125, so the two
+// recorded cards are kept as fixtures; decision cards are still checked in.
+const readCard = (kind, id) => JSON.parse(fs.readFileSync(root + (kind === "work" ? "/hq/tests/fixtures/work/" : "/hq/data/" + kind + "/") + id + ".json", "utf8"));
 const actualAnimation = readCard("work", "wr1788991284fa19");
 const actualIncomplete = readCard("work", "w449aff92129");
 const actualDesign = readCard("decisions", "Q-107");

@@ -9,7 +9,8 @@ record in the org: the `claude` employee in `hq/data/org.json` (Chief of Staff &
 Executive Assistant, Executive team, reports to Daniel). **Read that record at the start
 of a session and hold its persona for the whole session** — HQ's own chat already runs
 on it, and Daniel's link to the studio should not change voice depending on which window
-he is in. Running notes for the seat live in `hq/data/staff/claude/memory.md`.
+he is in. Running notes for the seat live in `staff/claude/memory.md` in HQ's store
+(`~/tiny-farm-hq-data`; in the shared checkout's `hq/data/` until the Q-125 cut-over).
 
 What the seat means in practice: talk like a person rather than a status report; say
 what needs his attention and what is noise; name the owner of a piece of work; draft the
@@ -203,22 +204,33 @@ the game proper.
   status changes only by editing that file.
 - `docs/DESIGNER_QUEUE.md` — Q-# items awaiting the designer's ruling. Anything needing
   the designer's taste or sign-off goes here rather than being silently decided.
-- **CEO rulings from Tiny Farm HQ** (`hq/`, the local dashboard): the designer records
-  rulings on decision cards there, which land in `hq/data/rulings/<Q-id>.json` with
-  `status: "pending_integration"`. **At the start of any work session, check that
-  directory.** Integrate each pending ruling: strike/annotate the item in
-  `docs/DESIGNER_QUEUE.md` (and `DECISION_LOG.md` if it settles a decision), do or file
-  the work it unblocks, then set the ruling's status to `"integrated"`. Drain
-  `hq/data/work/` in the same pass: `python3 hq/drain.py --list` shows what is
-  queued and `python3 hq/drain.py --all` works it. Each item goes to a worker
-  holding only the owner's seat context (org record, `hq/data/staff/<id>/memory.md`,
-  the card) on the owner's default `model` from `org.json`, in its own git worktree;
-  the chief of staff checks the diff; surviving patches land on the working tree and
-  the suites run. Nothing is committed by the drain — **verify the results yourself
-  before committing**: read the diff, read the checker's findings, run both suites, do
-  a writing-rules pass. A verification failure gets written into the seat's notes. Curated decision
-  cards live in `hq/data/decisions/` — when new Q-items open or close, keep those cards
-  in sync (plain language, options with a recommendation, attachments).
+- **HQ's records** (`hq/`, the local dashboard; Q-125, `docs/hq/HQ_DATA_MIGRATION.md`):
+  HQ's live records — work cards, rulings, goals, seat notes — live in HQ's own store
+  (`~/tiny-farm-hq-data`, with its own Git history that HQ commits), not in this
+  repository. `hq/data/` on main keeps only checked-in configuration and curated
+  material (org, pillars, decision cards, projects, look sheets). **Never edit or commit
+  a card file.** Work a card through HQ: `python3 hq/card.py claim <id> --by "<session>"`
+  while you work it (repeat to renew; it lapses on its own), and once the work is on
+  origin/main with CI green, `python3 hq/card.py close <id> --by "<session>" --sha <commit>
+  --ci-run <tests run id> --result "<what changed>"`. HQ checks the commit and the CI run
+  itself and refuses without them; the card records that no checker or Daniel approval
+  was given. `hq/tests/test_live_records.py` fails CI if a card file is committed.
+- **CEO rulings from Tiny Farm HQ**: when the designer picks an option on a decision
+  card, HQ records the ruling and at once files an "Act on your ruling" card for the
+  decision's owner; the task queue page lists every ruling until it is integrated. **At
+  the start of any work session, check the queue** (`python3 hq/drain.py --list`).
+  Integrate each ruling: strike/annotate the item in `docs/DESIGNER_QUEUE.md` (and
+  `DECISION_LOG.md` if it settles a decision), do or file the work it unblocks, then
+  close its card with `hq/card.py close`, which marks the ruling integrated.
+  `python3 hq/drain.py --all` works the queue. Each item goes to a worker holding only
+  the owner's seat context (org record, the seat's notes, the card) on the owner's
+  default `model` from `org.json`, in its own git worktree; the chief of staff checks the
+  diff; surviving patches land on the working tree and the suites run. Nothing is
+  committed by the drain — **verify the results yourself before committing**: read the
+  diff, read the checker's findings, run both suites, do a writing-rules pass. A
+  verification failure gets written into the seat's notes. Curated decision cards live
+  in `hq/data/decisions/` on main — when new Q-items open or close, keep those cards in
+  sync (plain language, options with a recommendation, attachments).
 - `docs/WRITING.md` — how anything a human sees is worded (HQ pages, decision
   cards, chat, commit subjects, marketing, in-game text): written for a reader
   who arrives with no context. Text written for agents or machines — work-item

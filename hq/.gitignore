@@ -6,3 +6,18 @@ __pycache__/
 data/history/
 data/probes/
 data/ci_history.json
+
+# Q-125 (a): HQ's live records live in their own store outside this repository
+# (docs/hq/HQ_DATA_MIGRATION.md). Main keeps no copy, so there is nothing to
+# drift; close a card with `python3 hq/card.py close`, never by editing a file.
+# hq/tests/test_live_records.py fails the build if one is committed anyway.
+data/work/
+data/rulings/
+data/goals/
+data/staff/
+data/sprite_edits/
+data/anim_asks/
+data/anim_runs/
+data/maps/
+data/release_plan.json
+data/attestations.json

@@ -48,7 +48,9 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 
 import anim  # sibling module: the Animation Lab (see its docstring)
+import closing  # sibling module: closing a card with evidence, outside claims (Q-125)
 import roots  # one set of code, data, user-workspace and authoritative-main roots
+import store  # the live store's own history, one commit per burst of writes (Q-125)
 import studio  # sibling module: the ledger of hand edits to sprites
 import work  # sibling module: how work originates (see its docstring)
 
@@ -57,7 +59,6 @@ REPO = roots.ROOTS["main"]
 USER_WORKSPACE = roots.ROOTS["user_workspace"]
 STATIC = os.path.join(HQ_DIR, "static")
 DATA = roots.ROOTS["data"]
-LOOKS = os.path.join(DATA, "looks")
 PORT = int(os.environ.get("HQ_PORT", "8642"))
 
 MIME = {
@@ -80,8 +81,35 @@ def load_json(path):
         return json.load(f)
 
 
+# Q-125 (a): HQ's data is two kinds of thing. Live records — what HQ itself
+# writes while it runs (work cards, rulings, goals, seat notes, run logs) — live
+# in the data root, which in service is a store outside the game repository
+# with its own history (store.py). Checked-in configuration and the curated
+# design material that sessions author and commit (the org, pillars, decision
+# cards, projects, look sheets) has exactly one copy, on main beside this code,
+# and HQ reads it there. Before that split both kinds lived in one folder that
+# existed twice, and nothing kept the copies in step.
+REPO_OWNED = frozenset(roots.REPO_OWNED)
+_OWN_STORE = {}
+
+
+def cfg(*parts):
+    """Where one checked-in HQ file or folder is read from.
+
+    With the historical in-repository data root (every test scratch store
+    included) that is still the data root, so nothing moves until a store with
+    its own history is configured.
+    """
+    if parts and parts[0] not in REPO_OWNED:
+        raise ValueError(f"{parts[0]} is a live record; read it from DATA")
+    if DATA not in _OWN_STORE:
+        _OWN_STORE[DATA] = store.is_own_repository(DATA)
+    base = os.path.join(HQ_DIR, "data") if _OWN_STORE[DATA] else DATA
+    return os.path.join(base, *parts)
+
+
 def load_org():
-    return load_json(os.path.join(DATA, "org.json"))
+    return load_json(cfg("org.json"))
 
 
 _PROJ_TOUCH_CACHE = {}
@@ -203,7 +231,7 @@ def evaluate_waiting_project(project, projects_by_id, release_plan, ruling_ids, 
 def _decision_title(decision_id):
     """The question a ruling answered, so a wait names the decision in words."""
     try:
-        return load_json(os.path.join(DATA, "decisions", f"{decision_id}.json")).get("title", "")
+        return load_json(cfg("decisions", f"{decision_id}.json")).get("title", "")
     except Exception:
         return ""
 
@@ -217,7 +245,7 @@ def _waiting_ruling_ids():
 
 
 def load_projects():
-    pdir = os.path.join(DATA, "projects")
+    pdir = cfg("projects")
     projects = []
     for f in sorted(os.listdir(pdir)):
         if not f.endswith(".json"):
@@ -256,7 +284,7 @@ def api_program():
     """The macro view: release trains composed from project declarations.
     Gates-not-dates on purpose — readiness is done-steps over total-steps on
     the CRITICAL set, and risk is the blocked critical chain, never a date."""
-    releases = load_json(os.path.join(DATA, "releases.json"))["releases"]
+    releases = load_json(cfg("releases.json"))["releases"]
     projects = load_projects()
 
     def steps(p):
@@ -284,7 +312,7 @@ def api_program():
 
 
 def load_dir_json(sub, *, strict=False):
-    d = os.path.join(DATA, sub)
+    d = cfg(sub) if sub in REPO_OWNED else os.path.join(DATA, sub)
     if not strict and not os.path.isdir(d):
         return []
     records = [load_json(os.path.join(d, f)) for f in sorted(os.listdir(d)) if f.endswith(".json")]
@@ -365,8 +393,9 @@ def record_ruling(payload):
                 if prior.get("submission_payload") != submission_payload:
                     return {"error": "this submission id was already used for different decision content"}
                 out = {"ok": True, "ruling": prior}
-                if prior.get("revision_work_id"):
-                    out["revision_work_id"] = prior["revision_work_id"]
+                for key in ("revision_work_id", "integration_work_id"):
+                    if prior.get(key):
+                        out[key] = prior[key]
                 return out
 
         # **Nothing he has said on a card is ever overwritten.** A card can go
@@ -391,6 +420,11 @@ def record_ruling(payload):
         if intent == "revise":
             revision = work.file_decision_revision(decision, judgment, ruling["ruled_at"], submission_id)
             ruling["revision_work_id"] = revision["id"]
+        else:
+            # Q-125 (a): the ruling files the work it unblocks, so it is in the
+            # queue now rather than when a session next looks in this folder.
+            integration = work.file_ruling_integration(decision, ruling)
+            ruling["integration_work_id"] = integration["id"]
         _replace_json(path, ruling)
         with open(os.path.join(rdir, "RULINGS.md"), "a", encoding="utf-8") as f:
             f.write(f"\n## {qid} — ruled {ruling['ruled_at']}\n")
@@ -400,10 +434,13 @@ def record_ruling(payload):
                 f.write(f"- In his words: {judgment}\n")
             if intent == "revise":
                 f.write(f"- Revision work: {ruling['revision_work_id']}\n")
+            else:
+                f.write(f"- Integration work: {ruling['integration_work_id']}\n")
             f.write("- Status: pending integration into docs/DESIGNER_QUEUE.md\n")
         out = {"ok": True, "ruling": ruling}
-        if intent == "revise":
-            out["revision_work_id"] = ruling["revision_work_id"]
+        for key in ("revision_work_id", "integration_work_id"):
+            if ruling.get(key):
+                out[key] = ruling[key]
         return out
 
 
@@ -418,10 +455,10 @@ def load_looks():
     output directory.
     """
     out = {}
-    if not os.path.isdir(LOOKS):
+    if not os.path.isdir(cfg("looks")):
         return out
-    for name in sorted(os.listdir(LOOKS)):
-        doc = os.path.join(LOOKS, name, "look.json")
+    for name in sorted(os.listdir(cfg("looks"))):
+        doc = os.path.join(cfg("looks"), name, "look.json")
         if os.path.isfile(doc):
             out[name] = load_json(doc)
     return out
@@ -735,7 +772,7 @@ def check_entity_geometry():
     import struct
 
     warnings = []
-    catalog_path = os.path.join(DATA, "entities.json")
+    catalog_path = cfg("entities.json")
     if not os.path.exists(catalog_path):
         return warnings  # A minimal disposable HQ data root may omit the gallery.
     with open(catalog_path, encoding="utf-8") as source:
@@ -823,7 +860,7 @@ def check_consistency():
         pools = {"project": {p["id"] for p in projects},
                  "work": work_ids,
                  "decision": {c["id"] for c in load_dir_json("decisions")}}
-        pillars = load_json(os.path.join(DATA, "pillars.json"))["pillars"]
+        pillars = load_json(cfg("pillars.json"))["pillars"]
         for pl in pillars:
             doc = load_goals(pl["id"]) or {}
             for g in live_goals(doc):
@@ -2249,7 +2286,70 @@ def execution_queue_snapshot():
                          cwd=REPO, capture_output=True, text=True, timeout=10)
     if got.returncode:
         raise RuntimeError((got.stderr or "The task queue could not be read.")[:300])
-    return json.loads(got.stdout)
+    doc = json.loads(got.stdout)
+    doc["rulings_waiting"] = rulings_waiting()
+    return doc
+
+
+def _pending_rulings():
+    """Rulings that picked an option and have not been integrated, oldest first."""
+    rows = [r for r in load_dir_json("rulings")
+            if r.get("option") and r.get("status") != "integrated"]
+    return sorted(rows, key=lambda r: (str(r.get("ruled_at") or ""), r.get("id", "")))
+
+
+def rulings_waiting():
+    """What the queue page shows until each of his rulings is acted on (Q-125 a).
+
+    Read from the ruling's own status, not from whether a card exists: a ruling
+    stays on the page until the card that integrates it closes (or a session
+    marks it integrated), even if that card was dropped or never filed.
+    """
+    decisions = {d.get("id"): d for d in load_dir_json("decisions")}
+    cards = {}
+    for item in work.items():
+        if item.get("ruling_id"):
+            cards.setdefault(item["ruling_id"], []).append(item)
+    out = []
+    for ruling in _pending_rulings():
+        qid = ruling["id"]
+        decision = decisions.get(qid) or {"id": qid}
+        linked = [i for i in cards.get(qid, [])
+                  if i.get("ruling_submission_id") == ruling.get("submission_id")]
+        card = linked[0] if linked else None
+        out.append({"id": qid, "title": work.ruling_work_title(decision, ruling),
+                    "subject": decision.get("subject") or decision.get("title") or qid,
+                    "option": ruling.get("option"), "option_label": ruling.get("option_label"),
+                    "judgment": ruling.get("judgment"), "ruled_at": ruling.get("ruled_at"),
+                    "work_id": card["id"] if card else "",
+                    "work_state": card.get("state", "") if card else "",
+                    "owner": card.get("owner", "") if card else ""})
+    return out
+
+
+def backfill_ruling_work():
+    """File the integration card for any ruling that was pending before HQ started."""
+    filed = []
+    decisions = {d.get("id"): d for d in load_dir_json("decisions")}
+    for ruling in _pending_rulings():
+        qid = ruling["id"]
+        with _ruling_lock(qid):
+            path = os.path.join(DATA, "rulings", f"{qid}.json")
+            try:
+                current = load_json(path)
+            except (OSError, ValueError):
+                continue
+            if current.get("submission_id") != ruling.get("submission_id"):
+                continue
+            with work.mutation_lock():
+                before = {i["id"] for i in work.items()}
+                card = work.file_ruling_integration(decisions.get(qid) or {"id": qid}, current)
+                if card["id"] not in before:
+                    filed.append(card["id"])
+            if current.get("integration_work_id") != card["id"]:
+                current["integration_work_id"] = card["id"]
+                _replace_json(path, current)
+    return filed
 
 
 def execution_control_snapshot():
@@ -3442,7 +3542,7 @@ def release_manifest(release_id=None):
     key = (head, release_id)
     if _MANIFEST_CACHE["head"] == key:
         return _MANIFEST_CACHE["data"]
-    doc = load_json(os.path.join(DATA, "releases.json"))
+    doc = load_json(cfg("releases.json"))
     tags = [t for t in run_cmd(["git", "tag", "-l", "v*", "--sort=creatordate"]).splitlines() if t]
     newest = tags[-1] if tags else None
     out = []
@@ -3553,7 +3653,7 @@ def _web_play_git(*args):
 
 
 def _web_play_target():
-    releases = load_json(os.path.join(DATA, "releases.json"))["releases"]
+    releases = load_json(cfg("releases.json"))["releases"]
     for release in releases:
         tag = release.get("tag_intent")
         if tag and not _web_play_git("tag", "-l", tag):
@@ -4657,10 +4757,10 @@ def _open_since_index():
     except Exception:
         pass
     try:
-        for name in os.listdir(os.path.join(DATA, "projects")):
+        for name in os.listdir(cfg("projects")):
             if not name.endswith(".json"):
                 continue
-            doc = load_json(os.path.join(DATA, "projects", name))
+            doc = load_json(cfg("projects", name))
             if doc.get("status") == "blocked" and doc.get("blocked_since"):
                 idx[("project", doc.get("id"))] = doc["blocked_since"]
     except Exception:
@@ -4844,12 +4944,12 @@ def _route_target(route):
                                   "state_human": human,
                                   "href": f"#/work/{rid}"})
         elif kind == "project":
-            doc = load_json(os.path.join(DATA, "projects", rid + ".json"))
+            doc = load_json(cfg("projects", rid + ".json"))
             return named({"kind": kind, "id": rid, "title": doc.get("name", rid),
                           "owner": doc.get("owner", ""), "state": doc.get("status", ""),
                           "href": f"#/project/{rid}"})
         elif kind == "decision":
-            doc = load_json(os.path.join(DATA, "decisions", rid + ".json"))
+            doc = load_json(cfg("decisions", rid + ".json"))
             ruling_path = os.path.join(DATA, "rulings", rid + ".json")
             ruling = load_json(ruling_path) if os.path.isfile(ruling_path) else {}
             state = ("pending integration"
@@ -5346,7 +5446,7 @@ def _stale_wait_fires(projects):
 
 def _compute_signals_now():
     import time as _t
-    pillars = load_json(os.path.join(DATA, "pillars.json"))["pillars"]
+    pillars = load_json(cfg("pillars.json"))["pillars"]
     queue = api_queue()
     open_items = [q for q in queue["items"] if not q["answered"]]
     # Both halves of his queue, counted once, by the one function that decides
@@ -5653,7 +5753,7 @@ def api_needs(pillar_id):
 
     The cap is the point. A band that can grow into a backlog stops being read.
     """
-    pillars = load_json(os.path.join(DATA, "pillars.json"))["pillars"]
+    pillars = load_json(cfg("pillars.json"))["pillars"]
     p = next((x for x in pillars if x["id"] == pillar_id), None)
     if not p:
         return {"needs": [], "error": "no such pillar"}
@@ -5793,7 +5893,7 @@ def product_plan(plan=None):
         except ValueError:
             last["days_ago"] = None
 
-    trains = {r["id"]: r for r in load_json(os.path.join(DATA, "releases.json"))["releases"]}
+    trains = {r["id"]: r for r in load_json(cfg("releases.json"))["releases"]}
     cursor, chain_broken = today, False
     out = []
     for r in plan.get("releases", []):
@@ -5994,7 +6094,7 @@ def load_seats():
     survives the person leaving it (the CEO's ruling, 2026-09-05); who is in the
     seat today is display, and comes from the org record."""
     try:
-        return load_json(os.path.join(DATA, "seats.json")).get("seats", [])
+        return load_json(cfg("seats.json")).get("seats", [])
     except Exception:
         return []
 
@@ -6003,7 +6103,7 @@ def _person_name(emp_id):
     if not emp_id:
         return ""
     try:
-        org = load_json(os.path.join(DATA, "org.json")).get("employees", [])
+        org = load_json(cfg("org.json")).get("employees", [])
     except Exception:
         return ""
     return next((e.get("name", "") for e in org if e.get("id") == emp_id), "")
@@ -6194,7 +6294,7 @@ def parked_routes():
     reads the same file; the server needs it so that anything it WRITES for him
     — the brief above all — stops talking about areas he has paused."""
     try:
-        return list(load_json(os.path.join(DATA, "surface.json")).get("parked", {}))
+        return list(load_json(cfg("surface.json")).get("parked", {}))
     except Exception:
         return []
 
@@ -6706,7 +6806,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send_file(os.path.join(DATA, "sprite_edits"), path[len("/ledger/"):])
             if path.startswith("/looks/"):
                 # Look-session sheets, attached to decision cards.
-                return self._send_file(LOOKS, path[len("/looks/"):])
+                return self._send_file(cfg("looks"), path[len("/looks/"):])
             if path == "/api/sprite/history":
                 return self._send(200, studio.api_get(path, query))
             if path == "/api/org":
@@ -6718,7 +6818,7 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, load_json(probe) if os.path.isfile(probe)
                                   else {"absent": True})
             if path == "/api/entities":
-                return self._send(200, load_json(os.path.join(DATA, "entities.json")))
+                return self._send(200, load_json(cfg("entities.json")))
             if path == "/api/projects":
                 return self._send(200, load_projects())
             if path == "/api/program":
@@ -6777,7 +6877,7 @@ class Handler(BaseHTTPRequestHandler):
                 # something to record, and half-written while it appends — both
                 # answer 200 with `missing`, so the page frames the absence
                 # rather than showing a broken tile or, worse, a made-up number.
-                sp = os.path.join(DATA, "spend.json")
+                sp = cfg("spend.json")
                 if not os.path.isfile(sp):
                     return self._send(200, {"missing": True})
                 try:
@@ -6812,13 +6912,13 @@ class Handler(BaseHTTPRequestHandler):
                 q = parse_qs(parts.query)
                 return self._send(200, {"rows": read_history(q.get("name", ["runs"])[0])})
             if path == "/api/pillars":
-                return self._send(200, load_json(os.path.join(DATA, "pillars.json")))
+                return self._send(200, load_json(cfg("pillars.json")))
             if path == "/api/product":
                 return self._send(200, product_plan())
             if path == "/api/seats":
                 return self._send(200, {"seats": load_seats()})
             if path == "/api/surface":
-                return self._send(200, load_json(os.path.join(DATA, "surface.json")))
+                return self._send(200, load_json(cfg("surface.json")))
             if path == "/api/runs":
                 return self._send(200, {j: _run_with_age(j) for j in JOBS})
             if path == "/api/deploy":
@@ -6975,6 +7075,16 @@ class Handler(BaseHTTPRequestHandler):
                                         "resume_at": limited_until()})
             except Exception as e:
                 return self._send(500, {"error": str(e)[:300]})
+        if path in ("/api/work/close", "/api/work/claim", "/api/work/release"):
+            # Q-125 (a): a session closes or claims a card only through HQ.
+            try:
+                return self._send(200, {"ok": True, "item": card_command(path, payload)})
+            except closing.Refused as e:
+                return self._send(400, {"error": str(e)})
+            except work.RecordConflict as e:
+                return self._send(409, {"error": str(e), "id": e.item_id, "revision": e.actual})
+            except Exception as e:
+                return self._send(500, {"error": str(e)[:300]})
         if path.startswith("/api/work"):
             try:
                 return self._send(200, work.api_post(path, payload))
@@ -6986,6 +7096,22 @@ class Handler(BaseHTTPRequestHandler):
             state = "cancelled" if path.endswith("cancel") else "queued"
             return self._send(200, set_queue_state(payload.get("id", ""), state))
         return self._send(404, {"error": "not found"})
+
+
+def card_command(path, payload):
+    """Close a card with evidence, or claim/release it for an outside session."""
+    item_id = str(payload.get("id") or "")
+    if not re.fullmatch(work.WORK_ID, item_id):
+        raise closing.Refused("Give a work card id such as w0123456789a.")
+    verb = path.rsplit("/", 1)[1]
+    if verb == "close":
+        return closing.close(item_id, sha=payload.get("sha"), ci_run=payload.get("ci_run"),
+                             result=payload.get("result"), by=payload.get("by"),
+                             note=payload.get("note", ""), main_root=REPO)
+    if verb == "claim":
+        return closing.claim(item_id, by=payload.get("by"),
+                             seconds=payload.get("seconds", closing.CLAIM_DEFAULT_SECONDS))
+    return closing.release(item_id, by=payload.get("by"))
 
 
 def sanitize_runs():
@@ -7033,6 +7159,15 @@ def main():
     if not canary:
         sanitize_runs()
         sanitize_outbox()
+    # Rulings recorded before this start (or before Q-125) get their card now.
+    # A canary runs this too: filing a card spends nothing and starts nothing.
+    try:
+        filed = backfill_ruling_work()
+        if filed:
+            print(f"[rulings] filed work for {len(filed)} ruling(s) waiting to be acted on: "
+                  + ", ".join(filed), flush=True)
+    except Exception as e:  # never keep HQ from starting over it
+        print(f"[rulings] could not file work for waiting rulings: {e}", flush=True)
     studio.bind(sys.modules[__name__])
     anim.bind(sys.modules[__name__])
     if not canary:
@@ -7055,6 +7190,10 @@ def main():
         threading.Thread(target=_queue_night_thread, daemon=True).start()
         threading.Thread(target=_transaction_recovery_thread, daemon=True).start()
         work.start()
+    # Only a data root that is its own Git repository gets history; the
+    # in-repository default is never committed to by HQ itself. A canary on a
+    # copied store keeps that copy's history the same way.
+    store.start(DATA)
     server = ThreadingHTTPServer(("127.0.0.1", PORT), Handler)
     print(f"Tiny Farm HQ on http://localhost:{server.server_address[1]}", flush=True)
     server.serve_forever()

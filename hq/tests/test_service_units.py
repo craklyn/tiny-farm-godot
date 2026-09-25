@@ -7,7 +7,7 @@ import unittest
 
 UNITS = Path(__file__).resolve().parents[1] / "systemd"
 ROOT = "/home/daniel/dev/tiny-farm-godot-main"
-DATA = "/home/daniel/dev/tiny-farm-godot/hq/data"
+DATA = "/home/daniel/tiny-farm-hq-data"  # HQ's own store since Q-125 (a)
 USER = "/home/daniel/dev/tiny-farm-godot"
 
 

@@ -6,9 +6,12 @@ from pathlib import Path
 
 import work
 import roots
+import store
 
 
 class FileHost:
+    """The smallest host work.bind needs, for command-line tools without a server."""
+
     def __init__(self, data):
         self.DATA = str(data)
 
@@ -16,8 +19,13 @@ class FileHost:
     def load_json(path):
         return json.loads(Path(path).read_text())
 
+    def cfg(self, *parts):
+        """Checked-in files sit beside the code once the data root is its own store."""
+        base = (roots.CODE_ROOT / "data") if store.is_own_repository(self.DATA) else Path(self.DATA)
+        return str(base.joinpath(*parts))
+
     def load_org(self):
-        return self.load_json(Path(self.DATA) / "org.json")
+        return self.load_json(self.cfg("org.json"))
 
 
 def main(argv=None):

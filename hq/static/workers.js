@@ -321,12 +321,44 @@ function wkQueueRows(rows, org, held=false) {
       ? [row.why || action.priority_reason, action.summary, view.blocker && view.blocker.reason].filter(Boolean).join(" · ")
       : held ? row.reason : row.why;
     const kind = row.action_type === "reconcile" ? "Reconciliation" : row.action_type === "integrate" ? "Integration" : row.priority;
+    // A session HQ did not launch said it is working this card (hq/card.py claim).
+    const claim = row.workflow_view && row.workflow_view.outside_claim;
+    const doing = claim ? `Being worked by ${claim.by} since ${wkWhen(claim.since)}; it returns to the queue at ${wkWhen(claim.expires)} unless the session checks in again` : "";
     return `<a class="exec-queue-row" href="#/work/${encodeURIComponent(workId)}${row.action_id ? `?action=${encodeURIComponent(row.action_id)}` : ""}">
       <span class="exec-rank">${held ? "—" : row.position || "•"}</span>
-      <span><b>${esc(row.title)}</b><small>${esc(owner.name)} · ${esc(why || (held ? "Blocked" : "Ready"))}${view.last_moved ? ` · last moved ${esc(view.last_moved)}` : ""}</small></span>
+      <span><b>${esc(row.title)}</b><small>${esc(owner.name)} · ${esc(doing || why || (held ? "Blocked" : "Ready"))}${view.last_moved ? ` · last moved ${esc(view.last_moved)}` : ""}</small></span>
       <span class="chip ${row.priority === "urgent" ? "blocked" : row.priority === "retry" ? "done" : "planned"}">${esc(kind || "ordinary")}</span>
     </a>`;
   }).join("")}</div>`;
+}
+
+function wkWhen(iso) {
+  const when = new Date(iso || "");
+  return isNaN(when) ? String(iso || "") : when.toLocaleString([], { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" });
+}
+
+// Q-125 (a): every decision he has ruled on stays visible here until the
+// studio has acted on it. The list is read from each ruling's own status, so
+// a row leaves only when the ruling is integrated, not when a card is filed.
+function wkRulingsWaiting(rulings, org) {
+  if (!rulings.length) return "";
+  const heading = rulings.length === 1 ? "1 of your decisions is waiting to be acted on"
+    : `${rulings.length} of your decisions are waiting to be acted on`;
+  const stateWords = { waiting_session: "queued", doing: "being worked on", for_review: "finished, being checked",
+    landed: "finished", dropped: "dropped without acting on it" };
+  return `<section class="exec-queue-section exec-rulings" aria-label="Rulings waiting to be acted on">
+    <h2>${esc(heading)}</h2>
+    <div class="exec-queue-list">${rulings.map(r => {
+      const owner = (org.employees || []).find(e => e.id === r.owner);
+      const status = r.work_id ? `${owner ? owner.name : "The studio"} has it · ${stateWords[r.work_state] || String(r.work_state || "").replaceAll("_", " ")}`
+        : "Not yet filed as work";
+      return `<a class="exec-queue-row" href="${r.work_id ? `#/work/${encodeURIComponent(r.work_id)}` : "#/inbox"}">
+        <span class="exec-rank">!</span>
+        <span><b>${esc(r.title)}</b>${r.judgment ? `<q class="exec-ruling-words">${esc(r.judgment)}</q>` : ""}<small>${esc(status)}${r.ruled_at ? ` · you ruled ${esc(wkWhen(r.ruled_at))}` : ""}</small></span>
+        <span class="chip done">Your ruling</span>
+      </a>`;
+    }).join("")}</div>
+  </section>`;
 }
 
 async function renderExecutionQueue() {
@@ -338,6 +370,7 @@ async function renderExecutionQueue() {
   $view.innerHTML = `<h1>Task queue</h1>
     <p class="sub">The order the scheduler will actually use. A reviewed fix for overlapping changes can start ahead of new work; older work gains priority over newer work. A blocked change can have a separate fix ready to start.</p>
     <p><a class="plain" href="#/chat/bullpen">← Back to the bullpen</a></p>
+    ${wkRulingsWaiting(queue.rulings_waiting || [], org)}
     <section class="exec-queue-section"><h2>Working now <span class="w-count">${(queue.working || []).length}</span></h2>${wkQueueRows(queue.working || [], org)}</section>
     <section class="exec-queue-section"><h2>Next <span class="w-count">${next.length}</span></h2>${wkQueueRows(next, org)}</section>
     ${later.length ? `<details class="exec-queue-section"><summary>Later (${later.length})</summary>${wkQueueRows(later, org)}</details>` : ""}

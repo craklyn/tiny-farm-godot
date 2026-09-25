@@ -5,6 +5,11 @@ Status: LIVING — cutover performed; unattended work remains paused
 Owner: Chief of Staff  
 Design: `docs/hq/CONVERGENCE_BUILD_PLAN.md`, Work Item E
 
+> **Superseded for the data root, 2026-09-25.** Q-125 (a) moves `HQ_DATA_ROOT` from
+> the shared checkout to HQ's own store, `/home/daniel/tiny-farm-hq-data`, and the
+> checked-in unit templates now name it. `docs/hq/HQ_DATA_MIGRATION.md` is the runbook
+> for that cut-over. The rest of this document still describes the other three roots.
+
 ## Contract
 
 One HQ process uses four explicit filesystem roles:

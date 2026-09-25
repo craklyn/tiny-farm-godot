@@ -270,9 +270,11 @@ same tokens — an order of magnitude, never a bill. What runs out here is a win
   patch, the suites and the bill. `hq/systemd/` holds the timer that runs it unattended.
 - `hq/tests/test_work.py` — the three moves, checked at the card's JSON with the model
   stubbed out; CI runs it.
-- `hq/data/history/tokens.jsonl` — one line per model call the studio makes unattended.
+- `history/tokens.jsonl` in HQ's store — one line per model call the studio makes unattended.
 - `hq/data/work_policy.json` — the tiers as data; the source HQ actually reads.
-- `hq/data/work/*.json` — one file per work item, the company's record of what it did.
+- `work/*.json` in HQ's store (`~/tiny-farm-hq-data`, Q-125) — one file per work item, the
+  company's record of what it did. Main keeps no copy; a session closes a card with
+  `python3 hq/card.py close` (`docs/hq/HQ_DATA_MIGRATION.md`).
 - `hq/static/work.js` — the Work page, ordered so that what needs him is loud and what the
   company is doing on its own is quiet but visible.
 

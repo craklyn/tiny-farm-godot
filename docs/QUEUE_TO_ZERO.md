@@ -429,3 +429,24 @@ allows; the first two runs are watched in the bullpen, not left to the night.
 every line); then rerun the reader and follow-up cards, which will land once
 work.js is free; then the hand-back. Q-92's ruling and the ninth stale card
 (w1a08ee15303) wait on the same session's files.
+
+## 15. One copy of each card, closed only through HQ (Q-125, 2026-09-25)
+
+The goal above assumed HQ's count of open work was true. It was not: every card existed
+twice, HQ's copy and main's, and sessions closed work by editing main's copy, which HQ
+never read. On 2026-09-25, 23 of the 26 held cards were already done. Q-125 (a) removed
+the second copy:
+
+- HQ's live records moved to their own store with its own history
+  (`~/tiny-farm-hq-data`); main no longer tracks them, and CI fails if a card file is
+  committed.
+- A session closes a card with `python3 hq/card.py close`, giving the commit on
+  origin/main and the passing CI run; HQ checks both and refuses without them. A session
+  working a card claims it with `hq/card.py claim`, so the task queue shows it as
+  working.
+- A ruling files its own "Act on your ruling" card when Daniel records it, and the task
+  queue lists each ruling until it is integrated, so a decision he has made cannot sit
+  unnoticed in a folder.
+
+The table of what moved, the cut-over and the rollback are in
+`docs/hq/HQ_DATA_MIGRATION.md`.

@@ -210,6 +210,9 @@ House rules that bind you:
   the item.
 - Do not commit, do not touch git history, and do not push. Leave your work in
   the working tree; the session applies it.
+- Do not create or edit HQ's work cards, rulings or goals. They live in HQ's
+  own store, not in this repository, and HQ records this item's result itself
+  (docs/hq/HQ_DATA_MIGRATION.md).
 - Do not start servers or any long-running process. HQ is already running on
   this machine and the ports it uses are not yours to take — one worker started
   its own copy of the dashboard and knocked the real one off its port. Read the
