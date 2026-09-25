@@ -766,6 +766,12 @@
    "verdict": "second-look",
    "why": "“These” points outside the sentence, leaving the reader to work out which actions the automated task can start."
   },
+  "241e3072dac915145c28": {
+   "instead": "both test suites and automated checks passing",
+   "quote": "both test suites and CI passing",
+   "verdict": "decode",
+   "why": "“CI” is internal shorthand, so a cold reader may not know which checks passed."
+  },
   "243ec9d3102adcc554a1": {
    "verdict": "ok"
   },
@@ -879,6 +885,9 @@
   "2979ff1f9186833b2028": {
    "verdict": "ok"
   },
+  "29e97381911a0d06bcb3": {
+   "verdict": "ok"
+  },
   "29eca6b22eb2c76f3c40": {
    "verdict": "ok"
   },
@@ -930,6 +939,9 @@
    "quote": "Write the design note reversing the sell-then-buy economy",
    "verdict": "decode",
    "why": "\"The sell-then-buy economy\" is a game concept not introduced; the reader doesn't know what is being reversed."
+  },
+  "2b805553e2b1535c752c": {
+   "verdict": "ok"
   },
   "2b978fee0b6b80f27e87": {
    "verdict": "ok"
@@ -1079,6 +1091,9 @@
    "verdict": "ok"
   },
   "3232591e25fb0fb7444e": {
+   "verdict": "ok"
+  },
+  "329d6681ef9d5c02334d": {
    "verdict": "ok"
   },
   "32b7840d373da0bcc561": {
@@ -1754,6 +1769,12 @@
   "53fd833287e76f791b8e": {
    "verdict": "ok"
   },
+  "542599a9be28ff923bdb": {
+   "instead": "Use the same item pictures in the bar and the picker",
+   "quote": "One picture language everywhere",
+   "verdict": "second-look",
+   "why": "This metaphor makes the reader translate “picture language” into using the same item pictures."
+  },
   "542662534a56390b0255": {
    "baselined": "2026-09-19",
    "instead": "would we even know they were there?",
@@ -1999,6 +2020,12 @@
   },
   "6096edbda94e92034ecb": {
    "verdict": "ok"
+  },
+  "61485ceae61c7b996a88": {
+   "instead": "Renumber the question about the crop count shown in the bottom bar to Q-123 and add a card recording the decision",
+   "quote": "Renumber the bottom-bar crop count question to Q-123 and add its decision card",
+   "verdict": "decode",
+   "why": "“Q-123” and “decision card” are internal process terms, so a stranger cannot tell what record to update or add."
   },
   "617b057b7662072182ca": {
    "verdict": "ok"
@@ -2575,6 +2602,9 @@
   "7a1fad480b6bc3e5c4b7": {
    "verdict": "ok"
   },
+  "7a82ac21391154fc5f49": {
+   "verdict": "ok"
+  },
   "7ad995031325e86944b8": {
    "instead": "saw the marks, and asked what they were and whether they were a bug",
    "quote": "saw them, and asked what they were and whether they were a bug",
@@ -2886,6 +2916,12 @@
   "87e561cb4fe2028ad316": {
    "verdict": "ok"
   },
+  "8829cf3aeb6e82f639b2": {
+   "instead": "the bar remains a quick summary you can read without tapping",
+   "quote": "the bar stays a glance you can read without tapping",
+   "verdict": "second-look",
+   "why": "“Stays a glance” is a metaphor for a quick summary rather than the fact itself."
+  },
   "882b19ac02a1e8899779": {
    "instead": "Revise decision Q-108: How the player sees the farm when walls block the view",
    "quote": "How the farm reads through the walls",
@@ -2983,6 +3019,9 @@
    "quote": "The menu is the harvest",
    "verdict": "decode",
    "why": "Poetic metaphor instead of stating what this design option does."
+  },
+  "8e0d3fb9604342f6c9ee": {
+   "verdict": "ok"
   },
   "8e7a94b0d219bf0b9b22": {
    "instead": "a period with no income",
@@ -3341,6 +3380,9 @@
   "9cf588600a49c11f4443": {
    "verdict": "ok"
   },
+  "9cfa97f6aeb4a6e05d5b": {
+   "verdict": "ok"
+  },
   "9d766836429c9a8c6440": {
    "verdict": "ok"
   },
@@ -3520,6 +3562,12 @@
   },
   "a5240c1795a5c40b598c": {
    "verdict": "ok"
+  },
+  "a5319426497840c75d77": {
+   "instead": "You ruled that a bottom-bar button opens a pictured inventory (Q-119) and left open how counts show on the main screen, to be decided once it was built. It was implemented tonight in commit e42ba6a, with both test suites and the automated checks passing.",
+   "quote": "It landed tonight",
+   "verdict": "second-look",
+   "why": "“Landed” makes the reader translate a delivery metaphor into the plain fact that the change was implemented."
   },
   "a53eb4731d7231ade8f3": {
    "verdict": "ok"
@@ -4009,6 +4057,9 @@
   "bdd882a84a9082806f88": {
    "verdict": "ok"
   },
+  "be02bbbc007c23bcd5dc": {
+   "verdict": "ok"
+  },
   "be6ae3460f1c37e38b99": {
    "verdict": "ok"
   },
@@ -4038,6 +4089,9 @@
    "quote": "The studio has not used up its allowance since this started recording, so we do not know yet how much it takes.",
    "verdict": "decode",
    "why": "\"This\" has no referent in the sentence—the reader cannot tell what started recording, so they cannot understand the timeframe or what \"it takes\" refers to."
+  },
+  "c004bcb8f3f1b6bf028e": {
+   "verdict": "ok"
   },
   "c01b9a0fb0d337e49a9d": {
    "verdict": "ok"
@@ -4264,6 +4318,9 @@
    "why": "Placeholder symbols (% and s) replace actual numeric values; a reader cannot understand the targets without the real numbers."
   },
   "c973394566833875b632": {
+   "verdict": "ok"
+  },
+  "c9797a3ce11a836525f7": {
    "verdict": "ok"
   },
   "c9e5f256fd2a0d3b427c": {
@@ -4923,6 +4980,9 @@
    "why": "The phrase is an indirect way to say that the reader should report what is wrong."
   },
   "e6f49432fa3cf0630f2b": {
+   "verdict": "ok"
+  },
+  "e70630502ab986ec04b0": {
    "verdict": "ok"
   },
   "e73608ee7f4fd2c6cd49": {

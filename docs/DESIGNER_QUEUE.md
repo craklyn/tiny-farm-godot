@@ -653,7 +653,7 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   noun-and-tick ruling for taps that change nothing remains settled; Q-78's can
   gauge remains permanent. **No inventory choice or gameplay change is assumed.**
 
-- **Q-122 — Now that the pictured picker exists, how should counts read on the
+- **Q-123 — Now that the pictured picker exists, how should counts read on the
   main screen?** — **Ruling, open 2026-09-25.** The bottom bar still shows
   crop counts as abbreviated text (`Wh:5  To:0`, `crop_counts_label` in
   `ui/hud.gd`) beside the new picker, which shows the same counts as bigger

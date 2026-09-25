@@ -1,0 +1,37 @@
+{
+  "id": "Q-123",
+  "owner": "jade",
+  "title": "Should the bottom bar keep its crop-count text now that the inventory picker exists?",
+  "question": "The inventory button you asked for is built. Tapping it opens a panel of everything you carry, as larger pictures with a plain count under each, and tapping a picture selects that item (attached). The bar along the bottom of the screen still shows the same crop counts as short text, 'Wh:5  To:0', so the two now say the same thing in two ways, one tap apart. Should the bar change?\n\nSaying (a) changes nothing. Saying (b) or (c) changes only that part of the bottom bar; the picker stays as built.",
+  "why_now": "You ruled that a bottom-bar button opens a pictured inventory (Q-119) and left open how counts show on the main screen, to be decided once it was built. It landed tonight in commit e42ba6a, with both test suites and the automated checks passing.",
+  "options": [
+    {
+      "key": "a",
+      "label": "Keep the bar's text counts as they are (Recommended)",
+      "detail": "The picker answers 'what am I carrying and how much' in detail; the bar remains a quick summary you can read without tapping. Nothing changes.",
+      "recommended": true
+    },
+    {
+      "key": "b",
+      "label": "Show small crop pictures with a count in the bar",
+      "detail": "Use the same item pictures in the bar and the picker, each with its digit count, instead of 'Wh' and 'To'."
+    },
+    {
+      "key": "c",
+      "label": "Remove the crop counts from the bar",
+      "detail": "The picker becomes the one place to see counts; the bar keeps the held item, gold and water gauge only."
+    }
+  ],
+  "links": [
+    {
+      "type": "image",
+      "src": "docs/design/mockups/inventory_picker/open.png",
+      "caption": "The live game on day 1 with the picker open: wheat seed ×6, tomato ×2, sprinkler ×1. The new basket button sits beside the held-item card at bottom right; the bar's 'Wh:5 To:0' text is at the bottom centre. Captured by tools/capture_inventory_picker.tscn."
+    },
+    {
+      "label": "Q-123 in the designer queue",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+    }
+  ],
+  "subject": "Crop counts on the main screen"
+}
