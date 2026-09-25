@@ -190,6 +190,12 @@
   "0aa1384dfce1708d70cb": {
    "verdict": "ok"
   },
+  "0aa6c6af75b57285cad0": {
+   "instead": "Keep the record of commits that changed sprinkler prices up to date",
+   "quote": "writing check's record of the sprinkler-price commits",
+   "verdict": "decode",
+   "why": "“Writing check” names an internal process without explaining what record the reader should update."
+  },
   "0ac49d8c8b1f4ac71a58": {
    "verdict": "ok"
   },
@@ -1792,6 +1798,9 @@
    "why": "The sentence is grammatically incomplete; \"they had\" needs an object, and the reader must infer what is meant."
   },
   "54c6c32d37d5df61cf0c": {
+   "verdict": "ok"
+  },
+  "54ce6eb157bd8ec23752": {
    "verdict": "ok"
   },
   "54ea7be720971a816022": {
