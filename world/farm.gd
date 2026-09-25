@@ -561,6 +561,12 @@ func _load_textures() -> void:
 		load("res://assets/sprites/generated/chicken_coop.png"), Rect2(0, 0, 32, 48)]
 	object_regions[WorldLayout.SPIRAL_TOWER] = [
 		load("res://assets/sprites/generated/spiral_tower.png"), Rect2(0, 0, 64, 96)]
+	# The room fittings (S-22): one room cell each, drawn on the room's floor with
+	# the same picture as their shop card.
+	object_regions[WorldLayout.NEST_BOX] = [
+		load("res://assets/sprites/generated/nest_box.png"), Rect2(0, 0, 16, 16)]
+	object_regions[WorldLayout.RUG] = [
+		load("res://assets/sprites/generated/rug.png"), Rect2(0, 0, 16, 16)]
 
 	# T-28's pictograms, resolved from `StationPresentation.GLYPH_ATLAS` — which
 	# is pure data, so the table can be asserted headlessly and the two renderers

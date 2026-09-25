@@ -146,6 +146,7 @@ func _run_scenarios() -> void:
 	await _scenario_az_robot_unlock_cues()
 	await _scenario_ba_crow_spook_stops_at_room_wall()
 	await _scenario_bb_inventory_picker_selects_and_plants()
+	await _scenario_bc_a_nest_box_goes_down_by_tap()
 
 
 func _scenario_ba_crow_spook_stops_at_room_wall() -> void:
@@ -7355,6 +7356,109 @@ func _scenario_ax_she_can_get_back_out_of_the_coop() -> void:
 	_assert(cam.limit_top == _expected_camera_top() and cam.limit_bottom == _expected_camera_bottom(0),
 		"and the page's top and bottom (%d..%d)" % [cam.limit_top, cam.limit_bottom])
 
+	GameState.save_path = real_paths[0]
+	GameState.replay_path = real_paths[1]
+	GameState.trace_path = real_paths[2]
+
+
+func _scenario_bc_a_nest_box_goes_down_by_tap() -> void:
+	# S-22 (Q-117, ruled 2026-09-24): a fitting is set down on a room's floor the way
+	# a machine is set down on the farm — holding it, tap the square. The unit suite
+	# proves `place` and `collect` at the gateway; this proves a finger reaches them
+	# from inside a coop, which is the half a verb test cannot see.
+	print("\n--- Scenario BC: a nest box goes down on the coop floor by tap, and back up (S-22) ---")
+
+	var real_paths := [GameState.save_path, GameState.replay_path, GameState.trace_path]
+	GameState.save_path = "user://fitting_autosave.json"
+	GameState.replay_path = "user://fitting_replay.json"
+	GameState.trace_path = "user://fitting_trace.jsonl"
+	var held_before: String = GameState.selected_seed_type
+	var menus = main_scene.menus
+	menus.close_menu()
+	main_scene.end_teaching()
+	GameState.set_energy(GameState.max_energy)
+
+	# A coop to go into: the one an earlier scenario left standing, or a new one.
+	var hut := Vector2i(-1, -1)
+	for rid in farm.sim.room_ids():
+		if String(farm.sim.rooms[rid].get("item", "")) == SimWorld.COOP_ITEM:
+			hut = farm.sim.rooms[rid]["anchor"]
+	var placed_here := hut.x < 0
+	if placed_here:
+		hut = Vector2i(15, 9)
+		for ty in range(7, 12):
+			for tx in range(13, 19):
+				_stage_tile(tx, ty, "cleared")
+		GameState.machines["coop"] = 1
+		var clear := await _wait_for_clear_ground(hut, "coop")
+		_assert(clear, "the coop's four squares are free")
+		farm.apply_action({ "verb": "place", "target": hut, "item": "coop",
+			"actor": "player" }, GameState)
+	var room_id: String = farm.sim.room_of_anchor(hut)
+	_assert(room_id != "", "a coop with an inside stands on the farm (%s)" % room_id)
+	if room_id == "":
+		return
+
+	# --- in, by the tap and the panel (Scenario AX's path) ---------------------------
+	farm.sim.set_actor_pos("player", hut + Vector2i(0, 1))
+	player.init_position(hut.x, hut.y + 1)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	InputManager.click_tile = hut
+	InputManager.has_click = true
+	var asked := await _wait_until(func(): return menus.active_menu == "structure", 200)
+	_assert(asked, "a tap on the hut asks what she wants to do with it")
+	menus.selected_option = 0      # "Go inside"
+	menus._select_current_option()
+	var inside := await _wait_until(
+		func(): return farm.sim.room_of_cell(player.get_tile_pos()) == room_id, 200)
+	_assert(inside, "and she goes in (%s)" % player.get_tile_pos())
+
+	# --- holding a nest box, a tap on the floor sets it down ----------------------
+	var doorway: Vector2i = farm.sim.rooms[room_id]["door"]
+	var spot := doorway + Vector2i(0, -1)     # the floor cell just inside the door
+	GameState.machines["nest_box"] = 1
+	GameState.selected_seed_type = "nest_box"
+	_assert(GameState.holding_machine(), "she is holding a nest box")
+	var mark: int = farm.replay.entries.size()
+	InputManager.click_tile = spot
+	InputManager.has_click = true
+	var down := await _wait_until(
+		func(): return farm.get_object(spot.x, spot.y) == WorldLayout.NEST_BOX, 240)
+	_assert(down, "a tap on the coop floor sets the nest box down there")
+	_assert(int(GameState.machines.get("nest_box", 0)) == 0, "out of the crate")
+	var recorded := false
+	for i in range(mark, farm.replay.entries.size()):
+		var e: Dictionary = farm.replay.entries[i]
+		if String(e.get("verb", "")) == "place" and String(e.get("item", "")) == "nest_box":
+			recorded = true
+	_assert(recorded, "and it went through the gateway, into the replay")
+
+	# --- a tap on it picks it back up -----------------------------------------------
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	InputManager.click_tile = spot
+	InputManager.has_click = true
+	var up := await _wait_until(
+		func(): return farm.get_object(spot.x, spot.y) == "", 240)
+	_assert(up, "a tap on the nest box picks it up again")
+	_assert(int(GameState.machines.get("nest_box", 0)) == 1, "back into the crate")
+
+	# --- out again, and the farm as it was ----------------------------------------
+	player.path.clear()
+	player.pending_action = {}
+	InputManager.click_tile = doorway
+	InputManager.has_click = true
+	var outside := await _wait_until(
+		func(): return farm.sim.page_of(player.get_tile_pos()) == 0, 300)
+	_assert(outside, "and she walks back out of the coop (%s)" % player.get_tile_pos())
+	if placed_here:
+		farm.apply_action({ "verb": "collect", "target": hut, "actor": "player" }, GameState)
+		GameState.machines.erase("coop")
+	GameState.machines.erase("nest_box")
+	GameState.selected_seed_type = held_before
 	GameState.save_path = real_paths[0]
 	GameState.replay_path = real_paths[1]
 	GameState.trace_path = real_paths[2]

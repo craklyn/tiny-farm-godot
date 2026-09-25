@@ -81,6 +81,11 @@ const SPECIAL_OBJECTS := {
 	# nothing about it belongs in a replay. What she then does at the bench (turn a
 	# dial) is a `tune` Action through the gateway like everything else.
 	"workbench":    "open_workbench",
+	# The room fittings (S-22). A tap on one picks it up, as a tap on her own
+	# scarecrow does: it goes back in the crate, to be set down somewhere else.
+	# Rearranging a room is pick-up-and-put-down, with no panel in between.
+	"nest_box":     "collect",
+	"rug":          "collect",
 }
 
 # T-9 (Q-34): which tool an obstacle needs. A tool she has not acquired yields no

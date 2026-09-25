@@ -226,6 +226,7 @@ func _init() -> void:
 	test_robot_stall()
 	test_chicken_coop()
 	test_coop_interior()
+	test_room_fittings()
 	test_spiral_tower_interior()
 	test_senses_stop_at_space_boundary()
 	test_robot_usefulness()
@@ -15916,6 +15917,197 @@ func test_coop_interior() -> void:
 	_assert(world.has_actor("chicken") and world.actor_pos("chicken") == spot,
 		"and the hen is standing where the hut was, rather than in the crate")
 	_assert(GameState.machines.get("coop", 0) == 1, "with the hut back in the crate")
+
+
+# Room fittings (S-22, Q-117 ruled 2026-09-24; design/15 §9a). A nest box for the
+# coop and a rug for the farmhouse, each bought in the shop and set down on a floor
+# cell of the one room kind that takes it — and everything else still refused
+# indoors. Taking the coop up hands back everything inside it, in a fixed order,
+# with a machine's memory kept, and walks the hen out onto the grass. Recorded as a
+# continued session and replayed, because the order things come out of a room is
+# exactly what a replay has to agree about.
+func test_room_fittings() -> void:
+	print("\n--- Room fittings: a nest box and a rug, set down and taken back up (S-22) Tests ---")
+
+	# --- the catalogue ---------------------------------------------------------
+	for key in ["nest_box", "rug"]:
+		_assert(MachineDefs.is_fitting(key) and key in MachineDefs.ORDER
+				and not MachineDefs.goes_outdoors(key)
+				and MachineDefs.price_of(key) > MachineDefs.price_of(SimWorld.COOP_ITEM),
+			"the shop sells a %s as a fitting: indoors only, priced over the coop" % key)
+		_assert(MachineDefs.icon_of(key) != null, "...with a picture for its card (%s)" % key)
+	_assert(MachineDefs.rooms_of("nest_box") == ["coop"]
+			and MachineDefs.rooms_of("rug") == [MachineDefs.FARMHOUSE_ROOM],
+		"the nest box goes in a coop and the rug in the farmhouse, and nowhere else")
+	var indoor_machines: Array = []
+	for key in MachineDefs.ORDER:
+		if not MachineDefs.is_fitting(key) and not MachineDefs.rooms_of(key).is_empty():
+			indoor_machines.append(key)
+	_assert(indoor_machines.is_empty(),
+		"and no machine on today's shelf names a room, so every one stays outdoors (%s)"
+			% [indoor_machines])
+	_assert(MachineDefs.fitting_of_object(WorldLayout.NEST_BOX) == "nest_box"
+			and MachineDefs.fitting_of_object(WorldLayout.CHICKEN_COOP) == ""
+			and MachineDefs.fitting_of_object("") == "",
+		"a nest box on the floor is known as one, and a coop is not a fitting")
+
+	GameState.reset()
+	SimRng.reseed(9225)
+	var world := SimWorld.new()
+	world.generate()
+	GameState.gold = 1000
+
+	var spot := Vector2i(-1, -1)
+	for y in range(10, 17):
+		for x in range(5, 23):
+			if world.placeable_at(Vector2i(x, y), "coop"):
+				spot = Vector2i(x, y)
+				break
+		if spot.x >= 0:
+			break
+	_assert(spot.x >= 0, "the generated farm has a four-square block free")
+	world.apply_action({ "verb": "buy_machine", "item": "coop", "actor": "player" }, GameState)
+	var laid: Dictionary = world.apply_action({ "verb": "place", "target": spot,
+		"item": "coop", "actor": "player" }, GameState)
+	var room_id := String(laid.get("room", ""))
+	_assert(laid.get("ok", false) and room_id != "", "a coop with an inside (%s)" % room_id)
+	var origin: Vector2i = world.rooms[room_id]["origin"]
+	var doorway: Vector2i = world.rooms[room_id]["door"]
+	_assert(world.room_kind(room_id) == "coop"
+			and world.room_kind(SimWorld.HOME_ROOM_ID) == MachineDefs.FARMHOUSE_ROOM,
+		"a coop's room is a coop room and the house's is the farmhouse")
+
+	# --- where each may go -----------------------------------------------------
+	var home_floor := Vector2i(WorldLayout.home_room()["origin"]) + Vector2i(5, 5)
+	var yard := Vector2i(-1, -1)
+	for y in range(10, 17):
+		for x in range(5, 23):
+			if yard.x < 0 and world.placeable_at(Vector2i(x, y), "sprinkler"):
+				yard = Vector2i(x, y)
+	_assert(yard.x >= 0, "and a square of open farm ground to compare with (%s)" % yard)
+	_assert(world.placeable_at(origin + Vector2i(1, 1), "nest_box"),
+		"a nest box fits on a coop's floor")
+	_assert(world.placeable_at(home_floor, "rug"), "and a rug on the farmhouse's floor")
+	_assert(not world.placeable_at(home_floor, "nest_box")
+			and not world.placeable_at(origin + Vector2i(1, 1), "rug"),
+		"but not each other's: a room takes only what names it")
+	_assert(not world.placeable_at(yard, "nest_box") and not world.placeable_at(yard, "rug")
+			and world.placeable_at(yard, "sprinkler"),
+		"and neither goes down in the yard, where a sprinkler still does")
+	_assert(not world.placeable_at(origin + Vector2i(1, 1), "sprinkler")
+			and not world.placeable_at(home_floor, "sprinkler")
+			and not world.placeable_at(origin + Vector2i(1, 1), "bot_mk1"),
+		"a machine whose row names no room is refused indoors, coop and house alike")
+	_assert(not world.placeable_at(origin + Vector2i(1, 1), "coop")
+			and not world.placeable_at(origin + Vector2i(1, 1), "spiral_tower"),
+		"and a room may not hold another room")
+	_assert(not world.placeable_at(doorway, "nest_box") and not world.placeable_at(origin, "nest_box"),
+		"nor does a fitting go on the doorway or in the wall")
+
+	# --- a machine that names a room goes in, and comes out knowing what it knew --
+	#
+	# No machine on the shelf names a room, so one is staged for the test: the rule
+	# the ruling sets is that the row decides, and this proves the row is what is read.
+	MachineDefs.TYPES["test_perch"] = { "name": "Test Perch", "price": 1,
+		"species": SpeciesDefs.SPRINKLER, "configs": [], "default_config": "",
+		"unlock_requirement": null, "rooms": ["coop"] }
+	MachineDefs.ORDER.append("test_perch")
+	_assert(world.placeable_at(origin + Vector2i(1, 1), "test_perch")
+			and not world.placeable_at(home_floor, "test_perch"),
+		"a machine whose row names the coop may go in a coop, and only a coop")
+
+	# The staging a continued session starts from: stock in the crate, a trained
+	# machine's memory boxed, and the hen indoors.
+	GameState.machines["nest_box"] = 2
+	GameState.machines["rug"] = 1
+	GameState.machines["test_perch"] = 1
+	GameState.boxed["test_perch"] = [{ "weights": [0.5, -0.25], "ledger": [3] }]
+	if not world.has_actor(SimWorld.ACTOR_CHICKEN):
+		world.spawn_actor(SimWorld.ACTOR_CHICKEN, SpeciesDefs.CHICKEN, spot + Vector2i(0, 1))
+	world.set_actor_pos(SimWorld.ACTOR_CHICKEN, origin + Vector2i(2, 3))
+	var base_save = JSON.parse_string(JSON.stringify(SaveGame.capture(world, GameState)))
+	var rlog := ReplayLog.new()
+	rlog.start_from_save(base_save)
+
+	# --- setting them down -----------------------------------------------------
+	var box_a := origin + Vector2i(3, 3)
+	var box_b := origin + Vector2i(1, 1)
+	var perch := origin + Vector2i(4, 1)
+	var egg_at := origin + Vector2i(2, 2)
+	var put_a := _replay_do(world, rlog, { "verb": "place", "target": box_a,
+		"item": "nest_box", "actor": "player" })
+	_assert(put_a.get("ok", false) and world.get_object(box_a.x, box_a.y) == WorldLayout.NEST_BOX
+			and int(GameState.machines["nest_box"]) == 1,
+		"she sets a nest box down on the coop's floor, out of the crate (%s)" % put_a)
+	_assert(world.is_walkable(box_a.x, box_a.y),
+		"and it lies low: the floor it stands on can still be crossed")
+	var again: Dictionary = world.apply_action({ "verb": "place", "target": box_a,
+		"item": "nest_box", "actor": "player" }, GameState)
+	_assert(not again.get("ok", false) and int(GameState.machines["nest_box"]) == 1,
+		"a second one on the same cell is refused and costs nothing (%s)" % again)
+	_replay_do(world, rlog, { "verb": "place", "target": box_b, "item": "nest_box",
+		"actor": "player" })
+	var put_perch := _replay_do(world, rlog, { "verb": "place", "target": perch,
+		"item": "test_perch", "actor": "player" })
+	_assert(put_perch.get("ok", false)
+			and world.actor(String(put_perch.get("machine", ""))).get("extra", {}).get("weights", [])
+				== [0.5, -0.25],
+		"the machine goes in with its boxed memory (%s)" % put_perch)
+	_replay_do(world, rlog, { "verb": "lay_egg", "target": egg_at,
+		"actor": SimWorld.ACTOR_CHICKEN })
+	_assert(world.get_object(egg_at.x, egg_at.y) == "egg", "and the hen lays on the coop floor")
+
+	var rug_down := _replay_do(world, rlog, { "verb": "place", "target": home_floor,
+		"item": "rug", "actor": "player" })
+	_assert(rug_down.get("ok", false) and world.get_object(home_floor.x, home_floor.y) == WorldLayout.RUG,
+		"a rug goes down in the farmhouse (%s)" % rug_down)
+	var rug_up := _replay_do(world, rlog, { "verb": "collect", "target": home_floor,
+		"actor": "player" })
+	_assert(rug_up.get("ok", false) and String(rug_up.get("collected", "")) == "rug"
+			and world.get_object(home_floor.x, home_floor.y) == ""
+			and int(GameState.machines["rug"]) == 1,
+		"and comes back up into the crate with a tap's verb (%s)" % rug_up)
+	_replay_do(world, rlog, { "verb": "place", "target": home_floor + Vector2i(1, 0),
+		"item": "rug", "actor": "player" })
+
+	# --- taking the coop up hands back everything inside it -----------------------
+	var egg_before := int(GameState.items.get("egg", 0))
+	var up := _replay_do(world, rlog, { "verb": "collect", "target": spot, "actor": "player" })
+	_assert(up.get("ok", false) and String(up.get("collected", "")) == "coop",
+		"the coop comes up (%s)" % up)
+	var came_out: Array = []
+	for entry in up.get("contents", []):
+		came_out.append([String(entry.item), Vector2i(entry.cell)])
+	_assert(came_out == [["nest_box", box_b], ["test_perch", perch], ["egg", egg_at],
+			["nest_box", box_a]],
+		"everything inside comes out first, row by row across the floor (%s)" % [came_out])
+	_assert(int(GameState.machines["nest_box"]) == 2 and int(GameState.machines["test_perch"]) == 1
+			and int(GameState.items.get("egg", 0)) == egg_before + 1,
+		"each as its own item: two nest boxes and the machine in the crate, the egg in her basket")
+	var kept: Array = GameState.boxed.get("test_perch", [])
+	_assert(kept.size() == 1 and kept[0].get("weights", []) == [0.5, -0.25]
+			and kept[0].get("ledger", []) == [3],
+		"and the machine went in with what it knew (Q-98: picking up is repositioning)")
+	_assert(not world.rooms.has(room_id)
+			and String(world.get_tile(box_a.x, box_a.y).get("state", "")) == WorldLayout.VOID,
+		"then the room closes, with nothing left in its slot")
+	_assert(world.has_actor(SimWorld.ACTOR_CHICKEN)
+			and world.actor_pos(SimWorld.ACTOR_CHICKEN) == spot
+			and world.space_of(world.actor_pos(SimWorld.ACTOR_CHICKEN)) == "farm",
+		"and the hen who was indoors is standing on the grass where the hut was (%s)"
+			% world.actor_pos(SimWorld.ACTOR_CHICKEN))
+	_assert(world.get_object(home_floor.x + 1, home_floor.y) == WorldLayout.RUG,
+		"the farmhouse's rug is untouched: only the coop came up")
+
+	# --- and a replay of the session agrees ---------------------------------------
+	var end_save = JSON.parse_string(JSON.stringify(SaveGame.capture(world, GameState)))
+	var report := SaveGame.replay_report(ReplayLog.from_json(rlog.to_json()), end_save)
+	_assert(report["matched"],
+		"a replay of the session ends on the same farm and the same crate %s" % report["divergence"])
+
+	MachineDefs.ORDER.erase("test_perch")
+	MachineDefs.TYPES.erase("test_perch")
+	GameState.reset()
 
 
 func test_one_pouch() -> void:

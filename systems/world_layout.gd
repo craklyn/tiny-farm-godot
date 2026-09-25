@@ -158,6 +158,14 @@ const CHICKEN_COOP_PART := "chicken_coop_part"
 const SPIRAL_TOWER := "spiral_tower"
 const SPIRAL_TOWER_PART := "spiral_tower_part"
 
+# **Room fittings** (S-22, Q-117 ruled 2026-09-24; design/15 §9a). Things she buys
+# and sets down on a room's floor, one per cell of that room: a nest box in a coop,
+# a rug in the farmhouse. The first version is deliberately weak — neither does
+# anything yet — and **neither blocks walking**: both lie low on the floor, so no
+# arrangement of them can wall off a doorway or shut the hen in a corner.
+const NEST_BOX := "nest_box"
+const RUG := "rug"
+
 # --- the rooms page (P-18, 2026-09-15) ----------------------------------------
 #
 # **Where a building's inside is kept.** P-18's interiors are nested grids: a room

@@ -882,6 +882,10 @@ const OPEN_OBJECTS := {
 	# square she stands on to ask to leave. A door that blocked its own threshold
 	# would be a room with no way out (fixed 2026-09-16).
 	WorldLayout.ROOM_DOORWAY: true,
+	# ...and the room fittings (S-22), which lie low on a floor: a player can
+	# arrange them however she likes without ever walling off a doorway or
+	# stranding the hen in a corner of her own coop.
+	WorldLayout.NEST_BOX: true, WorldLayout.RUG: true,
 }
 
 # The objects that are a **building you stand in** rather than a thing in your
@@ -1980,17 +1984,21 @@ func placeable_at(t: Vector2i, item: String = "") -> bool:
 	# hen sits, not a bay with a slot in it.
 	elif is_coop_tile(t):
 		return false
-	# **And nothing is put down inside a room** (P-13, 2026-09-16). A room's floor is
-	# ordinary walkable ground, so before this a coop could be set down inside
-	# another coop — and a sprinkler in the bedroom, since the home is a room too.
-	# Everything about that needs rules nobody has written: what the inner thing is
-	# anchored to, where it goes when its host is picked up, and where a hen
-	# sheltering in it is standing once the room she was in has stopped existing.
+	# **Inside a room, only what that room accepts** (S-22, Q-117 ruled 2026-09-24;
+	# design/15 §9a). Until then nothing at all went down indoors (P-13,
+	# 2026-09-16): a coop could be set down inside another coop and a sprinkler in
+	# the bedroom, and picking the host up wiped whatever was inside it.
 	#
-	# Refused whole rather than answered, which is what a deliberately weak first
-	# version is for. What may go in a room is a real design question and is filed as
-	# one; this is the line until it is answered.
-	elif room_of_cell(t) != "":
+	# Now a catalogue row names the room kinds that take it, and everything else is
+	# still refused — every machine on today's shelf, and anything with a room of
+	# its own, since a room may not hold another room. What a room holds is emptied
+	# into the crate before the room closes (`_empty_rooms`), so nothing put down
+	# here can be lost with it.
+	elif space_of(t) != "farm":
+		if not fits_in_room(t, item):
+			return false
+	# ...and a fitting stays indoors: a nest box in the open is nobody's plan.
+	elif not MachineDefs.goes_outdoors(item):
 		return false
 	# ...and a structure wider or deeper than one square needs every cell of its
 	# block to be free ground (2026-09-11). This was the stall's second bay by
@@ -2008,6 +2016,40 @@ func placeable_at(t: Vector2i, item: String = "") -> bool:
 		if t in Movement.occupied_tiles(self, id):
 			return false
 	return true
+
+
+# **May this row be set down on this room cell?** (S-22) The room's kind has to be
+# one the row names, and every cell it would stand on has to be bare floor of that
+# same room — not the doorway, not a wall, not a square with an egg or another
+# fitting already on it. `placeable_at` asks this for any tile that is not on the
+# farm, and then asks its own actor question as it does outdoors.
+func fits_in_room(t: Vector2i, item: String) -> bool:
+	var space := space_of(t)
+	if space == "" or space == "farm" or not rooms.has(space):
+		return false
+	if not room_kind(space) in MachineDefs.rooms_of(item):
+		return false
+	# A room may not hold another room (design/15 §9a). No row that has an inside
+	# names a room today; this is the line that keeps it so if one ever does.
+	if not MachineDefs.room_of(item).is_empty():
+		return false
+	for cell in MachineDefs.footprint_cells(item, t):
+		if space_of(cell) != space or not is_walkable(cell.x, cell.y):
+			return false
+		if String(get_tile(cell.x, cell.y).get("state", "")) != WorldLayout.FLOOR:
+			return false
+		if objects[cell.y][cell.x] != "":
+			return false
+	return true
+
+
+# The kind of room this is, which is what a catalogue row's `rooms` list names: the
+# row its building was bought from, or `MachineDefs.FARMHOUSE_ROOM` for the house,
+# which was laid out with the world rather than bought.
+func room_kind(room_id: String) -> String:
+	if room_id == HOME_ROOM_ID:
+		return MachineDefs.FARMHOUSE_ROOM
+	return String(rooms.get(room_id, {}).get("item", ""))
 
 
 # Is this tile one of a stall's two bays? Read off the grid rather than off
@@ -2654,6 +2696,14 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				set_object(target.x, target.y, "")
 				gs.acorns += 1
 				return { "ok": true, "collected": "acorn" }
+			# **A fitting comes back up the way it went down** (S-22): off the floor
+			# and into the crate as one of its own row, to be set down somewhere
+			# else. Free, like the scarecrow — rearranging a room is not work.
+			var fitting := MachineDefs.fitting_of_object(obj)
+			if fitting != "":
+				set_object(target.x, target.y, "")
+				gs.machines[fitting] = int(gs.machines.get(fitting, 0)) + 1
+				return { "ok": true, "collected": fitting }
 			# **A machine is picked back up with the same verb** (2026-09-03), the
 			# egg's and the scarecrow's rule applied to the thing that walks: what
 			# a hand does with a square first is pick up what is on it. No new
@@ -2685,16 +2735,7 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				# *verb's* meaning rather than the registry's: a despawn is also
 				# what happens when a bird leaves the sky, and nothing is owed to
 				# the crate for that.
-				var picked: Dictionary = actor(machine_id).get("extra", {})
-				if picked.has("weights"):
-					var kept: Dictionary = picked.duplicate(true)
-					for forgotten in BOXED_FORGETS:
-						kept.erase(forgotten)
-					var crate: Array = gs.boxed.get(machine_key, [])
-					crate.append(kept)
-					gs.boxed[machine_key] = crate
-				despawn_actor(machine_id)
-				gs.machines[machine_key] = int(gs.machines.get(machine_key, 0)) + 1
+				_crate_machine(machine_id, gs)
 				return { "ok": true, "collected": machine_key, "machine": machine_id }
 			# **And a hut she put down comes back up with its inside** (P-17's
 			# 2026-09-14 ruling: repositioning is the robot's tap, and nothing
@@ -2717,13 +2758,18 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 					# anchored inside the one coming up comes up with it, and the
 					# crate is paid for each.
 					var taken_up := _coop_nest(coop_anchor)
+					# **And what is inside comes out first** (S-22, design/15 §9a).
+					# The slot is reused by the next room, so nothing may be left in
+					# it: every fitting, egg and machine goes to her as its own item,
+					# and the hen is walked out onto the grass.
+					var contents := _empty_rooms(taken_up, gs)
 					for a in taken_up:
 						close_room(a)
 						for cell in MachineDefs.footprint_cells(COOP_ITEM, a):
 							set_object(cell.x, cell.y, "")
 					gs.machines[COOP_ITEM] = int(gs.machines.get(COOP_ITEM, 0)) + taken_up.size()
 					return { "ok": true, "collected": COOP_ITEM, "anchor": coop_anchor,
-						"count": taken_up.size() }
+						"count": taken_up.size(), "contents": contents }
 			# **And her fences come back up** (Q-92). A post she built is always
 			# hers; the starting fence becomes hers on her first fence purchase. Before
 			# then it remains the cold open's first lock. Hedges are never fencing
@@ -3493,6 +3539,90 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			return { "ok": true }
 
 	return _fail("unknown_verb")
+
+
+# **A machine into the crate, with everything it had learned** (Q-98). The body of
+# `collect`'s machine branch, shared with taking a building up with a machine
+# inside it (S-22) so both keep exactly the same things. Returns its row.
+func _crate_machine(machine_id: String, gs) -> String:
+	var machine_key := machine_key_of(machine_id)
+	var picked: Dictionary = actor(machine_id).get("extra", {})
+	if picked.has("weights"):
+		var kept: Dictionary = picked.duplicate(true)
+		for forgotten in BOXED_FORGETS:
+			kept.erase(forgotten)
+		var crate: Array = gs.boxed.get(machine_key, [])
+		crate.append(kept)
+		gs.boxed[machine_key] = crate
+	despawn_actor(machine_id)
+	gs.machines[machine_key] = int(gs.machines.get(machine_key, 0)) + 1
+	return machine_key
+
+
+# **Everything inside the buildings about to come up, handed back before their rooms
+# close** (S-22, Q-117 ruled 2026-09-24; design/15 §9a). `anchors` is the building
+# she tapped first, then any old nested huts inside it (`_coop_nest`).
+#
+# A room's slot is reused by the next room, so whatever is left in it is lost —
+# that is what the all-room refusal was protecting until this existed. Now each
+# nonliving thing goes to her as its own item: a fitting to the crate, a machine to
+# the crate with its memory (`_crate_machine`), an egg to her basket as if she had
+# picked it up. **In a fixed order** — room by room in `anchors` order, cells row by
+# row, a cell's object before any machine on it, machines by id — so the session,
+# a replay and a save all agree about what came out and in what order. The list is
+# returned in that order, as `{ item, cell }` pairs.
+#
+# **Living occupants stay outside** (P-17). A hen indoors when her coop is taken up
+# is walked out onto the tapped building's footprint, the squares the hut stood
+# on, rather than pocketed or left on a floor that no longer exists.
+func _empty_rooms(anchors: Array[Vector2i], gs) -> Array:
+	var out: Array = []
+	var living: Array[String] = []
+	for a in anchors:
+		var id := room_of_anchor(a)
+		if id == "":
+			continue
+		var r: Dictionary = rooms[id]
+		var o: Vector2i = r.get("origin", Vector2i.ZERO)
+		var sz: Vector2i = r.get("size", Vector2i.ZERO)
+		for y in sz.y:
+			for x in sz.x:
+				var c := o + Vector2i(x, y)
+				var obj: String = objects[c.y][c.x]
+				var fitting := MachineDefs.fitting_of_object(obj)
+				if fitting != "":
+					set_object(c.x, c.y, "")
+					gs.machines[fitting] = int(gs.machines.get(fitting, 0)) + 1
+					out.append({ "item": fitting, "cell": c })
+				elif obj == "egg":
+					set_object(c.x, c.y, "")
+					gs.items["egg"] = gs.items.get("egg", 0) + 1
+					gs.harvest_counts["egg"] = gs.harvest_counts.get("egg", 0) + 1
+					out.append({ "item": "egg", "cell": c })
+				var standing := machine_at(c)
+				while standing != "":
+					out.append({ "item": _crate_machine(standing, gs), "cell": c,
+						"machine": standing })
+					standing = machine_at(c)
+		for raw in actors:
+			var who := String(raw)
+			if who == ACTOR_PLAYER or living.has(who) or machine_key_of(who) != "":
+				continue
+			if room_of_cell(actor_pos(who)) == id:
+				living.append(who)
+	if anchors.is_empty() or living.is_empty():
+		return out
+	living.sort()
+	var outside := MachineDefs.footprint_cells(COOP_ITEM, anchors[0])
+	for i in living.size():
+		var who := living[i]
+		set_actor_pos(who, outside[i % outside.size()])
+		var extra: Dictionary = actors[who].get("extra", {})
+		extra["path"] = []
+		extra["state"] = "idle"
+		extra["wake"] = clock.tick + 1
+		_schedule_brain(who, clock.tick + 1)
+	return out
 
 
 func _fail(reason: String) -> Dictionary:

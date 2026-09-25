@@ -38,6 +38,11 @@ before the first public build ships.*
     count, metal and lens and trim untouched. A placeholder so the two robot marks can be
     told apart on the farm, at the designer's request, until they are designed as different
     machines. Cost nothing; no model was called.
+  - `nest_box.png` and `rug.png` (2026-09-25), the two room fittings, are **drawn, not
+    generated**: 16×16 pixel maps kept as editable text in `tools/gen_fittings.py`, using
+    only colours `chicken_coop.png` and `cot.png` already use. The script checks this
+    before writing. Cost nothing; no model was called. Provenance and rights remain
+    those of the two source sheets.
   - `player_chop.png` (2026-09-24) is **derived, not generated**: four 48px
     clearing poses built by `tools/build_player_chop.py` from the standing cells
     of `characters.png` and the axe cell of `tool_icons.png`. The axe rotates

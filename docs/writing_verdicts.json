@@ -397,6 +397,9 @@
    "verdict": "second-look",
    "why": "House vocabulary ('sim code', 'game-side loader project') instead of the consequence the reader wants: that these can't be edited here yet."
   },
+  "12b4d70e67b338415a75": {
+   "verdict": "ok"
+  },
   "12d0fee686e3919aa1b8": {
    "instead": "Of the last finished runs, all have passed in a row right now",
    "quote": "Of the last finished runs, passed and failed · have passed in a row right now",

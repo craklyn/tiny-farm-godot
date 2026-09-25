@@ -428,18 +428,48 @@ she was in has stopped existing. So `placeable_at` refuses the whole class, whic
 P-13's deliberately weak first version is for, and a farm that already got into that state
 comes out of it: picking a hut up takes every hut nested inside it and pays the crate for
 each. **What may go in a room is set out in §9a; Daniel chose it on 2026-09-24 (Q-117,
-S-22).** The guard remains until that model is implemented.
+S-22), and its first version was built on 2026-09-25.** The all-room refusal now covers
+everything except a row that names the room.
 
-## 9a. What a room may hold — ruled 2026-09-24, not built
+## 9a. What a room may hold — ruled 2026-09-24, first version built 2026-09-25
 
 **Ruled 2026-09-24 (Q-117, option a; S-22): portable, player-placed fittings.** Daniel
-chose the model below over built-in fittings (b) and decoration only (c). Everything in
-this section is now the design to build; none of it is in the game yet.
+chose the model below over built-in fittings (b) and decoration only (c).
 
-The current ban in `SimWorld.placeable_at` is a safety rule. It stops a placed object from
-being erased when its host's room slot is cleared. It does not say that an empty coop or an
-empty home is the desired finished design. The ban stays in force until the furnishing
-model below is implemented.
+**Built 2026-09-25, deliberately weak (P-13):**
+
+- **Two fittings, both in the shop at 30 gold:** a **nest box** that goes only in a coop,
+  and a **rug** that goes only in the farmhouse. Neither does anything yet. The hen does
+  not lay in the nest box, and the rug is only decoration. Each is one room cell, drawn
+  16×16 from colours the coop and the bed already use (`tools/gen_fittings.py`).
+- **Both lie flat and can be walked over** (`SimWorld.OPEN_OBJECTS`). That means no
+  arrangement can block a doorway or trap the hen in a corner, so v1 needs no
+  connectivity rule. Solid furniture is a later tier. It would need that rule.
+- **The catalogue says where a row may go.** A row's `rooms` list names the room kinds that
+  accept it: the building's row, such as `coop`, or `farmhouse` for the house. `outdoors:
+  false` keeps a fitting off the farm. A row with neither field is outdoors-only, and no
+  machine on today's shelf names a room. `placeable_at` asks `fits_in_room` for any tile
+  not on the farm. The cell must be bare floor in a room of a named kind, not a doorway,
+  wall or occupied square. A row that has its own room is always refused indoors, so a
+  room cannot hold another room.
+- **Setting one down is `place`, and a tap on one is `collect`.** Both go through the
+  ordinary gateway, as the scarecrow already does. The fitting returns to the crate, so
+  rearranging a room means picking things up and putting them down again.
+- **Picking up a coop empties it first** (`SimWorld._empty_rooms`). Its contents come out
+  in a fixed order: row by row across the floor, with a square's object before any machine
+  on it. Fittings return to the crate. Any machine goes to the crate with its memory, by
+  the same code a direct pickup uses (Q-98). An egg on the floor goes to her basket as if
+  she had collected it. A hen indoors is moved to the squares the hut stood on
+  (P-17), and her walk is reset. Only then does the room close. `collect` returns the list
+  of contents, and a replay reproduces it.
+- **Nothing in the save or replay format changed.** A fitting is an object string on the
+  grid, and fittings in the crate use the crate's existing counts. Old farms load unchanged,
+  and the rescue for nested coops still returns every coop it finds.
+- Proved by `test_room_fittings` in the unit suite, which covers placement, refusals, pickup
+  with contents and replay. Scenario BC in the integration suite puts a nest box down with a
+  tap from inside a coop and picks it back up with another tap.
+
+The rest of this section is the model as ruled. A later tier builds on it.
 
 **Furnishing.** Give each room type a small set of compatible, individually placed fittings:
 nest boxes, perches and bedding in a coop; household furniture in the farmhouse. A fitting
@@ -486,8 +516,8 @@ slots being destroyed with their hosts means no object may be abandoned there, a
 coordinates. Those are constraints on any option. Daniel was asked whether furnishings
 are player-placed and portable, built into the building, or limited to decoration, since
 that choice decides whether individual catalogue items and crate handling are wanted at
-all. He chose the portable model (Q-117, 2026-09-24), so they are. Until it is built, the
-all-room placement guard stays in force.
+all. He chose the portable model (Q-117, 2026-09-24), so they are. Its first version is
+built (above), and the room guard now refuses every row that does not name the room.
 
 ## 8a. Going through a door is still a cut, and it should not be
 

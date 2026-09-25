@@ -93,6 +93,57 @@ static var TYPES: Dictionary = {
 		"icon": { "sheet": "res://assets/sprites/generated/chicken_coop.png",
 			"region": Rect2(0, 0, 32, 48) },
 	},
+	# --- room fittings (S-22, Q-117 ruled 2026-09-24) ---------------------------
+	#
+	# *Portable, player-placed fittings*: a thing for the inside of a room is its
+	# own item, bought here and set down on a free floor cell, rather than arriving
+	# invisibly with every copy of its building (design/15 §9a). One for each room
+	# a player can walk into today — the coop and the farmhouse — and nothing more.
+	#
+	# **Deliberately weak first version** (P-13). Neither does anything: the hen
+	# does not lay in the nest box and nobody sits on the rug. What they buy is a
+	# room she arranged herself, and the chore a fitting one day brings is what a
+	# tier above this can be.
+	#
+	# `rooms` is the list of room kinds that accept the row — a coop room's kind is
+	# its building's row, the farmhouse's is `FARMHOUSE_ROOM` — and `outdoors:
+	# false` is what keeps a fitting off the farm itself. Every other row leaves
+	# both out, which means "outdoors only": a machine goes indoors only when its
+	# own row names that room.
+	#
+	# **Priced at 30**, just over the coop so the coop stays the bottom rung of the
+	# shelf, and cheap because it does nothing yet.  [Playtest]
+	"nest_box": {
+		"name": "Nest Box",
+		"price": 30,
+		"species": "",
+		"program": "",
+		"configs": [],
+		"default_config": "",
+		"unlock_requirement": null,
+		"object": WorldLayout.NEST_BOX,
+		"rooms": ["coop"],
+		"outdoors": false,
+		# 16x16, one room cell: a low wooden box of straw in the coop's own browns
+		# (derived by `tools/gen_fittings.py`, provenance in CREDITS.md).
+		"icon": { "sheet": "res://assets/sprites/generated/nest_box.png",
+			"region": Rect2(0, 0, 16, 16) },
+	},
+	"rug": {
+		"name": "Rug",
+		"price": 30,
+		"species": "",
+		"program": "",
+		"configs": [],
+		"default_config": "",
+		"unlock_requirement": null,
+		"object": WorldLayout.RUG,
+		"rooms": ["farmhouse"],
+		"outdoors": false,
+		# 16x16, one room cell, in the bed's reds and creams (`tools/gen_fittings.py`).
+		"icon": { "sheet": "res://assets/sprites/generated/rug.png",
+			"region": Rect2(0, 0, 16, 16) },
+	},
 	"spiral_tower": {
 		"name": "Spiral Tower",
 		"price": 120,
@@ -350,8 +401,13 @@ static var TYPES: Dictionary = {
 # with a verb, a state, a refund and 23 passing assertions, and no way to get any.
 # Fencing leads: it is the cheapest thing on the shelf and the only one that is
 # not a machine.
-static var ORDER: Array[String] = ["coop", "fence", "spiral_tower", "sprinkler", "stall", "bot_mk1",
-		"bot_mk2", "bot_mk3", "workbench"]
+static var ORDER: Array[String] = ["coop", "nest_box", "rug", "fence", "spiral_tower", "sprinkler",
+		"stall", "bot_mk1", "bot_mk2", "bot_mk3", "workbench"]
+
+# The farmhouse's room kind (S-22). A coop's room is known by the row it was built
+# from; the farmhouse was laid out with the world and has no row, so it is named
+# here, where the rows that accept it can spell it.
+const FARMHOUSE_ROOM := "farmhouse"
 
 
 static func has(key: String) -> bool:
@@ -422,6 +478,36 @@ static func object_of(key: String) -> String:
 # far the camera zooms to get there.
 static func room_of(key: String) -> Dictionary:
 	return TYPES.get(key, {}).get("room", {})
+
+
+# **Which rooms accept this row** (S-22): the room kinds a player may set it down
+# in, or [] for a row that goes nowhere indoors — which is every row that does not
+# say otherwise. A room kind is the row its building was bought from ("coop"), or
+# `FARMHOUSE_ROOM` for the house.
+static func rooms_of(key: String) -> Array:
+	return TYPES.get(key, {}).get("rooms", [])
+
+
+# ...and whether it may stand on the farm itself. True unless the row says not,
+# which is what a fitting says: a nest box in the open is not a thing anyone wants.
+static func goes_outdoors(key: String) -> bool:
+	return bool(TYPES.get(key, {}).get("outdoors", true))
+
+
+# Is this row a **fitting** — a structure that is only ever set down inside a room?
+static func is_fitting(key: String) -> bool:
+	return not spawns_actor(key) and not goes_outdoors(key) and not rooms_of(key).is_empty()
+
+
+# The fitting row whose object this is, or "". What `collect` asks of a square with
+# a nest box on it, and what taking a building up asks of every square of its room.
+static func fitting_of_object(obj: String) -> String:
+	if obj == "":
+		return ""
+	for key in ORDER:
+		if is_fitting(key) and object_of(key) == obj:
+			return key
+	return ""
 
 
 static func part_of(key: String) -> String:

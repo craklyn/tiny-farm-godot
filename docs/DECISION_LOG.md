@@ -490,8 +490,10 @@ names that room and its work makes sense there; the default is outdoors only.
 Picking up a building returns each nonliving item inside it to the crate as its
 own item, state kept (Q-98), before the room closes. Living occupants stay
 outside (P-17). A room may not hold another room. Detail in
-`design/15-interiors.md` §9a. Until this is built, `SimWorld.placeable_at` keeps
-refusing all indoor placement.
+`design/15-interiors.md` §9a. **First version built 2026-09-25:** a nest box for
+the coop and a rug for the farmhouse, bought in the shop, with no effect yet.
+`SimWorld.placeable_at` still refuses indoor placement for any row that does not
+name the room.
 
 ### S-23. A bottom-bar button opens a pictured inventory for direct selection
 **Ruled 2026-09-24 (Q-119, option a),** on Daniel's own suggestion. A button
