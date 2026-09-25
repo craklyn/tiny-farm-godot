@@ -502,19 +502,7 @@ async function renderAnimLoop(slug) {
     <div class="an-bottom">
       <div class="card"><h2>Palette</h2><div id="an-palette"><div class="small muted">checking…</div></div></div>
       <div class="card"><h2>What it cost</h2>${anCostCard(L)}</div>
-      <div class="card an-call"><h2>Your call</h2>
-        ${L.work_item ? `<div class="an-verdicts">
-          <button class="ghost" data-v="keep">Keep it</button>
-          <button class="ghost" data-v="rework">Send it back</button>
-          <button class="ghost" data-v="drop">Drop it</button>
-        </div>
-        <textarea id="an-why" rows="3" placeholder="Why — this goes to whoever picks it up next"></textarea>
-        <div class="small muted" id="an-callnote">This records the answer on
-          <a class="plain" href="#/work/${encodeURIComponent(L.work_item)}">the same review card shown in your queue</a>.
-          A reason is required because it is what reaches the next person.</div>`
-        : `<div class="small an-need" id="an-callnote">This loop has no review card, so the Lab cannot record
-          a verdict safely. <a class="plain" href="#/work">Open your queue</a> to review work that has a recorded identity.</div>`}
-      </div>
+      <div class="card an-call"><h2>Your call</h2>${anCallCard(L)}</div>
     </div>
 
     <!-- The asks are the loop's provenance: the sentence that made it and every
@@ -736,6 +724,42 @@ function anAsks(L) {
     what was asked. Everything from here on is written down.</li>`;
 }
 
+/* One story about where a verdict goes: onto the loop's review card, the same
+   card the Work page shows. A loop waiting on that card gets the three buttons;
+   a hand-drawn loop, which never had one, gets the same buttons and the first
+   verdict files its card; a loop already judged shows what he said and the
+   owner's answer, as the card's conversation does, with the way back to it. */
+function anCallCard(L) {
+  const R = L.review;
+  if (R) {
+    const who = `<a class="plain" data-person="${esc(R.owner)}">${esc(R.owner_name || R.owner)}</a>`;
+    const answer = R.answer ? String(R.answer.text || "") : "";
+    return `<div class="an-judged">
+      <div class="small muted"><b>You ${R.verdict === "keep" ? "kept it" : "dropped it"}</b>${
+        R.at ? ` · ${esc(R.at.slice(0, 16).replace("T", " "))}` : ""}</div>
+      ${R.reason ? `<p class="an-said">${esc(R.reason)}</p>`
+        : `<p class="small muted">No reason was given with this verdict.</p>`}
+      ${answer ? `<div class="small muted">${who} answered:</div>
+        <p class="an-said">${esc(answer.length > 600 ? answer.slice(0, 600) + "…" : answer)}</p>`
+        : `<div class="small muted">${who} has not answered yet.</div>`}
+      <div class="small"><a class="plain" href="#/work/${encodeURIComponent(R.id)}">Open the review card</a>
+        to read the whole conversation or write back.</div>
+    </div>`;
+  }
+  return `<div class="an-verdicts">
+      <button class="ghost" data-v="keep">Keep it</button>
+      <button class="ghost" data-v="rework">Send it back</button>
+      <button class="ghost" data-v="drop">Drop it</button>
+    </div>
+    <textarea id="an-why" rows="3" placeholder="Why — this goes to whoever picks it up next"></textarea>
+    <div class="small muted" id="an-callnote">${L.work_item
+      ? `This records the answer on
+        <a class="plain" href="#/work/${encodeURIComponent(L.work_item)}">the same review card shown in your queue</a>.`
+      : `This loop was drawn by hand, so it has no review card yet. Your verdict files one to the
+        art director and records your verdict on it.`}
+      A reason is required because it is what reaches the next person.</div>`;
+}
+
 function anWireVerdict(L) {
   const why = document.getElementById("an-why");
   const note = document.getElementById("an-callnote");
@@ -787,8 +811,11 @@ function anWireVerdict(L) {
         if (!response.ok || r.error) throw new Error(r.error || `The review failed (${response.status}).`);
         const expectedState = b.dataset.v === "keep" ? "accepted"
           : b.dataset.v === "drop" ? "dropped" : "doing";
-        if (!r.ok || r.work_id !== L.work_item || r.verdict !== b.dataset.v
-            || r.state !== expectedState) {
+        // A hand-drawn loop's first verdict files its card, so the card it names
+        // is new; any other verdict must land on the card the page was given.
+        const card = L.work_item ? r.work_id === L.work_item
+          : r.filed === true && /^w[0-9a-f]{6,32}$/.test(r.work_id || "");
+        if (!r.ok || !card || r.verdict !== b.dataset.v || r.state !== expectedState) {
           throw new Error("The review did not confirm the recorded card transition.");
         }
         recorded = true;

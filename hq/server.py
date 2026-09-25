@@ -2584,7 +2584,7 @@ def _latest_transaction(item_id):
 
 def work_detail(item_id):
     """One work record plus its evidence-derived status and readable history."""
-    if not re.fullmatch(r"w[0-9a-f]{6,32}", item_id or ""):
+    if not re.fullmatch(work.WORK_ID, item_id or ""):
         return {"error": "bad id"}
     try:
         item = work.load_item(item_id)

@@ -143,7 +143,7 @@ def _index_key():
             if name.endswith(".png"):
                 path = os.path.join(base, name)
                 parts.append((path, os.path.getmtime(path)))
-    for extra in (RUNS, os.path.join(DATA, "anim_asks")):
+    for extra in (RUNS, os.path.join(DATA, "anim_asks"), os.path.join(DATA, "work")):
         try:
             parts.append((extra, os.path.getmtime(extra)))
         except OSError:
@@ -177,6 +177,11 @@ def loops_index():
         _INDEX_CACHE.update(key=key, data=data)
         return data
 
+    reviews = _anim_reviews()
+    try:
+        org = HOST.load_org() if hasattr(HOST, "load_org") else None
+    except Exception:
+        org = None
     try:
         scripts = {f[len("vfx_"):-len(".py")] for f in os.listdir(_repo(SCRIPTS_DIR))
                    if f.startswith("vfx_") and f.endswith(".py")}
@@ -202,6 +207,9 @@ def loops_index():
             out.append({"slug": slug, "error": f"params.json unreadable: {e}"})
             continue
         files = set(os.listdir(d))
+        active = _active_review_for_slug(slug, reviews)
+        closed = next((item for item in reviews.get(slug, [])
+                       if item.get("state") in work.CLOSED_STATES), None)
 
         def pick(suffix):
             return next((f for f in sorted(files) if f.endswith(suffix)), None)
@@ -224,7 +232,8 @@ def loops_index():
             "script": script if has_script else None,
             "sources": sources, "stale": stale,
             "asks": asks_for(slug),
-            "work_item": (_active_review_for_slug(slug) or {}).get("id"),
+            "work_item": (active or {}).get("id"),
+            "review": (_review_summary(closed, org) if closed and not active else None),
             "cost": _cost_of(slug),
             "drawn": time.strftime("%Y-%m-%d %H:%M", time.localtime(drawn_at)),
         })
@@ -626,7 +635,40 @@ def record_verdict(payload):
                    or not math.isfinite(v) for k, v in values.items())):
         return {"error": "the judged slider values are missing or invalid"}
     with work.mutation_lock():
-        return _record_verdict_locked(slug, work_id, verdict, why, values)
+        filed = False
+        if not work_id:
+            work_id, error = _file_review_for_verdict(slug)
+            if error:
+                return {"error": error}
+            filed = True
+        result = _record_verdict_locked(slug, work_id, verdict, why, values)
+        if filed and not result.get("error"):
+            result["filed"] = True
+        return result
+
+
+def _file_review_for_verdict(slug):
+    """A loop drawn by hand has no Lab run behind it, so nothing filed a review
+    card when it finished. Judging it on the page files that card first, so the
+    verdict travels the same way as one on a drawn loop: onto a card the art
+    director owns, and from there into the queue. Only a loop that has never
+    had a card gets one; anything else means the page is out of date."""
+    reviews = _anim_reviews().get(slug, [])
+    if any(_judgeable(item) or item.get("state") == "doing" for item in reviews):
+        return None, "this loop already has a review card waiting; reload the page so your verdict goes on it"
+    if reviews:
+        return None, "this loop has already been judged; write on its review card to change that"
+    if not os.path.isfile(_repo(LOOPS_DIR, slug, "params.json")):
+        return None, "there is no drawn loop by that name"
+    item = _review_item(
+        "w" + uuid.uuid4().hex[:12], slug,
+        f"`{slug}` was drawn by hand rather than by an Animation Lab run, so no review card "
+        f"was filed when it finished. Daniel judged it on the Lab's page, which filed this "
+        f"card to carry his verdict; the verdict and his reason are in its conversation.",
+        "Filed by a verdict given on the Animation Lab's page", "")
+    work.save_item(item)
+    _INDEX_CACHE["key"] = None
+    return item["id"], None
 
 
 def _record_verdict_locked(slug, work_id, verdict, why, values):
@@ -640,18 +682,12 @@ def _record_verdict_locked(slug, work_id, verdict, why, values):
     if verdict == "rework":
         result = start_rework(slug, why, work_id, item, path, decision)
         return result
-    _append_ask(slug, {"at": time.strftime("%Y-%m-%dT%H:%M:%S"), "kind": verdict,
-                       "text": why, "run_id": ""})
-    item["state"] = "accepted" if verdict == "keep" else "dropped"
-    item["result"] = f"Daniel's verdict from the Animation Lab: {verdict}. {why}"
-    item.setdefault("conversation", []).append(
-        {"role": "daniel", "text": why, "at": time.strftime("%Y-%m-%dT%H:%M"),
-         "with": verdict})
-    item.setdefault("anim_verdicts", []).append(decision)
     followup_id = "w" + uuid.uuid4().hex[:12]
+    name = slug.replace("_", " ")
+    title = (f"Land the kept {name} animation" if verdict == "keep"
+             else f"Retire the dropped {name} animation")
     followup = {
-        "id": followup_id, "title": (f"Land the kept {slug} loop" if verdict == "keep"
-                                    else f"Retire the dropped {slug} loop"),
+        "id": followup_id, "title": title,
         "level": "story", "owner": "ingrid", "tier": 1,
         "tier_reason": "The art director must carry Daniel's recorded loop verdict into the project.",
         "ask": (f"Daniel judged `{slug}` at {values}: {verdict}. Reason: {why}\n\n"
@@ -666,23 +702,49 @@ def _record_verdict_locked(slug, work_id, verdict, why, values):
         "started": "", "attempts": 0, "created": stamp[:16],
         "created_ts": time.time(), "conversation": [],
         "anim_slug": slug, "anim_verdict": decision,
+        "parent": work_id,
+        "source_work": [{"id": work_id, "card": item.get("title", ""), "title": title}],
     }
     followup_path = os.path.join(DATA, "work", f"{followup_id}.json")
+    applied = False
     try:
         os.makedirs(os.path.join(DATA, "work"), exist_ok=True)
         work.save_item(followup)
+        # The verdict itself goes through the queue's own accept/drop path, so a
+        # verdict given here and one given on the Work page are the same act: his
+        # reason lands on the card's conversation, the card closes, and its owner
+        # is asked to answer him there (ask_owner). Only what the queue cannot
+        # know — the slider values he judged at and the loop's own history — is
+        # added by the Lab.
+        acted = work._api_post("/api/work/accept" if verdict == "keep" else "/api/work/drop",
+                               {"id": work_id, "comment": why})
+        if not isinstance(acted, dict) or acted.get("error"):
+            raise ValueError((acted or {}).get("error") or "the review card did not change")
+        applied = True
+        item = work.load_item(work_id)
+        item.setdefault("anim_verdicts", []).append(decision)
+        item["spawned"] = (item.get("spawned") or []) + [
+            {"id": followup_id, "title": followup["title"],
+             "state": followup["state"], "owner": followup["owner"]}]
         _write_review(item, path)
-    except OSError as exc:
-        try:
-            os.remove(followup_path)
-        except OSError:
-            pass
+    except (OSError, ValueError, work.RecordConflict) as exc:
+        # Once the card has closed, the follow-up is the only thing still
+        # carrying the judged values to the art director, so it stays.
+        if not applied:
+            try:
+                os.remove(followup_path)
+            except OSError:
+                pass
         return {"error": f"could not save the verdict: {exc}"}
+    _append_ask(slug, {"at": time.strftime("%Y-%m-%dT%H:%M:%S"), "kind": verdict,
+                       "text": why, "run_id": ""})
     return {"ok": True, "verdict": verdict, "work_id": work_id,
             "state": item["state"], "followup_work_id": followup_id,
-            "note": ("Kept, and the reason is on the loop's record."
+            "note": ("Kept. Your reason is on the loop's review card, where the art director "
+                     "will answer it. Landing the loop is now her next piece of work."
                      if verdict == "keep" else
-                     "Dropped, and the reason is on the loop's record. Nothing was deleted.")}
+                     "Dropped. Your reason is on the loop's review card, where the art director "
+                     "will answer it. Nothing was deleted.")}
 
 
 def start_rework(slug, note, work_id="", review=None, review_path="", decision=None):
@@ -750,7 +812,7 @@ def _work_slug(item):
 def _review_record(work_id, slug):
     # Older unattended runs filed `wr...` reviews. Keep their in-page verdicts
     # usable; every new review and follow-up now gets a standard work ID.
-    if not re.fullmatch(r"w(?:[0-9a-f]{6,32}|r[0-9a-f]{6,32})", work_id):
+    if not re.fullmatch(work.WORK_ID, work_id):
         return None, "", "a work item is required for this verdict"
     path = os.path.join(DATA, "work", f"{work_id}.json")
     try:
@@ -759,7 +821,7 @@ def _review_record(work_id, slug):
         return None, path, "that Animation Lab review no longer exists"
     if item.get("id") != work_id or item.get("source") != "anim_lab":
         return None, path, "that work item is not an Animation Lab review"
-    if item.get("state") != "for_review":
+    if not _judgeable(item):
         return None, path, "that Animation Lab review is no longer awaiting a verdict"
     if _work_slug(item) != slug:
         return None, path, "that work item belongs to a different animation"
@@ -771,27 +833,71 @@ def _write_review(item, path):
     _INDEX_CACHE["key"] = None
 
 
-def _active_review_for_slug(slug):
-    """Newest exact review identity for the Lab page to send back on verdict."""
+def _judgeable(item):
+    """Waiting for his verdict — including a card parked while its owner owes
+    him an answer to something he wrote on it, which is still his to judge."""
+    return work._live_state(item) == "for_review"
+
+
+def _anim_reviews():
+    """Every Animation Lab review card, by loop, newest first — one pass over
+    the work directory however many loops the page shows."""
     wdir = os.path.join(DATA, "work")
     try:
         names = os.listdir(wdir)
     except OSError:
-        return None
-    found = []
+        return {}
+    found = {}
     for name in names:
-        path = os.path.join(wdir, name)
+        if not name.endswith(".json"):
+            continue
         try:
-            with open(path, encoding="utf-8") as fh:
-                item = json.load(fh)
+            with open(os.path.join(wdir, name), encoding="utf-8") as fh:
+                text = fh.read()
+            if '"anim_lab"' not in text:
+                continue
+            item = json.loads(text)
         except Exception:
             continue
-        if item.get("source") != "anim_lab" or _work_slug(item) != slug:
-            continue
-        if item.get("state") not in ("for_review", "doing"):
-            continue
-        found.append(item)
-    return max(found, key=lambda item: item.get("created_ts") or 0) if found else None
+        slug = _work_slug(item) if item.get("source") == "anim_lab" else ""
+        if slug:
+            found.setdefault(slug, []).append(item)
+    for items in found.values():
+        items.sort(key=lambda item: item.get("created_ts") or 0, reverse=True)
+    return found
+
+
+def _active_review_for_slug(slug, reviews=None):
+    """Newest exact review identity for the Lab page to send back on verdict."""
+    reviews = _anim_reviews() if reviews is None else reviews
+    return next((item for item in reviews.get(slug, [])
+                 if _judgeable(item) or item.get("state") == "doing"), None)
+
+
+def _review_summary(item, org=None):
+    """What the page shows once a loop has been judged: the verdict he gave, in
+    his words, and the owner's answer to it — the same turns the review card's
+    conversation holds, so the Lab and the queue tell one story."""
+    convo = item.get("conversation") or []
+    at = next((n for n in range(len(convo) - 1, -1, -1)
+               if convo[n].get("role") == "daniel"
+               and convo[n].get("with") in ("accept", "drop", "keep")), None)
+    said = convo[at] if at is not None else {}
+    answer = next((m for m in convo[at + 1:] if m.get("role") not in ("daniel", "assistant")),
+                  None) if at is not None else None
+    owner = item.get("owner") or ""
+    person = next((e for e in (org or {}).get("employees", []) if e.get("id") == owner), {})
+    judged = (item.get("anim_verdicts") or [{}])[-1]
+    return {
+        "id": item.get("id"), "state": item.get("state"),
+        "owner": owner, "owner_name": person.get("name") or owner,
+        "verdict": "keep" if item.get("state") == "accepted" else "drop",
+        "reason": said.get("text", ""), "at": said.get("at") or item.get("closed", ""),
+        "values": judged.get("values"),
+        "answer": ({"text": answer.get("text", ""), "at": answer.get("at", "")}
+                   if answer else None),
+        "awaiting_reply": bool(item.get("awaiting_reply")),
+    }
 
 
 def start_run(payload):
@@ -1063,34 +1169,14 @@ def _file_for_review(rec):
             _save_run(rec)
             _reopen_review(rec)
             return False
-    item = {
-        "id": wid,
-        "anim_slug": rec["slug"],
-        "title": f"Say whether the {rec['slug'].replace('_', ' ')} loop is any good",
-        # The work title records why this card exists.  The short deliverable
-        # name is what the shared review renderer puts after "Review:".
-        "deliverable": {"name": f"The {rec['slug'].replace('_', ' ')} animation"},
-        "level": "story", "owner": "ingrid", "tier": 2,
-        "tier_reason": "A finished loop is waiting on a verdict only Daniel can give.",
-        "ask": (
-            f"The Animation Lab drew a loop from this subject, unattended:\n\n"
-            f"    {rec['subject']}\n\n"
-            f"It is on the Lab's page as `{rec['slug']}` — play it at true size as well "
-            f"as zoomed, and move its instruments to see what the numbers do. {bill}\n\n"
-            "What is wanted is a verdict and a reason: keep it, send it back, or drop "
-            "it. The reason is the part that helps whoever picks it up, so it matters "
-            "more than the verdict.\n\n"
-            "If it is kept, the loop and its script still have to be landed on main; "
-            "if it is sent back, say which of its parameters or beats is wrong rather "
-            "than that it needs work."
-        ),
-        "first_action": f"Open #/design/anim/{rec['slug']} and watch it at both sizes",
-        "state": "for_review", "thread": "ingrid", "source": "anim_lab",
-        "source_message": f"Drawn unattended by the Animation Lab from: {rec['subject'][:200]}",
-        "result": "", "started": rec.get("started", ""), "attempts": 1,
-        "created": time.strftime("%Y-%m-%dT%H:%M"), "created_ts": time.time(),
-        "conversation": [],
-    }
+    item = _review_item(
+        wid, rec["slug"],
+        f"The Animation Lab drew a loop from this subject, unattended:\n\n"
+        f"    {rec['subject']}\n\n"
+        f"It is on the Lab's page as `{rec['slug']}` — play it at true size as well "
+        f"as zoomed, and move its instruments to see what the numbers do. {bill}",
+        f"Drawn unattended by the Animation Lab from: {rec['subject'][:200]}",
+        rec.get("started", ""))
     try:
         path = os.path.join(DATA, "work", f"{wid}.json")
         work.save_item(item)
@@ -1102,3 +1188,33 @@ def _file_for_review(rec):
         rec["error"] = f"could not file for review: {e}"
         _save_run(rec)
         return False
+
+
+def _review_item(wid, slug, opening, source_message, started):
+    """The card a loop waits on for Daniel's verdict, owned by the art director."""
+    name = slug.replace("_", " ")
+    return {
+        "id": wid,
+        "anim_slug": slug,
+        "title": f"Say whether the {name} loop is any good",
+        # The work title records why this card exists.  The short deliverable
+        # name is what the shared review renderer puts after "Review:".
+        "deliverable": {"name": f"The {name} animation"},
+        "level": "story", "owner": "ingrid", "tier": 2,
+        "tier_reason": "A finished loop is waiting on a verdict only Daniel can give.",
+        "ask": (
+            f"{opening}\n\n"
+            "What is wanted is a verdict and a reason: keep it, send it back, or drop "
+            "it. The reason is the part that helps whoever picks it up, so it matters "
+            "more than the verdict.\n\n"
+            "If it is kept, the loop and its script still have to be landed on main; "
+            "if it is sent back, say which of its parameters or beats is wrong rather "
+            "than that it needs work."
+        ),
+        "first_action": f"Open #/design/anim/{slug} and watch it at both sizes",
+        "state": "for_review", "thread": "ingrid", "source": "anim_lab",
+        "source_message": source_message,
+        "result": "", "started": started, "attempts": 1,
+        "created": time.strftime("%Y-%m-%dT%H:%M"), "created_ts": time.time(),
+        "conversation": [],
+    }

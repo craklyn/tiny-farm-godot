@@ -71,8 +71,13 @@ class AnimationLabTests(unittest.TestCase):
         anim._SRC_CACHE.clear()
         anim._INDEX_CACHE.update(key=None, data=None)
         StoppedThread.starts = 0
+        # The owner's answer is a model call; record that it was asked for.
+        self.replies = []
+        self._real_start_reply = anim.work.start_reply
+        anim.work.start_reply = self.replies.append
 
     def tearDown(self):
+        anim.work.start_reply = self._real_start_reply
         self.temp.cleanup()
 
     def script(self, slug="sprout"):
@@ -290,8 +295,16 @@ class AnimationLabTests(unittest.TestCase):
             saved = self.read_json(path)
             self.assertEqual(result["state"], state)
             self.assertEqual(saved["state"], state)
-            self.assertIn(f"reason for {verdict}", saved["result"])
-            self.assertEqual(saved["conversation"][-1]["text"], f"reason for {verdict}")
+            self.assertTrue(saved["closed"])
+            # The queue's own verdict path: the reason is his turn on the card's
+            # conversation, tagged with the button, and the owner is asked to
+            # answer it there.
+            turn = saved["conversation"][-1]
+            self.assertEqual((turn["role"], turn["text"]), ("daniel", f"reason for {verdict}"))
+            self.assertEqual(turn["with"], "accept" if verdict == "keep" else "drop")
+            self.assertTrue(saved["awaiting_reply"])
+            self.assertEqual(self.replies[-1], work_id)
+            self.assertEqual(saved.get("result", ""), "")
             self.assertEqual(saved["anim_verdicts"][-1]["values"], {"speed": 2.5})
             self.assertEqual(saved["anim_verdicts"][-1]["slug"], "sprout")
             self.assertTrue(saved["anim_verdicts"][-1]["at"].endswith("Z"))
@@ -299,6 +312,9 @@ class AnimationLabTests(unittest.TestCase):
             self.assertEqual(followup["owner"], "ingrid")
             self.assertEqual(followup["state"], "waiting_session")
             self.assertEqual(followup["anim_verdict"], saved["anim_verdicts"][-1])
+            self.assertEqual(followup["parent"], work_id)
+            self.assertIn("speed", followup["ask"])
+            self.assertEqual([c["id"] for c in saved["spawned"]], [followup["id"]])
             self.assertEqual(anim.work.load_item(followup["id"])["id"], followup["id"])
             if verdict == "drop":
                 acted = anim.work.api_post("/api/work/approve", {"id": followup["id"]})
@@ -314,7 +330,7 @@ class AnimationLabTests(unittest.TestCase):
                 {"slug": "sprout", "verdict": "rework", "why": "Change the timing curve",
                  "values": {"speed": 2}}
             )
-        self.assertIn("work item", result["error"])
+        self.assertIn("review card", result["error"])
         self.assertEqual(StoppedThread.starts, 0)
         paid.assert_not_called()
 
@@ -327,6 +343,26 @@ class AnimationLabTests(unittest.TestCase):
         self.assertEqual(result["state"], "dropped")
         self.assertEqual(self.read_json(path)["anim_verdicts"][-1]["reason"],
                          "The motion obscures the crop")
+
+    def test_lab_verdict_and_queue_verdict_are_one_act(self):
+        """A card judged in the Lab is closed for the queue too, and a legacy
+        `wr` card the Lab can judge is one the queue can act on and open."""
+        self.review(work_id="wr17889769879f89")
+        queue = anim.work.api_post("/api/work/respond",
+                                   {"id": "wr17889769879f89", "message": "Is the hop too fast?"})
+        self.assertEqual(queue["conversation"][-1]["text"], "Is the hop too fast?")
+        result = anim.record_verdict(
+            {"work_id": "wr17889769879f89", "slug": "sprout", "verdict": "keep",
+             "why": "The hop reads at game size", "values": {"speed": 1.5}})
+        self.assertEqual(result["state"], "accepted")
+        saved = anim.work.load_item("wr17889769879f89")
+        self.assertEqual([t["text"] for t in saved["conversation"]],
+                         ["Is the hop too fast?", "The hop reads at game size"])
+        again = anim.record_verdict(
+            {"work_id": "wr17889769879f89", "slug": "sprout", "verdict": "drop",
+             "why": "Second thoughts", "values": {"speed": 1.5}})
+        self.assertIn("no longer awaiting", again["error"])
+        self.assertEqual(len(list((self.data / "work").iterdir())), 2)
 
     def test_verdict_rejects_wrong_source_state_and_slug(self):
         cases = [
@@ -377,6 +413,56 @@ class AnimationLabTests(unittest.TestCase):
                          "sprout")
         anim._INDEX_CACHE.update(key=None, data=None)
         self.assertEqual(anim.loops_index()["loops"][0]["work_item"], work_id)
+
+    def rendered(self, slug="sprout"):
+        out = self.repo / "tools" / "experiments" / "out" / slug
+        out.mkdir(parents=True)
+        (out / "params.json").write_text(json.dumps({"params": [], "values": {}}),
+                                         encoding="utf-8")
+        (out / f"{slug}_sheet.png").write_bytes(b"png")
+
+    def test_hand_drawn_loop_verdict_files_its_review_card(self):
+        """A loop with no Lab run behind it never had a card. Its first verdict
+        files one to the art director and lands on it like any other."""
+        self.rendered()
+        self.assertIsNone(anim.loops_index()["loops"][0]["work_item"])
+        result = anim.record_verdict(
+            {"slug": "sprout", "verdict": "drop", "why": "It fights the crop for attention",
+             "values": {"speed": 3}})
+        self.assertTrue(result["filed"])
+        card = anim.work.load_item(result["work_id"])
+        self.assertEqual((card["source"], card["owner"], card["anim_slug"], card["state"]),
+                         ("anim_lab", "ingrid", "sprout", "dropped"))
+        self.assertEqual(card["conversation"][-1]["text"], "It fights the crop for attention")
+        self.assertEqual(card["anim_verdicts"][-1]["values"], {"speed": 3})
+        self.assertEqual(self.replies, [result["work_id"]])
+        # Once judged, the page shows the verdict rather than filing a second card.
+        again = anim.record_verdict(
+            {"slug": "sprout", "verdict": "keep", "why": "Changed my mind", "values": {"speed": 3}})
+        self.assertIn("already been judged", again["error"])
+        missing = anim.record_verdict(
+            {"slug": "nothing_here", "verdict": "keep", "why": "Fine", "values": {}})
+        self.assertIn("no drawn loop", missing["error"])
+
+    def test_page_shows_the_verdict_and_the_owners_answer_after_judging(self):
+        """After a verdict the Lab shows the card's conversation — his words,
+        then the owner's answer — including a verdict given on the Work page."""
+        self.rendered()
+        self.review(work_id="wa12345")
+        self.assertEqual(anim.loops_index()["loops"][0]["work_item"], "wa12345")
+        # Judged from the queue, not the Lab: the Lab must still notice.
+        anim.work.api_post("/api/work/accept", {"id": "wa12345", "comment": "The hop reads"})
+        loop = anim.loops_index()["loops"][0]
+        self.assertIsNone(loop["work_item"])
+        self.assertEqual((loop["review"]["id"], loop["review"]["verdict"], loop["review"]["reason"]),
+                         ("wa12345", "keep", "The hop reads"))
+        self.assertIsNone(loop["review"]["answer"])
+        card = anim.work.load_item("wa12345")
+        card["conversation"].append({"role": "ingrid", "text": "Landing it now.", "at": "t"})
+        card["awaiting_reply"] = False
+        anim.work.save_item(card)
+        self.assertEqual(anim.loops_index()["loops"][0]["review"]["answer"]["text"],
+                         "Landing it now.")
 
 
 if __name__ == "__main__":

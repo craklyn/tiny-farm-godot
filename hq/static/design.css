@@ -140,6 +140,8 @@ h2 .tally .chip { font-size: 11px; }
 .an-bottom { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; align-items: start; margin-top: 14px; }
 .an-verdicts { display: flex; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
 .an-need { color: var(--red); }
+.an-judged .an-said { margin: 4px 0 10px; padding-left: 10px; border-left: 2px solid var(--line);
+  font-size: 13px; white-space: pre-wrap; overflow-wrap: anywhere; }
 
 /* the gallery: each tile animates, because a still frame of a loop says nothing
    about the only thing worth judging, which is whether the motion works */

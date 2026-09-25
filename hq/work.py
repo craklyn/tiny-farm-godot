@@ -114,6 +114,9 @@ def reply_seconds():
 
 
 LEVELS = ("task", "story", "epic", "project", "goal")
+# A work card's id. The `wr` form is what the Animation Lab's first unattended
+# runs filed; those cards are still live, so the queue must be able to act on them.
+WORK_ID = r"w(?:r)?[0-9a-f]{6,32}"
 
 # What a state means, in the order the Work page shows them. Two of them are not
 # his move. `owed`: he asked something on a card, nobody answered within the
@@ -2647,7 +2650,7 @@ def _api_post(path, payload):
         return _file_item(fields, cap, org)
 
     item_id = payload.get("id") or ""
-    if not re.match(r"^w[0-9a-f]{6,32}$", item_id):
+    if not re.fullmatch(WORK_ID, item_id):
         return {"error": "bad id"}
     p = _item_path(item_id)
     if not os.path.isfile(p):

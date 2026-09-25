@@ -6,7 +6,7 @@ const path = require("node:path");
 const vm = require("node:vm");
 
 const source = fs.readFileSync(path.join(__dirname, "../static/anim.js"), "utf8");
-const start = source.indexOf("function anWireVerdict");
+const start = source.indexOf("function anCallCard");
 const end = source.indexOf("\n\n/* ---------- the instruments", start);
 let ui;
 let answer;
@@ -35,6 +35,8 @@ const ctx = vm.createContext({
     },
   },
   anPlayer: { judgedValues: { speed: 2.5 } },
+  esc: s => String(s ?? "").replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;",
+    '"': "&quot;", "'": "&#39;" }[c])),
   fetch: async (url, options) => {
     assert.equal(url, "/api/loop/verdict");
     posted = JSON.parse(options.body);
@@ -44,14 +46,15 @@ const ctx = vm.createContext({
 });
 vm.runInContext(source.slice(start, end), ctx);
 
-async function submit(verdict, response, reason = "The timing reads clearly at game size.") {
+async function submit(verdict, response, reason = "The timing reads clearly at game size.",
+                      workItem = "w123456abcdef") {
   ui = makeUi();
   answer = response;
   posted = null;
-  ctx.anWireVerdict({ slug: "watering", work_item: "w123456abcdef" });
+  ctx.anWireVerdict({ slug: "watering", work_item: workItem });
   ui.why.value = reason;
   await ui.buttons.find(button => button.dataset.v === verdict).onclick();
-  assert.deepEqual(posted, { work_id: "w123456abcdef", slug: "watering", verdict,
+  assert.deepEqual(posted, { work_id: workItem, slug: "watering", verdict,
     why: reason, values: { speed: 2.5 } });
   return ui;
 }
@@ -102,9 +105,34 @@ async function submit(verdict, response, reason = "The timing reads clearly at g
   assert.match(ui.note.textContent, /Wait for the preview/);
   ctx.anPlayer = { judgedValues: { speed: 2.5 } };
 
-  assert.match(source, /L\.work_item \? `<div class="an-verdicts">/,
-    "a loop without a safe review identity has no verdict controls");
-  assert.match(source, /href="#\/work\/\$\{encodeURIComponent\(L\.work_item\)\}"/,
-    "an identified loop links to the same authoritative review card");
+  // A hand-drawn loop has no card yet: its first verdict files one, and only a
+  // response that says it filed a card counts as recorded.
+  const filed = await submit("keep", { body: { ok: true, verdict: "keep", work_id: "wfeedface0001",
+    state: "accepted", filed: true, note: "Kept." } }, "Reads at game size.", null);
+  assert.equal(filed.why.disabled, true, "a filed card confirms a hand-drawn loop's verdict");
+  const unfiled = await submit("keep", { body: { ok: true, verdict: "keep", work_id: "wfeedface0001",
+    state: "accepted", note: "Kept." } }, "Reads at game size.", null);
+  assert.equal(unfiled.why.disabled, false, "a verdict that names no filed card is not recorded");
+
+  const open = ctx.anCallCard({ slug: "watering", work_item: "w123456abcdef" });
+  assert.match(open, /data-v="keep"/);
+  assert.match(open, /href="#\/work\/w123456abcdef"/, "the buttons name the queue's own card");
+  const hand = ctx.anCallCard({ slug: "watering", work_item: null });
+  assert.match(hand, /data-v="drop"/, "a loop with no card can still be judged");
+  assert.match(hand, /files one to the\s+art director/);
+  const judged = ctx.anCallCard({ slug: "watering", work_item: null, review: {
+    id: "wr1788991284fa19", state: "accepted", owner: "ingrid", owner_name: "Ingrid Bauer",
+    verdict: "keep", reason: "The hop <reads>", at: "2026-09-25T10:00",
+    answer: { text: "Landing it with the speed you judged.", at: "2026-09-25T10:01" } } });
+  assert.doesNotMatch(judged, /data-v=/, "a judged loop is not judged twice from the page");
+  assert.match(judged, /You kept it/);
+  assert.match(judged, /The hop &lt;reads&gt;/, "his reason is shown, escaped");
+  assert.match(judged, /data-person="ingrid">Ingrid Bauer<\/a> answered/);
+  assert.match(judged, /Landing it with the speed you judged/);
+  assert.match(judged, /href="#\/work\/wr1788991284fa19"/);
+  const waiting = ctx.anCallCard({ slug: "watering", review: { id: "wa1234567", state: "dropped",
+    owner: "ingrid", owner_name: "Ingrid Bauer", verdict: "drop", reason: "Too busy", answer: null } });
+  assert.match(waiting, /You dropped it/);
+  assert.match(waiting, /has not answered yet/);
   console.log("Animation Lab verdicts confirm keep, drop and rework on the exact queue record.");
 })().catch(error => { console.error(error); process.exitCode = 1; });
