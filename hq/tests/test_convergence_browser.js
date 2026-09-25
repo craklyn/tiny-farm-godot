@@ -31,6 +31,8 @@ function esc(value) { return String(value ?? '').replace(/[&<>"']/g, c => ({'&':
 function mdi(value) { return esc(value); }
 function h(value) { const t = document.createElement('template'); t.innerHTML = value.trim(); return t.content; }
 function reviewTitle(card) { return card.title; } function reviewEvidenceLinks() { return []; }
+function followUps(card) { return card.follow_ups || []; }
+function workDecisionLabel(card) { return card.recommend?.answer ? 'Accept result and record: ' + card.recommend.answer : 'Accept this result'; }
 function attachmentEl() { return document.createElement('span'); }
 async function api(url) {
   if (url === '/api/org') return {employees:[{id:'rin',name:'Rin Nakamura'}]};

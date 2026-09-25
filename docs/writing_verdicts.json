@@ -651,6 +651,12 @@
   "1f619038daa0d71b1f46": {
    "verdict": "ok"
   },
+  "1f63d842666520b6d155": {
+   "instead": "Make sure every decision button has a corresponding HQ review test",
+   "quote": "HQ review tests matched to the decision buttons",
+   "verdict": "decode",
+   "why": "The reader has to work out what the review tests are and what it means for them to be matched to buttons."
+  },
   "1f697a43623afb2f961c": {
    "verdict": "ok"
   },
@@ -1231,6 +1237,12 @@
   },
   "3cad61071e65a7643802": {
    "verdict": "ok"
+  },
+  "3cc284ccb6762ab9bc7e": {
+   "instead": "Keep the test scenarios used in HQ reviews matched to the decision buttons",
+   "quote": "review fixtures",
+   "verdict": "decode",
+   "why": "“Fixtures” is internal testing shorthand, so the reader has to work out what is being kept aligned."
   },
   "3ce8cc0071b633b3b409": {
    "verdict": "ok"
@@ -4630,6 +4642,9 @@
    "quote": "A claimed session is running",
    "verdict": "decode",
    "why": "“Claimed” is internal status language and does not tell the reader what is actually known."
+  },
+  "e7564dfde6bb73f60d97": {
+   "verdict": "ok"
   },
   "e75bc282d1bb1a4dbbf9": {
    "verdict": "ok"

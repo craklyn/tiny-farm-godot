@@ -171,6 +171,8 @@ const shared = { routes: {}, location: { hash: "#/" }, route() {}, cache: {},
   api: async () => ({}), fetch: async () => ({ json: async () => ({}) }), noteVersion() {},
   updateQueueBadge() {}, esc: String, mdi: String, md: String,
   reviewTitle: item => "Review: " + ((item.deliverable || {}).name || item.title || "Finished work"),
+  followUps: item => item.follow_ups || [],
+  workDecisionLabel: item => item.recommend?.answer ? "Accept result and record: " + item.recommend.answer : "Accept this result",
   ownerOf: () => ({ name: "Rin", emoji: "🌱" }), openSet: () => new Set(), resuming: () => false,
   heldReason: () => "", wantsLine: () => "", tierChip: () => "", againLine: () => "",
   amendNote: () => "", drainBlock: () => "", costLine: () => "", convoBlock: () => "",
@@ -192,9 +194,9 @@ const index = (text, needle) => { const found = text.indexOf(needle); assert.ok(
 const animation = queue.qPaneHtml({ id: "animation", kind: "review", question: "Does the motion read clearly?", title: "Review: Watering animation", source: "work card animation", owner: { name: "Ingrid" }, answer: "Keep this timing", why: "The pause reads at game size.", instead: "Slow it down", options: [], followUps: [], conversation: [], attachments: [], canDrop: true, artifact: {deliverable: {name: "Watering animation", evidence: [{ label: "Play the watering animation", href: "/review/watering" }]}}, evidence: [{ label: "Run notes", text: "Frames checked" }] }, {});
 assert.ok(index(animation, "Does the motion read clearly?") < index(animation, "Play the watering animation"));
 assert.ok(index(animation, "Play the watering animation") < index(animation, "What I recommend"));
-const design = queue.qPaneHtml({ id: "design", question: "Which tool should players receive first?", title: "First tool", source: "decision card design", owner: { name: "Milo" }, answer: "Watering can", why: "It teaches the core loop.", instead: "Hoe", options: [{ label: "Watering can", detail: "Care for a planted crop." }], followUps: [], conversation: [], attachments: [], canDrop: false, deliverableEvidence: [], evidence: [{ label: "Design comparison", text: "Both choices shown" }] }, {});
+const design = queue.qPaneHtml({ id: "design", isDecision: true, question: "Which tool should players receive first?", title: "First tool", source: "decision card design", owner: { name: "Milo" }, answer: "Watering can", why: "It teaches the core loop.", instead: "Hoe", options: [{ key: "can", label: "Watering can", detail: "Care for a planted crop." }], followUps: [], conversation: [], attachments: [], canDrop: false, deliverableEvidence: [], evidence: [{ label: "Design comparison", text: "Both choices shown" }] }, {});
 assert.ok(index(design, "Which tool should players receive first?") < index(design, "What I recommend"));
-assert.ok(index(design, "What I recommend") < index(design, "What yes starts"));
+assert.ok(index(design, "What I recommend") < index(design, "What choosing starts"));
 const incomplete = queue.qPaneHtml({ id: "incomplete", kind: "review", question: "Does this result stand despite the missing recommendation?", title: "Review: Crop icon", source: "work card incomplete", owner: { name: "Yuki" }, answer: "", why: "", instead: "", options: [], followUps: [], conversation: [], attachments: [], canDrop: true, artifact: {deliverable: {name: "Crop icon", evidence: [{ label: "Open the crop icon", href: "/review/icon" }]}}, evidence: [], }, {});
 assert.ok(index(incomplete, "Does this result stand despite the missing recommendation?") < index(incomplete, "Open the crop icon"));
 assert.ok(index(incomplete, "Open the crop icon") < index(incomplete, "No recommendation on this one."));
