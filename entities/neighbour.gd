@@ -33,6 +33,14 @@ const SPRITES := preload("res://assets/sprites/generated/neighbour.png")
 const WALK_FRAMES := 4
 const FRAME_TIME := 0.15
 
+# Capture-only hook (Q-14 edge comparison, card wfd1109745a0): a look-session
+# plate needs the same walk and pose drawn from a second sheet, with nothing
+# else about her changed, so `tools/capture_neighbour_edge.gd` swaps this in
+# for one shot and clears it for the next. Null in every ordinary run of the
+# game — the shipped sheet is always `SPRITES` — and nobody outside that one
+# capture script has a reason to set it.
+static var sprite_override: Texture2D = null
+
 var tx: int = 0
 var ty: int = 0
 var facing: String = "down"
@@ -187,7 +195,8 @@ func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
 	if region.size.x <= 0.0:
 		return
 	var draw_pos := position + Vector2(-24.0, -32.0)
+	var sheet: Texture2D = sprite_override if sprite_override != null else SPRITES
 	render_queue.append({
 		"y": position.y,
-		"draw": func(): canvas.draw_texture_rect_region(SPRITES, Rect2(draw_pos, Vector2(48, 48)), region)
+		"draw": func(): canvas.draw_texture_rect_region(sheet, Rect2(draw_pos, Vector2(48, 48)), region)
 	})

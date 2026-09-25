@@ -1171,6 +1171,9 @@
    "verdict": "decode",
    "why": "“Artifact” does not tell a cold reader what the card is expected to contain."
   },
+  "3560fd62ce7705810d6c": {
+   "verdict": "ok"
+  },
   "357b9b53edec763ac9aa": {
    "instead": "Keep the page that shows blocked work in sync with the work queue",
    "quote": "blocked-work browser check",
@@ -1745,6 +1748,12 @@
   },
   "50e56f539e2ac023ca2e": {
    "verdict": "ok"
+  },
+  "51211baba4ca52522cbf": {
+   "instead": "Render the adjacent object with a sharp edge and a soft edge, side by side",
+   "quote": "the neighbour",
+   "verdict": "decode",
+   "why": "The sentence does not identify what object “the neighbour” refers to, so a cold reader would have to ask which thing to render."
   },
   "51b18ce6211cc7714581": {
    "verdict": "ok"
@@ -2576,6 +2585,12 @@
    "quote": "subjects",
    "verdict": "decode",
    "why": "A reader arriving cold cannot determine whether 'subjects' are fields, categories, tags, or internal studio vocabulary."
+  },
+  "7603fd8fb4c08a5fe4f8": {
+   "instead": "Render the neighbour's sprite with a hard edge and a soft edge so we can choose its final look.",
+   "quote": "Q-14",
+   "verdict": "decode",
+   "why": "A cold reader cannot tell what Q-14 is or why it matters here."
   },
   "7652c71a6bffeeb0bb57": {
    "verdict": "ok"

@@ -66,6 +66,13 @@ before the first public build ships.*
   - The tools lying at their gates are drawn with the **existing** `tool_icons.png`
     cells, so what she picks up and what she then holds are the same picture and no
     new art was needed.
+  - `assets/sprites/looks/neighbour_soft_edge.png` (2026-09-25) — **not generated,
+    not hand-edited**: `tools/derive_soft_edge_sprite.py` reads `neighbour.png` as
+    shipped and halves the alpha of the silhouette's outer ring (every opaque pixel
+    with a fully transparent neighbour), 1,109 pixels across all 16 frames, colour
+    untouched. Made for the Q-14 edge question (card wfd1109745a0); see
+    `hq/data/looks/edge/README.md`. Cost nothing; no model was called; same rights
+    as `neighbour.png` above, since no new pixel colour exists.
 - **M2.5 art bench, 2026-08-31** (`M2_5_PLAN.md` WI-11 — same Retro Diffusion pipeline
   and rights as above; palette-locked and post-processed by the same steps, with the
   prompts and per-family palettes recorded in the `retro-diffusion-pixel-art` skill's

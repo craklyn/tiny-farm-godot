@@ -819,6 +819,12 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   Selective saturation of touchables and the cold machine accents remain to be
   rendered. The fourth detail sheet was approved for generation on 2026-09-04
   but has not been produced or added to the rig; no look has been approved.
+  **2026-09-25 edge question:** the guide is silent on whether a sprite's edge
+  is a hard cut or may carry part-transparent pixels (`design/09-art-direction.md`,
+  hand-edits section), and the fourth look's "softer edges" depends on the
+  answer. `hq/data/looks/edge/` renders the neighbour both ways, same pose,
+  frame and camera, for the look session to judge alongside the colour panels —
+  a pointer for the agenda, not a ruling.
 - **Q-113** ~~How much a player can carry before she has to sell~~ — ✅ ruled
   2026-09-21 and clarified 2026-09-23: **10 plantable units of each crop species
   on her person; 40 of each with a future grain silo.** Both limits are
