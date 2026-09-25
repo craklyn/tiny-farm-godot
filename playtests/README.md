@@ -25,11 +25,15 @@ exactly that confusion.
 
 ## Replay-corpus vintage: before harvest-as-seed
 
-All 38 sessions here were recorded by 2026-09-16, before the harvest-as-seed change
-landed on 2026-09-23. They show the former separate seed and crop stores and sell-all
-economy. Keep this vintage labeled when selecting training data: a build-stamp mismatch
-or a failed end-state verification against a newer build does not erase what the player
-did. Exact replay verification and training value answer different questions.
+All 38 sessions here were recorded by 2026-09-16, before commit `2e12e52` (S-18,
+landed 2026-09-23) merged the separate seed and crop stores into one pouch and
+replaced the sell-all economy. Every session's `build_id` (the first line of its
+`session_replay.json`) names a commit from before that change — the newest,
+`v0.2.0.1-213-g742638a-dirty`, is 189 commits behind it — so a tool that walks this
+directory can confirm the boundary itself instead of trusting this note. Keep this
+vintage labeled when selecting training data: a build-stamp mismatch or a failed
+end-state verification against a newer build does not erase what the player did.
+Exact replay verification and training value answer different questions.
 
 Keep `till`, `plant`, `water`, `harvest`, and recorded movement events as demonstrations
 of those actions. Their verbs and movement records remain useful across the pouch change,
