@@ -293,6 +293,12 @@
   "0e488d7f4e3d96da6d56": {
    "verdict": "ok"
   },
+  "0e64d3ff7b0ebf766794": {
+   "instead": "Keeping the current plan",
+   "quote": "Saying yes to the recommendation below",
+   "verdict": "decode",
+   "why": "No recommendation or alternatives appear below this text, so the reader cannot know what choices “yes” refers to."
+  },
   "0e7256bc42d7e178093c": {
    "verdict": "ok"
   },
@@ -511,6 +517,12 @@
   },
   "1888ed16df471d1a6ac5": {
    "verdict": "ok"
+  },
+  "18f3ebc3c76357a29fba": {
+   "instead": "the player's only gold would be the hen's egg",
+   "quote": "her only gold would be the hen's egg",
+   "verdict": "second-look",
+   "why": "“Her” refers to the player from an earlier sentence rather than naming her here."
   },
   "190ce0060f32a8b3f4e3": {
    "instead": "where it came from",
@@ -1134,6 +1146,9 @@
    "verdict": "ok"
   },
   "36eaecc5e9f226af16b6": {
+   "verdict": "ok"
+  },
+  "372247b859dff1b81db4": {
    "verdict": "ok"
   },
   "3748340bf4da686f7fb4": {
@@ -1777,6 +1792,9 @@
   "593f8fea9bc7c9f402ca": {
    "verdict": "ok"
   },
+  "59703bd20569b59d410a": {
+   "verdict": "ok"
+  },
   "599186a63fade8aaa3d2": {
    "instead": "Record the decision made in each review",
    "quote": "Record decision answers from every review surface",
@@ -1796,6 +1814,9 @@
    "verdict": "ok"
   },
   "5a8b0481e8a09b50f745": {
+   "verdict": "ok"
+  },
+  "5adc192ac172aedcf03f": {
    "verdict": "ok"
   },
   "5afa63722fa272974319": {
@@ -2132,6 +2153,12 @@
   "6b8a79b8c20ce3a8c5bd": {
    "verdict": "ok"
   },
+  "6bb9b357f4af59cc77cf": {
+   "instead": "a harvested wheat or tomato is the same unit the player plants again",
+   "quote": "a harvested wheat or tomato is the same unit she plants again",
+   "verdict": "decode",
+   "why": "The sentence assumes that “she” means the player before saying so."
+  },
   "6c13aa0b35c289294801": {
    "verdict": "ok"
   },
@@ -2224,6 +2251,9 @@
    "quote": "Why the sim benchmark went red, and what the target should have been",
    "verdict": "second-look",
    "why": "The reader doesn't know what \"the sim benchmark\" measures or why \"the target should have been\" implies something went wrong."
+  },
+  "700c4bec7f4d8ce38375": {
+   "verdict": "ok"
   },
   "704bf28cdb2e4c693edb": {
    "verdict": "ok"
@@ -2489,6 +2519,9 @@
    "verdict": "ok"
   },
   "7bd641e2f407182be29d": {
+   "verdict": "ok"
+  },
+  "7bed7e296713211987a4": {
    "verdict": "ok"
   },
   "7c12900196f78d4a2b48": {
@@ -2833,6 +2866,12 @@
    "quote": "The menu is the harvest",
    "verdict": "decode",
    "why": "Poetic metaphor instead of stating what this design option does."
+  },
+  "8e7a94b0d219bf0b9b22": {
+   "instead": "a period with no income",
+   "quote": "a dead stretch",
+   "verdict": "second-look",
+   "why": "This metaphor makes the reader translate the phrase into a period with no harvest income."
   },
   "8e7de00fc699bcfcbacd": {
    "verdict": "ok"
@@ -3305,6 +3344,12 @@
   "a3785a300aacdbafcbc5": {
    "verdict": "ok"
   },
+  "a4335ea006861c1cacbf": {
+   "instead": "The chosen numbers change how much gold the player has in phase 1",
+   "quote": "and it changes what gold means in phase 1",
+   "verdict": "decode",
+   "why": "The reader has to work out what “it” refers to and what it means for gold to change meaning."
+  },
   "a4419edead1aad90aa04": {
    "instead": "This crop's sway: … times the normal amount of movement.",
    "quote": "…× the usual travel",
@@ -3469,6 +3514,12 @@
    "verdict": "decode",
    "why": "“Seeder” is unexplained, so a reader cannot tell what is being reviewed."
   },
+  "abc550167b735097aa35": {
+   "instead": "watched a real session reach that income level",
+   "quote": "watched a real session hit it",
+   "verdict": "second-look",
+   "why": "“It” refers back to a number in an earlier sentence, so the reader must infer what the session is meant to reach."
+  },
   "abe199c089ba70b11cc1": {
    "verdict": "ok"
   },
@@ -3491,6 +3542,9 @@
    "verdict": "ok"
   },
   "ac7f938c60eabe16850c": {
+   "verdict": "ok"
+  },
+  "acfeaf8e96beb7537b4f": {
    "verdict": "ok"
   },
   "ad0754b1caea72d23f3b": {
@@ -3621,6 +3675,12 @@
   "b2f9ad9f90ee5d6a7e29": {
    "verdict": "ok"
   },
+  "b31d4fdd1999f3402efb": {
+   "instead": "have all been decided and included in the main version",
+   "quote": "are all ruled and landed on main",
+   "verdict": "decode",
+   "why": "“Ruled” and “landed on main” are internal process shorthand for decisions that have been made and included in the main version."
+  },
   "b3284ca76eb2d420c5f3": {
    "verdict": "ok"
   },
@@ -3631,6 +3691,9 @@
    "why": "Q-78 is an unexplained internal reference, so the reader cannot know which earlier decision made the gauge permanent."
   },
   "b3685853aa102f694a4a": {
+   "verdict": "ok"
+  },
+  "b3d76ececa7b123dcb6a": {
    "verdict": "ok"
   },
   "b4200a80213a58e6894c": {
@@ -3750,6 +3813,12 @@
   },
   "bb32f446076def86956e": {
    "verdict": "ok"
+  },
+  "bb93594a4efccb7deb39": {
+   "instead": "whether the delay before harvests begin earning gold is appropriate for a first-time player",
+   "quote": "whether the wait before it gets going is itself the right shape for a first-time player",
+   "verdict": "decode",
+   "why": "The reader must work out what “it” is and what “the right shape” means."
   },
   "bbcb48de7f161c274c31": {
    "verdict": "ok"
@@ -4190,6 +4259,9 @@
   "cfe05bc740fb78ad1e52": {
    "verdict": "ok"
   },
+  "cfea4e85aa79c0ac7641": {
+   "verdict": "ok"
+  },
   "cffe663bb79807a3d4a9": {
    "verdict": "ok"
   },
@@ -4236,6 +4308,9 @@
   "d1d7c0282d410e0ad2ca": {
    "verdict": "ok"
   },
+  "d244233167de0ac27dfe": {
+   "verdict": "ok"
+  },
   "d267c4d8d1e91d732609": {
    "verdict": "ok"
   },
@@ -4259,6 +4334,12 @@
   },
   "d3deff7d0d0d4854ca11": {
    "verdict": "ok"
+  },
+  "d40dcf5b2c7ed7873f89": {
+   "instead": "one cycle fills the reserve, then later cycles produce more crops to sell",
+   "quote": "a buffering cycle, then rising surplus",
+   "verdict": "second-look",
+   "why": "The phrase describes the production pattern indirectly instead of saying that one cycle fills the reserve and later cycles produce crops to sell."
   },
   "d426d6c79c5bdc58c991": {
    "verdict": "ok"
@@ -4526,6 +4607,12 @@
   },
   "df02be0603edbcc28eab": {
    "verdict": "ok"
+  },
+  "df47231d6847e3e71b8d": {
+   "instead": "the intended early-game progression",
+   "quote": "the intended texture of the early game",
+   "verdict": "second-look",
+   "why": "“Texture” makes the reader translate a design description into the intended early-game progression."
   },
   "df4b136c84aa92e9d954": {
    "verdict": "ok"
@@ -5048,6 +5135,12 @@
   "fbe8c648b04c8a026601": {
    "verdict": "ok"
   },
+  "fc8dd2358121f40a18ae": {
+   "instead": "then a much larger income",
+   "quote": "then a jump into real income",
+   "verdict": "second-look",
+   "why": "“Jump into real income” is a figurative description of the later increase in gold earnings."
+  },
   "fc8f3b5aa1e95d7bfcbd": {
    "verdict": "ok"
   },
@@ -5090,6 +5183,12 @@
   },
   "fe673babfb78ac63e0d2": {
    "verdict": "ok"
+  },
+  "fe925d4f250c759bb541": {
+   "instead": "The player replants one and carries two spare.",
+   "quote": "She replants one and carries two spare.",
+   "verdict": "second-look",
+   "why": "The reader has to look back to learn that “She” means the player."
   },
   "feb143dc8ca9eb5bfe4a": {
    "baselined": "2026-09-19",
