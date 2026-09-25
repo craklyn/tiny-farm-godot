@@ -347,6 +347,12 @@
   "10ad0a9d229cb5acf7eb": {
    "verdict": "ok"
   },
+  "10b352488eea4b05ef68": {
+   "instead": "Send the sprite work to Spritesmith, the sprite-generation tool, before generating the image.",
+   "quote": "Point sprite work at spritesmith before a generation call",
+   "verdict": "decode",
+   "why": "“Point at” and “generation call” are internal shorthand for sending sprite work to the sprite-generation tool before asking it to make an image."
+  },
   "10c30d937fa8d82bb454": {
    "instead": "we are still building checks for X of Y areas (with actual numbers)",
    "quote": "we are still building checks for {unassured} of the {total} areas",
@@ -4617,6 +4623,9 @@
    "verdict": "ok"
   },
   "cfd8a35e41e1d3ca633d": {
+   "verdict": "ok"
+  },
+  "cfdfadff72904894071d": {
    "verdict": "ok"
   },
   "cfe05bc740fb78ad1e52": {

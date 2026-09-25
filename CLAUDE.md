@@ -238,3 +238,7 @@ Working agreements (from README):
   post-processing steps, and record provenance in `CREDITS.md`. Every generation
   run archives its raw API outputs (with their `*_meta.json`) as a dated batch
   under `assets/raw/` before anything is composited — see that directory's README.
+  Before spending a generation call, check whether `tools/spritesmith.py` can build
+  the frame from pixels the game already ships instead — a pivot rotation, a
+  palette remap, or a composited sheet — which costs nothing and cannot drift from
+  its source; see `docs/design/spritesmith.md` for the library and a worked example.

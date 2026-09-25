@@ -67,7 +67,10 @@ CI runs the headless suites on every push (`.github/workflows/tests.yml`).
 - Current art and audio are placeholders (see `CREDITS.md`); a full reskin is planned
   once the art style is settled. Modest investment in new placeholder art is fine
   (2026-08-28) — the Retro Diffusion pipeline makes a sprite cheap enough that art cost
-  is no longer a reason to reject a design on its own. Frugal, not precious.
+  is no longer a reason to reject a design on its own. Frugal, not precious. Before
+  spending a generation call, check whether `tools/spritesmith.py` can build the frame
+  from pixels the game already ships (see `docs/design/spritesmith.md`) — it costs
+  nothing and cannot drift from its source.
 
 ## License
 Code: see [LICENSE](LICENSE). Third-party assets: see [CREDITS.md](CREDITS.md).

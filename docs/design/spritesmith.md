@@ -82,6 +82,30 @@ multi-frame axe swing. Per-frame visual judgement still matters: the scratch
 wind-up hidden behind the body and the scratch frame that crossed the face are
 not part of this asset.
 
+## Other one-off derivation scripts: not folded in
+
+Three other derived-frame scripts predate this library. None is a trivial port,
+so each stays as its own script rather than being rewritten here:
+
+- `tools/gen_fittings.py` (nest box, rug) paints from a hand-typed ASCII pixel
+  map, checking each named colour against the shipped sheets it borrows from.
+  That is a different primitive from spritesmith's copy/transform-based ones —
+  there is no existing region being rotated, remapped or composited — so it was
+  not re-derived here. A `paint_from_map()` helper generalising this pattern
+  would be a reasonable future addition if a third script needs it.
+- `tools/derive_soft_edge_sprite.py` (the neighbour's soft edge) feathers alpha
+  at a silhouette edge, a per-pixel alpha-blend operation this library does not
+  have (`verify_sheet` only accepts binary alpha, so a feathered intermediate
+  cannot be verified with today's contract).
+- `tools/gen_worm_elbow.py` (the worm's elbow) sweeps a shaded tube along a
+  polar arc, reading its shading bands from a source slice. That is a bespoke
+  geometric fill, not a rotation, remap or composite.
+
+Only `tools/build_player_chop.py` (pivot rotation + depth compose) and the
+`bot_mk2` remap above are proven against this library so far. The other three
+are candidates for a future card if a second real use needs the same
+operation twice — CREDITS.md keeps their provenance in the meantime.
+
 API references: [Aseprite sprite structure](https://www.aseprite.org/docs/sprite/),
 [Lua API](https://www.aseprite.org/api/),
 [CLI sheet and JSON export](https://www.aseprite.org/docs/cli/).
