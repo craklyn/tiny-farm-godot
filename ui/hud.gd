@@ -1358,12 +1358,26 @@ func _on_seed_pill_gui_input(event: InputEvent) -> void:
 # It also moves out of the field while she is at altitude. Parked in the middle
 # it would sit on top of squares she needs to tap, and a control that covers its
 # own subject is worse than one that is slightly further to reach.
+#
+# **The held-item card and the basket button hide while it is up** (found
+# 2026-09-25 from `docs/design/mockups/q124_assign/2_assigning.png`, the Mark
+# III's own "show it where to work" mode: the same bottom-right corner Done
+# docks in is also where those two cards live, and Done's own width put it
+# partly over both — a child's thumb could miss the one control that ends the
+# mode). Neither card means anything while she is pointing at squares instead
+# of holding an item, so this is the T-31/Q-49 corner rule kept rather than
+# bent: two tappable controls never share a footprint, and the fix is to take
+# one pair off the board rather than shrink either one.
 func set_teaching(on: bool, taught: int = -1, limit: int = 0) -> void:
 	if teach_done_button == null:
 		return
 	teach_done_button.visible = on
 	if teach_clear_button != null:
 		teach_clear_button.visible = on
+	if seed_pill != null:
+		seed_pill.visible = not on
+	if inventory_button != null:
+		inventory_button.visible = not on
 	if not on:
 		teach_done_button.position = _teach_home
 		teach_done_button.text = tr("Done")

@@ -153,6 +153,7 @@ func _run_scenarios() -> void:
 	await _scenario_bh_crop_count_chips_track_the_pouch()
 	await _scenario_basket_chip_pulses_at_cap()
 	await _scenario_bg_the_mark_three_is_given_its_squares()
+	await _scenario_bi_teach_controls_clear_the_corner_cards()
 
 
 func _scenario_ba_crow_spook_stops_at_room_wall() -> void:
@@ -8216,4 +8217,85 @@ func _scenario_bg_the_mark_three_is_given_its_squares() -> void:
 	# later scenario inherits a bed.
 	farm.apply_action({ "verb": "collect", "target": farm.sim.actor_pos(mk3),
 		"actor": "player" }, GameState)
+	await get_tree().process_frame
+
+
+func _scenario_bi_teach_controls_clear_the_corner_cards() -> void:
+	# Found 2026-09-25 reviewing the Mark III's own pointing mode
+	# (docs/design/mockups/q124_assign/2_assigning.png, Q-124): Done and Clear
+	# dock in the same bottom-right corner as the held-item card and the
+	# basket (inventory) button, and Done's own width put it partly under
+	# both — a child's thumb could miss the one control that ends the mode.
+	# `ui/hud.gd`'s `set_teaching` now hides both cards while a mode is up, on
+	# either robot kind the mode serves (the Mark I round and the Mark III's
+	# bed are the same function). Sam's HUD rule stands either way: corner
+	# cards, thumb-sized targets, never two of them sharing a footprint.
+	print("\n--- Scenario BI: the teach corner never covers Done, on either robot kind ---")
+
+	var hud = main_scene.hud
+	GameState.gold = 5000
+	main_scene.end_teaching()
+
+	var mk1: String = await _buy_and_place("bot_mk1", Vector2i(24, 10))
+	_assert(mk1 != "", "a mark-1 goes down (%s)" % mk1)
+	main_scene.menus.close_menu()
+	await get_tree().process_frame
+	var mk3: String = await _buy_and_place("bot_mk3", Vector2i(27, 10))
+	_assert(mk3 != "", "a mark-3 goes down (%s)" % mk3)
+	main_scene.menus.close_menu()
+	await get_tree().process_frame
+
+	for id in [mk1, mk3]:
+		if id == "":
+			continue
+		main_scene.begin_teaching(id)
+		await get_tree().process_frame
+		await get_tree().process_frame
+		_assert(main_scene.is_teaching(), "teaching mode is up (%s)" % id)
+		_assert(hud.teach_done_button.visible, "Done is on screen")
+		_assert(not hud.seed_pill.visible and not hud.inventory_button.visible,
+			"and the held-item card and the basket button step aside for it")
+
+		# The held-item card and the basket button occupy this same footprint
+		# (`ui/hud.gd`'s `seed_pill`/`inventory_button` positions never move),
+		# so the fix is that the two pairs are never *shown* together, not
+		# that their rects can never overlap on paper — checked above. What is
+		# worth checking geometrically is that Done and Clear, which *are*
+		# both up at once, do not cover each other, and that no other visible,
+		# input-taking HUD control (mouse filter not IGNORE — a passive label
+		# such as the hint strip can overlap harmlessly) sits over Done: a
+		# control later in the tree steals a tap even where the eye sees
+		# nothing painted over it.
+		var done_rect := Rect2(hud.teach_done_button.position, hud.teach_done_button.size)
+		var clear_rect := Rect2(hud.teach_clear_button.position, hud.teach_clear_button.size)
+		_assert(not done_rect.intersects(clear_rect),
+			"Done and Clear, up at the same time, do not cover each other (%s / %s)"
+				% [done_rect, clear_rect])
+		for sibling in hud.get_children():
+			if sibling == hud.teach_done_button or not (sibling is Control) \
+					or not (sibling as Control).visible \
+					or (sibling as Control).mouse_filter == Control.MOUSE_FILTER_IGNORE:
+				continue
+			var other_rect := Rect2((sibling as Control).position, (sibling as Control).size)
+			_assert(not done_rect.intersects(other_rect),
+				"no other visible HUD control covers Done (%s at %s)"
+					% [sibling.name, other_rect])
+		_assert(done_rect.size.x >= 40.0 and done_rect.size.y >= 40.0,
+			"Done stays a thumb-sized target (%dx%d)"
+				% [int(done_rect.size.x), int(done_rect.size.y)])
+
+		# A real tap — the same signal a finger on glass fires — not the
+		# handler called directly, since the point of this scenario is that
+		# the control is reachable, not just wired.
+		hud.teach_done_button.pressed.emit()
+		await get_tree().process_frame
+		_assert(not main_scene.is_teaching(), "a real tap on Done still ends the mode")
+		_assert(hud.seed_pill.visible and hud.inventory_button.visible,
+			"and the two cards return once it does")
+
+	# Crate both robots so no later scenario inherits one standing in the yard.
+	for id in [mk1, mk3]:
+		if id != "":
+			farm.apply_action({ "verb": "collect", "target": farm.sim.actor_pos(id),
+				"actor": "player" }, GameState)
 	await get_tree().process_frame
