@@ -8345,8 +8345,9 @@ func _scenario_bj_a_tap_on_the_tower_goes_inside() -> void:
 	_assert(asked, "a tap on the tower asks what she wants to do with it")
 	if not asked:
 		return
-	_assert(menus.structure_item == "spiral_tower" and menus.structure_options.size() == 2,
-		"the tower's panel offers going inside and closing, not a pick-up it cannot do yet")
+	_assert(menus.structure_item == "spiral_tower" and menus.structure_options.size() == 3
+			and String(menus.structure_options[1].get("kind", "")) == "collect",
+		"the tower's panel offers going inside, picking it up and closing, as the coop's does")
 	menus.selected_option = 0      # "Go inside"
 	menus._select_current_option()
 	# She arrives on the tower's indoor doorway, which is its room's way out.
@@ -8360,6 +8361,31 @@ func _scenario_bj_a_tap_on_the_tower_goes_inside() -> void:
 	var outside := await _wait_until(
 		func(): return farm.sim.page_of(player.get_tile_pos()) == 0, 300)
 	_assert(outside, "and a tap on the doorway brings her back out (%s)" % player.get_tile_pos())
+
+	# --- and "Pick up", the panel's other row (Scenario AX's path, for the coop) ---
+	#
+	# Taking the tower up was written around the coop in the sim until 2026-09-25;
+	# this is the tap a player makes to reach it now that it is not.
+	InputManager.click_tile = anchor + Vector2i(1, -2)
+	InputManager.has_click = true
+	var asked_again := await _wait_until(func(): return menus.active_menu == "structure", 200)
+	_assert(asked_again, "a tap on the tower asks again")
+	if not asked_again:
+		return
+	menus.selected_option = 1      # "Pick up"
+	menus._select_current_option()
+	var gone := await _wait_until(
+		func(): return farm.get_object(anchor.x, anchor.y) == "", 200)
+	_assert(gone, "and picking it up takes the tower off the farm")
+	var footprint_clear := true
+	for cell in MachineDefs.footprint_cells("spiral_tower", anchor):
+		if farm.sim.get_object(cell.x, cell.y) != "":
+			footprint_clear = false
+	_assert(footprint_clear and not farm.sim.rooms.has(id),
+		"all sixteen of its squares clear, and its inside goes with it")
+	_assert(GameState.machines.get("spiral_tower", 0) == 1, "and it is back in the crate")
+	_assert(farm.sim.page_of(player.get_tile_pos()) == 0,
+		"and she is still standing on the farm (%s)" % player.get_tile_pos())
 
 	GameState.save_path = real_paths[0]
 	GameState.replay_path = real_paths[1]

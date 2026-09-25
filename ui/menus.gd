@@ -327,9 +327,10 @@ var structure_item: String = ""
 var structure_options: Array = []
 
 
-## Any building with a room opens this panel: the coop, and the Spiral Tower.
-## Only the coop offers "Pick up" — taking a building up is written around the
-## coop in the sim, and the tower's has not been built or tested.
+## Any building with a room opens this panel: the coop, and the Spiral Tower. Both
+## offer "Pick up", because the sim takes up any building with a room the same way
+## (`SimWorld._room_building_at`): its inside comes back as items and whoever was
+## indoors is left standing outside.
 func open_structure_menu(at: Vector2i) -> void:
 	if farm == null or farm.sim.room_door_at(at).is_empty():
 		return
@@ -698,9 +699,8 @@ func _rebuild_options() -> void:
 			structure_options = []
 			structure_options.append({ "kind": "enter" })
 			_add_option(tr("Go inside"), true)
-			if structure_item == SimWorld.COOP_ITEM:
-				structure_options.append({ "kind": "collect" })
-				_add_option(tr("Pick up"), true)
+			structure_options.append({ "kind": "collect" })
+			_add_option(tr("Pick up"), true)
 			structure_options.append({ "kind": "close" })
 			_add_option("\u00d7", true, 28)
 			menu_panel.size = Vector2(320.0, _fit_panel_height())

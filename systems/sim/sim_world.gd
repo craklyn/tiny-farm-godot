@@ -2099,11 +2099,14 @@ func coop_tiles() -> Array[Vector2i]:
 	return out
 
 
-# A coop and everything nested inside it, innermost last, by anchor. One entry on
-# every farm that has not got itself into the state above.
-func _coop_nest(anchor: Vector2i) -> Array[Vector2i]:
-	var out: Array[Vector2i] = [anchor]
-	var id := room_of_anchor(anchor)
+# A building and everything nested inside it, innermost last, as `{ item, anchor }`
+# pairs. One entry on every farm that has not got itself into the state above. Any
+# row with a room counts as nested (2026-09-25, the Spiral Tower): a room may not
+# hold another room, so what is found here is always an old save's mistake, and it
+# comes up whichever building it happens to be.
+func _building_nest(building: Dictionary) -> Array:
+	var out: Array = [building]
+	var id := room_of_anchor(building["anchor"])
 	if id == "":
 		return out
 	var r: Dictionary = rooms[id]
@@ -2114,23 +2117,39 @@ func _coop_nest(anchor: Vector2i) -> Array[Vector2i]:
 		if other == id:
 			continue
 		var a: Vector2i = rooms[other].get("anchor", Vector2i(-1, -1))
-		if a.x >= 0 and inner.has_point(a) \
-				and String(rooms[other].get("item", "")) == COOP_ITEM:
-			out.append_array(_coop_nest(a))
+		var item := String(rooms[other].get("item", ""))
+		if a.x >= 0 and inner.has_point(a) and not MachineDefs.room_of(item).is_empty():
+			out.append_array(_building_nest({ "item": item, "anchor": a }))
 	return out
 
 
-# Which square of a coop is the one it was put down on — the front-left, the cell
-# that carries the drawn object and that everything about the hut is measured from.
-# Scanned outward rather than remembered, the grid-truth rule every other coop
-# question follows.
-func _coop_anchor_at(t: Vector2i) -> Vector2i:
-	for dy in range(0, MachineDefs.footprint_of(COOP_ITEM).y):
-		for dx in range(0, MachineDefs.footprint_of(COOP_ITEM).x):
-			var c := t + Vector2i(-dx, dy)
-			if get_object(c.x, c.y) == WorldLayout.CHICKEN_COOP:
-				return c
-	return Vector2i(-1, -1)
+# **Which building with an inside stands on this square**, as `{ item, anchor }`, or
+# {} — the coop, the Spiral Tower, and whatever row next says it has a `room`. The
+# anchor is the front-left square, the one that carries the drawn object and that
+# everything about the building is measured from, so a tap on any of its cells is
+# walked back to it. Scanned rather than remembered, the grid-truth rule every other
+# building question follows; and a candidate anchor only counts if the tapped square
+# is inside *its* block, so two buildings set side by side never answer for each
+# other.
+func _room_building_at(t: Vector2i) -> Dictionary:
+	if t.y < 0 or t.y >= MAP_HEIGHT or t.x < 0 or t.x >= MAP_WIDTH:
+		return {}
+	var here: String = objects[t.y][t.x]
+	for key in MachineDefs.ORDER:
+		if MachineDefs.room_of(key).is_empty():
+			continue
+		var obj := MachineDefs.object_of(key)
+		if here != obj and here != MachineDefs.part_of(key):
+			continue
+		var size := MachineDefs.footprint_of(key)
+		for dy in maxi(1, size.y):
+			for dx in maxi(1, size.x):
+				var c := t + Vector2i(-dx, dy)
+				if c.y >= MAP_HEIGHT or c.x < 0 or objects[c.y][c.x] != obj:
+					continue
+				if t in MachineDefs.footprint_cells(key, c):
+					return { "item": key, "anchor": c }
+	return {}
 
 
 # **Where the hen goes when it rains** (2026-09-11): the front row of every coop,
@@ -2742,39 +2761,41 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				# the crate for that.
 				_crate_machine(machine_id, gs)
 				return { "ok": true, "collected": machine_key, "machine": machine_id }
-			# **And a hut she put down comes back up with its inside** (P-17's
+			# **And a building she put down comes back up with its inside** (P-17's
 			# 2026-09-14 ruling: repositioning is the robot's tap, and nothing
-			# living is ever pocketed). All four squares clear, the room's slot
-			# goes back to darkness, and the hen — who was only ever standing on
-			# the front row — is left standing on the grass.
+			# living is ever pocketed). Every square of its footprint clears, the
+			# room's slot goes back to darkness, and whoever was indoors — the hen,
+			# in a coop — is left standing on the grass.
 			#
-			# **No tap produces this yet.** The tap on a coop is the door now, and
-			# giving a structure a menu of its own is not in this version; the verb
-			# is here because the ruling is, and because the room has to have a way
-			# to be closed that a test can reach. Filed.
-			if is_coop_tile(target):
-				var coop_anchor := _coop_anchor_at(target)
-				if coop_anchor.x >= 0:
-					# **The whole nest, not just the hut she tapped** (2026-09-16).
-					# Placing a coop inside a coop is refused now (`placeable_at`),
-					# but a farm saved before that could have one — and closing the
-					# outer room used to wipe the inner hut's squares and leave its
-					# room orphaned in a slot, so the coop was simply gone. Every hut
-					# anchored inside the one coming up comes up with it, and the
-					# crate is paid for each.
-					var taken_up := _coop_nest(coop_anchor)
-					# **And what is inside comes out first** (S-22, design/15 §9a).
-					# The slot is reused by the next room, so nothing may be left in
-					# it: every fitting, egg and machine goes to her as its own item,
-					# and the hen is walked out onto the grass.
-					var contents := _empty_rooms(taken_up, gs)
-					for a in taken_up:
-						close_room(a)
-						for cell in MachineDefs.footprint_cells(COOP_ITEM, a):
-							set_object(cell.x, cell.y, "")
-					gs.machines[COOP_ITEM] = int(gs.machines.get(COOP_ITEM, 0)) + taken_up.size()
-					return { "ok": true, "collected": COOP_ITEM, "anchor": coop_anchor,
-						"count": taken_up.size(), "contents": contents }
+			# **Any building with a room** (2026-09-25): the coop first, the Spiral
+			# Tower since, and the next row that says it has an inside with no edit
+			# here. The tap on one is its panel (`ui/menus.gd`), and "Pick up" there
+			# is this verb.
+			var building := _room_building_at(target)
+			if not building.is_empty():
+				var anchor: Vector2i = building["anchor"]
+				var item := String(building["item"])
+				# **The whole nest, not just the building she tapped** (2026-09-16).
+				# Placing a building inside a building is refused now
+				# (`placeable_at`), but a farm saved before that could have one —
+				# and closing the outer room used to wipe the inner hut's squares
+				# and leave its room orphaned in a slot, so the building was simply
+				# gone. Every building anchored inside the one coming up comes up
+				# with it, and the crate is paid for each.
+				var taken_up := _building_nest(building)
+				# **And what is inside comes out first** (S-22, design/15 §9a).
+				# The slot is reused by the next room, so nothing may be left in
+				# it: every fitting, egg and machine goes to her as its own item,
+				# and the hen is walked out onto the grass.
+				var contents := _empty_rooms(taken_up, gs)
+				for b in taken_up:
+					var b_item := String(b["item"])
+					close_room(b["anchor"])
+					for cell in MachineDefs.footprint_cells(b_item, b["anchor"]):
+						set_object(cell.x, cell.y, "")
+					gs.machines[b_item] = int(gs.machines.get(b_item, 0)) + 1
+				return { "ok": true, "collected": item, "anchor": anchor,
+					"count": taken_up.size(), "contents": contents }
 			# **And her fences come back up** (Q-92). A post she built is always
 			# hers; the starting fence becomes hers on her first fence purchase. Before
 			# then it remains the cold open's first lock. Hedges are never fencing
@@ -3608,26 +3629,28 @@ func _crate_machine(machine_id: String, gs) -> String:
 
 
 # **Everything inside the buildings about to come up, handed back before their rooms
-# close** (S-22, Q-117 ruled 2026-09-24; design/15 §9a). `anchors` is the building
-# she tapped first, then any old nested huts inside it (`_coop_nest`).
+# close** (S-22, Q-117 ruled 2026-09-24; design/15 §9a). `buildings` is the one she
+# tapped first, then any old nested ones inside it (`_building_nest`), each as
+# `{ item, anchor }`.
 #
 # A room's slot is reused by the next room, so whatever is left in it is lost —
 # that is what the all-room refusal was protecting until this existed. Now each
 # nonliving thing goes to her as its own item: a fitting to the crate, a machine to
 # the crate with its memory (`_crate_machine`), an egg to her basket as if she had
-# picked it up. **In a fixed order** — room by room in `anchors` order, cells row by
+# picked it up. **In a fixed order** — room by room in `buildings` order, cells row by
 # row, a cell's object before any machine on it, machines by id — so the session,
 # a replay and a save all agree about what came out and in what order. The list is
 # returned in that order, as `{ item, cell }` pairs.
 #
 # **Living occupants stay outside** (P-17). A hen indoors when her coop is taken up
-# is walked out onto the tapped building's footprint, the squares the hut stood
-# on, rather than pocketed or left on a floor that no longer exists.
-func _empty_rooms(anchors: Array[Vector2i], gs) -> Array:
+# is walked out onto the tapped building's footprint, the squares it stood on,
+# rather than pocketed or left on a floor that no longer exists — a coop's four, a
+# tower's sixteen, from the front-left square inward.
+func _empty_rooms(buildings: Array, gs) -> Array:
 	var out: Array = []
 	var living: Array[String] = []
-	for a in anchors:
-		var id := room_of_anchor(a)
+	for b in buildings:
+		var id := room_of_anchor(b["anchor"])
 		if id == "":
 			continue
 		var r: Dictionary = rooms[id]
@@ -3658,10 +3681,11 @@ func _empty_rooms(anchors: Array[Vector2i], gs) -> Array:
 				continue
 			if room_of_cell(actor_pos(who)) == id:
 				living.append(who)
-	if anchors.is_empty() or living.is_empty():
+	if buildings.is_empty() or living.is_empty():
 		return out
 	living.sort()
-	var outside := MachineDefs.footprint_cells(COOP_ITEM, anchors[0])
+	var outside := MachineDefs.footprint_cells(String(buildings[0]["item"]),
+		buildings[0]["anchor"])
 	for i in living.size():
 		var who := living[i]
 		set_actor_pos(who, outside[i % outside.size()])

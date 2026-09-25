@@ -164,6 +164,11 @@ drawn on the room's edge, with a gap at the doorway; the surrounding void blocks
 movement. The same fractional pitch drives the live yard backdrop, camera entry
 and exit, world-position mapping, and saved room record.
 
+A tap on the tower opens the same building panel as the coop, with "Go inside" and
+"Pick up". Picking it up works exactly as it does for the coop (§9a): its room is
+emptied into the crate, a hen indoors is moved onto the squares it stood on, all
+sixteen squares clear, and the tower goes back in the crate (2026-09-25).
+
 The real game captures are [outside](evidence/spiral_tower_outside.png) and
 [inside](evidence/spiral_tower_inside.png). The existing
 [coop](evidence/coop_inside_tower_regression.png) and
@@ -219,7 +224,8 @@ world position — `anchor + cell / pitch` — so:
   room at `Z × pitch` about the anchor, and the room sits in its building because that is
   what the anchor says.
 - **Going in is a camera zoom** of `pitch`, and nothing else moves.
-- **A room is created and destroyed with its building**, so the coop can still be picked up.
+- **A room is created and destroyed with its building**, so a building with a room can
+  still be picked up — the coop, and since 2026-09-25 the Spiral Tower.
 - **Saves grow by a field.** Old farms have no rooms; the format is additive.
 
 What it reuses, all of it shipped and proven:
@@ -455,19 +461,21 @@ chose the model below over built-in fittings (b) and decoration only (c).
 - **Setting one down is `place`, and a tap on one is `collect`.** Both go through the
   ordinary gateway, as the scarecrow already does. The fitting returns to the crate, so
   rearranging a room means picking things up and putting them down again.
-- **Picking up a coop empties it first** (`SimWorld._empty_rooms`). Its contents come out
+- **Picking up a building empties it first** (`SimWorld._empty_rooms`). Any catalogue row
+  with a `room` is taken up this way — the coop, and since 2026-09-25 the Spiral Tower. Its contents come out
   in a fixed order: row by row across the floor, with a square's object before any machine
   on it. Fittings return to the crate. Any machine goes to the crate with its memory, by
   the same code a direct pickup uses (Q-98). An egg on the floor goes to her basket as if
-  she had collected it. A hen indoors is moved to the squares the hut stood on
+  she had collected it. A hen indoors is moved to the squares the building stood on
   (P-17), and her walk is reset. Only then does the room close. `collect` returns the list
   of contents, and a replay reproduces it.
 - **Nothing in the save or replay format changed.** A fitting is an object string on the
   grid, and fittings in the crate use the crate's existing counts. Old farms load unchanged,
-  and the rescue for nested coops still returns every coop it finds.
+  and the rescue for nested buildings still returns every one it finds.
 - Proved by `test_room_fittings` in the unit suite, which covers placement, refusals, pickup
-  with contents and replay. Scenario BC in the integration suite puts a nest box down with a
-  tap from inside a coop and picks it back up with another tap.
+  with contents and replay, and by `test_spiral_tower_pick_up` for the tower. Scenario BC
+  in the integration suite puts a nest box down with a tap from inside a coop and picks it
+  back up with another tap.
 
 The rest of this section is the model as ruled. A later tier builds on it.
 

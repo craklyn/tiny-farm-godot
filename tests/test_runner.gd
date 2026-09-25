@@ -228,6 +228,7 @@ func _init() -> void:
 	test_coop_interior()
 	test_room_fittings()
 	test_spiral_tower_interior()
+	test_spiral_tower_pick_up()
 	test_senses_stop_at_space_boundary()
 	test_robot_usefulness()
 	test_one_pouch()
@@ -15632,6 +15633,139 @@ func test_spiral_tower_interior() -> void:
 			and is_equal_approx(float(restored.rooms[id]["pitch"]), 0.5)
 			and bool(restored.rooms[id]["edge_walls"]),
 		"the compressed room survives save and reload")
+
+
+func test_spiral_tower_pick_up() -> void:
+	print("\n--- Spiral Tower: picked up like the coop, with what was inside it ---")
+	# Taking a building up was written around the coop until 2026-09-25. The tower
+	# is the second row with a room, so it proves the rule reads the row: all
+	# sixteen squares clear, the room closes, the tower goes back in the crate, and
+	# nothing inside is lost (Q-98: picking up is repositioning) — the hen, if she
+	# was in there, is left standing outside.
+	#
+	# Nothing on today's shelf names the tower's room, so a fitting and a machine
+	# that do are staged, as `test_room_fittings` stages one for the coop.
+	MachineDefs.TYPES["test_lantern"] = { "name": "Test Lantern", "price": 1,
+		"species": "", "configs": [], "default_config": "", "unlock_requirement": null,
+		"object": "test_lantern", "rooms": ["spiral_tower"], "outdoors": false }
+	MachineDefs.TYPES["test_perch"] = { "name": "Test Perch", "price": 1,
+		"species": SpeciesDefs.SPRINKLER, "configs": [], "default_config": "",
+		"unlock_requirement": null, "rooms": ["spiral_tower"] }
+	MachineDefs.ORDER.append("test_lantern")
+	MachineDefs.ORDER.append("test_perch")
+
+	GameState.reset()
+	SimRng.reseed(9152)   # the farm `test_spiral_tower_interior` finds room on
+	var world := SimWorld.new()
+	world.generate()
+	var spot := Vector2i(-1, -1)
+	for y in range(10, 18):
+		for x in range(5, 23):
+			if world.placeable_at(Vector2i(x, y), "spiral_tower"):
+				spot = Vector2i(x, y)
+				break
+		if spot.x >= 0:
+			break
+	_assert(spot.x >= 0, "a four-by-four tower can fit on the generated farm")
+	if spot.x < 0:
+		MachineDefs.ORDER.erase("test_lantern")
+		MachineDefs.ORDER.erase("test_perch")
+		MachineDefs.TYPES.erase("test_lantern")
+		MachineDefs.TYPES.erase("test_perch")
+		return
+	GameState.machines["spiral_tower"] = 1
+	var laid: Dictionary = world.apply_action({ "verb": "place", "target": spot,
+		"item": "spiral_tower", "actor": "player" }, GameState)
+	var room_id := String(laid.get("room", ""))
+	_assert(laid.get("ok", false) and room_id != "", "a tower with an inside (%s)" % laid)
+	var origin: Vector2i = world.rooms[room_id]["origin"]
+
+	# The staging a continued session starts from: stock in the crate, a trained
+	# machine's memory boxed, an egg on the floor and the hen indoors.
+	GameState.machines["test_lantern"] = 1
+	GameState.machines["test_perch"] = 1
+	GameState.boxed["test_perch"] = [{ "weights": [0.25, -0.5], "ledger": [7] }]
+	var egg_at := origin + Vector2i(0, 1)
+	world.set_object(egg_at.x, egg_at.y, "egg")
+	if not world.has_actor(SimWorld.ACTOR_CHICKEN):
+		world.spawn_actor(SimWorld.ACTOR_CHICKEN, SpeciesDefs.CHICKEN, spot + Vector2i(0, 1))
+	world.set_actor_pos(SimWorld.ACTOR_CHICKEN, Vector2i(world.rooms[room_id]["door"]))
+	var base_save = JSON.parse_string(JSON.stringify(SaveGame.capture(world, GameState)))
+	var rlog := ReplayLog.new()
+	rlog.start_from_save(base_save)
+
+	var lantern := origin
+	var perch := origin + Vector2i(1, 0)
+	var put_lantern := _replay_do(world, rlog, { "verb": "place", "target": lantern,
+		"item": "test_lantern", "actor": "player" })
+	var put_perch := _replay_do(world, rlog, { "verb": "place", "target": perch,
+		"item": "test_perch", "actor": "player" })
+	_assert(put_lantern.get("ok", false) and put_perch.get("ok", false)
+			and world.actor(String(put_perch.get("machine", ""))).get("extra", {}).get("weights", [])
+				== [0.25, -0.5],
+		"a fitting and a machine that name the tower go in (%s, %s)" % [put_lantern, put_perch])
+
+	# --- a tap on its back corner takes the whole tower up -------------------------
+	var egg_before := int(GameState.items.get("egg", 0))
+	var back_corner := spot + Vector2i(3, -3)
+	var up := _replay_do(world, rlog, { "verb": "collect", "target": back_corner,
+		"actor": "player" })
+	_assert(up.get("ok", false) and String(up.get("collected", "")) == "spiral_tower"
+			and Vector2i(up.get("anchor", Vector2i(-1, -1))) == spot and int(up.get("count", 0)) == 1,
+		"a tap on any of its squares takes the tower up, found from its front-left anchor (%s)" % up)
+	var came_out: Array = []
+	for entry in up.get("contents", []):
+		came_out.append([String(entry.item), Vector2i(entry.cell)])
+	_assert(came_out == [["test_lantern", lantern], ["test_perch", perch], ["egg", egg_at]],
+		"everything inside comes out first, row by row across the floor (%s)" % [came_out])
+	_assert(int(GameState.machines["test_lantern"]) == 1 and int(GameState.machines["test_perch"]) == 1
+			and int(GameState.items.get("egg", 0)) == egg_before + 1,
+		"each as its own item: the fitting and the machine in the crate, the egg in her basket")
+	var kept: Array = GameState.boxed.get("test_perch", [])
+	_assert(kept.size() == 1 and kept[0].get("weights", []) == [0.25, -0.5]
+			and kept[0].get("ledger", []) == [7],
+		"and the machine went in with what it knew (Q-98: picking up is repositioning)")
+	for cell in MachineDefs.footprint_cells("spiral_tower", spot):
+		_assert_quiet(world.get_object(cell.x, cell.y) == "", "tower square %s should clear" % cell)
+	_flush_quiet("all sixteen of the tower's squares clear")
+	_assert(not world.rooms.has(room_id)
+			and String(world.get_tile(origin.x, origin.y).get("state", "")) == WorldLayout.VOID,
+		"its room closes, with nothing left in its slot")
+	_assert(int(GameState.machines.get("spiral_tower", 0)) == 1, "and the tower is back in the crate")
+	_assert(world.actor_pos(SimWorld.ACTOR_CHICKEN) == spot
+			and world.space_of(world.actor_pos(SimWorld.ACTOR_CHICKEN)) == "farm",
+		"and the hen who was indoors is standing on the grass where it stood (%s)"
+			% world.actor_pos(SimWorld.ACTOR_CHICKEN))
+
+	# --- a replay of the session agrees ---------------------------------------------
+	var end_save = JSON.parse_string(JSON.stringify(SaveGame.capture(world, GameState)))
+	var report := SaveGame.replay_report(ReplayLog.from_json(rlog.to_json()), end_save)
+	_assert(report["matched"],
+		"a replay of the session ends on the same farm and the same crate %s" % report["divergence"])
+
+	# --- and it goes down again as a tower with an empty room -----------------------
+	world.set_actor_pos(SimWorld.ACTOR_CHICKEN, spot + Vector2i(0, 1))
+	var again: Dictionary = world.apply_action({ "verb": "place", "target": spot,
+		"item": "spiral_tower", "actor": "player" }, GameState)
+	var again_id := String(again.get("room", ""))
+	var bare := again_id != ""
+	if bare:
+		var o2: Vector2i = world.rooms[again_id]["origin"]
+		for y in 2:
+			for x in 2:
+				var c := o2 + Vector2i(x, y)
+				if world.get_object(c.x, c.y) not in ["", WorldLayout.ROOM_DOORWAY] \
+						or world.machine_at(c) != "":
+					bare = false
+	_assert(again.get("ok", false) and bare
+			and int(GameState.machines.get("spiral_tower", 0)) == 0,
+		"set down again, it is a tower with a bare room (%s)" % again)
+
+	MachineDefs.ORDER.erase("test_lantern")
+	MachineDefs.ORDER.erase("test_perch")
+	MachineDefs.TYPES.erase("test_lantern")
+	MachineDefs.TYPES.erase("test_perch")
+	GameState.reset()
 
 
 func test_senses_stop_at_space_boundary() -> void:
