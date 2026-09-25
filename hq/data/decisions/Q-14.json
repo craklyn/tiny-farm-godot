@@ -60,6 +60,11 @@
     {
       "label": "Entity gallery (all sprites in motion)",
       "href": "#/entities"
+    },
+    {
+      "type": "image",
+      "src": "hq/data/looks/edge/sheet.png",
+      "caption": "The sprite-edge question, rendered in the running game: the neighbour as shipped with a hard-cut outline (left) and the same pixels with the outline's outer ring made half-transparent (right). Same frame, seed and camera; derived by tools/derive_soft_edge_sprite.py with no image generation. On a sprite this small, the half-transparent ring makes thin parts such as legs and sleeves look see-through rather than softer."
     }
   ]
 }
