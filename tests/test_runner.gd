@@ -235,6 +235,7 @@ func _init() -> void:
 	test_carry_cap()
 	test_save_v5_migration()
 	test_mark_three_assigned_tiles()
+	test_refused_brain_action_replays()
 
 	print("")
 	print(String("=").repeat(60))
@@ -16726,3 +16727,46 @@ func test_mark_three_assigned_tiles() -> void:
 	_assert(BotBrain.assigned_of(again.actor(learner)["extra"]) == smaller,
 		"holding the eight squares she left it with")
 	live.done()
+
+
+# A brain the gateway says no to still replays (playtests/2026-09-25_113814).
+#
+# The recorder writes down only what succeeded, and the replay used to compare the
+# recording against everything the brains *tried* — so the first refused brain
+# Action in a session read as a desync, naming a robot that had done exactly what
+# it did live. The tablet found it with a Mark III set down in a stall: it swings
+# its hoe at the stall's floor, the stall wins, and the verifier said the brain
+# had diverged. This is that farm in miniature.
+func test_refused_brain_action_replays() -> void:
+	print("\n--- A refused brain Action is not a desync (2026-09-25 playtest) Tests ---")
+	var s := _mk3_yard(7307)
+	var bay := _yard_square(s.world)
+	s.world.set_tile_state(bay.x, bay.y, "cleared")
+	s.world.set_tile_state(bay.x + 1, bay.y, "cleared")
+	s.rebase()
+	s.act({ "verb": "buy_machine", "item": "stall", "actor": "player" })
+	var shed := s.act({ "verb": "place", "target": bay, "item": "stall", "actor": "player" })
+	_assert(shed.get("ok", false), "a stall goes down on open ground (%s)" % str(shed))
+	var robot := _mk3_place(s, bay)
+	_assert(robot != "" and s.world.actor_pos(robot) == bay,
+		"and a Mark III is set down inside it (%s)" % robot)
+
+	var refused := 0
+	for t in s.tick(SimClock.RATE * 60):
+		if t["action"].get("actor", "") == robot and not t["result"].get("ok", false):
+			refused += 1
+	_assert(refused > 0,
+		"in its first minute the gateway refuses it at least once (%d), which is what this is about"
+			% refused)
+
+	var live_canonical := SaveGame.capture_canonical(s.world, s.gs)
+	var again := SimWorld.new()
+	var gs_again = load("res://systems/game_state.gd").new()
+	var log := ReplayLog.from_json(s.log.to_json())
+	log.apply_to(again, gs_again)
+	_assert(log.divergence == "",
+		"and the replay recomputes it cleanly, refusals and all (%s)" % log.divergence)
+	_assert(SaveGame.capture_canonical(again, gs_again) == live_canonical,
+		"landing on the same farm and the same robot")
+	gs_again.free()
+	s.done()

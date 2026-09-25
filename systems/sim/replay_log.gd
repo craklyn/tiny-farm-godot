@@ -239,7 +239,7 @@ func _apply_v2(world: SimWorld, gs) -> void:
 	for i in entries.size():
 		var e: Dictionary = entries[i]
 		var tick := int(e.get("tick", 0))
-		recomputed.append_array(world.advance_to_tick(tick, gs))
+		_collect(recomputed, world.advance_to_tick(tick, gs))
 		if is_walk(e):
 			# Not an Action: the player's own motion, replayed by putting her back
 			# on the tile the event says she reached (M2.5 WI-6). It changes
@@ -260,11 +260,30 @@ func _apply_v2(world: SimWorld, gs) -> void:
 		world.apply_action(decoded, gs)
 	# The session went on after its last Action — the hen was still pottering when
 	# the autosave was written — so the replay lives out the same sim time.
-	recomputed.append_array(world.advance_to_tick(end_tick, gs))
+	_collect(recomputed, world.advance_to_tick(end_tick, gs))
 	if matched < recomputed.size():
 		var extra: Dictionary = recomputed[matched]
 		_note_divergence(entries.size(), "(nothing recorded)",
 			_signature(extra["action"], int(extra.get("tick", -1))))
+
+
+# The half of a recomputation the recording can be compared against: the Actions
+# the gateway said yes to. **A refusal is never written down** — `world/farm.gd`
+# records only what succeeded, because a refused Action changed nothing a replay
+# has to put back — so a recomputed refusal has no entry to match, and counting
+# it would call a brain that did exactly what it did live a desync. It still
+# happened here: the brain stepped, the gateway refused, `on_result` heard about
+# it, all inside the clock advance, which is what keeps everything after it in
+# step. It is only left out of the comparison.
+#
+# Play first hit it with the Mark III, which picks a square by the tool table and
+# asks the gateway afterwards: set down on a stall's floor, it
+# swings its hoe at the floor, and the stall wins (playtests/2026-09-25_113814,
+# entry 653 — "diverged" on a till the live game had refused twice as well).
+static func _collect(into: Array[Dictionary], taken: Array[Dictionary]) -> void:
+	for t in taken:
+		if t["result"].get("ok", false):
+			into.append(t)
 
 
 # A recorded free walk, put back into the registry. Tolerant of a malformed entry

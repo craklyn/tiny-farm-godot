@@ -1238,6 +1238,12 @@
   "2b805553e2b1535c752c": {
    "verdict": "ok"
   },
+  "2b86aedfdda87cba6fd0": {
+   "instead": "Stop a play session's replay failing when the game rejects a robot's action",
+   "quote": "turns down a robot's action",
+   "verdict": "second-look",
+   "why": "“Turns down” makes the reader pause to work out that the game rejects the action."
+  },
   "2b978fee0b6b80f27e87": {
    "verdict": "ok"
   },
@@ -3288,6 +3294,9 @@
    "quote": "the same code to play their animation loops",
    "verdict": "decode",
    "why": "It names the implementation instead of stating how the two features should behave."
+  },
+  "758395d954ce8b4fbeba": {
+   "verdict": "ok"
   },
   "75b0b56f20e6ec41822b": {
    "verdict": "ok"
@@ -6021,6 +6030,12 @@
   },
   "d4e6e09d6564a0bc5b8a": {
    "verdict": "ok"
+  },
+  "d51953bca862068c7195": {
+   "instead": "Stop the replay test from reporting an error when a robot refuses an action",
+   "quote": "replay check calling a refused robot action a mismatch",
+   "verdict": "decode",
+   "why": "A stranger cannot tell what the replay check is or what a mismatch means here."
   },
   "d51df86252f820debc00": {
    "instead": "The game will continue refusing indoor placement until that design is chosen and built.",
