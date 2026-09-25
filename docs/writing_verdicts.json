@@ -741,6 +741,12 @@
   "2252c250bd84ec763ae5": {
    "verdict": "ok"
   },
+  "22668bcb1d58422764ab": {
+   "instead": "a period with no crop income while the reserve fills",
+   "quote": "a quiet unpaid stretch while the reserve fills",
+   "verdict": "second-look",
+   "why": "The metaphor softens a fact the reader needs stated directly: the player earns no crop income during this period."
+  },
   "2290efa08ee414d617bd": {
    "verdict": "ok"
   },
@@ -4684,6 +4690,9 @@
    "why": "The reader cannot tell what the candidate is."
   },
   "dfcdc29bf543cb851857": {
+   "verdict": "ok"
+  },
+  "e0675861bc0af185aa9d": {
    "verdict": "ok"
   },
   "e0773563dad893603556": {
