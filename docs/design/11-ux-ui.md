@@ -154,6 +154,72 @@ untouched by this build, and now a live question rather than a hypothetical one:
 used to split the pouch into "Seeds" and "Harvested Crops" text, is what the pop-up
 replaced.
 
+**The storage-full pulse (we69b8f43065; spec revised 2026-09-25, supersedes the
+2026-09-04 result recorded on that card).** That result assumed one basket total
+the HUD's pip row could be resized to match. The economy since moved: the carry
+cap is **per species**, ten of each independently (S-18), a harvest grants three
+units at once (S-19), and the bin keeps its own ten-per-species reserve before
+selling (S-20). There is no longer one number to call "the cap" — a farm carrying
+ten wheat and no tomato is exactly as full as one carrying five of each is not —
+and the state-chip strip has no room to grow a pip row to ten pips per species,
+let alone several at once (`CHIP_W = 136`, the can chip already starting at
+`x = 70`, `ui/hud.gd:746-747`). Resizing `BASKET_PIPS` to "the cap"
+(`ui/hud.gd:749`) no longer describes anything real, so the build this card's
+result asked for is not the right build.
+
+The actual trigger already exists in the sim: harvesting a ripe crop is refused,
+atomically, the moment that species' pouch would exceed its own cap
+(`pouch_has_room`, `systems/sim/sim_world.gd:3437-3440`) — a per-species "full,"
+not a basket-wide one. That refusal already has a voice at the tile (the
+`pouch_full` glyph drawn on the refused tap, `world/farm.gd:1125`). What is
+missing is an *ambient* answer to "am I about to hit that," readable before she
+walks to a ripe crop and gets refused.
+
+**Revised design: pulse the basket chip itself, not a resized row.** Leave the
+existing pip tally exactly as it is — five pips, stopping at "lots" past five,
+an approximate read that never claimed to be the cap and still isn't. Add a
+second, independent signal: when *any* carried plantable species has reached
+its own cap, the basket chip icon (`basket_chip`, `ui/hud.gd:761`) switches from
+its steady state to the same warm-gold pulse the teaching ring already uses for
+"do this now" (`TeachingFocus`, drawn in `main.gd:1543-1554`, the
+`Color(1.0, 0.78, 0.25)` family at roughly a one-second cycle) — moved from the
+world-space ring onto the chip's own modulate, same colour and cadence, not
+reinvented. Unlike the bin's one-time teaching ring (`systems/teaching_focus.gd:148`,
+gated on `bin_deposits == 0` and retired forever after the first delivery), this
+pulse is durable: it fires every time any species reaches its cap, for as long
+as it stays there — the exact gap the original spec named, that the one-time
+highlight has nothing to say the second time it happens.
+
+This needs no resize and no new HUD real estate: the chip already exists and
+already changes brightness with contents (`ui/hud.gd:849`); a pulsing modulate
+replaces that logic rather than adding to the layout. It also survives carrying
+more than one species at once: "something is stuck" stays true whichever species
+is full, where a single pip row sized to one cap cannot represent two species'
+states at the same time. Which species, if she wants to know, is one tap away —
+the inventory pop-up (S-23) already shows an exact digit count per species; a
+natural but not required extension is to give that species' own card there the
+shop's existing dimmed/ringed "full" treatment (`ui/menus.gd:901,970,996`, the
+same condition that already darkens a shop card), rather than inventing a
+second full-state picture.
+
+**Overlap with Q-123.** Q-123 asks whether the bottom bar's `Wh:5  To:0` text
+stays, becomes small pictures, or drops, for the *routine* per-species count.
+This pulse lives on `basket_chip`, a different element present under both the
+shipped default bar and the draft picture-chip treatment, so it does not have
+to wait on that ruling to be built. But if Q-123 settles on (b) — per-species
+pictures replacing the text — that treatment becomes a more natural home for a
+*per-species* pulse (light the one crop's own icon, not one shared basket icon)
+than this basket-wide signal is. Recommendation: build the basket-chip pulse
+now, since it stands on its own regardless of Q-123, and revisit moving it onto
+per-species icons only if Q-123 lands on (b).
+
+**Scope boundary, carried over from the original spec.** On-person tier only.
+A future silo raises a species' cap to forty (S-18); no silo exists in the
+current catalogue, and a pulse that fires "at ten" would be wrong the day one
+does. The trigger must read `SimWorld.carry_cap(crop_type)` live, never the
+literal `ON_PERSON_CAP` constant, so it keeps working unmodified once a silo
+is added.
+
 **Regression check.** `tools/test_runner.gd`'s Scenario BB presses the HUD button,
 taps a pictured item, then taps tilled ground, and asserts the crop that lands is
 the one the picture named — the whole path a finger takes, not just the gateway

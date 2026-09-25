@@ -4586,6 +4586,12 @@
    "verdict": "second-look",
    "why": "“Lost a comparison” makes the reader infer that the draft omitted the comparison."
   },
+  "cf2c4d022afc01cac27b": {
+   "instead": "Rewrite the on-screen message shown when storage is full so each species has its own carrying limit",
+   "quote": "storage-full HUD spec for per-species carry caps",
+   "verdict": "decode",
+   "why": "“HUD” and “carry caps” are internal terms that do not tell a stranger what the screen should say or what limit is changing."
+  },
   "cf3c320572f82e8993d4": {
    "verdict": "ok"
   },
@@ -5045,6 +5051,12 @@
   },
   "e21a8e3eda2ba3c66c4e": {
    "verdict": "ok"
+  },
+  "e25c96077ac9015d94e4": {
+   "instead": "Rewrite the storage-full signal requirements now that each crop has its own limit",
+   "quote": "spec",
+   "verdict": "second-look",
+   "why": "“Spec” is internal shorthand for a specification; a cold reader should be told to rewrite the requirements instead."
   },
   "e2b366c261d53529e945": {
    "verdict": "ok"
