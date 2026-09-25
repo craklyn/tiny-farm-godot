@@ -139,6 +139,9 @@
    "verdict": "decode",
    "why": "“Reversible work” and “worker session” describe internal workflow states rather than telling the reader plainly what is happening."
   },
+  "07aba2965cd52f90fe09": {
+   "verdict": "ok"
+  },
   "07bfae196c2836beca70": {
    "verdict": "ok"
   },
@@ -1074,6 +1077,12 @@
   },
   "3517b12561cff92afa65": {
    "verdict": "ok"
+  },
+  "353765ac9afa39787339": {
+   "instead": "Show decisions whether or not a card has an attached result",
+   "quote": "without assuming every card has an artifact",
+   "verdict": "decode",
+   "why": "“Artifact” does not tell a cold reader what the card is expected to contain."
   },
   "357b9b53edec763ac9aa": {
    "instead": "Keep the page that shows blocked work in sync with the work queue",
@@ -2295,6 +2304,12 @@
   "7423bfb04f6c23a86024": {
    "verdict": "ok"
   },
+  "74681e96d76a5dab6214": {
+   "instead": "Keep the decision list usable when there are no earlier rulings",
+   "quote": "when no earlier rulings are loaded",
+   "verdict": "second-look",
+   "why": "“Loaded” describes the program's internal data state rather than plainly stating that the list must work with no earlier rulings."
+  },
   "74de08d48623bf220f84": {
    "instead": "Document which model HQ uses temporarily and when it uses each one",
    "quote": "temporary model routing",
@@ -2484,6 +2499,9 @@
    "quote": "Bullpen",
    "verdict": "decode",
    "why": "The reader is not told that Bullpen is the work queue, so the sentence leaves the main subject unexplained."
+  },
+  "7cbea3276b2a665ab9c9": {
+   "verdict": "ok"
   },
   "7ccb03375da65eb23f99": {
    "verdict": "ok"
@@ -2830,6 +2848,12 @@
   },
   "8f65c1c357139b2e01bb": {
    "verdict": "ok"
+  },
+  "8f6befb1d679087c7db8": {
+   "instead": "Combine linked decision requests on the company dashboard without losing their source links",
+   "quote": "HQ",
+   "verdict": "decode",
+   "why": "“HQ” is an internal name with no plain explanation for a reader arriving cold."
   },
   "8fe11165cd394f9d460d": {
    "verdict": "ok"
@@ -5071,6 +5095,12 @@
   },
   "ff530cf8a1918fb03393": {
    "verdict": "ok"
+  },
+  "ff8581926e20eb44a440": {
+   "instead": "Keep the writing checks when the decision request changes",
+   "quote": "for the decision request changes",
+   "verdict": "second-look",
+   "why": "The reader has to parse whether the request itself changes or whether this means changes to the request."
   },
   "ffd85f370a76b68d1dbf": {
    "verdict": "ok"
