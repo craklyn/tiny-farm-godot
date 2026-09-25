@@ -2406,6 +2406,12 @@
    "verdict": "decode",
    "why": "'Landing bar' is undefined process terminology."
   },
+  "73b6ff927fe41f5ab28c": {
+   "instead": "Play the planting sound for every character's planting action",
+   "quote": "wobesound",
+   "verdict": "decode",
+   "why": "The reader cannot tell what “wobesound” means or which sound it refers to."
+  },
   "740585f57b159e1a7e69": {
    "verdict": "ok"
   },
@@ -5317,6 +5323,9 @@
    "quote": "Ready for a build session",
    "verdict": "decode",
    "why": "The reader has to know what a build session is to understand what is ready."
+  },
+  "fcd1eb5cba7654db2d3e": {
+   "verdict": "ok"
   },
   "fcec217e9e03b367cc49": {
    "verdict": "ok"
