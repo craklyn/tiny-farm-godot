@@ -585,15 +585,16 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   release — the shipped set is complete and licence-clean.* Candidates drop into
   `assets/audio/sfx/` and appear in the in-game Sound Test for A/B on device;
   `tools/gen_sfx.py` remains the source for anything left synthesized.
-- **Q-119 — Should the basket's contents be pictures on the HUD?** — **Look,
-  open 2026-09-24.** The live side-by-side capture in
-  `hq/data/decisions/Q-119.json` holds the farm, hour, tool, can level and
-  carried crops fixed. Left is the shipped crop-count text; right is the basket
-  picture that came along with SATISFIED_CHIP. The 2026-09-01 ruling chose the
-  noun-and-tick reply for satisfied taps, not the HUD. Q-78 already made the
-  can gauge permanent, so this asks only whether the basket should show words
-  or pictures. **No pick is assumed.** If the current picture loses too much
-  detail, Daniel can ask for a revised picture before deciding.
+- **Q-119 — Should a bottom-bar inventory button open a pictured item picker?**
+  — **Look, revised 2026-09-24; awaiting Daniel's choice.** Daniel suggested a
+  button beside the currently selected item. It would open an inventory modal
+  with larger item pictures and exact counts, where tapping an item selects it
+  directly; tapping the current selected-item button would still cycle. The
+  revised card offers that direction, the shipped crop-count HUD and cycling,
+  or a live touch-size comparison before a choice. Its attached text-versus-tiny-
+  basket capture shows the old proposal only, not the modal. The 2026-09-01
+  noun-and-tick ruling for taps that change nothing remains settled; Q-78's can
+  gauge remains permanent. **No inventory choice or gameplay change is assumed.**
 
 - **Q-118 — Which soft soil sound belongs to planting?** — **Audio, open
   2026-09-24.** Plant remains silent while Daniel hears two CC0 candidates on

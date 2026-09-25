@@ -7,6 +7,12 @@
   "0011bc3d9bcc491c7b9a": {
    "verdict": "ok"
   },
+  "002dad1f2b0371c83b96": {
+   "instead": "final way to display the counts on the game screen",
+   "quote": "final resting HUD count treatment",
+   "verdict": "second-look",
+   "why": "“Resting” and “treatment” make the intended final way of displaying the counts take a second read."
+  },
   "00b51884d09275f08850": {
    "verdict": "ok"
   },
@@ -167,6 +173,9 @@
    "verdict": "ok"
   },
   "0a01d7d6cfccee950342": {
+   "verdict": "ok"
+  },
+  "0a4ad953a30ab13e49de": {
    "verdict": "ok"
   },
   "0a8dd8cd42692675bddb": {
@@ -539,6 +548,12 @@
   "1a5942056df6383d948f": {
    "verdict": "ok"
   },
+  "1a5b3cc3c3a1f9575f37": {
+   "instead": "pop-up window",
+   "quote": "modal",
+   "verdict": "decode",
+   "why": "A reader may not know that this means a pop-up window."
+  },
   "1a701751d0da4afaa9ba": {
    "verdict": "ok"
   },
@@ -673,6 +688,9 @@
    "verdict": "ok"
   },
   "216d3adfe0d9d5159558": {
+   "verdict": "ok"
+  },
+  "21e178c35edb35762f6a": {
    "verdict": "ok"
   },
   "21f35bafae0037966967": {
@@ -1027,6 +1045,9 @@
   "34a44558a05a683e65a7": {
    "verdict": "ok"
   },
+  "34ace10b1957325793f3": {
+   "verdict": "ok"
+  },
   "35139fa9ec19ac591228": {
    "verdict": "ok"
   },
@@ -1142,6 +1163,12 @@
   "3abde4495352d55d4af4": {
    "verdict": "ok"
   },
+  "3b41fc5b17fb5a72b4cb": {
+   "verdict": "ok"
+  },
+  "3b62c66c116221bef312": {
+   "verdict": "ok"
+  },
   "3b64629fa3b70492346a": {
    "instead": "Close the work item for keeping autosaves separate; the test results now confirm it works",
    "quote": "Close autosave isolation card from landed test harness evidence",
@@ -1249,6 +1276,12 @@
   },
   "42d4ad28ecdc963311df": {
    "verdict": "ok"
+  },
+  "4381dc6c721674051fb6": {
+   "instead": "on-screen game display",
+   "quote": "HUD",
+   "verdict": "decode",
+   "why": "This internal term does not tell a cold reader that it means the game's on-screen information display."
   },
   "43c67e6989b8b49d085f": {
    "verdict": "ok"
@@ -1899,6 +1932,9 @@
   "654f1a6935f317fd0b13": {
    "verdict": "ok"
   },
+  "65728ba657297f5b0517": {
+   "verdict": "ok"
+  },
   "65afd7b6fab012b252f7": {
    "verdict": "ok"
   },
@@ -2026,6 +2062,12 @@
    "quote": "Stops it",
    "verdict": "second-look",
    "why": "\"It\" has no referent — what is being stopped?"
+  },
+  "6d68bd32b4d203aff094": {
+   "instead": "inventory pop-up opened from the bottom bar",
+   "quote": "bottom-bar inventory modal",
+   "verdict": "decode",
+   "why": "The reader has to know that “modal” means a pop-up window."
   },
   "6d7a94b00cb4b6b048e0": {
    "verdict": "ok"
@@ -2199,6 +2241,12 @@
    "verdict": "decode",
    "why": "“Model routing” is internal engineering shorthand for deciding which model HQ uses."
   },
+  "74f6bc544f37f22ad5f0": {
+   "instead": "inventory pop-up",
+   "quote": "inventory modal",
+   "verdict": "decode",
+   "why": "A reader may not know that this means a pop-up window showing the inventory."
+  },
   "750e64660ea8bbd96eee": {
    "verdict": "ok"
   },
@@ -2262,6 +2310,12 @@
    "verdict": "second-look",
    "why": "What specific number is this—view count, player count, conversion rate? The reader has to infer from context."
   },
+  "7852c361d0910e21d914": {
+   "instead": "comparison using buttons sized for touch",
+   "quote": "touch-size comparison",
+   "verdict": "second-look",
+   "why": "The reader has to infer that this means a comparison using controls large enough to tap comfortably."
+  },
   "7861d36d5a8af30ae07e": {
    "verdict": "ok"
   },
@@ -2298,6 +2352,12 @@
    "quote": "Folded tones into — across changed.",
    "verdict": "decode",
    "why": "Folded into what? What changed across? The reader cannot reconstruct the action."
+  },
+  "79fab70282fafa3cdb5c": {
+   "instead": "The 2026-09-01 decision about how the game responds when a tap changes nothing remains settled.",
+   "quote": "The 2026-09-01 noun-and-check-mark response to taps that change nothing remains settled.",
+   "verdict": "decode",
+   "why": "“Noun-and-check-mark response” is internal shorthand whose meaning a cold reader would have to work out."
   },
   "7a159f22ee91c10ec026": {
    "verdict": "ok"
@@ -3535,6 +3595,9 @@
   "b94f745e5ebb62275e6c": {
    "verdict": "ok"
   },
+  "b9680ed1b885d6ff12b9": {
+   "verdict": "ok"
+  },
   "b98626455d516005a7a7": {
    "verdict": "ok"
   },
@@ -3606,6 +3669,9 @@
    "quote": "the art-director card",
    "verdict": "decode",
    "why": "\"Art-director card\" is internal terminology; a reader would not know whether this refers to a UI element, a work task, a person's card, or something else"
+  },
+  "bdd782e68ce6659f4a28": {
+   "verdict": "ok"
   },
   "bdd882a84a9082806f88": {
    "verdict": "ok"
@@ -4053,6 +4119,9 @@
   "d2d294b3e723514a4d57": {
    "verdict": "ok"
   },
+  "d3107b9098b38adccc4d": {
+   "verdict": "ok"
+  },
   "d38bd40a438bbcb1ba53": {
    "verdict": "ok"
   },
@@ -4438,6 +4507,9 @@
   "e3f0e39f458a63c98f1c": {
    "verdict": "ok"
   },
+  "e4a01a91daee10447244": {
+   "verdict": "ok"
+  },
   "e54239837fe58e0a0c2a": {
    "instead": "Make the sprite editor use the seamless ground sheet as one image instead of cutting it into multiple tiles",
    "quote": "treat a seamless ground sheet as its single tile",
@@ -4480,6 +4552,9 @@
    "quote": "A claimed session is running",
    "verdict": "decode",
    "why": "“Claimed” is internal status language and does not tell the reader what is actually known."
+  },
+  "e75bc282d1bb1a4dbbf9": {
+   "verdict": "ok"
   },
   "e7759ba64f178f396e1c": {
    "baselined": "2026-09-19",
