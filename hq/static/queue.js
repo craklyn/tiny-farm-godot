@@ -478,7 +478,7 @@ function qRender(state) {
   const rows = qDistinctTitles([
     ...hisWork.map(x => qWorkItem(x.card, org, x.reason)),
     ...hisDecisions.map(c => qDecisionItem(c, org, state.seats)),
-  ].map(row => ({ ...row, priorRuling: state.rulings[row.id] })));
+  ].map(row => ({ ...row, priorRuling: (state.rulings || {})[row.id] })));
   const picks = rows.filter(r => r.answer).length, reads = rows.length - picks;
   const minutes = Math.round(rows.reduce((a, r) => a + r.seconds, 0) / 60);
   const groups = qGroupBySubject(rows);
