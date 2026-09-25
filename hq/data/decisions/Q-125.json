@@ -1,0 +1,36 @@
+{
+  "id": "Q-125",
+  "owner": "claude",
+  "title": "Should HQ keep its work cards in one place, so finished work stops showing as unfinished?",
+  "question": "HQ (the studio dashboard at localhost:8642) shows each piece of work as a card. Today every card exists twice. HQ reads and writes one copy in the shared checkout of the game's repository, which sits on an old branch. The other copy lives on main, and sessions that finish work (Codex's, and before that Claude's) edit it there when they close a card. Nothing copies changes from one side to the other.\n\nThat is why the last two days of Codex sessions looked like they were not closing tickets. The work was finished and on main, but HQ's copy of the card never heard about it, so HQ kept holding or retrying it. Last night 23 of the 26 held cards turned out to be already done on main, or overtaken by later work, and were closed by hand with evidence. In the last three days, 60 saved changes to the main version edited work cards while HQ edited its own copies; right now 86 cards differ between the two, and 131 of HQ's files are uncommitted in the shared checkout.\n\nWhich home should the cards have?",
+  "why_now": "The backlog is now drained, so this is the cheapest moment to change where the records live. Until it changes, every card still has to be closed by hand in HQ after its work lands, and that is the step that went missing for two days.",
+  "options": [
+    {
+      "key": "a",
+      "label": "Keep HQ's records in a separate folder, and close cards only through HQ (Recommended)",
+      "detail": "Move the live records (work cards, decisions, rulings, projects) out of the game repository into their own folder with its own history, saved automatically. Workers never edit card files: when work lands they call one HQ command that closes the card with its evidence (the commit and the automated check result), which is what was done by hand last night. Main stops carrying copies of the cards, so there is nothing to drift. About a day of work, with a one-time copy of today's live records and tests that a worker cannot write a card file directly.",
+      "recommended": true
+    },
+    {
+      "key": "b",
+      "label": "Keep both copies and sync them automatically",
+      "detail": "Every few minutes, HQ saves its copy of the cards into the main version of the repository and copies in any card changes it finds there. Less to move, but both sides still edit the same files, so the copying needs rules for when they disagree, and a disagreement could silently reopen a closed card."
+    },
+    {
+      "key": "c",
+      "label": "Keep today's setup; the chief of staff closes cards by hand",
+      "detail": "No build. Works while a session is watching, as it did last night, but it is the step that was missed for two days, and it depends on someone remembering."
+    }
+  ],
+  "links": [
+    {
+      "label": "How the work queue is meant to reach zero (docs/QUEUE_TO_ZERO.md)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/QUEUE_TO_ZERO.md"
+    },
+    {
+      "label": "Where HQ finds its data (hq/roots.py)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/hq/roots.py"
+    }
+  ],
+  "subject": "Where HQ keeps its work cards"
+}

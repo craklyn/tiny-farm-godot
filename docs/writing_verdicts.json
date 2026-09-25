@@ -527,6 +527,9 @@
    "verdict": "decode",
    "why": "The term \"program report\" is not defined or linked; a reader would not know what it is or how to find it."
   },
+  "16fb3ff7e27574b70855": {
+   "verdict": "ok"
+  },
   "177b4c15ba88b925d220": {
    "verdict": "ok"
   },
@@ -891,6 +894,12 @@
    "verdict": "decode",
    "why": "Technical language describes how to achieve the effect, not what the player sees."
   },
+  "289ebc7c04b4d419f8fa": {
+   "instead": "Make no software changes",
+   "quote": "No build.",
+   "verdict": "second-look",
+   "why": "The reader may not know whether this means no software changes or merely no compilation."
+  },
   "28cdb7ccd7fdb6956450": {
    "instead": "Use the Work page's Accept and Drop buttons to decide which Animation Lab items to keep or remove",
    "quote": "keep and drop verdicts",
@@ -1061,6 +1070,12 @@
   "2e69ac56876ab0248944": {
    "verdict": "ok"
   },
+  "2e86830698dafd426bb5": {
+   "instead": "60 recorded changes in the main version changed work cards",
+   "quote": "60 commits on main changed work cards",
+   "verdict": "decode",
+   "why": "The reader has to translate repository terms into the fact that two versions of the cards changed independently."
+  },
   "2f069f431a500508f5b1": {
    "verdict": "ok"
   },
@@ -1104,6 +1119,12 @@
   },
   "311e152b71efbf180627": {
    "verdict": "ok"
+  },
+  "31268eaa66487d38f231": {
+   "instead": "copy changes between them automatically",
+   "quote": "sync them automatically",
+   "verdict": "second-look",
+   "why": "“Sync” makes the reader translate the proposed mechanism into copying changes between the two records."
   },
   "314160fd223aeacf013d": {
    "verdict": "ok"
@@ -1339,6 +1360,12 @@
   },
   "3b83289007cc8318bb08": {
    "verdict": "ok"
+  },
+  "3b87c40b9fa4873bcf4c": {
+   "instead": "after its work is added to the main version",
+   "quote": "after its work lands",
+   "verdict": "second-look",
+   "why": "“Lands” is internal shorthand for work being added to the main version."
   },
   "3ba43cb9d3f4e637c825": {
    "verdict": "ok"
@@ -2096,6 +2123,12 @@
    "verdict": "second-look",
    "why": "Grammatically incomplete; 'commits behind' is git jargon that reads oddly without a bridge word."
   },
+  "6035ca5ee2a6599b4859": {
+   "instead": "Ask Daniel where HQ should keep its work cards so completed cards show as finished",
+   "quote": "finished work stops looking unfinished",
+   "verdict": "second-look",
+   "why": "This describes the problem indirectly and makes the reader work out that completed cards need to show as finished."
+  },
   "603c9536cf48c4dc6c53": {
    "verdict": "ok"
   },
@@ -2396,6 +2429,12 @@
    "quote": "Drawn with the numbers read out of , over the game's tilled soil, and from your unsaved edits",
    "verdict": "decode",
    "why": "Sentence is broken—text is missing after 'read out of'—and the remaining phrase is unclear."
+  },
+  "6dcce9e19df23fc5df8a": {
+   "instead": "a conflict could silently reopen a card",
+   "quote": "a bad merge can silently undo a closure",
+   "verdict": "decode",
+   "why": "The reader must translate “merge” and “closure” into the concrete risk that a closed card could be reopened."
   },
   "6dd99380010a0197862a": {
    "verdict": "ok"
@@ -2821,6 +2860,12 @@
   "7eee8c8d6d921175dffc": {
    "verdict": "ok"
   },
+  "7f32e142a40d88860998": {
+   "instead": "Keep HQ's records in a separate folder",
+   "quote": "Give HQ's records their own store",
+   "verdict": "decode",
+   "why": "“Store” leaves the reader to work out whether this means a folder, database, or something else."
+  },
   "7fc195090a053707bde9": {
    "baselined": "2026-09-19",
    "instead": "This is ours, and it's been delayed too long",
@@ -2907,6 +2952,9 @@
    "verdict": "second-look",
    "why": "This describes how the status appears instead of plainly saying that the status still says “waiting.”"
   },
+  "82b128a90ad2c219fb4c": {
+   "verdict": "ok"
+  },
   "82bc093135391478ee2d": {
    "verdict": "ok"
   },
@@ -2974,6 +3022,9 @@
    "quote": "picture HUD",
    "verdict": "decode",
    "why": "“HUD” is internal interface shorthand that a cold reader may not know."
+  },
+  "84e487262995aac8a505": {
+   "verdict": "ok"
   },
   "8508aef2ce5d2017c17a": {
    "verdict": "ok"
@@ -3154,6 +3205,12 @@
   },
   "8e0d3fb9604342f6c9ee": {
    "verdict": "ok"
+  },
+  "8e5497996e9d88e8c8dc": {
+   "instead": "HQ saves its own changes to the primary version every few minutes and brings those changes into work cards.",
+   "quote": "commits its own changes to main every few minutes and pulls in main's changes to cards",
+   "verdict": "decode",
+   "why": "The reader has to know that “main” is the primary version and that these terms describe moving changes between versions and work cards."
   },
   "8e7a94b0d219bf0b9b22": {
    "instead": "a period with no income",
@@ -4887,6 +4944,12 @@
   "dabf86977450014fe339": {
    "verdict": "ok"
   },
+  "dacf8778cdbfb8a8330b": {
+   "instead": "the records cannot become different",
+   "quote": "there is nothing to drift",
+   "verdict": "second-look",
+   "why": "“Drift” is a metaphor for the two copies becoming different."
+  },
   "dad7e716650f36f83680": {
    "verdict": "ok"
   },
@@ -4900,6 +4963,9 @@
    "verdict": "ok"
   },
   "db8bd257bb812dd3f5e5": {
+   "verdict": "ok"
+  },
+  "dbc455fefa1f84044adf": {
    "verdict": "ok"
   },
   "dbe01701a9a93161924c": {
@@ -5109,6 +5175,12 @@
   },
   "e3f0e39f458a63c98f1c": {
    "verdict": "ok"
+  },
+  "e4797344f999572542d9": {
+   "instead": "Where should the single shared copy of the cards live?",
+   "quote": "Which home should the cards have?",
+   "verdict": "second-look",
+   "why": "“Home” is a metaphor where the decision asks where the cards' single shared copy should live."
   },
   "e4a01a91daee10447244": {
    "verdict": "ok"
