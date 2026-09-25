@@ -148,6 +148,8 @@ func _run_scenarios() -> void:
 	await _scenario_bb_inventory_picker_selects_and_plants()
 	await _scenario_bc_a_nest_box_goes_down_by_tap()
 	await _scenario_bd_the_shop_shelf_scrolls()
+	await _scenario_be_a_finger_drag_scrolls_not_buys()
+	await _scenario_bf_the_inventory_picker_also_caps()
 	await _scenario_basket_chip_pulses_at_cap()
 
 
@@ -1520,7 +1522,10 @@ func _scenario_j_wordless_shop() -> void:
 		_assert(shows_capacity, "the full card shows its ten-of-ten capacity")
 		_press_row(menus.options_container, tomato_row)
 		await get_tree().create_timer(0.3).timeout
-		var live_shelf: Node = menus.options_container.get_node("shop_scroll/shop_shelf")
+		# `find_child` rather than a fixed relative path: the shelf's scroll now
+		# sits one level deeper, inside the stack that also carries its
+		# wordless edge fade (w98a60854171).
+		var live_shelf: Node = menus.options_container.find_child("shop_shelf", true, false)
 		var live_card: PanelContainer = live_shelf.get_child(tomato_row) as PanelContainer
 		var outline: StyleBoxFlat = live_card.get_theme_stylebox("panel") as StyleBoxFlat
 		_assert(menus.active_menu == "shop" and menus.shop_refused_seed == "tomato"
@@ -7569,7 +7574,11 @@ func _scenario_bd_the_shop_shelf_scrolls() -> void:
 		"the panel stays on an 800x600 screen with %d things on the shelf (bottom at %.0f of %.0f)"
 			% [menus.shop_items.size(), panel.position.y + panel.size.y, vp.y])
 
-	var shop_scroll: Control = menus.options_container.get_node_or_null("shop_scroll")
+	# `find_child` rather than `get_node_or_null`: the scroll sits one level
+	# deeper now, inside the stack that also carries its wordless edge fade
+	# (w98a60854171), and a lookup keyed to that depth is exactly the kind of
+	# thing the next reshuffle breaks by accident.
+	var shop_scroll: ScrollContainer = menus.options_container.find_child("shop_scroll", true, false)
 	_assert(shop_scroll != null, "the shelf now sits in a scroll")
 	var shelf: Control = shop_scroll.get_node_or_null("shop_shelf") if shop_scroll != null else null
 	_assert(shelf != null and shelf.get_child_count() == menus.shop_items.size(),
@@ -7587,8 +7596,13 @@ func _scenario_bd_the_shop_shelf_scrolls() -> void:
 			% [shop_scroll.custom_minimum_size.y, shelf_h])
 
 	# The last card is one the old, unscrolled layout could never have shown at
-	# all. Scroll to the end, as a drag would, and check it actually lands
-	# inside the window before trusting a press on it.
+	# all. Scroll to the end and check it actually lands inside the window
+	# before trusting a press on it — this is a structural check on the scroll
+	# itself (does the window clamp and reveal what it should), set directly
+	# rather than dragged. Whether a *finger* on a card actually drives that
+	# same scroll, and does not also buy the card it started on, is Scenario
+	# BE's job (w98a60854171): this scenario predates it and only needed
+	# scroll_vertical to exist, which is a fair thing for it to still assume.
 	var last_idx: int = shelf.get_child_count() - 1
 	var last_card: Control = shelf.get_child(last_idx)
 	shop_scroll.scroll_vertical = 1000000  # past the end; Godot clamps to the real max
@@ -7616,6 +7630,286 @@ func _scenario_bd_the_shop_shelf_scrolls() -> void:
 		GameState.machines["fence"] = machines_before
 	else:
 		GameState.machines.erase("fence")
+
+
+func _scenario_be_a_finger_drag_scrolls_not_buys() -> void:
+	# w98a60854171: Scenario BD proved the shelf scrolls, but proved it by
+	# setting `scroll_vertical` directly in code — nothing about a finger. This
+	# proves the actual mechanism a touch or a mouse drives: a drag starting on
+	# a buy card scrolls the shelf and buys nothing; a plain tap still buys.
+	#
+	# Real `InputEventScreenTouch`/`InputEventScreenDrag` objects stand in for
+	# the raw touch Android delivers, and real `InputEventMouseButton`/
+	# `InputEventMouseMotion` for the mouse Godot emulates from it — the shape
+	# a card's Button actually runs its click logic on (Scenario O). Both are
+	# fed straight to `menus._on_card_drag_input`, the same convention
+	# Scenario AO's window view uses for a Control's own input: Godot's GUI
+	# picking does not run headless in this engine build (checked directly —
+	# pushing the same events through `Input.parse_input_event` at a real
+	# button's own global rect never fires its `pressed` signal here), so a
+	# card's own handler is called the way the window view's already is.
+	print("\n--- Scenario BE: a finger drag scrolls the shelf, not the card it started on (w98a60854171) ---")
+
+	var menus = main_scene.menus
+	menus.close_menu()
+
+	var original_order: Array[String] = MachineDefs.ORDER.duplicate()
+	var stocked: Array[String] = original_order.duplicate()
+	for i in 10:
+		stocked.append("fence")
+	MachineDefs.ORDER = stocked
+
+	GameState.gold = 5000
+	GameState.harvest_counts = {"wheat": 5, "tomato": 5}
+	menus.open_menu("shop")
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var shop_scroll: ScrollContainer = menus.options_container.find_child("shop_scroll", true, false)
+	var shelf: Control = shop_scroll.get_node_or_null("shop_shelf") if shop_scroll != null else null
+	_assert(shop_scroll != null and shelf != null, "the shelf sits in a scroll to drag")
+	if shop_scroll == null or shelf == null:
+		MachineDefs.ORDER = original_order
+		return
+	var buttons: Array = shelf.find_children("*", "Button", true, false)
+	_assert(buttons.size() >= 2, "there are at least two cards on the shelf (%d)" % buttons.size())
+	if buttons.size() < 2:
+		MachineDefs.ORDER = original_order
+		return
+
+	# --- 1. a real touch drag on the first card scrolls the shelf, and a
+	# release afterwards buys nothing ----------------------------------------
+	_assert(shop_scroll.scroll_vertical == 0, "starts at the top of the shelf")
+	var gold_before_drag: int = GameState.gold
+	var first_btn: Button = buttons[0]
+
+	var touch := InputEventScreenTouch.new()
+	touch.index = 0
+	touch.pressed = true
+	touch.position = Vector2(240, 20)
+	menus._on_card_drag_input(touch, shop_scroll)
+	for step in range(1, 4):
+		var drag := InputEventScreenDrag.new()
+		drag.index = 0
+		drag.position = Vector2(240, 20 - step * 10)
+		drag.relative = Vector2(0, -10)
+		menus._on_card_drag_input(drag, shop_scroll)
+	_assert(shop_scroll.scroll_vertical > 0,
+		"the raw touch drag scrolled the shelf (%.0f)" % shop_scroll.scroll_vertical)
+	var touch_up := InputEventScreenTouch.new()
+	touch_up.index = 0
+	touch_up.pressed = false
+	touch_up.position = Vector2(240, -10)
+	menus._on_card_drag_input(touch_up, shop_scroll)
+
+	# The Button's own click still fires on a release like this one — scrolling
+	# by exactly the distance dragged leaves the finger over the same relative
+	# point on the card the whole time, so it never sees itself as missed (see
+	# `_on_shop_card_pressed`'s own comment). Simulated the way every other
+	# scenario in this file simulates a confirmed press (`_press_row` does the
+	# same `.pressed.emit()`), to check the guard this card exists to prove
+	# actually catches it.
+	first_btn.pressed.emit()
+	await get_tree().process_frame
+	_assert(GameState.gold == gold_before_drag,
+		"and releasing after that drag bought nothing (gold still %d)" % GameState.gold)
+
+	# --- 2. a plain tap still buys — the mouse events a real tablet's Button
+	# actually runs its click logic on (Scenario O), moved by less than a
+	# finger's real wobble --------------------------------------------------
+	menus.close_menu()
+	GameState.gold = 5000
+	menus.open_menu("shop")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	shop_scroll = menus.options_container.find_child("shop_scroll", true, false)
+	shelf = shop_scroll.get_node_or_null("shop_shelf")
+	buttons = shelf.find_children("*", "Button", true, false)
+
+	var tap_idx := -1
+	for i in menus.shop_items.size():
+		var it: Dictionary = menus.shop_items[i]
+		if bool(it.get("unlocked", false)) and bool(it.get("affordable", false)) \
+				and not bool(it.get("full_pouch", false)):
+			tap_idx = i
+			break
+	_assert(tap_idx >= 0, "at least one affordable card exists to tap")
+	if tap_idx < 0:
+		MachineDefs.ORDER = original_order
+		return
+
+	var tap_item: Dictionary = menus.shop_items[tap_idx]
+	var tap_btn: Button = buttons[tap_idx]
+	var tap_key: String = String(tap_item.seed_type)
+	var tap_is_machine: bool = String(tap_item.kind) == "machine"
+	var owned_before: int = int(GameState.machines.get(tap_key, 0)) if tap_is_machine \
+		else GameState.held_count(tap_key)
+	var gold_before_tap: int = GameState.gold
+
+	var mpress := InputEventMouseButton.new()
+	mpress.button_index = MOUSE_BUTTON_LEFT
+	mpress.pressed = true
+	mpress.position = Vector2(0, 0)
+	menus._on_card_drag_input(mpress, shop_scroll)
+	var mmove := InputEventMouseMotion.new()
+	mmove.position = Vector2(1, 1)  # a hand is not a laser — a real tap still wobbles
+	mmove.relative = Vector2(1, 1)
+	menus._on_card_drag_input(mmove, shop_scroll)
+	_assert(not menus._card_drag_exceeded,
+		"a pixel of wobble never counts as the drag (CARD_DRAG_DEADZONE=%.0f)" % menus.CARD_DRAG_DEADZONE)
+	var mrelease := InputEventMouseButton.new()
+	mrelease.button_index = MOUSE_BUTTON_LEFT
+	mrelease.pressed = false
+	mrelease.position = Vector2(1, 1)
+	menus._on_card_drag_input(mrelease, shop_scroll)
+
+	tap_btn.pressed.emit()
+	var bought := await _wait_until(func():
+		return GameState.gold < gold_before_tap, 240)
+	_assert(bought, "and a plain tap still buys (%s, gold %d -> %d)"
+		% [tap_key, gold_before_tap, GameState.gold])
+	var now_owned: int = int(GameState.machines.get(tap_key, 0)) if tap_is_machine \
+		else GameState.held_count(tap_key)
+	_assert(now_owned > owned_before, "and she actually holds one more (%d -> %d)" % [owned_before, now_owned])
+
+	# --- 3. the same drag through the emulated-mouse path also scrolls
+	# rather than buys, on a second card ---------------------------------
+	menus.close_menu()
+	GameState.gold = 5000
+	menus.open_menu("shop")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	shop_scroll = menus.options_container.find_child("shop_scroll", true, false)
+	shelf = shop_scroll.get_node_or_null("shop_shelf")
+	buttons = shelf.find_children("*", "Button", true, false)
+	var second_idx := 1
+	var second_btn: Button = buttons[second_idx]
+	var gold_before_2: int = GameState.gold
+
+	var dpress := InputEventMouseButton.new()
+	dpress.button_index = MOUSE_BUTTON_LEFT
+	dpress.pressed = true
+	dpress.position = Vector2(240, 90)
+	menus._on_card_drag_input(dpress, shop_scroll)
+	for step in range(1, 4):
+		var dmove := InputEventMouseMotion.new()
+		dmove.position = Vector2(240, 90 - step * 10)
+		dmove.relative = Vector2(0, -10)
+		menus._on_card_drag_input(dmove, shop_scroll)
+	_assert(shop_scroll.scroll_vertical > 0,
+		"a mouse-emulated drag also scrolls the shelf (%.0f)" % shop_scroll.scroll_vertical)
+	var drelease := InputEventMouseButton.new()
+	drelease.button_index = MOUSE_BUTTON_LEFT
+	drelease.pressed = false
+	drelease.position = Vector2(240, 60)
+	menus._on_card_drag_input(drelease, shop_scroll)
+
+	second_btn.pressed.emit()
+	await get_tree().process_frame
+	_assert(GameState.gold == gold_before_2,
+		"and releasing that one bought nothing either (gold still %d)" % GameState.gold)
+
+	menus.close_menu()
+	MachineDefs.ORDER = original_order
+
+
+func _scenario_bf_the_inventory_picker_also_caps() -> void:
+	# w98a60854171: the picker's grid sat straight in `options_container` with
+	# no cap, the exact shape of bug the shelf had before c3191c4 — and
+	# `MachineDefs.ORDER` only grows. This stocks enough owned machine types to
+	# push the grid past a screenful (mirroring Scenario BD's own fence-stocking
+	# stand-in for "a genuine new item"), and proves the picker now caps and
+	# scrolls the same way, with the same drag-vs-tap protection.
+	print("\n--- Scenario BF: the inventory picker also caps its grid, and scrolls by drag (w98a60854171) ---")
+
+	var menus = main_scene.menus
+	menus.close_menu()
+
+	var original_order: Array[String] = MachineDefs.ORDER.duplicate()
+	var stocked: Array[String] = original_order.duplicate()
+	for i in 10:
+		stocked.append("fence")
+	MachineDefs.ORDER = stocked
+
+	var original_machines: Dictionary = GameState.machines.duplicate()
+	var original_pouch: Dictionary = GameState.pouch.duplicate()
+	# Enough of everything held to be a plausible "she has been playing a
+	# while" pouch, not a contrived pile: one of every crop and every machine
+	# `MachineDefs.ORDER` now lists.
+	GameState.pouch["wheat"] = 3
+	GameState.pouch["tomato"] = 2
+	GameState.harvest_counts["wheat"] = 1
+	for key in stocked:
+		GameState.machines[key] = int(GameState.machines.get(key, 0)) + 1
+
+	menus.open_menu("inventory")
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var vp: Vector2 = menus.get_viewport().get_visible_rect().size
+	var panel: Control = menus.menu_panel
+	_assert(panel.position.y >= 0.0 and panel.position.y + panel.size.y <= vp.y,
+		"the panel stays on an 800x600 screen with %d things held (bottom at %.0f of %.0f)"
+			% [menus.inventory_items.size(), panel.position.y + panel.size.y, vp.y])
+
+	var inventory_scroll: ScrollContainer = menus.options_container.find_child("inventory_scroll", true, false)
+	_assert(inventory_scroll != null, "the grid now sits in a scroll")
+	var grid: Control = inventory_scroll.get_node_or_null("inventory_grid") if inventory_scroll != null else null
+	_assert(grid != null and grid.get_child_count() == menus.inventory_items.size(),
+		"every one of the %d things she holds drew its own card" % menus.inventory_items.size())
+	if inventory_scroll == null or grid == null:
+		MachineDefs.ORDER = original_order
+		GameState.machines = original_machines
+		GameState.pouch = original_pouch
+		return
+
+	var grid_h: float = grid.get_combined_minimum_size().y
+	_assert(menus.OPTIONS_TOP + grid_h + menus.OPTION_SEP + menus.OPTION_H + menus.PANEL_PAD > vp.y,
+		"and the whole grid, unclipped, really would have overflowed the screen (%.0f needed)"
+			% (menus.OPTIONS_TOP + grid_h + menus.OPTION_SEP + menus.OPTION_H + menus.PANEL_PAD))
+	_assert(inventory_scroll.custom_minimum_size.y < grid_h,
+		"but the visible window is shorter than the grid (%.0f of %.0f) — it is actually scrolling"
+			% [inventory_scroll.custom_minimum_size.y, grid_h])
+
+	# A drag on the first card scrolls the picker rather than selecting it.
+	var buttons: Array = grid.find_children("*", "Button", true, false)
+	_assert(buttons.size() >= 2, "there are at least two cards to drag (%d)" % buttons.size())
+	if buttons.size() < 2:
+		MachineDefs.ORDER = original_order
+		GameState.machines = original_machines
+		GameState.pouch = original_pouch
+		return
+	var selected_before: String = String(GameState.selected_seed_type)
+	var first_btn: Button = buttons[0]
+
+	var touch := InputEventScreenTouch.new()
+	touch.index = 0
+	touch.pressed = true
+	touch.position = Vector2(40, 20)
+	menus._on_card_drag_input(touch, inventory_scroll)
+	for step in range(1, 4):
+		var drag := InputEventScreenDrag.new()
+		drag.index = 0
+		drag.position = Vector2(40, 20 - step * 10)
+		drag.relative = Vector2(0, -10)
+		menus._on_card_drag_input(drag, inventory_scroll)
+	_assert(inventory_scroll.scroll_vertical > 0,
+		"a touch drag scrolls the picker's grid too (%.0f)" % inventory_scroll.scroll_vertical)
+	var touch_up := InputEventScreenTouch.new()
+	touch_up.index = 0
+	touch_up.pressed = false
+	touch_up.position = Vector2(40, -10)
+	menus._on_card_drag_input(touch_up, inventory_scroll)
+
+	first_btn.pressed.emit()
+	await get_tree().process_frame
+	_assert(String(GameState.selected_seed_type) == selected_before,
+		"and releasing that drag changed nothing she has selected (still %s)" % selected_before)
+
+	menus.close_menu()
+	MachineDefs.ORDER = original_order
+	GameState.machines = original_machines
+	GameState.pouch = original_pouch
 
 
 func _scenario_basket_chip_pulses_at_cap() -> void:

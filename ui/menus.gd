@@ -42,6 +42,31 @@ const SHOP_GUTTER := 16
 # other panel in this file already keeps.
 const SHOP_SCROLL_MARGIN := PANEL_PAD * 2.0
 
+# The menu panel's own background (`panel_style.bg_color` below), pulled out so
+# a scroll's edge fade (w98a60854171) can fade into the exact colour it sits
+# on rather than guess at it a second time.
+const PANEL_BG_COLOR := Color(0.12, 0.12, 0.18, 0.95)
+
+# How far a touch has to travel before a press on a shelf card counts as a
+# drag rather than a tap (w98a60854171). A card's Button covers it edge to
+# edge and captures every motion event from press to release, same as any
+# button dragged off and back onto — so telling a scroll from a tap has to
+# watch that same stream rather than rely on the Button's own click, which
+# still fires on release regardless: scrolling the shelf by exactly the
+# distance the finger moved leaves the finger over the same *relative* point
+# on the card the whole time, so the Button never sees itself as missed.
+# Comfortably past sensor noise, comfortably under the shortest real flick.
+const CARD_DRAG_DEADZONE := 12.0
+
+# The fade at a scroll's cut edge, standing in for a scrollbar (w98a60854171).
+# HUD controls are corner cards with thumb-sized targets, never a thin inline
+# pill (Daniel's standing rule) — and Godot's default scrollbar is exactly
+# that pill, doubly so at a 480px shelf split into two columns, where it is
+# barely wide enough to see, let alone grip with a thumb. A card cut off by a
+# soft fade says "there is more here" the way a photo cropped at a table's
+# edge does, so it needs no glyph and keeps the shop and picker wordless (S-7).
+const SCROLL_FADE_H := 16.0
+
 # The inventory picker's grid (Q-119/S-23, ruled 2026-09-24, built 2026-09-25):
 # three columns fits a phone width with the shop's own gutter, and every card
 # is square so a bigger picture never buys a taller target than the row
@@ -79,6 +104,16 @@ var active_menu: String = ""  # "", "pause", "shop", "bin", "inventory", "machin
 var selected_option: int = 0
 var bin_options: Array[Dictionary] = []
 var shop_refused_seed: String = ""  # The full card whose last press was refused.
+
+# Tracks a card's held touch/mouse across a shelf's scroll (w98a60854171):
+# which scroll it is feeding, where it started, and whether it has already
+# travelled past `CARD_DRAG_DEADZONE`. Cleared on every open and close so a
+# drag abandoned by the shop closing mid-gesture cannot cancel an unrelated
+# press on whatever panel opens next.
+var _card_drag_scroll: ScrollContainer = null
+var _card_drag_start_y: float = 0.0
+var _card_drag_start_scroll: float = 0.0
+var _card_drag_exceeded: bool = false
 
 # **What number the next row on a panel gets.** `_select_current_option` reads a
 # tap back as a position in a list — `shop_items[n]`, `machine_options[n]` — so
@@ -161,7 +196,7 @@ func _ready() -> void:
 	# Menu panel
 	menu_panel = Panel.new()
 	var panel_style := StyleBoxFlat.new()
-	panel_style.bg_color = Color(0.12, 0.12, 0.18, 0.95)
+	panel_style.bg_color = PANEL_BG_COLOR
 	panel_style.border_color = Color(0.4, 0.4, 0.5, 0.8)
 	panel_style.border_width_left = 2
 	panel_style.border_width_right = 2
@@ -250,6 +285,8 @@ func open_menu(menu_name: String) -> void:
 	active_menu = menu_name
 	selected_option = 0
 	shop_refused_seed = ""
+	_card_drag_scroll = null
+	_card_drag_exceeded = false
 	dim_overlay.visible = true
 	menu_panel.visible = true
 	menu_panel.pivot_offset = menu_panel.size / 2.0
@@ -350,6 +387,8 @@ func open_window_view(at: Vector2i) -> void:
 
 func close_menu() -> void:
 	active_menu = ""
+	_card_drag_scroll = null
+	_card_drag_exceeded = false
 	dim_overlay.visible = false
 	menu_panel.visible = false
 	if workbench != null:
@@ -357,6 +396,15 @@ func close_menu() -> void:
 	if window_view != null:
 		window_view.visible = false
 	get_tree().paused = false
+	# A closed panel keeps nothing of its old rows (w98a60854171): otherwise a
+	# scrolled shop or picker, closed and opened again later on an unrelated
+	# errand, would hand `_rebuild_options`' scroll-restore a leftover position
+	# to snap back to instead of the top a fresh open should start at. A
+	# rebuild while a panel *stays open* — a purchase, a pick — is the only
+	# case that restore exists for.
+	for child in options_container.get_children():
+		options_container.remove_child(child)
+		child.queue_free()
 
 
 func is_open() -> bool:
@@ -373,6 +421,18 @@ func action_spent() -> bool:
 
 
 func _rebuild_options() -> void:
+	# A rebuild throws the whole options tree away and grows it back — a
+	# purchase does this to show the new gold total, which would otherwise snap
+	# a shelf scrolled near the bottom back to its top on every buy
+	# (w98a60854171). Read back before the clear below and restored once the
+	# new scroll exists (`_finish_scroll_stack`), `find_child` first since both
+	# scrolls now sit one level deeper, inside their own fade-carrying stack.
+	var _prev_scroll_v: Dictionary = {}
+	for scroll_name in ["shop_scroll", "inventory_scroll"]:
+		var prev: Node = options_container.find_child(scroll_name, true, false)
+		if prev is ScrollContainer:
+			_prev_scroll_v[scroll_name] = (prev as ScrollContainer).scroll_vertical
+
 	# Clear existing options
 	for child in options_container.get_children():
 		options_container.remove_child(child)
@@ -444,23 +504,24 @@ func _rebuild_options() -> void:
 			shelf.columns = SHOP_COLUMNS
 			shelf.add_theme_constant_override("h_separation", SHOP_GUTTER)
 			shelf.add_theme_constant_override("v_separation", int(OPTION_SEP))
+			# The scroll is built before the cards it will hold rather than after
+			# (w98a60854171): each card's own drag handler needs to know which
+			# scroll it feeds, and that has to exist before `_add_shop_card` can
+			# bind it.
+			var shop_scroll := _new_card_scroll("shop_scroll", shelf)
 			for item in shop_items:
-				_add_shop_card(shelf, item)
-			# The shelf sits inside a scroll rather than straight in the options
+				_add_shop_card(shelf, item, shop_scroll)
+			# The shelf sits inside that scroll rather than straight in the options
 			# column, capped to whatever is left of the screen (see
 			# `SHOP_SCROLL_MARGIN`). Read from the shelf's own measured height
 			# rather than counted rows, so the cap tracks the real card the way
 			# `_fit_panel_height` already does for every other panel here.
-			var shop_scroll := ScrollContainer.new()
-			shop_scroll.name = "shop_scroll"
-			shop_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
-			shop_scroll.add_child(shelf)
-			options_container.add_child(shop_scroll)
 			var shelf_natural_h: float = shelf.get_combined_minimum_size().y
 			var shop_scroll_max_h: float = viewport_size.y - OPTIONS_TOP - PANEL_PAD \
 				- OPTION_SEP - OPTION_H - SHOP_SCROLL_MARGIN
-			shop_scroll.custom_minimum_size = Vector2(0,
-				minf(shelf_natural_h, maxf(shop_scroll_max_h, SHOP_CARD_H)))
+			_finish_scroll_stack(shop_scroll,
+				minf(shelf_natural_h, maxf(shop_scroll_max_h, SHOP_CARD_H)),
+				float(_prev_scroll_v.get("shop_scroll", 0.0)))
 			# × — a symbol, not a word. The row is already full-width and 52px
 			# tall, so the *target* was never the problem; the glyph was — twice:
 			# U+2715 ✕ lives outside the bundled font, and the web export has no
@@ -648,9 +709,21 @@ func _rebuild_options() -> void:
 			grid.columns = INVENTORY_COLUMNS
 			grid.add_theme_constant_override("h_separation", SHOP_GUTTER)
 			grid.add_theme_constant_override("v_separation", int(OPTION_SEP))
-			options_container.add_child(grid)
+			# Same unbounded-growth risk the shelf had, and the same fix
+			# (w98a60854171): three cards of held machine types already reach
+			# past a screenful with the crops she is usually also carrying, and
+			# `MachineDefs.ORDER` only ever grows. The scroll goes in before the
+			# cards for the same reason it does on the shelf — each card's drag
+			# handler needs it to exist first.
+			var inventory_scroll := _new_card_scroll("inventory_scroll", grid)
 			for item in inventory_items:
-				_add_inventory_card(grid, item)
+				_add_inventory_card(grid, item, inventory_scroll)
+			var grid_natural_h: float = grid.get_combined_minimum_size().y
+			var inventory_scroll_max_h: float = viewport_size.y - OPTIONS_TOP - PANEL_PAD \
+				- OPTION_SEP - OPTION_H - SHOP_SCROLL_MARGIN
+			_finish_scroll_stack(inventory_scroll,
+				minf(grid_natural_h, maxf(inventory_scroll_max_h, INVENTORY_CARD)),
+				float(_prev_scroll_v.get("inventory_scroll", 0.0)))
 			# A close row even with nothing to show: unlike the shop, a bare
 			# pouch is a legitimate state here, and she still needs a way out
 			# other than the pause key.
@@ -908,12 +981,160 @@ func _add_option(text: String, enabled: bool, font_size: int = 0,
 	options_container.add_child(container)
 
 
+## A scroll for a shelf or a grid, its scrollbar hidden in favour of the
+## wordless edge fade `_finish_scroll_stack` adds (w98a60854171). Split from
+## that function because the cards a shelf holds need this scroll's reference
+## for their own drag handler before the shelf exists to be measured — see the
+## "shop" and "inventory" arms of `_rebuild_options`, the only two callers.
+func _new_card_scroll(scroll_name: String, content: Control) -> ScrollContainer:
+	var scroll := ScrollContainer.new()
+	scroll.name = scroll_name
+	scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	scroll.vertical_scroll_mode = ScrollContainer.SCROLL_MODE_SHOW_NEVER
+	scroll.add_child(content)
+	return scroll
+
+
+## The second half of building a shop or picker scroll, once its cards exist
+## and its natural height can be measured. Gives `scroll` its capped window,
+## its place in `options_container`, and a wordless fade at whichever edge
+## still has something cut off, in place of the thin scrollbar the HUD rule
+## rejects (w98a60854171). `prev_scroll_v` restores the position a rebuild — a
+## purchase, a pick — would otherwise reset to the top; set deferred, since the
+## real maximum this clamps against is not known until the layout this same
+## call queues has actually run.
+func _finish_scroll_stack(scroll: ScrollContainer, window_h: float, prev_scroll_v: float) -> void:
+	scroll.set_anchors_preset(Control.PRESET_FULL_RECT)
+	# Set on the scroll itself as well as on the stack below: the stack is what
+	# a plain (non-Container) `Control` actually needs it for, but callers and
+	# tests that measure the *window* still reasonably look at the scroll —
+	# same number either way, since the scroll fills the stack exactly.
+	scroll.custom_minimum_size = Vector2(0, window_h)
+	var stack := Control.new()
+	stack.name = scroll.name.replace("_scroll", "_stack")
+	stack.custom_minimum_size = Vector2(0, window_h)
+	stack.add_child(scroll)
+
+	var fade_top := _make_edge_fade(true)
+	var fade_bottom := _make_edge_fade(false)
+	stack.add_child(fade_top)
+	stack.add_child(fade_bottom)
+	options_container.add_child(stack)
+
+	scroll.set_deferred("scroll_vertical", int(prev_scroll_v))
+	scroll.get_v_scroll_bar().value_changed.connect(
+		func(_v): _refresh_scroll_fade(scroll, fade_top, fade_bottom))
+	scroll.get_v_scroll_bar().changed.connect(
+		func(): _refresh_scroll_fade(scroll, fade_top, fade_bottom))
+	call_deferred("_refresh_scroll_fade", scroll, fade_top, fade_bottom)
+
+
+## One edge of a scroll's wordless "there is more here" cue: a fade from the
+## panel's own background to clear, the way a photo cropped at a table's edge
+## reads as continuing past it, needing no glyph to say so (w98a60854171,
+## S-7). Starts hidden; `_refresh_scroll_fade` is what turns it on.
+func _make_edge_fade(top: bool) -> TextureRect:
+	var rect := TextureRect.new()
+	rect.name = "scroll_fade_top" if top else "scroll_fade_bottom"
+	rect.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	rect.stretch_mode = TextureRect.STRETCH_SCALE
+	rect.anchor_left = 0.0
+	rect.anchor_right = 1.0
+	rect.offset_left = 0.0
+	rect.offset_right = 0.0
+	if top:
+		rect.anchor_top = 0.0
+		rect.anchor_bottom = 0.0
+		rect.offset_top = 0.0
+		rect.offset_bottom = SCROLL_FADE_H
+	else:
+		rect.anchor_top = 1.0
+		rect.anchor_bottom = 1.0
+		rect.offset_top = -SCROLL_FADE_H
+		rect.offset_bottom = 0.0
+	var clear := Color(PANEL_BG_COLOR.r, PANEL_BG_COLOR.g, PANEL_BG_COLOR.b, 0.0)
+	var grad := Gradient.new()
+	grad.colors = PackedColorArray([PANEL_BG_COLOR, clear] if top else [clear, PANEL_BG_COLOR])
+	var tex := GradientTexture2D.new()
+	tex.gradient = grad
+	tex.width = 4
+	tex.height = 32
+	tex.fill_to = Vector2(0, 1)
+	rect.texture = tex
+	rect.visible = false
+	return rect
+
+
+## Shows the fade at whichever edge still has something cut off by it, hides
+## it once scrolling reaches that edge — the whole reason it exists
+## (w98a60854171). Reads the scroll's own bar rather than caching a copy, so a
+## shelf that grew or shrank on this rebuild cannot leave the cue stale.
+func _refresh_scroll_fade(scroll: ScrollContainer, top: TextureRect, bottom: TextureRect) -> void:
+	var vbar := scroll.get_v_scroll_bar()
+	var max_scroll: float = maxf(vbar.max_value - vbar.page, 0.0)
+	top.visible = scroll.scroll_vertical > 0.5
+	bottom.visible = max_scroll > 0.5 and scroll.scroll_vertical < max_scroll - 0.5
+
+
+## A card's own drag beats its own click (w98a60854171). Its Button covers the
+## card edge to edge and, once pressed, captures every motion event until
+## release regardless of where the pointer goes — same as any button dragged
+## off and back onto — so telling a scroll from a tap has to watch that same
+## stream rather than stand beside it. `scroll` is the window this card's
+## shelf sits in, passed in by whoever built the card rather than looked up,
+## since the shelf that raised it is the only thing that knows for certain.
+##
+## Handles both the raw touch events Android delivers and the mouse events
+## Godot emulates from them for every Control's own input (Scenario O found
+## that the emulation is what a Button actually sees, and it cannot be turned
+## off), plus a real mouse for desktop play — one drag deadzone for all three,
+## since a card cannot tell which one dragged it.
+func _on_card_drag_input(event: InputEvent, scroll: ScrollContainer) -> void:
+	var press_changed: bool = false
+	var now_pressed: bool = false
+	var pos_y: float = 0.0
+	var is_motion: bool = false
+	if event is InputEventMouseButton and event.button_index == MOUSE_BUTTON_LEFT:
+		press_changed = true
+		now_pressed = event.pressed
+		pos_y = event.position.y
+	elif event is InputEventScreenTouch:
+		press_changed = true
+		now_pressed = event.pressed
+		pos_y = event.position.y
+	elif event is InputEventMouseMotion:
+		is_motion = true
+		pos_y = event.position.y
+	elif event is InputEventScreenDrag:
+		is_motion = true
+		pos_y = event.position.y
+	else:
+		return
+
+	if press_changed and now_pressed:
+		_card_drag_scroll = scroll
+		_card_drag_start_y = pos_y
+		_card_drag_start_scroll = scroll.scroll_vertical
+		_card_drag_exceeded = false
+	elif press_changed and not now_pressed:
+		_card_drag_scroll = null
+	elif is_motion and _card_drag_scroll == scroll:
+		var travelled: float = pos_y - _card_drag_start_y
+		if not _card_drag_exceeded and absf(travelled) >= CARD_DRAG_DEADZONE:
+			_card_drag_exceeded = true
+		if _card_drag_exceeded:
+			var vbar := scroll.get_v_scroll_bar()
+			var max_scroll: float = maxf(vbar.max_value - vbar.page, 0.0)
+			scroll.scroll_vertical = int(
+				clampf(_card_drag_start_scroll - travelled, 0.0, max_scroll))
+
+
 ## One thing on the shelf: its picture, its price, and how many she already has.
 ##
 ## `into` is the shelf it is added to: the cards no longer sit directly in
 ## `options_container`, and the number a card comes back with is its place in
 ## `shop_items`, taken from `next_option` like every other row on every panel.
-func _add_shop_card(into: Control, item: Dictionary) -> void:
+func _add_shop_card(into: Control, item: Dictionary, scroll: ScrollContainer = null) -> void:
 	var idx := next_option
 	next_option += 1
 	var container = PanelContainer.new()
@@ -1029,6 +1250,10 @@ func _add_shop_card(into: Control, item: Dictionary) -> void:
 	
 	btn.pressed.connect(_on_shop_card_pressed.bind(idx, container))
 	btn.focus_entered.connect(func(): selected_option = idx)
+	# `scroll` is null for the odd throwaway card built to inspect a picture
+	# rather than to sit on a real shelf (Scenario AZ) — nothing to feed then.
+	if scroll != null:
+		btn.gui_input.connect(_on_card_drag_input.bind(scroll))
 	into.add_child(container)
 
 ## Every item she can make active by tapping its picture (Q-119/S-23): the
@@ -1066,7 +1291,7 @@ func _build_inventory_items() -> void:
 ## carries, and its exact count in digits underneath. `×` rather than a bare
 ## numeral — the shop shelf's own vocabulary (`_add_shop_card`'s owned row) —
 ## so a reader meets one symbol for "this many" everywhere it appears.
-func _add_inventory_card(into: Control, item: Dictionary) -> void:
+func _add_inventory_card(into: Control, item: Dictionary, scroll: ScrollContainer = null) -> void:
 	var idx := next_option
 	next_option += 1
 	var container := PanelContainer.new()
@@ -1104,10 +1329,20 @@ func _add_inventory_card(into: Control, item: Dictionary) -> void:
 	container.add_child(btn)
 	btn.pressed.connect(_on_option_pressed.bind(idx))
 	btn.focus_entered.connect(func(): selected_option = idx)
+	if scroll != null:
+		btn.gui_input.connect(_on_card_drag_input.bind(scroll))
 	into.add_child(container)
 
 
 func _on_shop_card_pressed(index: int, container: Control) -> void:
+	# A drag that just scrolled the shelf still ends with the Button's own
+	# click, because scrolling by exactly the distance dragged leaves the
+	# finger over the same relative point on the card the whole time
+	# (w98a60854171, see `CARD_DRAG_DEADZONE`). This is the one place that
+	# click actually lands, so it is the one place that catches it.
+	if _card_drag_exceeded:
+		_card_drag_exceeded = false
+		return
 	selected_option = index
 	container.pivot_offset = container.size / 2.0
 	
@@ -1121,6 +1356,12 @@ func _on_shop_card_pressed(index: int, container: Control) -> void:
 
 
 func _on_option_pressed(index: int) -> void:
+	# Shared by every row on every panel, but the drag-cancels-the-click case
+	# (see `_on_shop_card_pressed`) only ever arises on the picker's cards,
+	# which are the only other rows a scroll's drag handler feeds.
+	if _card_drag_exceeded:
+		_card_drag_exceeded = false
+		return
 	selected_option = index
 	_select_current_option()
 

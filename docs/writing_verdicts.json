@@ -3958,6 +3958,12 @@
    "verdict": "decode",
    "why": "“Candidate” and “landed” are internal terms for a proposed version that has not been merged."
   },
+  "ad29d0abaa5786c69689": {
+   "instead": "without buying the card where the drag begins",
+   "quote": "instead of buying the card it starts on",
+   "verdict": "second-look",
+   "why": "The reader has to pause to work out what “it” refers to and how the drag relates to the card."
+  },
   "ad6e0524e7974624f3c8": {
    "verdict": "ok"
   },

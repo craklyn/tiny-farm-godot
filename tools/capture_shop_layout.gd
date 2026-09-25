@@ -60,7 +60,10 @@ func _ready() -> void:
 	main.trigger_action("open_shop")
 	for i in 20:
 		await get_tree().process_frame
-	var shop_scroll: Control = main.menus.options_container.get_node_or_null("shop_scroll")
+	# `find_child`, not `get_node_or_null`: the scroll now sits one level
+	# deeper, inside the stack that also carries its wordless edge fade
+	# (w98a60854171).
+	var shop_scroll: Control = main.menus.options_container.find_child("shop_scroll", true, false)
 	if shop_scroll != null:
 		shop_scroll.scroll_vertical = 1000000
 		for i in 5:
