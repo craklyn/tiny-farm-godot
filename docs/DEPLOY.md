@@ -41,7 +41,12 @@ writes `verification.sha256` beside the session, so later deploys can recognize 
 replay and autosave on the tablet without checking them against a newer build. Commit
 the session and receipt before the next deploy. A session stamped `-dirty` cannot be
 verified against an exact recording build and requires manual triage before another
-install.
+install. In practice (2026-09-25): check out the recording commit's source (the part
+before `-dirty`) in a second worktree and run `verify_replay.gd -- <session folder>`
+there. A build from before 2026-09-24 ignores that folder argument and silently checks
+this machine's own save instead, so copy the two-line argument handling from today's
+`tools/verify_replay.gd` into it first. A `MATCH` is the triage; write the receipt as the
+script computes it (build id, then `sha256sum` of the replay and autosave) and commit it.
 
 ### Without a terminal: the button in HQ
 
@@ -74,7 +79,10 @@ laptop's.
   along): `android/build/` (the Android build template, 1.2 GB, installed from the
   editor), `debug.keystore` (the preset signs with `res://debug.keystore`), and an empty
   `build/` folder (the export refuses a missing target folder). Copy the first two in and
-  `mkdir build`; the script does the rest.
+  `mkdir build`; the script does the rest. Do not run `godot --import` there first: it
+  writes untracked `.import` and `.uid` sidecars, and the deploy refuses the checkout as
+  dirty. If you already did, `git clean -fd` removes them and keeps the gitignored three
+  (2026-09-25).
 - **Wireless debugging switches off when the tablet reboots**, and the port changes every
   time it is toggled. Re-pair with the code from the tablet's screen.
 - **The script pulls the device's session before installing, and that is not optional
