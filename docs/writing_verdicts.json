@@ -2089,6 +2089,12 @@
   "5d41751c92a1ff99d19a": {
    "verdict": "ok"
   },
+  "5d6ad5b86815cd20553e": {
+   "instead": "Save the player's tablet session from this morning's build, which reached the ten-crop pouch limit",
+   "quote": "her",
+   "verdict": "second-look",
+   "why": "The sentence does not say who “her” is, so the reader has to infer that it means the player."
+  },
   "5db489ef4d43e51babf8": {
    "verdict": "ok"
   },
@@ -4199,6 +4205,9 @@
    "verdict": "ok"
   },
   "b9680ed1b885d6ff12b9": {
+   "verdict": "ok"
+  },
+  "b96c8904bc97c5c06147": {
    "verdict": "ok"
   },
   "b98626455d516005a7a7": {
