@@ -4,11 +4,13 @@
 import json
 import os
 from pathlib import Path
+from queue import Empty, Queue
 import re
-import select
 import subprocess
 import sys
 import tempfile
+import threading
+import time
 import unittest
 from urllib.request import urlopen
 
@@ -67,6 +69,10 @@ class ActivationRoots(unittest.TestCase):
             "ask": "Read the fixture", "first_action": "Check the fixture",
             "created_ts": 1, "created": "2026-09-22T00:00:00", "_revision": 7,
         }))
+        # The startup consistency check reads every project and pillar, so a
+        # data root without these fails it on every start.
+        (self.data / "projects").mkdir()
+        (self.data / "pillars.json").write_text(json.dumps({"pillars": []}))
         (self.data / "patches").mkdir()
         (self.data / "runs" / "workers").mkdir(parents=True)
         (self.data / "runs" / "transactions").mkdir()
@@ -116,21 +122,36 @@ class ActivationRoots(unittest.TestCase):
                                 env=self.environment(), stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT, text=True, bufsize=1)
         self.addCleanup(self.stop, proc)
+        # A thread reads the output. Waiting on the pipe with select() and then
+        # calling readline() lost the address line whenever the server wrote two
+        # lines before the first read: readline() pulled both into Python's
+        # buffer, the pipe went quiet, and select() waited out the whole budget
+        # on a server that had already started.
+        lines = Queue()
+
+        def pump():
+            for line in proc.stdout:
+                lines.put(line)
+            lines.put(None)     # the server exited
+
+        threading.Thread(target=pump, daemon=True).start()
         port = None
         output = []
-        for _ in range(30):
-            ready, _, _ = select.select([proc.stdout], [], [], 1)
-            if not ready:
-                continue
-            line = proc.stdout.readline()
+        deadline = time.monotonic() + 30
+        while port is None and time.monotonic() < deadline:
+            try:
+                line = lines.get(timeout=max(0.0, deadline - time.monotonic()))
+            except Empty:
+                break
+            if line is None:
+                break
             output.append(line)
             match = re.search(r"http://localhost:(\d+)", line)
             if match:
                 port = int(match.group(1))
-                break
-            if proc.poll() is not None:
-                break
         self.assertIsNotNone(port, "HQ canary did not start: " + "".join(output))
+        self.assertFalse([line for line in output if line.startswith("[consistency]")],
+                         "the fixture data root fails HQ's startup check: " + "".join(output))
 
         def get(path):
             with urlopen(f"http://127.0.0.1:{port}{path}", timeout=10) as response:
