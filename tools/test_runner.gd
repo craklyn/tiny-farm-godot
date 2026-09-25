@@ -150,6 +150,7 @@ func _run_scenarios() -> void:
 	await _scenario_bd_the_shop_shelf_scrolls()
 	await _scenario_be_a_finger_drag_scrolls_not_buys()
 	await _scenario_bf_the_inventory_picker_also_caps()
+	await _scenario_bh_crop_count_chips_track_the_pouch()
 	await _scenario_basket_chip_pulses_at_cap()
 	await _scenario_bg_the_mark_three_is_given_its_squares()
 
@@ -7917,17 +7918,112 @@ func _scenario_bf_the_inventory_picker_also_caps() -> void:
 	GameState.pouch = original_pouch
 
 
+func _scenario_bh_crop_count_chips_track_the_pouch() -> void:
+	# Q-123 (b), ruled 2026-09-25 (w67d3bedbdc6): the bottom bar's old
+	# "Wh:5  To:0" text is retired for a picture per plantable crop with its
+	# digit count beside it — the same pictures `ui/menus.gd`'s inventory
+	# pop-up draws, so the bar and the pop-up can never quietly disagree about
+	# what a crop looks like. Proven through a real harvest and a real plant,
+	# not a direct write to `GameState.pouch`: the point is that the bar she
+	# is actually looking at tracks the pouch, not that the pouch itself does.
+	print("\n--- Scenario BH: the bar's crop chips are pictures, and track a real harvest and plant ---")
+
+	var hud = main_scene.hud
+	main_scene.menus.close_menu()
+
+	# --- wordless: only digits live in this part of the bar -------------------
+	var labels: Array = []
+	_collect_labels(hud.crop_counts_label, labels)
+	_assert(labels.size() == hud.crop_count_icons.size(),
+		"one digit label per plantable crop chip (%d)" % labels.size())
+	var worded: Array = []
+	for lbl in labels:
+		if _has_letters(String(lbl.text)):
+			worded.append(String(lbl.text))
+	_assert(worded.is_empty(),
+		"the crop-count chips carry no letters%s" % ("" if worded.is_empty() else " — found %s" % str(worded)))
+
+	# --- the same pictures the picker uses -------------------------------------
+	for crop_name in hud.crop_count_icons:
+		var def: Dictionary = CropDefs.TYPES[crop_name]
+		var expected: AtlasTexture = main_scene.menus.crop_icon(int(def.icon_col))
+		var icon: AtlasTexture = hud.crop_count_icons[crop_name].texture
+		_assert(icon != null and icon.atlas == expected.atlas and icon.region == expected.region,
+			"%s's bar chip uses the same picture the picker draws" % crop_name)
+
+	# --- zero is dimmed, not hidden --------------------------------------------
+	GameState.pouch["wheat"] = 0
+	GameState.pouch["tomato"] = 0
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_assert(hud.crop_count_digits["wheat"].text == "0" and hud.crop_counts_label.visible,
+		"an empty crop still shows its chip, reading zero rather than vanishing")
+	_assert(hud.crop_count_icons["wheat"].modulate.r < 0.9,
+		"and it is drawn dim — the same 'not there' the basket and can chips already use")
+
+	# --- a real harvest raises the digit, a real plant lowers it ---------------
+	var harvest_target := Vector2i(7, 10)
+	_stage_tile(harvest_target.x, harvest_target.y, "ready", "wheat")
+	farm.sim.get_tile(harvest_target.x, harvest_target.y).growth_stage = \
+		CropDefs.TYPES["wheat"]["days_to_grow"]
+	var plant_target := Vector2i(8, 10)
+	_stage_tile(plant_target.x, plant_target.y, "tilled")
+	GameState.selected_tool = 0
+	GameState.set_energy(GameState.max_energy)
+	player.pos = Vector2(7.5 * 16.0, 11.5 * 16.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+
+	InputManager.click_tile = harvest_target
+	InputManager.has_click = true
+	var picked := await _wait_until(
+		func(): return int(GameState.pouch.get("wheat", 0)) == 3, 240)
+	_assert(picked, "a real harvest tap lands three units of wheat")
+	await _wait_for_action()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_assert(hud.crop_count_digits["wheat"].text == "3",
+		"the bar's own wheat chip reads the harvest back, not a separate number")
+	_assert(hud.crop_count_icons["wheat"].modulate.r > 0.9 and hud.crop_count_icons["wheat"].modulate.a > 0.9,
+		"and wheat she is carrying draws bright, not dim")
+
+	GameState.selected_seed_type = "wheat"
+	player.pos = Vector2(8.5 * 16.0, 11.5 * 16.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	InputManager.click_tile = plant_target
+	InputManager.has_click = true
+	var planted := await _wait_until(
+		func(): return int(GameState.pouch.get("wheat", 0)) == 2, 240)
+	_assert(planted, "a real plant tap spends one unit through the same gateway")
+	await _wait_for_action()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_assert(hud.crop_count_digits["wheat"].text == "2",
+		"and the chip drops back by the same one unit the plant spent")
+
+
 func _scenario_basket_chip_pulses_at_cap() -> void:
 	# docs/design/11-ux-ui.md, "The storage-full pulse" (spec revised 2026-09-25,
 	# e6b4ba3, supersedes we69b8f43065's 2026-09-04 result). A per-species cap
 	# (S-18/S-19/S-20) means there is no single "the basket is full" number left
-	# to size a pip row to, so a second signal lives on the chip itself: it
-	# pulses the teaching ring's own warm gold (main.gd:1543-1554) whenever any
-	# one carried species sits at its own cap, and stops the moment none does.
-	# Exercised through a real harvest and a real plant, not the gateway alone —
-	# a passing unit test on the verb says nothing about whether the HUD she is
-	# actually looking at answers the same way.
-	print("\n--- Scenario: the basket chip pulses gold when any carried crop is full ---")
+	# to size a pip row to, so a second signal fires whenever any one carried
+	# species sits at its own cap, and stops the moment none does.
+	#
+	# Moved 2026-09-25 (Q-123 (b), w67d3bedbdc6): the shipped bar now draws a
+	# picture per crop (`ui/hud.gd`'s `crop_counts_label`), so it is *that*
+	# crop's own chip that pulses the teaching ring's warm gold
+	# (main.gd:1543-1554) — a specific "you are full of this" rather than a
+	# shared basket badge. `basket_chip` keeps the pulse only under the
+	# still-open picture-basket treatment (`_scenario_ab_the_stations_present_themselves`
+	# covers that half); this scenario is the shipped default, so it now reads
+	# `crop_chip_pulsing` instead. Exercised through a real harvest and a real
+	# plant, not the gateway alone — a passing unit test on the verb says
+	# nothing about whether the HUD she is actually looking at answers the
+	# same way.
+	print("\n--- Scenario: a crop's own chip pulses gold when it is carried at its cap ---")
 
 	var hud = main_scene.hud
 	var wheat_cap: int = farm.sim.carry_cap("wheat")
@@ -7948,7 +8044,8 @@ func _scenario_basket_chip_pulses_at_cap() -> void:
 	player.pending_action = {}
 	await get_tree().process_frame
 	await get_tree().process_frame
-	_assert(not hud.basket_cap_pulse and not hud.basket_chip.visible,
+	_assert(not hud.basket_cap_pulse and not hud.crop_chip_pulsing.get("wheat", false)
+			and not hud.basket_chip.visible,
 		"starts off: nothing carried is at its own cap yet")
 
 	var mark: int = farm.trace.entries.size()
@@ -7965,8 +8062,11 @@ func _scenario_basket_chip_pulses_at_cap() -> void:
 	await _wait_until(func(): return not player.is_acting, 120)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	_assert(hud.basket_cap_pulse and hud.basket_chip.visible,
-		"wheat sitting at its own cap turns the chip's pulse on and shows the chip")
+	_assert(hud.basket_cap_pulse and hud.crop_chip_pulsing.get("wheat", false)
+			and not hud.crop_chip_pulsing.get("tomato", false),
+		"wheat sitting at its own cap turns wheat's own chip's pulse on, tomato's not")
+	_assert(not hud.basket_chip.visible,
+		"and the shared basket badge stays off — the shipped bar has its own picture for it now")
 
 	# Below cap again through a real plant, not a direct write — one unit spent
 	# the same way the harvest above added three.
@@ -7982,7 +8082,7 @@ func _scenario_basket_chip_pulses_at_cap() -> void:
 	_assert(planted, "a real plant tap spends one unit through the same gateway")
 	await get_tree().process_frame
 	await get_tree().process_frame
-	_assert(not hud.basket_cap_pulse,
+	_assert(not hud.basket_cap_pulse and not hud.crop_chip_pulsing.get("wheat", false),
 		"one unit under its cap and the pulse stops — it is not a one-time teaching beat")
 
 	# A second species, alone at its own cap, is just as much "something is
@@ -7990,14 +8090,17 @@ func _scenario_basket_chip_pulses_at_cap() -> void:
 	GameState.pouch["tomato"] = tomato_cap
 	await get_tree().process_frame
 	await get_tree().process_frame
-	_assert(hud.basket_cap_pulse,
-		"tomato alone at its cap turns the pulse on too, wheat now under its own")
+	_assert(hud.basket_cap_pulse and hud.crop_chip_pulsing.get("tomato", false)
+			and not hud.crop_chip_pulsing.get("wheat", false),
+		"tomato alone at its cap turns tomato's own chip on, wheat now under its own")
 
 	GameState.pouch["wheat"] = 5
 	GameState.pouch["tomato"] = 0
 	await get_tree().process_frame
 	await get_tree().process_frame
-	_assert(not hud.basket_cap_pulse, "and with neither at its cap, the pulse is off again")
+	_assert(not hud.basket_cap_pulse and not hud.crop_chip_pulsing.get("wheat", false)
+			and not hud.crop_chip_pulsing.get("tomato", false),
+		"and with neither at its cap, both chips' pulses are off again")
 
 
 # --- Scenario BG: she gives a Mark III its squares, with her finger (Q-124) -----

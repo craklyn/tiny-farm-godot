@@ -561,6 +561,20 @@ method tried (NEAREST or k-centroid). The shipped `fox.png` is hand-plotted at
 uses for the ants. Full account and an honest self-assessment of the result in
 `CREDITS.md`. Card: `hq/data/decisions/Q-122.json`.
 
+### S-28. The bottom bar's crop counts are pictures, matching the inventory pop-up
+**Ruled 2026-09-25 (Q-123, option b).** The bar's "Wh:5  To:0" text is retired
+for a small picture of each plantable crop with its digit count beside it,
+drawn from the same sprite sheet `ui/menus.gd`'s inventory pop-up uses
+(`Menus.crop_icon`), so the bar and the pop-up can never show two different
+pictures for one crop. A crop at zero stays visible, drawn dim rather than
+hidden, so "how much of this do I have" still needs no tap. The per-species
+carry-cap glow (S-18, spec in `design/11-ux-ui.md`) moves from the shared
+basket badge onto the specific crop's own chip under this bar, since a
+particular crop's icon lighting up says "you are full of *this*" more clearly
+than one shared basket ever could; the badge keeps its pulse only under the
+still-open picture-basket Look Lab treatment, which has no per-species icon to
+light instead. Built in `ui/hud.gd` (w67d3bedbdc6); detail in `design/11-ux-ui.md`.
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported

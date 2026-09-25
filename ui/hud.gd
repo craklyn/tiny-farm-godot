@@ -4,6 +4,18 @@ extends CanvasLayer
 
 const AnimSheet := preload("res://effects/anim_sheet.gd")
 
+# `Menus.crop_icon()` is a static function, not an autoload — this is how every
+# non-`ui/menus.gd` file that wants the same picture reaches it. Q-123 (b) asks
+# the bottom bar's crop chips for exactly the picker's own icons; preloading the
+# script here means the two can never quietly drift onto separate sprite sheets.
+const MenusScript := preload("res://ui/menus.gd")
+
+# The pouch chips beside the held-item card (Q-123 (b)): a 16x16 sheet icon
+# drawn a touch larger for a fat-thumb screen, and the gap between chips small
+# enough that several crops still fit the centre of a 32px bar.
+const CROP_ICON_SIZE := 18.0
+const CROP_CHIP_GAP := 8.0
+
 # Tool icons
 var tool_icons_texture: Texture2D
 var tool_icon_regions: Dictionary = {}
@@ -96,7 +108,22 @@ var bed_button_icon: TextureRect
 var tool_icon_rect: TextureRect
 var tool_name_label: Label
 var seed_info_label: Label
-var crop_counts_label: Label
+
+# The pouch, one chip per plantable crop (Q-123 (b), ruled 2026-09-25): a
+# small picture — the same one `ui/menus.gd`'s inventory pop-up draws, so the
+# bar and the pop-up never disagree about what a crop looks like — followed by
+# its digit count. Replaces the old two-letter abbreviation (`crop_counts_label`
+# used to be a `Label` reading "Wh:5  To:0"); the name stays so the many
+# scenarios that check its `visible` need no change. Built once from
+# `CropDefs.ORDER` (`is_plantable`), never a hard-coded wheat/tomato pair, so a
+# crop the catalogue gains later gets a chip for free.
+var crop_counts_label: Control
+var crop_count_icons: Dictionary = {}   # crop_name -> TextureRect
+var crop_count_digits: Dictionary = {}  # crop_name -> Label
+# True while a crop's own chip is pulsing gold because that species sits at its
+# carry cap (see `_crop_at_cap`). Public for the same reason `basket_cap_pulse`
+# is: a test reads the fact directly rather than decoding a colour.
+var crop_chip_pulsing: Dictionary = {}  # crop_name -> bool
 var water_label: Label
 var seed_pill: Panel
 var seed_pill_label: Label
@@ -330,11 +357,38 @@ func _build_ui() -> void:
 	seed_info_label.add_theme_color_override("font_color", Color(0.6, 0.9, 0.4))
 	bottom_bar.add_child(seed_info_label)
 
-	# Harvested-crop counts (seed counts live on the seed pill / seed info label)
-	crop_counts_label = Label.new()
-	crop_counts_label.position = Vector2(viewport_size.x / 2 - 80, 6)
-	crop_counts_label.add_theme_color_override("font_color", Color(0.8, 0.9, 0.7))
+	# Harvested-crop counts (seed counts live on the seed pill / seed info label).
+	# Q-123 (b), ruled 2026-09-25: a picture per plantable crop, its digit count
+	# beside it — the picker's own icons (`MenusScript.crop_icon`), not the old
+	# "Wh:5  To:0" abbreviation, so the bar and the pop-up read as one picture
+	# set. Centred where the text label sat; the row shrinks to whatever
+	# `CropDefs.ORDER` actually holds, so it is never sized for exactly two.
+	crop_counts_label = HBoxContainer.new()
+	crop_counts_label.position = Vector2(viewport_size.x / 2 - 80, 3)
+	crop_counts_label.add_theme_constant_override("separation", CROP_CHIP_GAP)
 	bottom_bar.add_child(crop_counts_label)
+	crop_count_icons.clear()
+	crop_count_digits.clear()
+	for crop_name in CropDefs.ORDER:
+		if not CropDefs.is_plantable(crop_name):
+			continue
+		var crop_chip := HBoxContainer.new()
+		crop_chip.add_theme_constant_override("separation", 2)
+		crop_counts_label.add_child(crop_chip)
+
+		var crop_icon_rect := TextureRect.new()
+		crop_icon_rect.custom_minimum_size = Vector2(CROP_ICON_SIZE, CROP_ICON_SIZE)
+		crop_icon_rect.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		crop_icon_rect.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		var crop_def: Dictionary = CropDefs.TYPES[crop_name]
+		crop_icon_rect.texture = MenusScript.crop_icon(int(crop_def.icon_col))
+		crop_chip.add_child(crop_icon_rect)
+		crop_count_icons[crop_name] = crop_icon_rect
+
+		var crop_digit_label := Label.new()
+		crop_digit_label.add_theme_color_override("font_color", Color(0.8, 0.9, 0.7))
+		crop_chip.add_child(crop_digit_label)
+		crop_count_digits[crop_name] = crop_digit_label
 
 	# Watering can
 	water_label = Label.new()
@@ -849,13 +903,20 @@ func _update_state_chips() -> void:
 	if crop_counts_label != null:
 		crop_counts_label.visible = not full_b
 
-	# The storage-full pulse is independent of which "satisfied" treatment is
-	# live (docs/design/11-ux-ui.md): it lives on this same chip under both the
-	# shipped default bar and the draft picture-chip one, so it does not wait on
-	# that ruling. Durable, unlike the bin's one-time teaching ring — it fires
-	# every time any one species reaches its own cap, for as long as it stays there.
+	# The storage-full pulse (docs/design/11-ux-ui.md). `basket_cap_pulse` stays
+	# the general "is anything stuck" fact regardless of treatment — durable,
+	# unlike the bin's one-time teaching ring, firing for as long as any one
+	# species sits at its own cap.
+	#
+	# Q-123 (b), 2026-09-25: now that the shipped bar draws a picture per crop
+	# (`crop_counts_label`, built in `_ready`/`_update_hud`), that per-species
+	# chip is the one that glows — clearer than a shared basket badge, per
+	# Sam's spec. So under the shipped bar (`full_b` false) this badge no
+	# longer also lights up for the same fact; it keeps its pulse only under
+	# the still-open picture-basket treatment, which has no per-species icon
+	# of its own to light instead.
 	basket_cap_pulse = _any_species_at_cap()
-	basket_chip.visible = full_b or basket_cap_pulse
+	basket_chip.visible = full_b
 	# What the bin would take (S-18/S-19/S-20), so the chip, the pip out in the yard and
 	# the bin's own answer all count the same thing.
 	var basket: int = GameState.sellable_total()
@@ -879,20 +940,35 @@ func _update_state_chips() -> void:
 	can_chip.modulate = Color(1, 1, 1, 1) if frac > 0.0 else Color(0.42, 0.44, 0.48, 0.9)
 
 
-# Is any one carried plantable species sitting at its own carry cap right now?
-# Reads the cap live off the sim (`SimWorld.carry_cap`, S-18) rather than a HUD
-# constant, so a future silo that raises one species' cap keeps this true
-# unmodified — the trap `docs/design/11-ux-ui.md` names for `ON_PERSON_CAP`.
-# Presentation only: reads GameState and the sim, writes neither.
-func _any_species_at_cap() -> bool:
+# The live `SimWorld`, if the HUD is actually mounted on one right now — the
+# one place both the basket-wide pulse and the per-crop chips (`_update_hud`)
+# reach the sim from, so neither can drift onto a different notion of "the
+# farm" than the other.
+func _current_sim() -> SimWorld:
 	var main: Node = main_node
 	if main == null or not is_instance_valid(main):
 		main = get_tree().get_first_node_in_group("Main")
 	if main == null or main.farm == null or main.farm.sim == null:
+		return null
+	return main.farm.sim
+
+
+# Is this one carried plantable species sitting at its own carry cap right now?
+# Reads the cap live off the sim (`SimWorld.carry_cap`, S-18) rather than a HUD
+# constant, so a future silo that raises one species' cap keeps this true
+# unmodified — the trap `docs/design/11-ux-ui.md` names for `ON_PERSON_CAP`.
+# Presentation only: reads GameState and the sim, writes neither.
+func _crop_at_cap(crop_name: String, sim: SimWorld) -> bool:
+	return int(GameState.pouch.get(crop_name, 0)) >= sim.carry_cap(crop_name)
+
+
+# Is any one carried plantable species sitting at its own carry cap right now?
+func _any_species_at_cap() -> bool:
+	var sim := _current_sim()
+	if sim == null:
 		return false
-	var sim: SimWorld = main.farm.sim
 	for crop_name in GameState.pouch:
-		if int(GameState.pouch[crop_name]) >= sim.carry_cap(String(crop_name)):
+		if _crop_at_cap(String(crop_name), sim):
 			return true
 	return false
 
@@ -1079,17 +1155,37 @@ func _update_hud() -> void:
 		else:
 			seed_info_label.visible = false
 
-	# What is in the pouch — one number per crop since S-18/S-19/S-20 merged the seed
+	# What is in the pouch — one chip per crop since S-18/S-19/S-20 merged the seed
 	# pouch and the crop basket, because a harvested wheat and a wheat seed are
-	# now the same thing.
-	var parts: PackedStringArray = []
-	for crop_name in CropDefs.ORDER:
-		if not CropDefs.is_plantable(crop_name):
-			continue
+	# now the same thing. Q-123 (b): the digit sits beside that crop's own
+	# picture rather than a two-letter abbreviation.
+	#
+	# Zero is drawn dimmed, not hidden. The bar's whole point is answering "how
+	# much of this do I have" without a tap, and a chip that disappeared at zero
+	# would turn "none" back into a question the picker has to answer — the
+	# opposite of what replacing the text bought her. Dimming instead reuses the
+	# "darkened means not there" reading the basket and can chips already taught
+	# (Q-46(a)), rather than inventing a second way to say the same thing.
+	#
+	# A chip glows the same warm gold the basket badge used to (moved here per
+	# Sam's spec, docs/design/11-ux-ui.md, since a specific crop's own icon says
+	# "you are full of *this*" more clearly than a shared basket ever could) the
+	# moment that species sits at its own carry cap.
+	var sim := _current_sim()
+	for crop_name in crop_count_icons:
 		var count: int = GameState.pouch.get(crop_name, 0)
-		var abbrev: String = tr(String(CropDefs.TYPES[crop_name].name)).substr(0, 2)
-		parts.append("%s:%d" % [abbrev, count])
-	crop_counts_label.text = "  ".join(parts)
+		crop_count_digits[crop_name].text = "%d" % count
+		var icon: TextureRect = crop_count_icons[crop_name]
+		var at_cap: bool = sim != null and _crop_at_cap(String(crop_name), sim)
+		crop_chip_pulsing[crop_name] = at_cap
+		if at_cap:
+			var t := Time.get_ticks_msec() / 1000.0
+			var pulse := 0.5 + 0.5 * sin(t * 4.0)
+			icon.modulate = Color(1, 1, 1, 1).lerp(CAP_PULSE_COLOR, 0.4 + 0.4 * pulse)
+		elif count <= 0:
+			icon.modulate = Color(0.42, 0.44, 0.48, 0.9)
+		else:
+			icon.modulate = Color(1, 1, 1, 1)
 
 	# Active Seed Pill update. The icon is the crop's own shop sprite rather than
 	# an emoji looked up by name: the emoji table knew wheat and tomato and fell

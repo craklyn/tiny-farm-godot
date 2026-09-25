@@ -148,9 +148,9 @@ held-item card still cycles, so the pop-up is a second way to choose, not a
 replacement. Selection stays UI state the router reads when she taps the farm, as
 cycling already was; it is never dispatched through the gateway, so nothing lands
 in a replay. The older idea of replacing the crop-count text with tiny basket
-marks is dropped. **How counts show on the main game screen is still open** —
-untouched by this build, and now a live question rather than a hypothetical one:
-`docs/DESIGNER_QUEUE.md`. The keyboard `I` inventory list in `ui/menus.gd`, which
+marks is dropped. **How counts show on the main game screen was left open by
+this build** and is now ruled: Q-123 (b), the bar's own crop pictures below.
+The keyboard `I` inventory list in `ui/menus.gd`, which
 used to split the pouch into "Seeds" and "Harvested Crops" text, is what the pop-up
 replaced.
 
@@ -236,6 +236,42 @@ then confirms a second species alone at its own cap turns the pulse on again.
 A capture of the chip lit on the shipped default bar is
 `docs/design/mockups/basket_full/basket_full_pulse.png`
 (`tools/capture_basket_pulse.tscn`).
+
+**The pulse moves to the per-species chip (Q-123, ruled 2026-09-25 (b); S-28;
+built 2026-09-25, w67d3bedbdc6).** Q-123 landed on (b) — see below — so the
+recommendation above is taken: the shipped bar now draws a picture per crop,
+and that picture is the clearer home for this signal than a shared basket
+badge. `ui/hud.gd`'s `_update_hud` checks the same `_crop_at_cap` helper
+`_update_state_chips` already used (refactored out from `_any_species_at_cap`
+so neither copy of the check can drift from the other) and lerps that crop's
+own chip toward `CAP_PULSE_COLOR` on the same cadence, tracked in a public
+`crop_chip_pulsing` dictionary a test can read directly. `basket_chip` itself
+now shows, and pulses, only under the still-open `SATISFIED_CHIP` Look Lab
+treatment (`basket_chip.visible = full_b`), since that treatment hides the
+crop chips and has no per-species icon of its own to light instead — under
+the shipped bar the general badge no longer also flares for a fact its own
+crop chip is already saying. `_scenario_basket_chip_pulses_at_cap`
+(`tools/test_runner.gd`) was updated to assert against `crop_chip_pulsing`
+instead of `basket_chip.visible` for the shipped-bar half of its walk.
+
+**The bottom bar's crop pictures (Q-123, ruled 2026-09-25: option (b); S-28;
+built 2026-09-25, w67d3bedbdc6).** The bar's `crop_counts_label` used to be a
+`Label` reading a fixed `"Wh:5  To:0"`; it is now a row of chips, one per
+plantable crop in `CropDefs.ORDER` (never a hard-coded pair), each a small
+picture — `Menus.crop_icon`, the exact texture the inventory pop-up draws —
+followed by its digit count. The variable keeps its old name so the many
+scenarios that already check its `visible` flag (which treatment shows it,
+unchanged by this ruling) needed no change. A crop sitting at zero is drawn
+dim rather than removed: the bar's whole job is answering "how much of this
+do I have" without a tap, and a chip that vanished at zero would turn "none"
+back into a question only the picker could answer — the same "darkened means
+not there" reading the basket and can chips already taught (Q-46(a)), reused
+rather than reinvented. `_scenario_bh_crop_count_chips_track_the_pouch`
+(`tools/test_runner.gd`) checks the pictures match the picker's own, that the
+chips carry no letters (`_has_letters`), that an empty chip is dim, and that a
+real harvest and a real plant — not a direct write to `GameState.pouch` —
+move the digit the bar actually shows. A before/after capture of the bar is
+`docs/design/mockups/q123_result/` (`tools/capture_crop_counts.tscn`).
 
 **Regression check.** `tools/test_runner.gd`'s Scenario BB presses the HUD button,
 taps a pictured item, then taps tilled ground, and asserts the crop that lands is

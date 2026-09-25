@@ -735,8 +735,22 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   noun-and-tick ruling for taps that change nothing remains settled; Q-78's can
   gauge remains permanent. **No inventory choice or gameplay change is assumed.**
 
-- **Q-123 — Now that the pictured picker exists, how should counts read on the
-  main screen?** — **Ruling, open 2026-09-25.** The bottom bar still shows
+- **Q-123** ~~Now that the pictured picker exists, how should counts read on
+  the main screen?~~ — ✅ **ruled 2026-09-25: (b), small crop pictures with a
+  count in the bar.** The bar's `Wh:5  To:0` text is retired for the same
+  pictures the inventory pop-up already draws (`Menus.crop_icon`), each with
+  its digit count beside it — built from whatever `CropDefs.ORDER` actually
+  holds that day, not a fixed wheat/tomato pair. A crop at zero stays
+  visible, drawn dim rather than hidden, so a glance still answers "how much
+  of this do I have" without a tap. The per-species carry-cap glow (S-18)
+  moves from the shared basket badge onto the specific crop's own chip here,
+  since one crop's icon lighting up reads more clearly than a shared basket
+  (spec in `design/11-ux-ui.md`); the badge keeps its pulse only under the
+  still-open picture-basket Look Lab treatment, which has no per-species icon
+  of its own. Recorded as S-28. **Built 2026-09-25** (`ui/hud.gd`,
+  `w67d3bedbdc6`); a before/after capture is
+  `docs/design/mockups/q123_result/`. Original entry: **Ruling, open
+  2026-09-25.** The bottom bar still shows
   crop counts as abbreviated text (`Wh:5  To:0`, `crop_counts_label` in
   `ui/hud.gd`) beside the new picker, which shows the same counts as bigger
   pictures with digits underneath and no abbreviations. The two readouts now
