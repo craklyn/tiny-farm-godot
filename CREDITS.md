@@ -78,6 +78,32 @@ before the first public build ships.*
     untouched. Made for the Q-14 edge question (card wfd1109745a0); see
     `hq/data/looks/edge/README.md`. Cost nothing; no model was called; same rights
     as `neighbour.png` above, since no new pixel colour exists.
+  - `assets/sprites/looks/player_detail.png` (2026-09-25, card w3e8d6660477) —
+    the Q-14 higher-detail look, the one treatment of the four that could not be
+    faked by a colour switch and needed a genuinely re-drawn sheet. Four Retro
+    Diffusion Plus generations at 96×96px, $0.03 each, $0.12 total (account
+    balance $3.212 after the run); raw outputs and their `*_meta.json` are
+    archived at `assets/raw/2026-09-25-player-detail/` for all four attempts,
+    each with its own request params, before any compositing. The first two
+    attempts and the third either drifted off the palette anchors above (orange
+    hair, a strapped-overalls silhouette) or, once palette-locked tightly enough
+    to fix that, collapsed back to the shipped sprite's own flat colour count —
+    the fourth used a looser five-stop palette per material (skin, hair, outfit)
+    and kept both the hue and the extra shading steps, so it shipped. Only the
+    down-facing idle cell was regenerated — the one pose this look-comparison
+    capture is ever taken in — key-background/edge-erased/trimmed with
+    `tools/asset_pipeline/postprocess.py`, then rescaled to the *shipped*
+    sprite's own 15×24-pixel footprint before compositing (deliberately, so the
+    comparison is not confounded by drawing the detail draft larger than the
+    other three) and pasted into an otherwise-untouched copy of
+    `characters.png`; `quantize_palette` was skipped, since landing on more
+    colours than the shipped 10 was the entire point of the run (it came to 15).
+    `player.gd` carries a capture-only `sprite_override` static — null in every
+    ordinary run, same pattern as `Neighbour.sprite_override` above — which
+    `tools/capture_looks.gd` sets for one extra shot of the `world_colour_station`
+    scenario and clears immediately after. See
+    `hq/data/looks/world_colour_station/README.md` for the pixel-diff
+    measurements. Output rights follow the Retro Diffusion terms verified above.
 - **M2.5 art bench, 2026-08-31** (`M2_5_PLAN.md` WI-11 — same Retro Diffusion pipeline
   and rights as above; palette-locked and post-processed by the same steps, with the
   prompts and per-family palettes recorded in the `retro-diffusion-pixel-art` skill's

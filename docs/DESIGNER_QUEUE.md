@@ -825,6 +825,12 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   answer. `hq/data/looks/edge/` renders the neighbour both ways, same pose,
   frame and camera, for the look session to judge alongside the colour panels —
   a pointer for the agenda, not a ruling.
+  **2026-09-25 fourth panel (card w3e8d6660477):** the higher-detail sheet is
+  produced and wired into the capture rig as a capture-only swap
+  (`player.gd`'s `sprite_override`, cleared right after the shot — the shipped
+  game never carries it). All four panels are now attached to Q-14 at
+  `hq/data/looks/world_colour_station/sheet.png`. No look has been approved;
+  this closes the "remaining work" named above, not the decision itself.
 - **Q-113** ~~How much a player can carry before she has to sell~~ — ✅ ruled
   2026-09-21 and clarified 2026-09-23: **10 plantable units of each crop species
   on her person; 40 of each with a future grain silo.** Both limits are

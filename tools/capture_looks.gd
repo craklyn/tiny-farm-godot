@@ -126,6 +126,37 @@ func _shoot(scenario: Dictionary) -> String:
 		})
 		print("    %s" % LookLab.name_of(axis, draft))
 
+	# The fourth Q-14 look — more shading steps per material, softer edges
+	# (card w3e8d6660477) — is not a LookLab axis: it is one capture-only
+	# sprite swap on the player (`Player.sprite_override`), not a state
+	# anyone should be able to cycle to in the shipped game the way the three
+	# colour drafts above can be. So it is one more frame bolted onto this one
+	# scenario's manifest rather than a fourth `WorldTintPresentation` value —
+	# the same reason the neighbour's edge question
+	# (`tools/capture_neighbour_edge.gd`) got its own swap instead of a fourth
+	# look-lab draft. Only `world_colour_station` asks this question.
+	if id == "world_colour_station":
+		LookLab.set_to(axis, 0)   # today's colour: isolate the one variable this asks about
+		main_scene._apply_station_treatment()
+		main_scene._apply_world_tint_treatment()
+		var player_script := preload("res://player/player.gd")
+		player_script.sprite_override = load("res://assets/sprites/looks/player_detail.png")
+		for i in 4:
+			await get_tree().process_frame
+		var detail_focus: Vector2 = _focus_px(scenario)
+		var detail_file := "detail_0.png"
+		var detail_img: Image = get_viewport().get_texture().get_image()
+		detail_img.save_png("%s/%s" % [dir, detail_file])
+		player_script.sprite_override = null   # leave the game exactly as it ships
+		drafts.append({
+			"index": drafts.size(),
+			"name": "Higher detail",
+			"blurb": "More shading steps per material, softer edges (generated sheet)",
+			"frames": [detail_file],
+			"focus_px": [detail_focus.x, detail_focus.y],
+		})
+		print("    Higher detail")
+
 	var crop: Vector2i = scenario["crop"]
 	var manifest := {
 		"id": id,

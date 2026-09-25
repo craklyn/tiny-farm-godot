@@ -60,7 +60,7 @@ const SCENARIOS: Array[Dictionary] = [
 		"id": "world_colour_station",
 		"axis": "world_tint",
 		"question": "Which colour makes this farm easiest to read?",
-		"note": "Day three, 9:30 AM, seed 12345. Same player, station, mixed crops and fence. Whole-world colour studies; selective object saturation is still open.",
+		"note": "Day three, 9:30 AM, seed 12345. Same player, station, mixed crops and fence. The first three are whole-world colour studies; selective object saturation is still open. The fourth swaps the player's own sheet for a generated higher-detail one (card w3e8d6660477) and leaves the colour at today's — it answers a different question from the first three and is not itself a colour study.",
 		"stand": Vector2i(9, 7),
 		"focus_object": "seed_box",
 		"crop": Vector2i(800, 600),

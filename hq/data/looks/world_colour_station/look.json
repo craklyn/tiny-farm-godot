@@ -2,8 +2,8 @@
   "id": "world_colour_station",
   "axis": "world_tint",
   "question": "Which colour makes this farm easiest to read?",
-  "note": "Day three, 9:30 AM, seed 12345. Same player, station, mixed crops and fence. Whole-world colour studies; selective object saturation is still open.",
-  "captured": "2026-09-24",
+  "note": "Day three, 9:30 AM, seed 12345. Same player, station, mixed crops and fence. The first three are whole-world colour studies; selective object saturation is still open. The fourth swaps the player's own sheet for a generated higher-detail one (card w3e8d6660477) and leaves the colour at today's — it answers a different question from the first three and is not itself a colour study.",
+  "captured": "2026-09-25",
   "asked_by": [
     "Q-14"
   ],
@@ -19,6 +19,10 @@
     {
       "name": "Cold light",
       "blurb": "Cool blue whole-world colour study"
+    },
+    {
+      "name": "Higher detail",
+      "blurb": "More shading steps per material, softer edges (generated sheet)"
     }
   ],
   "sheet": "world_colour_station/sheet.png"

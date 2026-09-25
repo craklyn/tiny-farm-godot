@@ -150,11 +150,18 @@ change during tuck-in uses the held daylight colour. These two graded states are
 whole-world approximations. They do not yet selectively preserve saturated
 crops and tools or introduce cyan and magenta machine art, so they are evidence
 for the colour direction, not completed captures 2 and 3 as specified above.
-The fourth, more detailed surface treatment remains sheet work: its generation
-was approved on 2026-09-04, but the sheet and a way to swap it into the capture
-rig are still absent. The three captures and their measurements are saved in
-`hq/data/looks/world_colour_station/`. Q-14 remains unsigned pending the full
-four-look session and Daniel's choice.
+**The fourth, more detailed surface treatment (2026-09-25, card w3e8d6660477).**
+The player's down-facing idle cell was regenerated through Retro Diffusion
+(four attempts, $0.12 total) at more shading steps and softer edges,
+palette-matched to the anchors above, rescaled to the shipped sprite's own
+15×24-pixel footprint so the comparison is not confounded by size, and
+composited into `assets/sprites/looks/player_detail.png`. A capture-only
+`sprite_override` on `player.gd` (same pattern as the neighbour's edge
+question) swaps it in for one shot of the station scenario, held at today's
+colour, and clears it immediately after — the shipped game never carries this
+sheet. All four captures and their measurements are saved in
+`hq/data/looks/world_colour_station/`. Q-14 remains unsigned pending Daniel's
+choice across all four.
 
 ---
 

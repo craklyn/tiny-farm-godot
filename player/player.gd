@@ -41,6 +41,14 @@ var sprite_texture: Texture2D
 var chop_texture: Texture2D
 var sprite_quads: Dictionary = {}  # direction -> { frame -> Rect2 }
 
+# Capture-only hook (Q-14 higher-detail question, card w3e8d6660477): a look-
+# session plate needs her drawn from a second, more-detailed sheet with nothing
+# else about her changed, so `tools/capture_looks.gd` swaps this in for one shot
+# and clears it right after. Null in every ordinary run of the game — the
+# shipped sheet is always `sprite_texture` — and nobody outside that one capture
+# script has a reason to set it. Same pattern as `Neighbour.sprite_override`.
+static var sprite_override: Texture2D = null
+
 # Reference to farm
 var farm: Node2D = null
 
@@ -932,13 +940,14 @@ func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
 				tuck_tile.x * TILE_SIZE + TILE_SIZE / 2.0,
 				tuck_tile.y * TILE_SIZE + TILE_SIZE / 2.0 - TUCK_RISE)
 			var bed_pos := anchor + Vector2(-24.0, -32.0)
+			var bed_sheet: Texture2D = sprite_override if sprite_override != null else sprite_texture
 			render_queue.append({
 				# Half a pixel in front of the cot's own entry (queued at the
 				# footprint tile's top edge), so she is tucked *into* the bed
 				# rather than under it, without disturbing anything on the row.
 				"y": tuck_tile.y * TILE_SIZE + 0.5,
 				"draw": func(): canvas.draw_texture_rect_region(
-					sprite_texture, Rect2(bed_pos, Vector2(48, 48)), sleep_region)
+					bed_sheet, Rect2(bed_pos, Vector2(48, 48)), sleep_region)
 			})
 		return
 
@@ -948,7 +957,7 @@ func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
 
 	var quad_map = sprite_quads.get(facing, {})
 	var region: Rect2 = quad_map.get(frame, Rect2())
-	var draw_texture := sprite_texture
+	var draw_texture := (sprite_override if sprite_override != null else sprite_texture)
 	if is_acting and action_verb in ["clear_weed", "clear_log", "clear_rock", "clear_tree"] \
 			and chop_texture != null:
 		draw_texture = chop_texture

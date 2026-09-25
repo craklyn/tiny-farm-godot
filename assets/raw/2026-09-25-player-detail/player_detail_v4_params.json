@@ -1,0 +1,8 @@
+{
+  "prompt": "front facing full body chibi farmer girl standing idle with arms at sides, simple one-piece red-orange work jumpsuit with a plain round collar, absolutely no straps, no overalls, no suspenders, no backpack, golden yellow blonde bob haircut (yellow, not orange, not copper, not ginger), pale peach skin, very squat proportions with an oversized head about half her total height, richly shaded with many visible gradient shading steps per surface - a bright highlight, a base tone, two midtones and a deep shadow step on the hair, skin and outfit, smooth graduated shading rather than one flat fill - and softly rounded, gently anti-aliased edges rather than one hard outline step, cozy pastel 2d farming game sprite, rounded soft silhouette, colored violet-grey outlines (no black), each material a clearly distinct color with strong color separation, no sepia wash, plain flat cream background",
+  "width": 96,
+  "height": 96,
+  "num_images": 1,
+  "prompt_style": "rd_plus__default",
+  "palette_hex": ["#fff3c4", "#e6d59e", "#ccb679", "#b39854", "#9a7a2e", "#fff0e0", "#ead3bf", "#d4b69e", "#be997d", "#a97c5c", "#e2795a", "#c66549", "#a95138", "#8c3d28", "#702917", "#5c4e92"]
+}

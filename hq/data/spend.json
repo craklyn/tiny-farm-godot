@@ -278,6 +278,58 @@
       "balance_after": 3.332,
       "reconciled": true,
       "recorded_by": "record_spend"
+    },
+    {
+      "id": "2026-09-25-higher-detail-player-sprite-attempt-1-ha",
+      "date": "2026-09-25",
+      "vendor": "Retro Diffusion",
+      "kind": "generation",
+      "purpose": "Higher-detail player sprite, attempt 1 (hair/outfit hue off, superseded)",
+      "work_item": "w3e8d6660477",
+      "dollars": 0.03,
+      "credits": 3,
+      "balance_after": 3.302,
+      "reconciled": true,
+      "recorded_by": "record_spend"
+    },
+    {
+      "id": "2026-09-25-higher-detail-player-sprite-attempt-2-sh",
+      "date": "2026-09-25",
+      "vendor": "Retro Diffusion",
+      "kind": "generation",
+      "purpose": "Higher-detail player sprite, attempt 2 (better hue but shading flattened back to shipped color count, superseded)",
+      "work_item": "w3e8d6660477",
+      "dollars": 0.03,
+      "credits": 3,
+      "balance_after": 3.272,
+      "reconciled": true,
+      "recorded_by": "record_spend"
+    },
+    {
+      "id": "2026-09-25-higher-detail-player-sprite-attempt-3-ri",
+      "date": "2026-09-25",
+      "vendor": "Retro Diffusion",
+      "kind": "generation",
+      "purpose": "Higher-detail player sprite, attempt 3 (richer shading but off-hue and strapped, superseded)",
+      "work_item": "w3e8d6660477",
+      "dollars": 0.03,
+      "credits": 3,
+      "balance_after": 3.242,
+      "reconciled": true,
+      "recorded_by": "record_spend"
+    },
+    {
+      "id": "2026-09-25-higher-detail-player-sprite-attempt-4-sh",
+      "date": "2026-09-25",
+      "vendor": "Retro Diffusion",
+      "kind": "generation",
+      "purpose": "Higher-detail player sprite, attempt 4 (shipped: graduated palette, correct hue, down/frame-0 cell)",
+      "work_item": "w3e8d6660477",
+      "dollars": 0.03,
+      "credits": 3,
+      "balance_after": 3.212,
+      "reconciled": true,
+      "recorded_by": "record_spend"
     }
   ]
 }
