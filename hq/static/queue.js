@@ -387,6 +387,7 @@ function qSelectNext(rows) {
    list. */
 function qPaneHtml(row, org) {
   if (!row) return `<p class="q-pane-empty">Pick a question on the left.</p>`;
+  const artifact = row.artifact || {};
   const ownerName = row.owner.name;
   const fuLine = f => {
     const fOwner = ownerOf(org, f.owner).name;
@@ -400,7 +401,7 @@ function qPaneHtml(row, org) {
     <div class="q-pane-src">${esc(row.title)}${row.kind === "review" ? reviewHeadingArtifact(row.artifact) : ""} · ${esc(row.source)} · ${esc(ownerName)}</div>
     ${sources.length ? `<div class="q-sec"><h3>Requests this answer serves</h3><ul>${sources.map(source =>
       `<li><a class="plain" href="#/work/${encodeURIComponent(source.id)}">${esc(source.title)}</a></li>`).join("")}</ul></div>` : ""}
-    ${row.artifact.decision_id || row.artifact.decision ? `<p class="q-pane-src">Earlier decision: <a class="plain" href="#/inbox/${encodeURIComponent(row.artifact.decision_id || row.artifact.decision)}">${esc(row.artifact.decision_id || row.artifact.decision)}</a></p>` : ""}
+    ${artifact.decision_id || artifact.decision ? `<p class="q-pane-src">Earlier decision: <a class="plain" href="#/inbox/${encodeURIComponent(artifact.decision_id || artifact.decision)}">${esc(artifact.decision_id || artifact.decision)}</a></p>` : ""}
     ${ruling && (ruling.earlier || []).length ? `<div class="q-sec"><h3>Earlier answers</h3><ul>${ruling.earlier.map(turn =>
       `<li>${esc(turn.option_label || turn.judgment || "Revision requested")} · ${esc(turn.ruled_at || "")}</li>`).join("")}</ul></div>` : ""}
 
