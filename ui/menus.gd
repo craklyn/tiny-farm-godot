@@ -554,7 +554,8 @@ func _rebuild_options() -> void:
 			#           on with them.
 			#   mark-3  there is nothing to set: it is working out its own job. The
 			#           panel is what it has to show for that so far — the nights
-			#           it has practised and the squares it watered yesterday.
+			#           it has practised and the squares it watered yesterday —
+			#           and, since Q-124, the squares she has given it to work.
 			#   a sprinkler, or anything else with neither, gets the one row every
 			#           machine has: pick it up.
 			#
@@ -646,6 +647,15 @@ func _rebuild_options() -> void:
 					# position in that list.
 					machine_options.append({ "kind": "practice" })
 					_add_scorecard(mextra)
+					# **Its squares** (Q-124, ruled 2026-09-25). The one thing she
+					# can tell a Mark III, and it is not a setting: it limits where
+					# the robot works, never what it has learned. The same row and
+					# the same mode as the mark-1's lesson — one concept, one name —
+					# so the tap lands in the teaching mode and `main.gd` knows from
+					# the robot which kind of list it is drawing.
+					machine_options.append({ "kind": "teach" })
+					_add_option(tr("Show it where to work (%d/%d)")
+						% [BotBrain.assigned_of(mextra).size(), BotBrain.ASSIGN_LIMIT], true)
 			machine_options.append({ "kind": "collect" })
 			_add_option(tr("Pick up"), true)
 			machine_options.append({ "kind": "close" })

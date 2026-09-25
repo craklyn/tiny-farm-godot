@@ -290,7 +290,8 @@ One row per setting, the current one ticked, then "pick it up":
 There is nothing to set. The machine is working its own job out, and a dial over weeks of
 practice is a control that undoes them — so the catalogue row carries no settings and the
 gateway refuses `configure` on it outright. Where the other marks put controls, the
-Mark III puts a **scorecard**, and then "pick it up".
+Mark III puts a **scorecard**, then "Show it where to work" — the squares she gives it
+(S-26, "Her squares" below) — and then "pick it up".
 
 **The scorecard (2026-09-10), at the designer's request, replacing Q-97's two numerals.**
 He read those numerals on the tablet — "3 moons, 12 watering cans" — and asked for the day
@@ -549,6 +550,91 @@ built."* The consequence for engineering: if the robot fails to reach a reward, 
 learner or exploration problem, fixed by a better learner or more exploration, never by
 narrowing the table.
 
+### Her squares: where it works (Q-124, ruled 2026-09-25; S-26)
+
+**The gap.** On open ground the robot farms a corner it opens for itself and almost never
+touches hers: over a week on 24 test farms it watered 0.07 squares of her sowing a day in
+its first three days and 0.01 in its last three, against about seven of its own. Her field is
+a fixed place outside the 5×5 it can see; its own corner is always under its nose, and the
+table pays the same either way. The designer kept the table (Q-124 option a — reward, not
+ownership, still drives it) and asked for the other lever: *"Let's build a way, now, for the
+mark-3's tiles to be assigned."*
+
+**What she does.** Tap the robot; its panel has a row under the scorecard, "Show it where to
+work (n/16)". That row opens the same pointing mode the mark-1 is taught in: the camera rises
+until the whole page is in view, everything a tap cannot reach dims, and each tap on a square
+of ground toggles it — a ring when it is given, gone when it is taken back. The done button
+carries the count; "clear" takes every square back at once. Pointing costs her nothing and
+does not move the day's clock. After Done, each given square keeps four faint corner ticks
+in the same machine blue, so a bed a robot is keeping reads as spoken for without a word and
+without covering the crop. Pictures: `docs/design/mockups/q124_assign/`.
+
+**What it does with them — a limit, not a preference.** With squares given:
+
+| | Given squares | Everywhere else |
+| --- | --- | --- |
+| Till, plant, water, harvest | legal, exactly as before | never — the verb has no legal square there |
+| What it sees (needs water, crop, bare, ripe) | as the world is | reads zero: no work shown that it would be refused |
+| What it sees (wet, walkable, crow, bin) | as the world is | as the world is |
+| Ship, shoo, wander, wait | unchanged | unchanged — the bin and a bird are not squares |
+
+When none of its squares is inside its view — it has carried a crop to the bin, chased a
+crow, wandered off the edge, or been picked up and set down elsewhere — it does not decide;
+it walks to the nearest of them on the movement engine, the way a mark-1 walks home to its
+stall. That walk is not a decision: nothing is drawn, nothing goes on the day's trace, and the
+night learns only from choices it made with its squares in view. If there is no route at all
+(she fenced them off), it decides where it stands and every square verb is refused, which is
+honest and visible.
+
+**Why a limit.** A preference would still let the robot drift back to its own corner whenever
+her bed was out of view, and a player would read that as the machine ignoring what she told
+it. An instruction to a machine means what the mark-1's orders mean: exactly those squares.
+It is also the weaker v1 (P-13): the robot does not learn *where* to work, she tells it.
+
+**Why the observation is masked, not widened.** A new "assigned" channel would change the
+vector's width, and every robot already trained would have to start again. Zeroing the work
+channels outside the assignment keeps the width, so a robot that practised for a week and is
+then given a bed keeps every weight it learned — and those weights keep meaning "work I can
+do here" rather than learning to ignore thirsty squares it will be refused on.
+
+**The Action.** `assign_tiles` with `machine` and `tiles`, the whole list after the tap
+(flat `[x1, y1, ...]`); an empty list clears it. One verb for give, take back and clear, and
+each replay entry says on its own what the robot held from that tick on, which is what a
+training corpus reading these logs will want. Only a learner accepts it; every square must be
+one a machine could be taught (`teachable_at`), and there can be at most sixteen. Stored on
+the robot as `extra["assigned"]` — absent means nothing given, so older saves need no
+migration — saved with it, recomputed around on replay, and carried through the crate when
+she picks it up (Q-98: picking up is repositioning). A bot has no reason to emit it and no
+path that does; it is her instruction, like `teach`.
+
+**Measured** (`tools/demo_learning_robot.gd`, which now prints both, 24 farms, a week each;
+she gives it sixteen of her twenty-four sown squares before its first morning):
+
+| | Her squares watered a day, days 1-3 | days 5-7 | Score a day, days 5-7 |
+| --- | --- | --- | --- |
+| Open ground, nights on | 0.07 | 0.01 | 20.3 |
+| Given her squares, nights on | 15.83 | 2.86 | 46.4 |
+| Given her squares, night off | 15.81 | 2.25 | 60.4 |
+
+So it now waters her crop: nearly all sixteen squares every day, until her crop ripens.
+Days 5-7 fall only because by then it has cut her crop, carried it to the bin and sown the
+squares again — those are its own sowing now, still on her bed. The score rises because her
+ripe crop reaches the bin: 32 points a day from shipping, against 2.5 on open ground.
+
+**Open, for the ML seat (Kenji):** on its given squares a week of nights ends *below* the same
+week without them (46.4 against 60.4), the reverse of open ground (20.3 against 17.8). The
+learning rate's own note predicts it — the bigger the biggest row of the day, the gentler the
+night must be, and a bed of her ripe crop makes days of 40–60 points against the 20 the rate
+was tuned on. Measured on the gate's eight farms: at a quarter of the rate (0.0075) the nights
+come out level with the control (61.2 against 60.4). Nothing is changed yet — the open-ground
+gate still passes as it did; the rate, or a night step scaled by the size of the day, is the
+ML seat's call.
+
+**Not in this version:** a robot that chooses its own squares; squares shared out between
+several robots (two may be given the same square, and both will work it); a limit other than
+sixteen; a picture in place of the panel row's words (it is words, like the mark-1's
+row, pending Q-87).
+
 ### Its day
 
 It wakes at the day turn with a full meter (600 units — `ACTOR_MAX_ENERGY`, the same as
@@ -752,6 +838,7 @@ that reads as broken.
 | The reward table, data layer | `systems/rewards.gd` (new) |
 | The panel's two numbers, and the pips beside them | `ui/menus.gd`, the `policy` arm of the machine menu |
 | The two-farm learning-curve demo and its gate | `tools/demo_learning_robot.gd` + `test_learning_robot()` |
+| Her squares: the `assign_tiles` verb, the limit and walk back, the masked view (S-26) | `systems/sim/sim_world.gd`, `bot_brain.gd`, `observation.gd`; the tap in `systems/action_router.gd`; the mode in `main.gd`; the marks in `world/farm.gd`; tests `test_mark_three_assigned_tiles()` and Scenario BG; pictures `tools/capture_assign_tiles.tscn` |
 
 The build plan, with interfaces and acceptance criteria per work item, is
 `docs/V0_2_1_PLAN.md`.

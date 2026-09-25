@@ -51,6 +51,12 @@
 # The gap between those two columns is what the night is worth, and it is what the
 # learning rate was chosen on. The two dozen farms take about half a minute.
 #
+# **And the same two dozen once more with the robot given her squares** (Q-124,
+# ruled 2026-09-25). On open ground the robot waters the crop it sows and never
+# hers; the last table plays the same farms with two-thirds of her sown block
+# assigned to it, and counts the squares of her own sowing it watered, beside the
+# open-ground count. That doubles the run to about a minute and a quarter.
+#
 # `tests/test_runner.gd:test_learning_robot` asserts on the numbers this produces,
 # from this same `compare()`, so the table below and the gate cannot drift apart:
 # the demo is the report and the test is the gate, over one measurement. The suite
@@ -87,6 +93,15 @@ const BLOCK := Rect2i(17, 8, 6, 4)
 # reachable on day one; the rest of the week's ripe crop is the crop the robot
 # grew, by sowing a square and watering it three times (`CropDefs`, wheat).
 const RIPE := Rect2i(11, 13, 4, 1)
+
+# **The squares she gives it, in the assigned week** (Q-124, ruled 2026-09-25).
+# The west two-thirds of her sown block: sixteen squares, `BotBrain.ASSIGN_LIMIT`,
+# which is as many as one robot can hold. Three tiles east of where it is set down,
+# so on its first morning they are just outside what it can see and the walk back
+# to its squares is the first thing it does. The ripe row and the east third of her
+# block are left out, so the week also shows the robot leaving alone what it was
+# not given.
+const MINE := Rect2i(17, 8, 4, 4)
 
 # Where the robot is set down: between the two blocks, on bare ground, so that on
 # day one it can see neither of them and has to find the farm before it can do
@@ -178,7 +193,11 @@ func _init() -> void:
 	# as its learning. Both are printed every run: the curve a machine is claimed
 	# to have is shown, never asserted (D-4).
 	var code := _report(run())
-	code = maxi(code, _summarise(many()))
+	var open_ground := many()
+	code = maxi(code, _summarise(open_ground))
+	# ...and the same two dozen weeks again with the robot given two-thirds of her
+	# block to work (Q-124), against the weeks above. About as long again to run.
+	code = maxi(code, _summarise_assigned(many(SEEDS, 7, true), open_ground))
 	quit(code)
 
 
@@ -202,7 +221,10 @@ func _init() -> void:
 # a fresh robot does — it simply never carries anything into the morning. That is
 # the only honest thing to compare a week of learning against: the same machine on
 # the same farm having learned nothing.
-static func run(days := 7, farm_seed := SEED, learn := true) -> Dictionary:
+#
+# **`assign` gives it `MINE` before its first morning** (Q-124). Off by default, so
+# the week the gate is measured on is the week it always was.
+static func run(days := 7, farm_seed := SEED, learn := true, assign := false) -> Dictionary:
 	var gs = load("res://systems/game_state.gd").new()
 	gs.reset()
 	SimRng.reseed(farm_seed)
@@ -225,6 +247,26 @@ static func run(days := 7, farm_seed := SEED, learn := true) -> Dictionary:
 	var placed: Dictionary = world.apply_action({ "verb": "place", "target": SPOT,
 		"item": "bot_mk3", "actor": "player" }, gs)
 	var robot := String(placed.get("machine", ""))
+	if assign:
+		var flat: Array = []
+		for y in range(MINE.position.y, MINE.end.y):
+			for x in range(MINE.position.x, MINE.end.x):
+				flat.append(x)
+				flat.append(y)
+		world.apply_action({ "verb": "assign_tiles", "target": MINE.position,
+			"machine": robot, "tiles": flat, "actor": "player" }, gs)
+
+	# **Which squares are still her sowing** (Q-124). Every square of her block
+	# starts hers, and stops being hers the moment it is anything but a crop — cut,
+	# eaten, or opened again — because whatever grows there next was sown by the
+	# robot. Watched a second at a time rather than read at dusk, since a ripe
+	# square can be watered and cut in the same day and a dusk read would have lost
+	# it. Twenty-four reads a second, on a fixture: nothing the game itself does.
+	var hers: Dictionary = {}
+	for y in range(BLOCK.position.y, BLOCK.end.y):
+		for x in range(BLOCK.position.x, BLOCK.end.x):
+			hers[Vector2i(x, y)] = true
+	var hers_watered: Array = []
 
 	var scores: Array = []
 	var decisions: Array = []
@@ -249,6 +291,7 @@ static func run(days := 7, farm_seed := SEED, learn := true) -> Dictionary:
 		# 2.8 between the first three days and the last three, in *both* arms.
 		gs.pouch[CROP] = SEED_STOCK
 		var birds := 0
+		var wet_hers: Dictionary = {}
 		# **A second of the day at a time, not the whole day at once**, so the day's
 		# action clock can move while it passes and the crow can keep its
 		# appointment. The sim does not care how the day is cut up — the same events
@@ -261,6 +304,13 @@ static func run(days := 7, farm_seed := SEED, learn := true) -> Dictionary:
 			if world.has_actor(SimWorld.ACTOR_CROW) and not before_bird:
 				birds += 1
 			world.advance_to_tick(world.clock.tick + SimClock.RATE, gs)
+			for t in hers.keys():
+				var tile: Dictionary = world.get_tile(t.x, t.y)
+				if not (String(tile.get("state", "")) in SimWorld.CROP_STATES):
+					hers.erase(t)
+				elif bool(tile.get("watered_today", false)):
+					wet_hers[t] = true
+		hers_watered.append(wet_hers.size())
 		# Read at dusk, before the sleep: the day turn refills the meter, closes the
 		# score into `last_score`, sweeps the split and sets the decision count back
 		# to zero, so a day read afterwards is a day read empty.
@@ -295,6 +345,10 @@ static func run(days := 7, farm_seed := SEED, learn := true) -> Dictionary:
 		# cannot be reached on a day nothing flew in, and a reader comparing the
 		# columns deserves to know which.
 		"crows": crows,
+		# How many squares of **her** sowing it watered each day (Q-124): squares of
+		# her block still carrying the crop she put in, not ones it had cut and sown
+		# again itself. The number the Q-124 question was about.
+		"hers": hers_watered,
 		# The robot itself, at the end of the week. Two runs of this function agree
 		# here or the week was never reproducible.
 		"weights": (world.actor(robot)["extra"]["weights"] as Array).duplicate(),
@@ -342,12 +396,12 @@ static func mean_rows(splits: Array, first: int, last: int) -> Array:
 # One record per farm per arm, and no averages — `summary()` below does the
 # arithmetic, so that a caller who wants the first eight farms of two dozen can
 # have them without playing them again.
-static func compare(seeds: Array, days := 7) -> Dictionary:
-	var out := { "seeds": seeds.duplicate(), "days": days }
+static func compare(seeds: Array, days := 7, assign := false) -> Dictionary:
+	var out := { "seeds": seeds.duplicate(), "days": days, "assign": assign }
 	for arm in ["learn", "control"]:
 		var rows: Array = []
 		for farm_seed in seeds:
-			var week: Dictionary = run(days, int(farm_seed), arm == "learn")
+			var week: Dictionary = run(days, int(farm_seed), arm == "learn", assign)
 			var scores: Array = week["scores"]
 			var late_first := maxi(1, days - 2)
 			rows.append({
@@ -358,6 +412,8 @@ static func compare(seeds: Array, days := 7) -> Dictionary:
 				# report: a week can rise on the tenth-of-a-point rows alone.
 				"late_rows": mean_rows(week["earned"], late_first, days),
 				"crows": mean_of_days(week["crows"], late_first, days),
+				"hers_early": mean_of_days(week["hers"], 1, 3),
+				"hers_late": mean_of_days(week["hers"], late_first, days),
 			})
 		out[arm] = rows
 	return out
@@ -373,11 +429,11 @@ static func summary(cmp: Dictionary, arm: String, count := -1) -> Dictionary:
 	late_rows.resize(Rewards.KEYS.size())
 	late_rows.fill(0.0)
 	var out := { "seeds": n, "early": 0.0, "late": 0.0, "crows": 0.0, "rose": 0,
-		"late_rows": late_rows }
+		"late_rows": late_rows, "hers_early": 0.0, "hers_late": 0.0 }
 	for i in n:
 		var row: Dictionary = rows[i]
-		for key in ["early", "late", "crows"]:
-			out[key] = float(out[key]) + float(row[key]) / float(maxi(1, n))
+		for key in ["early", "late", "crows", "hers_early", "hers_late"]:
+			out[key] = float(out[key]) + float(row.get(key, 0.0)) / float(maxi(1, n))
 		var split: Array = row["late_rows"]
 		for k in mini(late_rows.size(), split.size()):
 			late_rows[k] = float(late_rows[k]) + float(split[k]) / float(maxi(1, n))
@@ -388,11 +444,11 @@ static func summary(cmp: Dictionary, arm: String, count := -1) -> Dictionary:
 
 # The two dozen farms under the one in the table: `SEED`, and the twenty-three
 # after it.
-static func many(count := SEEDS, days := 7) -> Dictionary:
+static func many(count := SEEDS, days := 7, assign := false) -> Dictionary:
 	var seeds: Array = []
 	for i in count:
 		seeds.append(SEED + i)
-	return compare(seeds, days)
+	return compare(seeds, days, assign)
 
 
 # --- staging ------------------------------------------------------------------
@@ -545,4 +601,70 @@ func _summarise(cmp: Dictionary) -> int:
 		% [n, float(gate["late"]), last])
 	print("nights, %.1f without them, and %d of the %d farms ended better than they began."
 		% [float(gate_control["late"]), int(gate["rose"]), n])
+	print("")
+	print("Squares of her own sowing it watered, a day, over the %d farms: %.2f over %s,"
+		% [seeds, float(arms["learn"]["hers_early"]), first])
+	print("%.2f over %s. Anything else it watered, it had sown itself (Q-124)."
+		% [float(arms["learn"]["hers_late"]), last])
+	return 0
+
+
+# **The same weeks with the robot given her squares** (Q-124, ruled 2026-09-25):
+# sixteen of her twenty-four sown squares assigned before its first morning, and
+# everything else about the farm, the seeds and the draws exactly as above. Printed
+# beside the open-ground weeks, row for row, so the one question the ruling asked —
+# does it now water her crop — is answered next to what it did before.
+func _summarise_assigned(cmp: Dictionary, open_ground: Dictionary) -> int:
+	var days: int = int(cmp["days"])
+	var seeds: int = (cmp["seeds"] as Array).size()
+	var first := "days 1-%d" % mini(3, days)
+	var last := "days %d-%d" % [maxi(1, days - 2), days]
+	print("")
+	print("=== The same %d farms with the robot given her squares (Q-124) ===" % seeds)
+	print("Before its first morning she gives it %d of her %d sown squares to work"
+		% [MINE.size.x * MINE.size.y, BLOCK.size.x * BLOCK.size.y])
+	print("(the west of her block). It may till, sow, water and cut only there; it still")
+	print("carries crops to the bin and chases crows it can see.")
+	print("")
+	print("%12s %12s %12s %16s" % ["", first, last, "weeks that rose"])
+	var arms := {}
+	for arm in [["learning", "learn"], ["night off", "control"]]:
+		var stat := summary(cmp, arm[1])
+		arms[arm[1]] = stat
+		print("%12s %12.1f %12.1f %13d/%d" % [arm[0], float(stat["early"]),
+			float(stat["late"]), int(stat["rose"]), seeds])
+	var before := summary(open_ground, "learn")
+	print("")
+	print("What those late days were made of, points a day per row: given her squares")
+	print("with the nights on and off, and on open ground with the nights on:")
+	print("")
+	print("%14s %8s %12s %12s %12s" % ["row", "worth", "given hers", "given, off", "open ground"])
+	var given_rows: Array = arms["learn"]["late_rows"]
+	var given_off: Array = arms["control"]["late_rows"]
+	var open_rows: Array = before["late_rows"]
+	for k in Rewards.KEYS.size():
+		print("%14s %8.1f %12.2f %12.2f %12.2f" % [String(Rewards.KEYS[k]),
+			Rewards.of(String(Rewards.KEYS[k])), float(given_rows[k]), float(given_off[k]),
+			float(open_rows[k])])
+	# **Said plainly when the nights cost the robot on its squares**, because it is
+	# the opposite of what they do on open ground and a reader comparing the two
+	# score tables should not have to spot it (measured 2026-09-25: they do).
+	if float(arms["learn"]["late"]) < float(arms["control"]["late"]):
+		print("")
+		print("On her squares a week of nights is worth LESS than none: %.1f a day against"
+			% float(arms["learn"]["late"]))
+		print("%.1f with the night switched off. On open ground the nights are worth more."
+			% float(arms["control"]["late"]))
+	print("")
+	print("Squares of her own sowing it watered, a day:")
+	print("%26s %12s %12s" % ["", first, last])
+	print("%26s %12.2f %12.2f" % ["given her squares", float(arms["learn"]["hers_early"]),
+		float(arms["learn"]["hers_late"])])
+	print("%26s %12.2f %12.2f" % ["given, night off", float(arms["control"]["hers_early"]),
+		float(arms["control"]["hers_late"])])
+	print("%26s %12.2f %12.2f" % ["open ground (above)", float(before["hers_early"]),
+		float(before["hers_late"])])
+	print("")
+	print("A square counts as hers only while it carries the crop she sowed: once the")
+	print("robot cuts it and sows it again, it counts as the robot's.")
 	return 0

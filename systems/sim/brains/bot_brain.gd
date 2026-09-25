@@ -736,6 +736,93 @@ static func set_orders(extra: Dictionary, tiles: Array[Vector2i]) -> void:
 	extra["orders"] = flat
 
 
+# --- the mark-3's assigned squares (Q-124, ruled 2026-09-25) --------------------
+#
+# **She can give a Mark III a patch of the farm to work, and then it works only
+# there.** Measured before this existed: over a week on 24 test farms the robot
+# planted about nine seeds and watered about seven growing squares a day, and
+# almost none of them was a square she had sown (0.07 a day in its first three
+# days, `tools/demo_learning_robot.gd`) — it farmed the corner it had opened for
+# itself, because that corner was always inside the 5×5 it can see and her field
+# was a fixed place somewhere else. The designer kept the reward as it is (Q-124
+# option a: nobody owns a tile, Q-100 stands) and asked for this instead: *"Let's
+# build a way, now, for the mark-3's tiles to be assigned."*
+#
+# **A limit, not a preference** (v1, deliberately weak — P-13). With squares
+# assigned, every verb that works a square (till, plant, water, harvest) is legal
+# on those squares and nowhere else. A preference would have kept a robot that
+# still wandered off to its own corner whenever her bed was out of view, and the
+# player would read that as the machine ignoring what she told it — the mark-1's
+# "exact orders" is the precedent for what an instruction to a machine means. The
+# verbs that are not about a square are untouched: carrying a crop to the bin,
+# chasing a bird it can see, a step of wandering, standing still.
+#
+# **What it sees follows what it may do** (`Observation.build`). The four channels
+# that say "there is work on this square" — needs water, has a crop, is bare, is
+# ripe — read zero on squares outside the assignment, so the robot is never shown
+# work it would be refused. The vector keeps its width, so a robot that practised
+# for a week unassigned keeps every weight it learned, and those weights keep
+# meaning "work I can do here".
+#
+# **And it comes back to them** (`_learn`'s walk back). With nothing assigned in
+# view — it has carried a crop to the bin, chased a crow, wandered off the edge,
+# or been set down somewhere else — it does not decide; it walks to the nearest of
+# its squares on the movement engine, the way a mark-1 walks home to its stall.
+# That walk is not a decision: nothing is drawn, nothing goes on the day's trace,
+# and the night learns only from choices it made with its squares in view.
+#
+# **Nothing assigned is today's robot, bit for bit.** Every branch below is taken
+# only when the list is non-empty, so the learning gate's farms — none of which
+# assign anything — play exactly as they did.
+#
+# Stored flat, `[x1, y1, x2, y2, ...]`, for the reason the mark-1's orders are: a
+# Vector2i does not survive `extra`'s trip through JSON. Absent is "nothing
+# assigned", so a robot from a save written before this existed needs no
+# migration.
+#
+# How many squares one robot may hold. A 4×4 bed: a little under the twenty
+# strokes a day's meter buys, so a robot that has learned its job can keep up
+# with the whole of it, and small enough that looking for the nearest one is a
+# short loop inside a think (ground rule 8). [Playtest]
+const ASSIGN_LIMIT := 16
+
+
+static func assigned_of(extra: Dictionary) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	var flat: Array = extra.get("assigned", [])
+	var i := 0
+	while i + 1 < flat.size():
+		out.append(Vector2i(int(flat[i]), int(flat[i + 1])))
+		i += 2
+	return out
+
+
+static func set_assigned(extra: Dictionary, tiles: Array[Vector2i]) -> void:
+	if tiles.is_empty():
+		# Unassigned is the key's absence, not an empty list, so a robot she has
+		# cleared is the same robot as one she never assigned.
+		extra.erase("assigned")
+		return
+	var flat: Array = []
+	for t in tiles:
+		flat.append(t.x)
+		flat.append(t.y)
+	extra["assigned"] = flat
+
+
+# The assignment as a set keyed by row-major index, or an empty dictionary when
+# nothing is assigned. The shape the observation's tile loop and the legality
+# check both want: one hash per square rather than a walk down the list.
+static func assigned_keys(extra: Dictionary) -> Dictionary:
+	var out: Dictionary = {}
+	var flat: Array = extra.get("assigned", [])
+	var i := 0
+	while i + 1 < flat.size():
+		out[int(flat[i + 1]) * SimWorld.MAP_WIDTH + int(flat[i])] = true
+		i += 2
+	return out
+
+
 # --- follow --------------------------------------------------------------------
 #
 # **It reads her live registry position**, which is sim truth as of WI-6 and was
@@ -1201,6 +1288,23 @@ func _learn(world: SimWorld, actor_id: String, extra: Dictionary, tick: int,
 			extra["spent"] = int(extra.get("spent", 0)) + 1
 		return carried
 
+	# **Back to its squares before it decides anything** (Q-124). Only when she
+	# has assigned some: an unassigned robot never enters this block, and takes
+	# exactly the path it always took.
+	var mine := assigned_of(extra)
+	if not mine.is_empty():
+		if not _in_view_of(world.actor_pos(actor_id), mine, _view_radius(extra)):
+			if _walk_back(world, actor_id, extra, tick, mine):
+				return {}
+			# No way back at all — she fenced them off, or they are on another
+			# page. It decides where it stands rather than freezing, and every
+			# square verb it picks is refused, which is honest and visible.
+		elif Movement.has_route(world, actor_id):
+			# Back in sight of them: the walk is over, and the route that brought
+			# it here must not outlive it into the decision below.
+			Movement.clear_route(world, actor_id)
+			_aim(extra, Vector2i(-1, -1))
+
 	# Her stores go in with the world (v0.2.1 WI-9a): the seed box is one of the
 	# robot's inputs, and it is the one thing it can see that is not grid truth.
 	var obs := Observation.build(world, actor_id, extra.get("spec", {}), gs)
@@ -1413,6 +1517,14 @@ func _drop_job(world: SimWorld, actor_id: String, extra: Dictionary) -> void:
 func _do_job(world: SimWorld, actor_id: String, extra: Dictionary, verb: String,
 		at: Vector2i, gs) -> Dictionary:
 	var state := String(world.get_tile(at.x, at.y).get("state", ""))
+	# **Still one of its squares?** (Q-124.) She may have taken it off the list
+	# while the robot was walking to it; a square it is no longer given is a
+	# square that has stopped answering, like one the rain wetted on the way.
+	# `sell` is not about a square, so the bin is never refused this way.
+	if verb != "sell":
+		var mine := assigned_keys(extra)
+		if not mine.is_empty() and not mine.has(at.y * SimWorld.MAP_WIDTH + at.x):
+			return {}
 	match verb:
 		"till":
 			# **A robot swings the hoe where she could swing it, and nowhere else
@@ -1483,6 +1595,9 @@ func _nearest_legal(world: SimWorld, actor_id: String, extra: Dictionary,
 	# dictionary inside one think is exactly the per-decision cost ground rule 8
 	# is about.
 	var seed := _best_seed(gs) if choice == LEARN_PLANT else ""
+	# Her assignment, asked once for the patch like the seed box (Q-124). Empty
+	# when nothing is assigned, and then the scan is the one it always was.
+	var mine := assigned_keys(extra)
 	var best := Vector2i(-1, -1)
 	var best_d := 1 << 30
 	for dy in range(-r, r + 1):
@@ -1491,11 +1606,40 @@ func _nearest_legal(world: SimWorld, actor_id: String, extra: Dictionary,
 			if d >= best_d:
 				continue
 			var t := here + Vector2i(dx, dy)
+			if not mine.is_empty() and not mine.has(t.y * SimWorld.MAP_WIDTH + t.x):
+				continue
 			if not _legal_at(world, extra, choice, t, seed):
 				continue
 			best_d = d
 			best = t
 	return best
+
+
+# Is any of its squares inside the patch it can see? The same square window the
+# observation reads, so "in view" means one thing for both.
+func _in_view_of(here: Vector2i, mine: Array[Vector2i], r: int) -> bool:
+	for t in mine:
+		if absi(t.x - here.x) <= r and absi(t.y - here.y) <= r:
+			return true
+	return false
+
+
+# One step of the walk back to its squares (Q-124), on the mark-1's plumbing:
+# keep stepping a route while it still leads to one of them, and plan a fresh one
+# to the nearest when it does not. Returns false only when there is no route to
+# the nearest square at all.
+func _walk_back(world: SimWorld, actor_id: String, extra: Dictionary, tick: int,
+		mine: Array[Vector2i]) -> bool:
+	if Movement.has_route(world, actor_id) and mine.has(_goal(extra)):
+		if Movement.step(world, actor_id, tick) == Movement.MOVED:
+			return true
+		Movement.clear_route(world, actor_id)
+	var back: Vector2i = mine[_nearest_index(mine, world.actor_pos(actor_id))]
+	if _set_out(world, actor_id, extra, tick, back) == "":
+		Movement.clear_route(world, actor_id)
+		_aim(extra, Vector2i(-1, -1))
+		return false
+	return true
 
 
 # Would her tap on this square resolve to this action's verb?

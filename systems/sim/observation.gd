@@ -347,6 +347,16 @@ static func build(world: SimWorld, actor_id: String, spec: Dictionary, gs = null
 	# Never a pass over the map: this is a fact about actors, and actors are a
 	# short list whatever the size of the farm (ground rule 8).
 	var crows: Dictionary = _crow_tiles(world) if want_crow else {}
+	# **The squares she has given it, if any** (Q-124). Outside them the four
+	# channels that say "there is work here" — needs water, crop, bare, ripe — read
+	# zero, because the robot may not work there and a channel that showed it work
+	# it would be refused is a channel teaching it to ignore what it sees. The rest
+	# of the patch is the world as it is: wet ground is still wet, a fence is still
+	# a fence, a crow is still a crow and the bin is still the bin. Empty when
+	# nothing is assigned, and then no square is masked and the vector is exactly
+	# the one every robot has always been given.
+	var mine: Dictionary = BotBrain.assigned_keys(world.actor(actor_id).get("extra", {}))
+	var masked := not mine.is_empty()
 
 	var base := head
 	for dyi in side:
@@ -391,6 +401,11 @@ static func build(world: SimWorld, actor_id: String, spec: Dictionary, gs = null
 				# which way it is; this says "it is this square", which is what
 				# the last step of a walk to the bin needs.
 				var v_bin := 1.0 if (want_bin and String(objects_row[tx]) == BIN_OBJECT) else 0.0
+				if masked and not mine.has(ty * SimWorld.MAP_WIDTH + tx):
+					v_needs_water = 0.0
+					v_crop = 0.0
+					v_bare = 0.0
+					v_ripe = 0.0
 				if in_order:
 					out[base] = v_needs_water
 					out[base + 1] = v_wet

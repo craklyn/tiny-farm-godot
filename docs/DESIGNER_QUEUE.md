@@ -299,8 +299,23 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   the two copies automatically; (c) keep closing by hand. **Strawman: (a).** Card:
   `hq/data/decisions/Q-125.json`.
 
-- **Q-124 — Should the Mark III learn to water her crops, or is a robot that only
-  tends its own patch good enough for now?** — **Ruling, open 2026-09-25.** The Mark
+- **Q-124** ~~Should the Mark III learn to water her crops, or is a robot that only
+  tends its own patch good enough for now?~~ — ✅ **ruled 2026-09-25: (a), keep the
+  reward as it is — with the note "Let's build a way, now, for the mark-3's tiles to
+  be assigned."** Recorded as S-26. Nobody owns a tile (Q-100 stands); instead the
+  player can now give a Mark III up to sixteen squares from its panel ("Show it where
+  to work"), tapping squares on and off in the mark-1's pointing mode. With squares
+  given, the robot tills, sows, waters and cuts only there, sees no work anywhere
+  else, and walks back to them when it has wandered, shipped or been moved; it still
+  carries crops to the bin and chases crows it can see. Built the same day — design
+  in `design/06` ("Her squares"), pictures in `docs/design/mockups/q124_assign/`.
+  **Measured on the 24 test farms:** left on open ground it watered 0.07 squares of
+  her sowing a day in its first three days; given two-thirds of her sown block it
+  watered 15.8 of those 16 squares a day. One finding went to the ML seat: on its
+  given squares a week of nights ends *below* the same week with the night switched
+  off (46.4 points a day against 60.4), because a day of her ripe crop carried to the
+  bin is a much bigger day than the learning rate was tuned for. Original entry:
+  **Ruling, open 2026-09-25.** The Mark
   III — the robot she buys that learns by trial and reward, one rung above the
   pre-programmed mark-1 — is loose on the farm today, and it works: it hoes bare
   ground, plants seeds, and waters what comes up. A fresh run of

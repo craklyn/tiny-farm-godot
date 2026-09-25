@@ -530,6 +530,21 @@ playtest-driven re-tune Q-121 had recommended waiting for — Daniel moved this
 one number now rather than after observing a session. `systems/machine_defs.gd`
 carries the new price.
 
+### S-26. The Mark III keeps its reward; the player can assign it squares to work
+**Ruled 2026-09-25 (Q-124, option a), with Daniel's note: "Let's build a way, now,
+for the mark-3's tiles to be assigned."** The reward table stays as it is and nobody
+owns a tile (Q-100 stands). On open ground the robot waters the crop it sowed itself
+and almost never hers, so the player now tells it where to work instead: from its
+panel she gives one Mark III up to sixteen squares, tapping them on and off. With
+squares given, the robot tills, sows, waters and cuts only those squares, its view
+shows no work anywhere else, and it walks back to them whenever none is in sight. It
+still carries crops to the bin and chases crows it can see. With nothing given, it
+behaves exactly as before. The assignment is one recorded player Action
+(`assign_tiles`, the whole list each time), saved on the robot and kept when she picks
+it up (Q-98). The limit of sixteen and the choice of a hard limit over a preference
+are `[Playtest]`. Built the same day; design in `design/06-bots-and-training.md`
+("Her squares").
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported

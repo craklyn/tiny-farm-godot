@@ -1617,6 +1617,9 @@ const NON_WORK_VERBS := { "sleep": true, "sell": true, "withdraw_seed": true,
 		# work (2026-09-03). Charging the day's clock for pointing at eight tiles
 		# would make delegating the round cost more than doing it.
 		"teach": true, "activate": true,
+		# ...and giving a Mark III its squares is the same kind of instruction
+		# (Q-124): pointing at a bed is not working it.
+		"assign_tiles": true,
 		# Walking through her own front door is not work (2026-09-06). It costs no
 		# energy and does not tick the clock the crows are scheduled against, for
 		# the same reason crossing the yard does not: going somewhere is how you
@@ -3174,6 +3177,49 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			BotBrain.set_orders(taught_extra, taught)
 			return { "ok": true, "machine": taught_id, "taught": true,
 				"orders": taught.size() }
+
+		# **Giving a Mark III the squares it works** (Q-124, ruled 2026-09-25).
+		# The whole list, every time: `tiles` is the assignment after this Action,
+		# flat `[x1, y1, ...]`, and an empty list takes every square away. So one
+		# verb is assigning, taking one back and clearing the lot, and a replay
+		# entry says on its own what the robot was given from that tick on —
+		# nothing has to be folded from a run of toggles to know it, which is what
+		# a training corpus reading these logs later will want (Kenji's corpus).
+		#
+		# `target` is the square her finger was on, for the tile's own reaction;
+		# the robot is named rather than found under it, as `teach` names its
+		# machine, because she is pointing at a crop row and the robot is elsewhere.
+		#
+		# Strict about what it accepts — every square has to be one a machine
+		# could be taught (`teachable_at`: ground it can stand on that can grow
+		# something) and there can be no more than `ASSIGN_LIMIT` — and the
+		# router, not the gateway, is the one that leaves a square that has since
+		# stopped qualifying out of the list she is building. Free and off the
+		# day's clock, like `teach`: pointing is an instruction, not a stroke.
+		#
+		# A learner only. A mark-1's list is its program and a mark-2 has a dial;
+		# neither has anything for an assignment to limit.
+		"assign_tiles":
+			var assigned_id := String(action.get("machine", ""))
+			if not actors.has(assigned_id): return _fail("no_machine_here")
+			var assigned_extra: Dictionary = actors[assigned_id]["extra"]
+			if String(assigned_extra.get("config", "")) != BotBrain.CONFIG_LEARN:
+				return _fail("not_assignable_machine")
+			var flat_tiles: Array = action.get("tiles", [])
+			if flat_tiles.size() % 2 != 0: return _fail("bad_tiles")
+			if flat_tiles.size() / 2 > BotBrain.ASSIGN_LIMIT: return _fail("assignment_full")
+			var given: Array[Vector2i] = []
+			var k := 0
+			while k + 1 < flat_tiles.size():
+				var square := Vector2i(int(flat_tiles[k]), int(flat_tiles[k + 1]))
+				k += 2
+				if given.has(square):
+					continue
+				if not teachable_at(square): return _fail("not_teachable")
+				given.append(square)
+			BotBrain.set_assigned(assigned_extra, given)
+			return { "ok": true, "machine": assigned_id, "assigned": given.has(target),
+				"count": given.size() }
 
 		# **Sending a mark-1 out for the day.** It walks its list once and stops;
 		# tomorrow morning it may be sent again (`BotBrain.on_new_day`). The

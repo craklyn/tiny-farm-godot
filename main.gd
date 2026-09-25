@@ -1401,15 +1401,37 @@ func clear_teaching() -> void:
 	var marked: Array[Vector2i] = farm.teaching_orders.duplicate()
 	if marked.is_empty():
 		return
-	for t in marked:
-		farm.apply_action({ "verb": "teach", "target": t, "machine": id, "actor": "player" },
-			GameState)
+	if _teaching_a_learner():
+		# A Mark III's assignment is one list, so taking all of it back is one
+		# Action with an empty one (Q-124) — aimed at the robot, since there is no
+		# one square her finger is on.
+		farm.apply_action({ "verb": "assign_tiles", "target": farm.sim.actor_pos(id),
+			"machine": id, "tiles": [], "actor": "player" }, GameState)
+	else:
+		for t in marked:
+			farm.apply_action({ "verb": "teach", "target": t, "machine": id, "actor": "player" },
+				GameState)
 	AudioManager.play_sfx("nope")
 	_refresh_teaching_orders()
 
 
 func is_teaching() -> bool:
 	return ActionRouter.teaching_machine != ""
+
+
+# **The same mode, two kinds of list** (Q-124). A mark-1 is taught a round of up
+# to eight squares; a Mark III is given a bed of up to sixteen to work. Asked of
+# the robot rather than remembered from when the mode began, so the mode can never
+# disagree with the machine it is drawing.
+func _teaching_a_learner() -> bool:
+	var id: String = ActionRouter.teaching_machine
+	if farm == null or id == "" or not farm.sim.has_actor(id):
+		return false
+	return String(farm.sim.actor(id).get("extra", {}).get("config", "")) == BotBrain.CONFIG_LEARN
+
+
+func _teaching_limit() -> int:
+	return BotBrain.ASSIGN_LIMIT if _teaching_a_learner() else BotBrain.ORDER_LIMIT
 
 
 # The picture catching up with the machine, after every tap. Read back off the
@@ -1420,10 +1442,12 @@ func _refresh_teaching_orders() -> void:
 	if farm == null or id == "" or not farm.sim.has_actor(id):
 		end_teaching()
 		return
-	farm.teaching_orders = BotBrain.orders_of(farm.sim.actor(id).get("extra", {}))
+	var taught_extra: Dictionary = farm.sim.actor(id).get("extra", {})
+	farm.teaching_orders = BotBrain.assigned_of(taught_extra) if _teaching_a_learner() \
+		else BotBrain.orders_of(taught_extra)
 	_refresh_teaching_eligible()
 	if hud != null and hud.has_method("set_teaching"):
-		hud.set_teaching(true, farm.teaching_orders.size(), BotBrain.ORDER_LIMIT)
+		hud.set_teaching(true, farm.teaching_orders.size(), _teaching_limit())
 	farm.queue_redraw()
 
 
@@ -1442,7 +1466,7 @@ func _refresh_teaching_eligible() -> void:
 	if farm == null:
 		return
 	var lit: Dictionary = {}
-	var full: bool = farm.teaching_orders.size() >= BotBrain.ORDER_LIMIT
+	var full: bool = farm.teaching_orders.size() >= _teaching_limit()
 	for t in farm.teaching_orders:
 		lit[t] = true
 	if not full:

@@ -675,21 +675,27 @@ func _teach_tap(at: Vector2i) -> void:
 		# is the same one an unworkable tile gives her everywhere else.
 		refuse_target(at, "not_teachable")
 		return
-	var result: Dictionary = farm.apply_action({
-		"verb": "teach",
+	# A mark-1 is taught one square at a time; a Mark III is handed its whole
+	# assignment after this tap (Q-124). The router has already said which.
+	var verb := String(resolved.get("action", "teach"))
+	var action := {
+		"verb": verb,
 		"target": at,
 		"machine": String(resolved.get("machine", "")),
 		"actor": "player",
-	}, gs)
+	}
+	if verb == "assign_tiles":
+		action["tiles"] = resolved.get("tiles", [])
+	var result: Dictionary = farm.apply_action(action, gs)
 	if not result.get("ok", false):
 		refuse_target(at, String(result.get("reason", "")))
 		return
-	AudioManager.play_sfx("till" if result.get("taught", false) else "nope")
+	var lit: bool = bool(result.get("taught", result.get("assigned", false)))
+	AudioManager.play_sfx("till" if lit else "nope")
 	# The farm's picture of the list, caught up with the machine's own.
 	var main_node := get_tree().get_first_node_in_group("Main")
 	if main_node != null and main_node.has_method("_refresh_teaching_orders"):
 		main_node._refresh_teaching_orders()
-	var lit: bool = result.get("taught", false)
 	tap_indicator = { "tx": at.x, "ty": at.y, "timer": TAP_INDICATOR_DURATION,
 		"r": 0.2 if lit else 0.9, "g": 0.9 if lit else 0.6, "b": 0.3 }
 

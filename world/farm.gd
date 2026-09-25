@@ -1382,6 +1382,39 @@ func _draw_edge_room_walls() -> void:
 	draw_line(Vector2(gap_x + TILE_SIZE, box.end.y), box.end, ink, 2.0)
 
 
+# Every square any Mark III on the farm has been given (Q-124), read off the
+# registry. Presentation reading the sim, never writing it.
+func _assigned_squares() -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	if sim == null:
+		return out
+	for raw in sim.actors:
+		var extra: Dictionary = sim.actors[raw].get("extra", {})
+		if extra.has("assigned"):
+			out.append_array(BotBrain.assigned_of(extra))
+	return out
+
+
+const ASSIGNED_TICK := Color(0.55, 0.9, 1.0, 0.5)
+const ASSIGNED_TICK_LEN := 3.0
+
+# Four small L-shaped corners just inside a square: the resting mark of a square a
+# robot has been given. Corners rather than an outline because an outline on every
+# square of a bed draws a grid over the crop, and a grid is wallpaper.
+func _draw_corner_ticks(canvas: CanvasItem, at: Vector2) -> void:
+	var a := at + Vector2(1.5, 1.5)
+	var b := at + Vector2(TILE_SIZE - 1.5, TILE_SIZE - 1.5)
+	var n := ASSIGNED_TICK_LEN
+	canvas.draw_line(a, a + Vector2(n, 0), ASSIGNED_TICK, 1.0)
+	canvas.draw_line(a, a + Vector2(0, n), ASSIGNED_TICK, 1.0)
+	canvas.draw_line(Vector2(b.x, a.y), Vector2(b.x - n, a.y), ASSIGNED_TICK, 1.0)
+	canvas.draw_line(Vector2(b.x, a.y), Vector2(b.x, a.y + n), ASSIGNED_TICK, 1.0)
+	canvas.draw_line(Vector2(a.x, b.y), Vector2(a.x + n, b.y), ASSIGNED_TICK, 1.0)
+	canvas.draw_line(Vector2(a.x, b.y), Vector2(a.x, b.y - n), ASSIGNED_TICK, 1.0)
+	canvas.draw_line(b, b - Vector2(n, 0), ASSIGNED_TICK, 1.0)
+	canvas.draw_line(b, b - Vector2(0, n), ASSIGNED_TICK, 1.0)
+
+
 # Whether a thing standing at this world y, in pixels, is drawn by the pass that
 # covers rows y0 to y1.
 func _rows_hold(py: float, y0: int, y1: int) -> bool:
@@ -1708,6 +1741,29 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 				canvas.draw_arc(Vector2(ocx, ocy), 6.0, 0.0, TAU, 16,
 					Color(0.55, 0.9, 1.0, 0.9), 1.0)
 		})
+
+	# **A Mark III's squares, at rest** (Q-124). While she is giving a robot its
+	# squares they wear the ring above; the rest of the time they wear four faint
+	# corner ticks in the same machine blue, so the bed a robot is keeping reads
+	# as spoken for without a word and without covering the crop in it. Not drawn
+	# while the mode is on — the rings and the dimming are the whole picture then.
+	# Read off the robots themselves every frame rather than cached, so the mark
+	# can never outlive an assignment she took back: a few actors and at most
+	# sixteen squares each, never a pass over the map.
+	if teaching_eligible.is_empty():
+		var kept := _assigned_squares()
+		if not kept.is_empty():
+			var corners: Array[Vector2] = []
+			for at in kept:
+				if _rows_hold(at.y * TILE_SIZE, y0, y1):
+					corners.append(Vector2(at.x * TILE_SIZE, at.y * TILE_SIZE))
+			if not corners.is_empty():
+				render_queue.append({
+					"y": 98000.0,
+					"draw": func():
+						for c in corners:
+							_draw_corner_ticks(canvas, c)
+				})
 
 	# The done-tick, drawn above everything for the same reason the refusal icon
 	# is: a soft ring opening outward with three sparkles rising off it. No shake,

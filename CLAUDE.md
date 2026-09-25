@@ -58,8 +58,14 @@ godot --headless --path . --script res://tools/demo_robot_value.gd
 
 # A week of a Mark III learning to water (v0.2.1): seven days on one open-ground
 # farm, then the same week on 24 more against a control with the night switched
-# off — prints the tables the unit test's gate is taken from
+# off — prints the tables the unit test's gate is taken from — and the same 24
+# weeks again with the robot given her sown squares (S-26), counting how many
+# squares of her sowing it watered
 godot --headless --path . --script res://tools/demo_learning_robot.gd
+
+# Giving a Mark III its squares (S-26): its panel, the pointing mode, and the quiet
+# marks afterwards, as PNGs under docs/design/mockups/q124_assign/ — needs a display
+godot --path . res://tools/capture_assign_tiles.tscn
 
 # What the raid's morning costs her (design/04, Q-105): walks her out of the front door on
 # the generated farm, on a near bed and one ten tiles further out, shoos each bird as she

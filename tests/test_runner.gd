@@ -233,6 +233,7 @@ func _init() -> void:
 	test_one_pouch()
 	test_carry_cap()
 	test_save_v5_migration()
+	test_mark_three_assigned_tiles()
 
 	print("")
 	print(String("=").repeat(60))
@@ -16312,3 +16313,257 @@ func test_save_v5_migration() -> void:
 		"loaded v5 stock and planted tile match the live farm")
 	_assert(SaveGame.replay_matches(log, final_save),
 		"deposit, withdrawal, and planting replay to the saved farm")
+
+
+# --- A Mark III given its squares (Q-124, ruled 2026-09-25) ------------------
+#
+# The designer kept the reward as it is and asked for a way to tell the robot
+# where to work. So this is that instruction proved end to end in the sim: the
+# verb and its refusals, what the robot is shown, where it walks and works, and
+# that the assignment survives everything a robot's memory has to survive — the
+# disk, a replay and being picked up.
+
+# Her own bed, sown and dry, well outside what the robot can see from where it is
+# put down (`MK3_SPOT`, in the middle of `MK3_PATCH`, which is sown too). A 4×4,
+# so it is exactly `ASSIGN_LIMIT` squares.
+const HER_BED := Rect2i(20, 12, 4, 4)
+
+
+func _her_bed(s: LiveSession) -> Array[Vector2i]:
+	var bed: Array[Vector2i] = []
+	for ty in range(HER_BED.position.y, HER_BED.end.y):
+		for tx in range(HER_BED.position.x, HER_BED.end.x):
+			s.world.set_tile_state(tx, ty, "seeded", "wheat")
+			s.world.get_tile(tx, ty).watered_today = false
+			bed.append(Vector2i(tx, ty))
+	return bed
+
+
+func _flat(tiles: Array[Vector2i]) -> Array:
+	var out: Array = []
+	for t in tiles:
+		out.append(t.x)
+		out.append(t.y)
+	return out
+
+
+func _assign(s: LiveSession, bot: String, tiles: Array[Vector2i],
+		at := Vector2i(-1, -1)) -> Dictionary:
+	var aim := at
+	if aim.x < 0:
+		aim = tiles[0] if not tiles.is_empty() else s.world.actor_pos(bot)
+	return s.act({ "verb": "assign_tiles", "target": aim, "machine": bot,
+		"tiles": _flat(tiles), "actor": "player" })
+
+
+# How far a tile is from the nearest square of a bed, the way the robot's view
+# measures it: a square window, so the larger of the two offsets.
+func _gap_to(at: Vector2i, bed: Array[Vector2i]) -> int:
+	var best := 1 << 30
+	for t in bed:
+		best = mini(best, maxi(absi(t.x - at.x), absi(t.y - at.y)))
+	return best
+
+
+func test_mark_three_assigned_tiles() -> void:
+	print("\n--- A Mark III works the squares she gives it (Q-124) Tests ---")
+
+	# --- the verb, and what it refuses -----------------------------------------
+	var s := _mk3_yard(12401)
+	var bed := _her_bed(s)
+	var bot := _mk3_place(s, MK3_SPOT)
+	var energy_before: int = s.gs.energy
+	var clock_before: int = s.gs.actions_today
+	var given := _assign(s, bot, bed)
+	_assert(given.get("ok", false) and int(given.get("count", 0)) == BotBrain.ASSIGN_LIMIT
+			and bool(given.get("assigned", false)),
+		"she gives the robot her sixteen-square bed in one Action (%s)" % str(given))
+	_assert(BotBrain.assigned_of(s.world.actor(bot)["extra"]) == bed,
+		"and the robot holds exactly those squares, in the order she gave them")
+	_assert(s.gs.energy == energy_before and s.gs.actions_today == clock_before,
+		"pointing costs her nothing and does not move the day's clock — it is an instruction")
+	var one_more: Array[Vector2i] = bed.duplicate()
+	one_more.append(Vector2i(19, 12))
+	var full := _assign(s, bot, one_more)
+	_assert(not full.get("ok", false) and String(full.get("reason", "")) == "assignment_full",
+		"a seventeenth square is refused as assignment_full (%s)" % String(full.get("reason", "")))
+	var bin_only: Array[Vector2i] = [Observation.bin_tile(s.world)]
+	var not_ground := _assign(s, bot, bin_only)
+	_assert(not not_ground.get("ok", false)
+			and String(not_ground.get("reason", "")) == "not_teachable",
+		"the shipping bin's square is not ground to work, and is refused (%s)"
+			% String(not_ground.get("reason", "")))
+	var odd := s.act({ "verb": "assign_tiles", "target": bed[0], "machine": bot,
+		"tiles": [20, 12, 21], "actor": "player" })
+	_assert(not odd.get("ok", false) and String(odd.get("reason", "")) == "bad_tiles",
+		"half a square is refused as bad_tiles")
+	var hen := s.act({ "verb": "assign_tiles", "target": bed[0],
+		"machine": SimWorld.ACTOR_CHICKEN, "tiles": _flat(bed), "actor": "player" })
+	_assert(not hen.get("ok", false)
+			and String(hen.get("reason", "")) == "not_assignable_machine",
+		"only a learning robot can be given squares (%s)" % String(hen.get("reason", "")))
+	_assert(BotBrain.assigned_of(s.world.actor(bot)["extra"]) == bed,
+		"and none of those refusals touched the squares it already had")
+
+	# --- what it is shown ------------------------------------------------------
+	# From where it stands, in the middle of the patch it was put down in, every
+	# square around it is sown and thirsty — and not one of them is its own.
+	var extra: Dictionary = s.world.actor(bot)["extra"]
+	var spec: Dictionary = extra["spec"]
+	var r := int(spec.get("vision", 2))
+	var side := 2 * r + 1
+	var nch := (spec["channels"] as Array).size()
+	var head := Observation.size(spec) - side * side * nch
+	var west := head + (r * side + (r - 1)) * nch
+	var masked_view := Observation.build(s.world, bot, spec, s.gs)
+	var kept_squares: Array = extra["assigned"]
+	extra.erase("assigned")
+	var open_view := Observation.build(s.world, bot, spec, s.gs)
+	extra["assigned"] = kept_squares
+	_assert(float(open_view[west + Observation.CH_NEEDS_WATER]) == 1.0
+			and float(open_view[west + Observation.CH_CROP]) == 1.0,
+		"unassigned, the square beside it reads as a thirsty crop")
+	_assert(float(masked_view[west + Observation.CH_NEEDS_WATER]) == 0.0
+			and float(masked_view[west + Observation.CH_CROP]) == 0.0,
+		"given her bed, the same square shows no work — it is not the robot's to do")
+	_assert(float(masked_view[west + Observation.CH_WALKABLE])
+			== float(open_view[west + Observation.CH_WALKABLE])
+			and float(open_view[west + Observation.CH_WALKABLE]) == 1.0,
+		"while what the ground is like is still what the ground is like")
+	_assert(masked_view.size() == open_view.size(),
+		"and the vector keeps its width, so every weight it learned still lines up (%d)"
+			% masked_view.size())
+
+	# --- where it goes, and what it works --------------------------------------
+	# A fresh robot, uniform over its eight actions, put down with her bed out of
+	# its sight. Everything it does to a square in the next three minutes has to
+	# be done to a square of hers.
+	var taken := s.tick(SimClock.RATE * 180)
+	var worked := 0
+	var watered_hers := 0
+	var strays: Array = []
+	for t in taken:
+		var a: Dictionary = t["action"]
+		if String(a.get("actor", "")) != bot or not t["result"].get("ok", false):
+			continue
+		var verb := String(a.get("verb", ""))
+		if not (verb in ["till", "plant", "water", "harvest"]):
+			continue
+		worked += 1
+		var at: Vector2i = a.get("target", Vector2i(-1, -1))
+		if not bed.has(at):
+			strays.append(at)
+		elif verb == "water":
+			watered_hers += 1
+	_assert(worked > 0 and strays.is_empty(),
+		"every square it worked in three minutes was one of hers: %d worked, strays %s"
+			% [worked, str(strays)])
+	_assert(watered_hers > 0,
+		"and it walked over and watered her crop — %d of her squares" % watered_hers)
+	var patch_watered := 0
+	for ty in range(MK3_PATCH.position.y, MK3_PATCH.end.y):
+		for tx in range(MK3_PATCH.position.x, MK3_PATCH.end.x):
+			if bool(s.world.get_tile(tx, ty).get("watered_today", false)):
+				patch_watered += 1
+	_assert(patch_watered == 0,
+		"while the thirsty patch it was set down in stayed dry (%d watered)" % patch_watered)
+
+	# --- nothing assigned is today's robot -------------------------------------
+	var cleared := _assign(s, bot, [] as Array[Vector2i])
+	_assert(cleared.get("ok", false) and int(cleared.get("count", -1)) == 0
+			and not (s.world.actor(bot)["extra"] as Dictionary).has("assigned"),
+		"an empty list takes every square back, and leaves no key behind")
+	s.done()
+
+	# Two robots on one seed, one given squares and cleared before it ever thought:
+	# a minute later they are the same robot, key for key. The learning gate's
+	# farms assign nothing, and this is why they play exactly as they did.
+	var twin_a := _mk3_yard(12402)
+	var bed_a := _her_bed(twin_a)
+	var id_a := _mk3_place(twin_a, MK3_SPOT)
+	_assign(twin_a, id_a, bed_a)
+	_assign(twin_a, id_a, [] as Array[Vector2i])
+	twin_a.tick(SimClock.RATE * 60)
+	var twin_b := _mk3_yard(12402)
+	_her_bed(twin_b)
+	var id_b := _mk3_place(twin_b, MK3_SPOT)
+	twin_b.tick(SimClock.RATE * 60)
+	var ex_a: Dictionary = twin_a.world.actor(id_a)["extra"]
+	var ex_b: Dictionary = twin_b.world.actor(id_b)["extra"]
+	_assert(ex_a.keys().size() == ex_b.keys().size(),
+		"a cleared robot carries no key a never-assigned one does not")
+	for key in ex_a.keys():
+		_assert_quiet(str(ex_a[key]) == str(ex_b.get(key)), "'%s' agrees" % key)
+	_flush_quiet("and a minute on, it is the never-assigned robot key for key")
+	twin_a.done()
+	twin_b.done()
+
+	# --- the disk --------------------------------------------------------------
+	var saved := _mk3_yard(12403)
+	var saved_bed := _her_bed(saved)
+	var saved_bot := _mk3_place(saved, MK3_SPOT)
+	_assign(saved, saved_bot, saved_bed)
+	saved.tick(SimClock.RATE * 20)
+	var snapshot = JSON.parse_string(JSON.stringify(SaveGame.capture(saved.world, saved.gs)))
+	var gs_back = load("res://systems/game_state.gd").new()
+	gs_back.reset()
+	var restored := SimWorld.new()
+	_assert(SaveGame.restore(snapshot, restored, gs_back),
+		"a farm with an assigned Mark III saves")
+	_assert(BotBrain.assigned_of(restored.actor(saved_bot)["extra"]) == saved_bed,
+		"and the robot comes back holding the same sixteen squares")
+	_assert(SaveGame.capture_canonical(restored, gs_back)
+			== SaveGame.capture_canonical(saved.world, saved.gs),
+		"the restored farm is the saved farm")
+	gs_back.free()
+
+	# --- being picked up is repositioning (Q-98) --------------------------------
+	var lifted := saved.act({ "verb": "collect", "target": saved.world.actor_pos(saved_bot),
+		"actor": "player" })
+	_assert(lifted.get("ok", false) and not saved.world.has_actor(saved_bot),
+		"she picks it up")
+	var boxed: Array = saved.gs.boxed.get("bot_mk3", [])
+	_assert(boxed.size() == 1 and BotBrain.assigned_of(boxed[0]) == saved_bed,
+		"and the crate remembers its squares along with everything else it learned")
+	var far := Vector2i(5, 5)
+	var back_id := String(saved.act({ "verb": "place", "target": far, "item": "bot_mk3",
+		"actor": "player" }).get("machine", ""))
+	_assert(back_id != ""
+			and BotBrain.assigned_of(saved.world.actor(back_id)["extra"]) == saved_bed,
+		"set down across the farm, it still holds her bed")
+	var start_gap := _gap_to(saved.world.actor_pos(back_id), saved_bed)
+	saved.tick(SimClock.RATE * 30)
+	var end_gap := _gap_to(saved.world.actor_pos(back_id), saved_bed)
+	_assert(start_gap > 2 and end_gap <= 2,
+		"and walks back to it on its own: %d tiles away when put down, %d after half a minute"
+			% [start_gap, end_gap])
+	saved.done()
+
+	# --- a replay --------------------------------------------------------------
+	# The assignment is a recorded Action; everything the robot then does with it
+	# is recomputed. She changes her mind once, part way through, and there is a
+	# night in between, so the replay has to apply each list at its own tick for
+	# the robot's day to come out the same.
+	var live := _mk3_yard(12404)
+	var live_bed := _her_bed(live)
+	live.rebase()
+	var learner := _mk3_place(live, MK3_SPOT)
+	_assign(live, learner, live_bed)
+	live.tick(SimClock.RATE * 45)
+	var smaller: Array[Vector2i] = live_bed.slice(0, 8)
+	_assign(live, learner, smaller, live_bed[12])
+	live.tick(SimClock.RATE * 15)
+	live.gs.weather = "sunny"
+	live.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	live.tick(SimClock.RATE * 30)
+	var live_canonical := SaveGame.capture_canonical(live.world, live.gs)
+	var again := SimWorld.new()
+	live.log.apply_to(again, live.gs)
+	_assert(live.log.divergence == "",
+		"a session in which she gave the robot squares, then took half back, recomputes cleanly (%s)"
+			% live.log.divergence)
+	_assert(SaveGame.capture_canonical(again, live.gs) == live_canonical,
+		"landing on the same farm and the same robot")
+	_assert(BotBrain.assigned_of(again.actor(learner)["extra"]) == smaller,
+		"holding the eight squares she left it with")
+	live.done()

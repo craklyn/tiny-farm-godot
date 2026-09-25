@@ -31,7 +31,8 @@ const HALO_OBJECTS := { "cot": true, "house_door": true }
 ## reloaded into teaching mode with no way out would be a trap.
 ##
 ## While it is set, a tap on a teachable tile is a `teach` Action on that tile —
-## at any distance, with no walk and no energy. Pointing is not a chore.
+## at any distance, with no walk and no energy. Pointing is not a chore. The same
+## mode serves a Mark III (Q-124), where the tap is an `assign_tiles` instead.
 var teaching_machine: String = ""
 
 const SPECIAL_OBJECTS := {
@@ -149,6 +150,36 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 			return {}   # it was picked up out from under the mode; main.gd will clear it
 		if not teach_world.teachable_at(tap_t):
 			return {}
+		# **A Mark III is given squares, not taught a round** (Q-124). The same
+		# mode and the same finger, but the tap means "this square is yours / is
+		# not yours any more", and what goes to the gateway is the whole
+		# assignment after the tap (`assign_tiles`). Built here from what the
+		# robot holds right now — minus any square that has since stopped being
+		# one a machine could be given, so a stale square cannot make every later
+		# tap refused. A tap that would go past the limit resolves to nothing,
+		# which the player answers with the ordinary wobble.
+		var taught_extra: Dictionary = teach_world.actor(teaching_machine).get("extra", {})
+		if String(taught_extra.get("config", "")) == BotBrain.CONFIG_LEARN:
+			var squares: Array[Vector2i] = []
+			for t in BotBrain.assigned_of(taught_extra):
+				if teach_world.teachable_at(t):
+					squares.append(t)
+			var had := squares.find(tap_t)
+			if had >= 0:
+				squares.remove_at(had)
+			elif squares.size() >= BotBrain.ASSIGN_LIMIT:
+				return {}
+			else:
+				squares.append(tap_t)
+			var flat: Array = []
+			for t in squares:
+				flat.append(t.x)
+				flat.append(t.y)
+			return check_result.call({
+				"action": "assign_tiles", "tool_idx": 0, "target_t": tap_t,
+				"walk_to": false, "seed_type": "", "machine": teaching_machine,
+				"tiles": flat,
+			})
 		return check_result.call({
 			"action": "teach", "tool_idx": 0, "target_t": tap_t,
 			"walk_to": false, "seed_type": "", "machine": teaching_machine,

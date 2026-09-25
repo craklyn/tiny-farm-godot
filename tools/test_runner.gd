@@ -151,6 +151,7 @@ func _run_scenarios() -> void:
 	await _scenario_be_a_finger_drag_scrolls_not_buys()
 	await _scenario_bf_the_inventory_picker_also_caps()
 	await _scenario_basket_chip_pulses_at_cap()
+	await _scenario_bg_the_mark_three_is_given_its_squares()
 
 
 func _scenario_ba_crow_spook_stops_at_room_wall() -> void:
@@ -4987,12 +4988,14 @@ func _scenario_am_the_mark_three_shows_its_practice() -> void:
 	var opened := await _wait_until(func(): return menus.active_menu == "machine", 60)
 	_assert(opened, "its panel opens as it lands, like every other machine's")
 
-	# --- the panel is the readout, pick-up and close, and nothing else -------
+	# --- the panel is the readout, its squares, pick-up and close -------------
+	# The squares row joined on 2026-09-25 (Q-124); Scenario BG taps it.
 	var kinds: Array = []
 	for opt in menus.machine_options:
 		kinds.append(String(opt.get("kind", "")))
-	_assert(kinds == ["practice", "collect", "close"],
-		"the panel is what it has learned, pick it up, and close (%s)" % str(kinds))
+	_assert(kinds == ["practice", "teach", "collect", "close"],
+		"the panel is what it has learned, where it works, pick it up, and close (%s)"
+			% str(kinds))
 	_assert(MachineDefs.configs_of("bot_mk3").is_empty(),
 		"...because it has no settings to offer — its practice is not hers to overwrite")
 
@@ -7995,3 +7998,119 @@ func _scenario_basket_chip_pulses_at_cap() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	_assert(not hud.basket_cap_pulse, "and with neither at its cap, the pulse is off again")
+
+
+# --- Scenario BG: she gives a Mark III its squares, with her finger (Q-124) -----
+#
+# The designer ruled Q-124 on 2026-09-25: keep the reward, and build a way for the
+# Mark III's squares to be assigned. The sim half is `test_mark_three_assigned_tiles`;
+# this is the half a player reaches — the panel row, the mode, a finger on the plot
+# and the controls that end it — through the router, never by calling the verb.
+func _scenario_bg_the_mark_three_is_given_its_squares() -> void:
+	print("\n--- Scenario BG: she gives a Mark III its squares by tapping them (Q-124) ---")
+	var menus = main_scene.menus
+	main_scene.end_teaching()
+	GameState.gold = 5000
+	for raw in farm.sim.learners():
+		farm.apply_action({ "verb": "collect",
+			"target": farm.sim.actor_pos(String(raw)), "actor": "player" }, GameState)
+	await get_tree().process_frame
+
+	# Her bed, three sown squares across the path from where the robot goes down.
+	var bed: Array[Vector2i] = [Vector2i(20, 15), Vector2i(21, 15), Vector2i(22, 15)]
+	for t in bed:
+		_stage_tile(t.x, t.y, "seeded", "wheat")
+	var mk3: String = await _buy_and_place("bot_mk3", Vector2i(16, 13))
+	_assert(mk3 != "", "a Mark III goes down (%s)" % mk3)
+	if mk3 == "":
+		return
+	var opened := await _wait_until(func(): return menus.active_menu == "machine", 60)
+	_assert(opened, "its panel opens as it lands")
+
+	# --- the panel row ---------------------------------------------------------
+	var row := -1
+	for i in menus.machine_options.size():
+		if String(menus.machine_options[i].get("kind", "")) == "teach":
+			row = i
+	_assert(row >= 0, "the Mark III's panel offers a row for where it works")
+	menus.selected_option = row
+	menus._select_current_option()
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_assert(main_scene.is_teaching() and ActionRouter.teaching_machine == mk3,
+		"tapping it enters the same pointing mode the mark-1 is taught in")
+	_assert(not menus.is_open(), "and the panel gets out of the way")
+	_assert(String(main_scene.hud.teach_done_button.text) == "0/%d" % BotBrain.ASSIGN_LIMIT,
+		"the done button counts against the Mark III's own limit: '%s'"
+			% main_scene.hud.teach_done_button.text)
+	await get_tree().create_timer(TEACH_GLIDE_WAIT).timeout
+
+	# --- a finger on the plot --------------------------------------------------
+	var energy_before: int = GameState.energy
+	var standing: Vector2i = player.get_tile_pos()
+	for t in bed:
+		InputManager.click_tile = t
+		InputManager.has_click = true
+		await get_tree().process_frame
+		await get_tree().process_frame
+	_assert(BotBrain.assigned_of(farm.sim.actor(mk3)["extra"]) == bed,
+		"three taps give it three squares (%s)"
+			% str(BotBrain.assigned_of(farm.sim.actor(mk3)["extra"])))
+	_assert(farm.teaching_orders == bed,
+		"and the farm rings exactly the squares the robot holds")
+	_assert(String(main_scene.hud.teach_done_button.text) == "3/%d" % BotBrain.ASSIGN_LIMIT,
+		"the count follows: '%s'" % main_scene.hud.teach_done_button.text)
+	_assert(GameState.energy == energy_before and player.get_tile_pos() == standing,
+		"it cost her nothing and she never moved — pointing is not a chore")
+
+	InputManager.click_tile = bed[1]
+	InputManager.has_click = true
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var kept: Array[Vector2i] = [bed[0], bed[2]]
+	_assert(BotBrain.assigned_of(farm.sim.actor(mk3)["extra"]) == kept,
+		"a tap on a square it already has takes that one back")
+
+	var bin := Observation.bin_tile(farm.sim)
+	InputManager.click_tile = bin
+	InputManager.has_click = true
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_assert(BotBrain.assigned_of(farm.sim.actor(mk3)["extra"]) == kept,
+		"a tap on something that is not ground to work changes nothing")
+
+	var recorded := 0
+	for e in farm.replay.entries:
+		if String(e.get("verb", "")) == "assign_tiles":
+			recorded += 1
+	_assert(recorded == 4,
+		"each tap that changed the list is one recorded Action in the replay (%d)" % recorded)
+
+	# --- done, and the squares stay marked ------------------------------------
+	main_scene.hud._on_teach_done_button()
+	await get_tree().process_frame
+	_assert(not main_scene.is_teaching(), "the done button ends the mode")
+	_assert(farm.teaching_orders.is_empty() and farm.teaching_eligible.is_empty(),
+		"the rings and the dimming go")
+	_assert(farm._assigned_squares() == kept,
+		"and the farm keeps a quiet mark on the two squares the robot is keeping")
+	await get_tree().create_timer(TEACH_GLIDE_WAIT).timeout
+
+	# --- the clear control takes every square back ----------------------------
+	main_scene.begin_teaching(mk3)
+	await get_tree().process_frame
+	main_scene.hud._on_teach_clear_button()
+	await get_tree().process_frame
+	_assert(BotBrain.assigned_of(farm.sim.actor(mk3)["extra"]).is_empty()
+			and not (farm.sim.actor(mk3)["extra"] as Dictionary).has("assigned"),
+		"'clear' in the mode takes every square back, as one Action")
+	main_scene.hud._on_teach_done_button()
+	await get_tree().process_frame
+	await get_tree().create_timer(TEACH_GLIDE_WAIT).timeout
+	_assert(farm._assigned_squares().is_empty(), "and nothing is marked any more")
+
+	# Put the yard back: the robot goes in the crate with nothing assigned, so no
+	# later scenario inherits a bed.
+	farm.apply_action({ "verb": "collect", "target": farm.sim.actor_pos(mk3),
+		"actor": "player" }, GameState)
+	await get_tree().process_frame
