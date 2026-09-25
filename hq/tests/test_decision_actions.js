@@ -13,6 +13,7 @@ const root = path.join(__dirname, "../..");
 const appSource = fs.readFileSync(path.join(root, "hq/static/app.js"), "utf8");
 const queueSource = fs.readFileSync(path.join(root, "hq/static/queue.js"), "utf8");
 const workSource = fs.readFileSync(path.join(root, "hq/static/work.js"), "utf8");
+const reviewSource = fs.readFileSync(path.join(root, "hq/static/review_evidence.js"), "utf8");
 const tmp = fs.mkdtempSync(path.join(os.tmpdir(), "hq-decision-actions-"));
 const alerts = [];
 
@@ -75,6 +76,9 @@ const ctx = vm.createContext({ console, Date, Math, globalThis: {}, fetch: fakeF
   h: decisionElement, attachmentEl() { throw new Error("no attachments expected"); },
   location: { hash: "#/work" }, renderWork() {}, encodeURIComponent, cache: {},
 });
+// decisionCard() reads a card's `links` through review_evidence.js's split
+// between reference links and media-typed evidence (Q-122, Q-123, §11).
+vm.runInContext(reviewSource, ctx);
 const actionStart = appSource.indexOf("function ruleWhen");
 const actionEnd = appSource.indexOf("\n\n/* ---------------- chat", actionStart);
 vm.runInContext(appSource.slice(actionStart, actionEnd), ctx);

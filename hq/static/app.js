@@ -1441,17 +1441,16 @@ function decisionCard(c, ruling, entData, onRuled, looks) {
     </label>`;
 
   // A link is {label, href}; an older card may carry a bare path string, and a
-  // card that cannot render must never take the whole inbox down with it.
-  const links = (c.links || []).map(raw => {
-    const l = typeof raw === "string" ? { label: raw, href: raw } : (raw || {});
-    const href = String(l.href || "");
-    return `<a class="plain small" href="${esc(href)}" ${href.startsWith("http") ? 'target="_blank" rel="noopener"' : ""}>🔗 ${esc(l.label || href)}</a>`;
-  }).join(" · ");
+  // card that cannot render must never take the whole inbox down with it. A
+  // media-typed link (Q-122, Q-123) is evidence, not a reference, and is
+  // rendered as an attachment instead (review_evidence.js).
+  const links = renderReferenceLinks(c.links);
+  const linkAttachments = linkEvidenceAttachments(c.links);
 
   // Once a card has been round the loop, how it started is context he has read
   // and the latest turn is what he has not. It folds, so the thing being asked
   // of him is on the screen rather than a scroll below its own history.
-  const origCount = (c.attachments || []).length;
+  const origCount = (c.attachments || []).length + linkAttachments.length;
 
   const chip = settled
     ? `<span class="d-chip done">Ruled${ruling.option ? ` — (${esc(ruling.option)}) ${esc(ruling.option_label || "")}` : ""}</span>`
@@ -1482,7 +1481,7 @@ function decisionCard(c, ruling, entData, onRuled, looks) {
   // Evidence the question was first asked against stays with the question;
   // anything a later turn produced hangs off that turn instead.
   const firstRow = card.querySelector(".d-att-first");
-  (c.attachments || []).forEach(a => firstRow.appendChild(attachmentEl(a, entData, looks)));
+  [...(c.attachments || []), ...linkAttachments].forEach(a => firstRow.appendChild(attachmentEl(a, entData, looks)));
   if (!firstRow.children.length) firstRow.remove();
 
   // A reply records its author as a seat id; the page shows the person, with

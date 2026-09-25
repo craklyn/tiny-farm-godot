@@ -200,7 +200,11 @@ function qWorkItem(card, org, reason) {
     owner, seconds: answer ? Q_PICK_SECONDS : Q_READ_SECONDS, state: card.state,
     tier: card.tier ?? 2, reason: reason || "hard to walk back, or a matter of taste",
     diffApplied: !!(card.diff && card.diff.applied),
-    options: [], followUps: followUps(card), conversation: convo, attachments: card.attachments || [],
+    options: [], followUps: followUps(card), conversation: convo,
+    // A media-typed link (Q-122, Q-123) is evidence in a reference field; give
+    // it the same visible-by-default display an attachment gets (§4).
+    attachments: [...(card.attachments || []), ...linkEvidenceAttachments(card.links)],
+    links: card.links || [],
     artifact: card,
     deliverableEvidence: qDeliverableEvidence(card),
     evidence: qWorkEvidence(card, owner.name), source: `work card ${card.id}`, canDrop: true,
@@ -227,7 +231,8 @@ function qDecisionItem(c, org, seats) {
       recommended: (o.label || "").includes("(Recommended)") })),
     followUps: [],
     conversation: (c.replies || []).map(r => ({ who: r.by === "claude" ? "Adam" : (r.by || "the studio"), text: r.text || "", at: r.at || "" })),
-    attachments: c.attachments || [], artifact: c, deliverableEvidence: qDeliverableEvidence(c),
+    attachments: [...(c.attachments || []), ...linkEvidenceAttachments(c.links)],
+    links: c.links || [], artifact: c, deliverableEvidence: qDeliverableEvidence(c),
     evidence: qDecisionEvidence(c), source: `decision card ${c.id}`, canDrop: false,
   };
 }
@@ -408,6 +413,7 @@ function qPaneHtml(row, org) {
   };
   const sources = qSourceRequests(row);
   const ruling = row.priorRuling;
+  const refLinks = renderReferenceLinks(row.links);
   return `
     <div class="q-pane-q">${mdi(row.question)}</div>
     <div class="q-pane-src">${[
@@ -421,6 +427,7 @@ function qPaneHtml(row, org) {
     ${artifact.decision_id || artifact.decision ? `<p class="q-pane-src">Earlier decision: <a class="plain" href="#/inbox/${encodeURIComponent(artifact.decision_id || artifact.decision)}">${esc(artifact.decision_id || artifact.decision)}</a></p>` : ""}
     ${ruling && (ruling.earlier || []).length ? `<div class="q-sec"><h3>Earlier answers</h3><ul>${ruling.earlier.map(turn =>
       `<li>${esc(turn.option_label || turn.judgment || "Revision requested")} · ${esc(turn.ruled_at || "")}</li>`).join("")}</ul></div>` : ""}
+    ${refLinks ? `<p class="q-pane-src">${refLinks}</p>` : ""}
 
     ${reviewComparison(row.artifact, row.attachments)}
     <div class="q-atts" id="q-pane-atts"></div>

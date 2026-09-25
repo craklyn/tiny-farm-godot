@@ -1043,8 +1043,15 @@ async function renderWork(focusId = workFocusId()) {
       decisionCard(c, rulings[c.id] || null, entData, () => renderWork(), looks)));
   }
 
+  // A direct link must show the same missing-preparation warning the list
+  // view gives this card (§2): opening it deliberately is allowed, being
+  // presented as ready to approve when it is not is not (found against real
+  // data on w3b629423e60, an "Ask first" card with no deliverable, evidence,
+  // question, recommendation or recorded consequence). A card that is
+  // actually ready gets no banner — its reason there is "ready", not a gap.
   const secs = focusedDecision ? [] : focusedItem ? [
-    workSection("This work", "The work named by the link you opened.", [focusedItem], org, pol),
+    workSection("This work", "The work named by the link you opened.", [focusedItem], org, pol,
+      { reasons: readyIds.has(focusedItem.id) ? new Map() : attentionReasons }),
   ] : [
     workSection(attentionUnavailable ? "Queue count unavailable" : "Waiting on you",
       attentionUnavailable

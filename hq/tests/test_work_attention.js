@@ -149,6 +149,38 @@ ctx.ownerOf = () => ({ name: 'Rin' });
   const detail = sections.find(el => el.html.includes('This work'));
   assert.deepEqual(detail.children.map(el => el.html), ['not-started']);
   assert.equal(sections.length, 1);
+  // §11 live-data finding (w3b629423e60): a direct link showed a card as a
+  // plain ready-to-approve request even though the shared projection had
+  // already named exactly what it was missing — the focused-card path never
+  // received the reason map the list view passes to `workSection`. The fix
+  // must reach a card opened by its own link, and must not paint a banner
+  // over a card that is genuinely ready.
+  items.push({ id: 'focus-prep', state: 'needs_approval', owner: 'rin' },
+             { id: 'focus-ready', state: 'for_review', owner: 'rin' });
+  attention.ready.push({ source_id: 'focus-ready', source: 'work' });
+  attention.items.push(
+    { source_id: 'focus-prep', reason: 'The owner still needs a short name for the deliverable, '
+      + 'inspectable evidence for that deliverable, the specific question for Daniel, '
+      + "the owner's recommendation, what Daniel's answer will do next." },
+    { source_id: 'focus-ready', reason: 'A prepared result is ready for your verdict.' },
+  );
+  sections.length = 0;
+  body.children.length = 0;
+  ctx.location.hash = '#/work/focus-prep';
+  await ctx.renderWork();
+  const unpreparedDetail = sections.find(el => el.html.includes('This work'));
+  assert.match(unpreparedDetail.children[0].children[0].html, /still needs a short name for the deliverable/,
+    'a direct link to an unprepared card carries the same preparation warning the list gives it');
+  sections.length = 0;
+  body.children.length = 0;
+  ctx.location.hash = '#/work/focus-ready';
+  await ctx.renderWork();
+  const readyDetail = sections.find(el => el.html.includes('This work'));
+  assert.deepEqual(readyDetail.children.map(el => el.html), ['focus-ready'],
+    'a direct link to a card that is actually ready gets no preparation banner');
+  items.length -= 2;
+  attention.ready.pop();
+  attention.items.length -= 2;
   // A failed projection is not a successfully empty queue.
   sections.length = 0;
   body.children.length = 0;

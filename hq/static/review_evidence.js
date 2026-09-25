@@ -3,6 +3,33 @@
    material and do not silently become proof of that version. */
 "use strict";
 
+/* hq/README.md documents a card's `links` field as plain references, separate
+   from `attachments` (image/audio/sprite/video/look). Q-122 and Q-123
+   (2026-09-25) put evidence images there instead, in the same {type, src,
+   caption} shape attachments use, and nothing rendered them: the decision
+   pane showed the recommendation and a paragraph promising "the attached
+   boards" with no board in sight. Split `links` by shape, not by field name,
+   so a media-typed entry always reaches the same visible-by-default evidence
+   display an attachment would (§4), and a plain reference still renders as a
+   link, however it arrived. */
+function linkEvidenceAttachments(links) {
+  return (links || []).filter(l => l && typeof l === "object" && ["image", "audio", "video"].includes(l.type));
+}
+
+function linkReferenceEntries(links) {
+  return (links || []).filter(l => !(l && typeof l === "object" && ["image", "audio", "video"].includes(l.type)));
+}
+
+function renderReferenceLinks(links) {
+  const refs = linkReferenceEntries(links);
+  if (!refs.length) return "";
+  return refs.map(raw => {
+    const l = typeof raw === "string" ? { label: raw, href: raw } : (raw || {});
+    const href = String(l.href || "");
+    return `<a class="plain small" href="${esc(href)}" ${href.startsWith("http") ? 'target="_blank" rel="noopener"' : ""}>🔗 ${esc(l.label || href)}</a>`;
+  }).join(" · ");
+}
+
 function reviewMediaHref(value) {
   const links = reviewEvidenceLinks({deliverable: {evidence: [{path: value}]}});
   return links.length ? links[0].href : "";
