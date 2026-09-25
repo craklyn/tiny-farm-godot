@@ -133,7 +133,8 @@ placeholder rule** (P-12): *"for now make everything we introduce to the farm a
 purchasable item from the shop."* Both machines went on the shelf the same day, and the
 ordering Q-56 was protecting is kept by price instead of by absence — a sprinkler is
 120g, a robot 250g, so the cheap machine is still the one she can afford first, and the
-choice is hers rather than the roadmap's.
+choice is hers rather than the roadmap's. (The sprinkler dropped to 50g on 2026-09-25,
+Q-121/S-25 — cheaper still.)
 
 **The loop, four taps.** Buy it at the seed box (`buy_machine`); it goes in the crate and
 into her hand. Walk to where it belongs and tap: the `place` verb puts a registry actor on
@@ -143,8 +144,9 @@ exactly when she is thinking about what the thing should do, so asking then cost
 second trip. Tapping a placed robot later opens the same menu. Picking it up is `collect`,
 the verb an egg already has.
 
-**Prices** [Playtest]: sprinkler 120g, robot mark-1 150g, robot mark-2 400g. Both robot
-prices apply after their Q-88 proofs above; gold alone cannot open either rung.
+**Prices** [Playtest]: sprinkler 50g (Q-121/S-25, was 120g), robot mark-1 150g, robot
+mark-2 400g. Both robot prices apply after their Q-88 proofs above; gold alone cannot
+open either rung.
 
 ## The ladder: a mark-1 obeys, a mark-2 decides (designer, 2026-09-03)
 

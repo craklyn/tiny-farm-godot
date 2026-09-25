@@ -55,10 +55,11 @@ is what it replaces.
 
 The loop, end to end, and it is four taps:
 
-1. **Buy.** The seed box sells machines beside the seeds — sprinkler 120g, robot 250g,
-   both `[Playtest]`. The catalogue is `systems/machine_defs.gd`; adding a purchasable
-   machine is one row there plus a species row, which is what keeps the rule cheap to
-   keep. Buying is the `buy_machine` verb, a sibling of `buy_seed` (the old verb is in
+1. **Buy.** The seed box sells machines beside the seeds — sprinkler 50g (Q-121/S-25,
+   was 120g), robot 250g, both `[Playtest]`. The catalogue is `systems/machine_defs.gd`;
+   adding a purchasable machine is one row there plus a species row, which is what
+   keeps the rule cheap to keep. Buying is the `buy_machine` verb, a sibling of
+   `buy_seed` (the old verb is in
    every replay log on disk and those are phase 4's training corpus — a new verb costs a
    match arm, reinterpreting an old one costs the archive).
 2. **Carry.** It goes into `GameState.machines`, the crate, and takes her hand

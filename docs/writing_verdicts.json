@@ -1630,6 +1630,12 @@
   "4e2fcb4e467e63b19b7d": {
    "verdict": "ok"
   },
+  "4e35e5940fad753b0875": {
+   "instead": "The sprinkler now costs 50g, so the earlier 120g calculations are outdated and should not be used.",
+   "quote": "Every price and mornings-to-afford figure above describing a 120g sprinkler reflects the shop before this ruling, not the current price.",
+   "verdict": "second-look",
+   "why": "The reader must reconcile outdated calculations with the newly ruled 50g price."
+  },
   "4e5ccc3ef678e6b18b9d": {
    "verdict": "ok"
   },
@@ -4965,6 +4971,12 @@
   },
   "e59c3d1246c88a276961": {
    "verdict": "ok"
+  },
+  "e613370f5f6713c1c288": {
+   "instead": "a period with no gold income while the reserve fills",
+   "quote": "a quiet unpaid stretch while the reserve fills",
+   "verdict": "second-look",
+   "why": "The metaphor is understandable, but the concrete fact is that early harvests produce no gold."
   },
   "e633ee5ea674e11ce333": {
    "baselined": "2026-09-19",

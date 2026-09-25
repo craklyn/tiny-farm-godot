@@ -502,6 +502,26 @@ The earlier proposal to replace crop-count text with tiny basket marks is
 dropped; how counts appear on the main game screen is decided while building.
 Choosing an item is UI navigation, not an Action. Detail in `design/11-ux-ui.md`.
 
+### S-24. Dedicated marketing restarts with the next public update
+**Ruled 2026-09-25 (Q-120, option a).** The standing dormancy instruction (D-5,
+Q-6) holds until the first new version after this ruling ships as a playable
+build on the public itch.io page. That week Carmen checks the live build
+against the store-page copy, Daniel publishes the accurate copy, and the
+channel team posts one gameplay clip linking the free build — no paid ads,
+press outreach, or creator codes. Thirty days after that post, Carmen reports
+itch.io page views and downloads for the period (or that the data was
+unavailable) before any wider campaign is considered. No update has shipped
+since this ruling, so marketing is still dormant.
+
+### S-25. The sprinkler drops to 50g; the x3 harvest yield is unchanged
+**Ruled 2026-09-25 (Q-121, option a), amended in chat: "Yes, but let's lower
+the cost of sprinkler to 50 please."** The x3 harvest yield (S-19) and the
+50g scarecrow stand as they were; only the sprinkler's price moves, from 120g
+to 50g, matching the scarecrow. This is a direct price change, not the
+playtest-driven re-tune Q-121 had recommended waiting for — Daniel moved this
+one number now rather than after observing a session. `systems/machine_defs.gd`
+carries the new price.
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported
@@ -1226,6 +1246,8 @@ likely ships.
 trigger — staged public releases, early and as often as possible; all early releases
 are free to play without restrictions; dedicated marketing waits until the game picks
 up speed. What remains deferred here: the eventual business model for the full game.
+**The dormancy's trigger is now settled too (S-24, Q-120, 2026-09-25):** dedicated
+marketing restarts with the next public update.
 
 ### D-6. Multiplayer / sharing (e.g. trading trained bot models between players)
 **Why deferred:** Delightful idea, giant scope. Nothing before phase 4 constrains it.

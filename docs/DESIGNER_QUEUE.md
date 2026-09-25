@@ -388,8 +388,9 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   art: her fence is the domestic fence cell, and the hedge keeps meaning "not yours
   yet". So the pick confirms what is built and commissions no new tile. It was made
   the same night the dashboard's pick button was found to be settling cards by
-  accident (commit 709d569); if Daniel wants a new post-and-rail tile on top of the
-  existing fence, that is a fresh art request, not this ruling.
+  accident (commit 709d569). **Confirmed in chat, 2026-09-25:** Daniel said the
+  current player fence is fine. No new post-and-rail tile is wanted; this question
+  is closed with the existing fence cell standing as her fence.
 
   Original entry: **How does a player put up a fence?** Designed 2026-09-07 on request, not yet
   built. A fence today is not an object but a tile *state* laid at worldgen, and it is the
@@ -693,7 +694,14 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   processing are in `CREDITS.md`. Daniel can choose either or reject both; only
   a ruling licenses wiring a pick into the verb's shared cue path. If a further
   free search still finds nothing, plant joins the batched Q-31 foley list.
-- **Q-120** When should dedicated marketing start? — **Ruling, open
+- **Q-120** ~~When should dedicated marketing start?~~ — ✅ **ruled 2026-09-25:
+  (a), the next public update.** Dedicated marketing stays dormant (D-5) until
+  then, and restarts with one small, measured announcement timed to that
+  update: Carmen checks the live build against the store-page copy, Daniel
+  publishes the accurate copy, and the channel team posts one gameplay clip
+  with a link to the free build — no paid ads, press outreach, or creator
+  codes. Recorded as S-24. Not started: no update has shipped since this
+  ruling, so the announcement has not gone out. Original entry: **Ruling, open
   2026-09-24.** Carmen prepared three checkable triggers and the work each would
   start in `hq/data/decisions/Q-120.json`. The next public update is recommended
   for one measured announcement. The standing dormancy instruction remains in
@@ -779,7 +787,12 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   separate from what she carries; only excess sells.** The player can take stock
   from the bin to plant again. Ten is `[Playtest]`. See S-20.
 
-- **Q-121 — Does the harvest yield make early purchases arrive at the right pace?**
+- **Q-121** ~~Does the harvest yield make early purchases arrive at the right pace?~~
+  — ✅ **ruled 2026-09-25: (a), keep the x3 yield — amended in chat: "lower the
+  cost of sprinkler to 50 please."** The x3 harvest yield and the 50g scarecrow
+  are unchanged; the sprinkler drops from 120g to 50g, matching the scarecrow.
+  Recorded as S-25 and in `systems/machine_defs.gd`. Not a re-tune of the
+  yield or the bin reserve — only the one price moved. Original entry:
   — **Ruling, open 2026-09-24.** Harvested crops are now the same plantable units
   used to sow again. At **one unit harvested for one planted**, replanting consumes
   the entire harvest. Selling one wheat for 15g or one tomato for 30g removes one

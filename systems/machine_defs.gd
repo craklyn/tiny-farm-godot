@@ -142,7 +142,9 @@ static var TYPES: Dictionary = {
 	},
 	"sprinkler": {
 		"name": "Sprinkler",
-		"price": 120,
+		# 50g (S-25, Q-121 amended in chat 2026-09-25): "let's lower the cost of
+		# sprinkler to 50 please," matching the scarecrow. Was 120g at launch (P-12).
+		"price": 50,
 		"species": SpeciesDefs.SPRINKLER,
 		"configs": [],
 		"default_config": "",
@@ -164,10 +166,10 @@ static var TYPES: Dictionary = {
 	# **It is a shed, not a machine**, and that is why it sits here above the bots
 	# rather than below them: it has no species, becomes no actor, decides nothing
 	# and thinks never — `place` writes two objects onto the grid and stops. Priced
-	# under the sprinkler (80g) because it is the cheapest thing on this list to
-	# build and because it is worth nothing on its own: an empty stall does not
-	# water a single tile, so what she is really buying is the day her robot stops
-	# needing to be told.
+	# at 80g because it is worth nothing on its own: an empty stall does not water a
+	# single tile, so what she is really buying is the day her robot stops needing
+	# to be told. (It was cheaper than the sprinkler at launch; S-25 dropped the
+	# sprinkler to 50g, so that ordering no longer holds — it was never the point.)
 	#
 	# **Deliberately weak first version** (P-13). Two bays, fixed, side by side; it
 	# cannot be picked back up, moved, upgraded or extended. Every one of those is a

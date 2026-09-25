@@ -14940,9 +14940,8 @@ func test_robot_stall() -> void:
 
 	# --- the catalogue row -----------------------------------------------------
 	_assert(MachineDefs.has(SimWorld.STALL_ITEM), "the shop sells a stall")
-	_assert(MachineDefs.price_of("stall") == 80
-			and MachineDefs.price_of("stall") < MachineDefs.price_of("sprinkler"),
-		"at 80 gold — under the sprinkler, because an empty shed waters nothing")
+	_assert(MachineDefs.price_of("stall") == 80,
+		"at 80 gold, because an empty shed waters nothing")
 	_assert(not MachineDefs.spawns_actor("stall") and MachineDefs.species_of("stall") == "",
 		"and it names no species: a shed is an object on the grid, never an actor")
 	_assert(MachineDefs.key_for_species("") == "",
