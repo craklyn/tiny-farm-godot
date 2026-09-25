@@ -99,6 +99,19 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/queue.js'), 'utf
     { employees: [{ id: 'elena', name: 'Elena Volkov' }] },
     { seats: [{ id: 'vp-engineering', held_by: 'elena' }] });
   assert.equal(seated.owner.name, 'Elena Volkov');
+  const linked = ctx.qWorkItem({ id: 'w-linked', title: 'Choose the sound', owner: 'rin',
+    state: 'needs_approval', tier: 2, parent: 'w-parent',
+    source_work: [{ id: 'w-old', card: 'Older request' }],
+    merged_from: [{ id: 'w-old', card: 'Older request' }, { id: 'w-new', card: 'Newer request' }],
+    decision_id: 'Q-107' }, { employees: [] }, 'Ready');
+  assert.deepEqual(Array.from(ctx.qSourceRequests(linked), s => s.id), ['w-parent', 'w-old', 'w-new']);
+  const linkedPane = ctx.qPaneHtml(linked, { employees: [] });
+  assert.match(linkedPane, /href="#\/work\/w-old"/);
+  assert.match(linkedPane, /href="#\/work\/w-new"/);
+  assert.match(linkedPane, /href="#\/inbox\/Q-107"/);
+  const distinct = ctx.qDistinctTitles([{ id: 'a', title: 'Same' }, { id: 'b', title: 'Same' }]);
+  assert.deepEqual(Array.from(distinct, r => r.displayTitle), ['Same · a', 'Same · b']);
+  assert.equal(ctx.qGroupBySubject([{ id: 'b', seconds: 30 }, { id: 'a', seconds: 30 }])[0].items[0].id, 'a');
   assert.match(app, /data-intent="revise"/);
   const control = { dataset: {} };
   const firstSubmit = ctx.decisionSubmissionId(control, 'revise', '', 'Show the rooms side by side.');

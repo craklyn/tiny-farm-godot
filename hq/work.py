@@ -1116,7 +1116,7 @@ OPEN_STATES = ("needs_approval", "for_review", "owed", "prepping", "doing",
 MERGEABLE_STATES = ("prepping", "doing", "waiting_session")
 
 
-def _open_twin(owner, key, exclude_id=""):
+def _open_twin(owner, key, exclude_id="", decision_key=""):
     """A card of the same owner and the same subject whose work has not run
     yet, or None. A finished or closed card is not a twin: work that follows a
     finished piece is new work, and an ask appended to a card whose run is over
@@ -1126,7 +1126,9 @@ def _open_twin(owner, key, exclude_id=""):
             continue
         if other.get("state") not in MERGEABLE_STATES:
             continue
-        if merge_key(other.get("title")) == key:
+        if decision_key and other.get("decision_key") == decision_key:
+            return other
+        if not decision_key and not other.get("decision_key") and merge_key(other.get("title")) == key:
             return other
     return None
 
@@ -1984,10 +1986,14 @@ def _file_follow_ups(item, fus, org, cap_id, message, said="", lead=""):
             ask += ("\n\nDaniel attached this, and it is part of the brief:\n" + said)
         owner = fu.get("owner") or item["owner"]
         key = merge_key(fu["title"])
+        # A shared decision must be identified by the filer. Similar wording
+        # alone is insufficient evidence that two outcomes have one verdict.
+        decision_key = str(fu.get("decision_key") or "").strip()
         # §5.4, one subject one card: the same work named twice in one result,
         # or named again while the first card is still open, joins that card
         # instead of filing a twin for the same person to read twice.
-        twin = seen.get((owner, key)) or _open_twin(owner, key, exclude_id=item["id"])
+        twin = seen.get((owner, decision_key or key)) or _open_twin(
+            owner, key, exclude_id=item["id"], decision_key=decision_key)
         if twin:
             if completion_key:
                 twin.setdefault("completion_keys", []).append(completion_key)
@@ -1995,7 +2001,7 @@ def _file_follow_ups(item, fus, org, cap_id, message, said="", lead=""):
             started.append({"id": twin["id"], "title": twin["title"],
                             "state": twin["state"], "owner": twin["owner"],
                             "merged": True})
-            seen[(owner, key)] = twin
+            seen[(owner, decision_key or key)] = twin
             continue
         child = _file_item({
             "title": fu["title"],
@@ -2007,6 +2013,9 @@ def _file_follow_ups(item, fus, org, cap_id, message, said="", lead=""):
             "first_action": fu.get("first_action", ""),
         }, cap, org)
         child["parent"] = item["id"]
+        child["source_work"] = [{"id": item["id"], "card": item["title"], "title": fu["title"]}]
+        if decision_key:
+            child["decision_key"] = decision_key
         # §5.2: a follow-up that is hard to walk back is not an ask in his list.
         # It is a question somebody has to write first, and it waits with the
         # studio until that question carries a recommended answer.
@@ -2023,7 +2032,7 @@ def _file_follow_ups(item, fus, org, cap_id, message, said="", lead=""):
                                  "title": fu["title"],
                                  "why": fu.get("why", "")}
         save_item(child)
-        seen[(owner, key)] = child
+        seen[(owner, decision_key or key)] = child
         started.append({"id": child["id"], "title": child["title"],
                         "state": child["state"], "owner": child["owner"]})
     if started:
@@ -2038,6 +2047,18 @@ def _merge_into(twin, parent, fu, ask):
     records where the addition came from, so its owner can see why it grew."""
     twin["ask"] = (twin.get("ask", "").rstrip()
                    + f"\n\nAlso asked, from “{parent['title']}”:\n{ask}")[:2400]
+    source = {"id": parent["id"], "card": parent["title"], "title": fu["title"]}
+    # Legacy cards may have only parent/merged_from. Preserve that lineage
+    # when the first new source_work entry is added, and deduplicate by ID.
+    sources = list(twin.get("source_work") or [])
+    if twin.get("parent"):
+        sources.insert(0, {"id": twin["parent"], "card": twin.get("title", ""),
+                           "title": twin.get("title", "")})
+    sources.extend(twin.get("merged_from") or [])
+    sources.append(source)
+    twin["source_work"] = list({s["id"]: s for s in sources if isinstance(s, dict) and s.get("id")}.values())
+    if fu.get("decision_key") and not twin.get("decision_key"):
+        twin["decision_key"] = str(fu["decision_key"]).strip()
     twin.setdefault("merged_from", []).append({
         "id": parent["id"], "card": parent["title"], "title": fu["title"],
         "at": _now_iso(),

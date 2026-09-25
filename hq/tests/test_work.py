@@ -517,6 +517,38 @@ def main():
         check(item("w0000000e0002")["spawned"][0]["merged"] is True,
               "the card he accepted says its work joined a card already open")
 
+        print("one explicit decision, every source retained")
+        legacy = card(id="w0000000d0001", owner="rin", state="waiting_session",
+                      title="Choose the sound", decision_key="sound-choice",
+                      parent="w0000000d0000", merged_from=[
+                          {"id": "w0000000d0002", "card": "First sound request", "title": "Choose the sound"}])
+        work.save_item(legacy)
+        work._merge_into(legacy, {"id": "w0000000d0003", "title": "Second sound request"},
+                         {"title": "Pick the take", "decision_key": "sound-choice"}, "Pick the take.")
+        got = item("w0000000d0001")
+        check({s["id"] for s in got["source_work"]} == {
+            "w0000000d0000", "w0000000d0002", "w0000000d0003"},
+            "a new merge retains the parent and every legacy merged source")
+        check(len(got["merged_from"]) == 2,
+              "the original merge history remains in the stored record")
+        check(work._open_twin("rin", work.merge_key("A different title"),
+                              decision_key="sound-choice")["id"] == got["id"],
+              "an explicit shared decision finds one open card across title changes")
+        check(work._open_twin("rin", work.merge_key("Choose the sound")) is None,
+              "matching words do not silently merge a separately keyed decision")
+        shared_parent = card(id="w0000000d0004", owner="rin", title="Sound review")
+        work.save_item(shared_parent)
+        shared = work._file_follow_ups(shared_parent, [
+            {"title": "Pick the field recording", "owner": "rin", "tier": 2,
+             "decision_key": "field-sound", "why": "the field needs one sound"},
+            {"title": "Choose the field sound take", "owner": "rin", "tier": 2,
+             "decision_key": "field-sound", "why": "the mixer needs the same choice"},
+        ], ORG, "follow", "Choose one field sound.")
+        check(len({s["id"] for s in shared}) == 1,
+              "two outcome names tied to one explicit decision file one card")
+        check(item(shared[0]["id"])["source_work"][0]["id"] == shared_parent["id"],
+              "the single filed card links back to its source request")
+
         print("a restart in the middle of writing a question does not spend a try")
         work.save_item(card(id="w00000000m10", owner="milo", state="prepping",
                             prep_attempts=1, prep_in_flight=True))

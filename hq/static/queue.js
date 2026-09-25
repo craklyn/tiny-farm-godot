@@ -224,6 +224,29 @@ function qDecisionItem(c, org, seats) {
   };
 }
 
+function qSourceRequests(row) {
+  const card = row.artifact || {};
+  const sources = [];
+  if (!row.isDecision && card.parent && String(card.parent).startsWith("w"))
+    sources.push({ id: card.parent, title: "Original work request" });
+  for (const source of [...(card.source_work || []), ...(card.merged_from || [])]) {
+    if (source && source.id) sources.push({ id: source.id, title: source.card || source.title || source.id });
+  }
+  return [...new Map(sources.map(source => [source.id, source])).values()];
+}
+
+function qDistinctTitles(rows) {
+  const counts = new Map();
+  rows.forEach(row => counts.set(row.title, (counts.get(row.title) || 0) + 1));
+  const labels = rows.map(row => counts.get(row.title) > 1
+    ? `${row.title} · ${row.question && row.question !== row.title ? row.question : row.answer || row.source || row.id}`
+    : row.title);
+  const labelCounts = new Map();
+  labels.forEach(label => labelCounts.set(label, (labelCounts.get(label) || 0) + 1));
+  return rows.map((row, index) => ({ ...row, displayTitle: labelCounts.get(labels[index]) > 1
+    ? `${labels[index]} · ${row.id}` : labels[index] }));
+}
+
 async function qLoadData() {
   delete cache["/api/queue"];
   const [org, snap, queue, waiting, seats, execution, executionQueue] = await Promise.all([
@@ -315,9 +338,11 @@ function qGroupBySubject(rows) {
   // which is always last so a named subject reads before it. Within a group,
   // the quickest question first: several rulings on one subject often settle
   // each other, and the cheap one is the way in.
-  const names = [...groups.keys()].sort((a, b) => (a === "Everything else") - (b === "Everything else"));
+  const names = [...groups.keys()].sort((a, b) =>
+    (a === "Everything else") - (b === "Everything else") || a.localeCompare(b));
   return names.map(name => {
-    const items = [...groups.get(name)].sort((a, b) => a.seconds - b.seconds);
+    const items = [...groups.get(name)].sort((a, b) =>
+      a.seconds - b.seconds || String(a.id).localeCompare(String(b.id)));
     return { name, items };
   });
 }
@@ -368,9 +393,16 @@ function qPaneHtml(row, org) {
     const tag = (f.tier ?? 1) === 2 ? "would come back as a question" : "lands on its own";
     return `<li>${esc(f.title)} — ${esc(fOwner)} <span class="chip q-chip">${tag}</span></li>`;
   };
+  const sources = qSourceRequests(row);
+  const ruling = row.priorRuling;
   return `
     <div class="q-pane-q">${mdi(row.question)}</div>
     <div class="q-pane-src">${esc(row.title)}${row.kind === "review" ? reviewHeadingArtifact(row.artifact) : ""} · ${esc(row.source)} · ${esc(ownerName)}</div>
+    ${sources.length ? `<div class="q-sec"><h3>Requests this answer serves</h3><ul>${sources.map(source =>
+      `<li><a class="plain" href="#/work/${encodeURIComponent(source.id)}">${esc(source.title)}</a></li>`).join("")}</ul></div>` : ""}
+    ${row.artifact.decision_id || row.artifact.decision ? `<p class="q-pane-src">Earlier decision: <a class="plain" href="#/inbox/${encodeURIComponent(row.artifact.decision_id || row.artifact.decision)}">${esc(row.artifact.decision_id || row.artifact.decision)}</a></p>` : ""}
+    ${ruling && (ruling.earlier || []).length ? `<div class="q-sec"><h3>Earlier answers</h3><ul>${ruling.earlier.map(turn =>
+      `<li>${esc(turn.option_label || turn.judgment || "Revision requested")} · ${esc(turn.ruled_at || "")}</li>`).join("")}</ul></div>` : ""}
 
     ${reviewComparison(row.artifact, row.attachments)}
     <div class="q-atts" id="q-pane-atts"></div>
@@ -443,10 +475,10 @@ function qRender(state) {
   const decisionReasons = new Map((state.waiting.items || [])
     .filter(row => row.source === "decision").map(row => [row.source_id, row.reason]));
 
-  const rows = [
+  const rows = qDistinctTitles([
     ...hisWork.map(x => qWorkItem(x.card, org, x.reason)),
     ...hisDecisions.map(c => qDecisionItem(c, org, state.seats)),
-  ];
+  ].map(row => ({ ...row, priorRuling: state.rulings[row.id] })));
   const picks = rows.filter(r => r.answer).length, reads = rows.length - picks;
   const minutes = Math.round(rows.reduce((a, r) => a + r.seconds, 0) / 60);
   const groups = qGroupBySubject(rows);
@@ -454,7 +486,9 @@ function qRender(state) {
   // Whatever verdict just fired took its row out of `rows`; picking up the
   // new first row is what makes the pane "advance by itself" (§7) without any
   // extra bookkeeping across the reload.
+  const previousSelection = qSelected;
   qSelectNext(rows);
+  if (previousSelection && previousSelection !== qSelected) qDetailOpen = false;
   if (!rows.length) qDetailOpen = false;
 
   const unavailable = state.waiting.available === false;
@@ -493,7 +527,7 @@ function qRender(state) {
 
   const rowHtml = r => `<button type="button" class="q-row${r.id === qSelected ? " q-focus" : ""}" data-id="${esc(r.id)}" aria-current="${r.id === qSelected ? "true" : "false"}">
     <div class="q-row-main">
-      <span class="q-row-q">${esc(r.title)}</span>
+      <span class="q-row-q">${esc(r.displayTitle)}</span>
       <span class="q-row-r">${esc(r.reason || (r.answer ? `Recommended: ${r.answer}` : qNoRecommendation(r)))}</span>
     </div>
   </button>`;
