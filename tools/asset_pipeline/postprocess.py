@@ -10,13 +10,14 @@ Import the helpers:
 
 Typical single sprite -> atlas cell:
 
-    cell = fit_cell(trim(erase_white_edges(key_background(Image.open(raw)))), 16, 16)
+    cell = quantize_palette(fit_cell(trim(erase_white_edges(key_background(Image.open(raw)))), 16, 16))
     check_no_white_edges(cell)   # right before the cell/sheet is written
 
 Typical multi-subject strip -> N cells:
 
     for i, sub in enumerate(components(key_background(Image.open(strip)))):
-        sheet.alpha_composite(fit_cell(erase_white_edges(sub), 16, 16), (i * 16, 0))
+        cell = quantize_palette(fit_cell(erase_white_edges(sub), 16, 16))
+        sheet.alpha_composite(cell, (i * 16, 0))
     check_no_white_edges(sheet)
 
 All of this is free and deterministic - do it locally rather than paying the model to
@@ -25,7 +26,7 @@ arrange things.
 The two archived builders under `assets/raw/` import this copy. New Tiny Farm
 builders should do the same and call both helpers before writing a sheet.
 """
-from collections import deque
+from collections import Counter, deque
 
 from PIL import Image, ImageSequence
 
@@ -221,6 +222,122 @@ def fit_cell(im, cw, ch, bottom=True, pad=1, lift=0):
     y = (ch - nh - lift) if bottom else (ch - nh) // 2
     cell.alpha_composite(im, ((cw - nw) // 2, max(0, y)))
     return cell
+
+
+def _oklab(c):
+    """Convert an (r, g, b) 0-255 triple to OKLab.
+
+    Palette clustering needs a distance that tracks how different two colors
+    *look*, not raw channel arithmetic - in sRGB, a step in blue reads as a much
+    bigger jump than the same-sized step in green. OKLab is the perceptual space
+    `tools/rederive_critters.py` already uses for its shared-palette snap; this is
+    the same conversion, ported so the pipeline step below does not have to
+    import a sibling script.
+    """
+    def lin(v):
+        v /= 255.0
+        return v / 12.92 if v <= 0.04045 else ((v + 0.055) / 1.055) ** 2.4
+    lr, lg, lb = lin(c[0]), lin(c[1]), lin(c[2])
+    l = (0.4122214708 * lr + 0.5363325363 * lg + 0.0514459929 * lb) ** (1 / 3)
+    m = (0.2119034982 * lr + 0.6806995451 * lg + 0.1073969566 * lb) ** (1 / 3)
+    s = (0.0883024619 * lr + 0.2817188376 * lg + 0.6299787005 * lb) ** (1 / 3)
+    return (0.2104542553 * l + 0.7936177850 * m - 0.0040720468 * s,
+            1.9779984951 * l - 2.4285922050 * m + 0.4505937099 * s,
+            0.0259040371 * l + 0.7827717662 * m - 0.8086757660 * s)
+
+
+def default_palette_size(im):
+    """A sane color budget for a sprite this size, in the absence of a chosen k.
+
+    The target is roughly 8-12 real colors for one 16x16 cell (the chicken, crow
+    and wheat sprites already land there without help). A larger sheet - a
+    multi-cell walk strip before `components` splits it, or a bigger prop - gets
+    a gently larger budget so it is not starved down to a single critter's
+    color count, capped so a big sheet can't argue its way back up to "no
+    collapsing needed."
+    """
+    w, h = im.size
+    cells = max(1.0, (w * h) / (16 * 16))
+    return max(6, min(16, round(8 + 2 * (cells - 1))))
+
+
+def quantize_palette(im, k=None):
+    """Snap every opaque pixel to one of k colors already present in the sprite.
+
+    The generator's anti-aliasing leaves a long tail of near-duplicate shades
+    that a human would never count as distinct colors - a measured songbird
+    carried ~30 opaque colors over 234 pixels, nine of them used by a single
+    pixel. Nothing in this pipeline collapsed that until now: `key_background`
+    and `erase_white_edges` only ever remove pixels, they never merge colors.
+
+    This does a weighted k-means over the sprite's own opaque colors (each
+    color weighted by how many pixels use it), clustering in OKLab so the
+    distance matches how the colors actually look. Seeding is farthest-point
+    (start from the most common color, then repeatedly add whichever remaining
+    color is furthest from every seed so far) so a rare-but-real accent color -
+    an eye, a highlight - gets its own cluster instead of being drowned out by
+    a common fill color. Each surviving palette entry is the most-used *real*
+    color in its cluster, never a computed average - an average can invent a
+    shade that exists nowhere in the source art, which is exactly the failure
+    `tools/rederive_critters.py` documents for naive downscaling. No dithering:
+    a flat snap is what a small, disciplined pixel-art palette wants.
+
+    `k` defaults to `default_palette_size(im)`. If the sprite already has k or
+    fewer opaque colors, it is returned unchanged (nothing to collapse).
+    """
+    im = im.convert("RGBA")
+    w, h = im.size
+    px = im.load()
+    counts = Counter()
+    for y in range(h):
+        for x in range(w):
+            p = px[x, y]
+            if p[3] > 0:
+                counts[p[:3]] += 1
+    if not counts:
+        return im
+    if k is None:
+        k = default_palette_size(im)
+    k = max(1, k)
+    if len(counts) <= k:
+        return im
+
+    pts = [(_oklab(c), c, n) for c, n in counts.items()]
+    seeds = [max(pts, key=lambda p: p[2])]
+    while len(seeds) < min(k, len(pts)):
+        seeds.append(max(pts, key=lambda p: min(
+            sum((a - b) ** 2 for a, b in zip(p[0], s[0])) for s in seeds)))
+    centroids = [list(s[0]) for s in seeds]
+    buckets = []
+    for _ in range(30):
+        buckets = [[] for _ in centroids]
+        for lab, c, n in pts:
+            i = min(range(len(centroids)),
+                    key=lambda j: sum((a - b) ** 2 for a, b in zip(lab, centroids[j])))
+            buckets[i].append((lab, c, n))
+        for i, bucket in enumerate(buckets):
+            if bucket:
+                total = sum(n for _, _, n in bucket)
+                centroids[i] = [sum(l[j] * n for l, _, n in bucket) / total for j in range(3)]
+
+    palette = []
+    for bucket in buckets:
+        if bucket:
+            real = max(bucket, key=lambda p: p[2])[1]
+            palette.append((_oklab(real), real))
+
+    out = im.copy()
+    opx = out.load()
+    snap_to = {}
+    for c in counts:
+        lab = _oklab(c)
+        snap_to[c] = min(palette, key=lambda q: sum((a - b) ** 2 for a, b in zip(lab, q[0])))[1]
+    for y in range(h):
+        for x in range(w):
+            p = opx[x, y]
+            if p[3] > 0:
+                opx[x, y] = (*snap_to[p[:3]], p[3])
+    return out
 
 
 def components(im, min_px=40):

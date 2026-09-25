@@ -514,6 +514,34 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   own wake-up event is the difference between a queue that is stuck and a queue that is
   patient. Filed to Sofia: the status, its two fields, and the two projects moved onto it.
 
+- **Q-122 — Should the loosest shipped sprites be replaced with a color-collapsed version?**
+  — **Ruling, open 2026-09-25.** Daniel measured the songbird carrying ~30 opaque colors
+  over 234 pixels, nine of them used by a single pixel — generator anti-aliasing that was
+  never collapsed, against disciplined sprites like the chicken (7 colors) and crow. The
+  pipeline's post-processing (`tools/asset_pipeline/postprocess.py`) now has a
+  `quantize_palette` step that snaps every opaque pixel to one of a few real colors already
+  in the sprite (weighted k-means in OKLab, never an invented average, no dithering), so
+  every future generation collapses this automatically.
+
+  What's open is what to do with sprites already shipped. `tools/audit_sprite_colors.py`
+  counted colors on all 53 sheets in `assets/sprites/generated/`; the songbird and rabbit
+  named in the original ask are already fixed (7 and 8 colors, from a separate 2026-09-07
+  re-derivation) and need nothing further. Two sheets still show the same pattern today:
+  **`obstacle_rock.png`** (55 colors, 30 of them singleton pixels) and **`fox.png`** (24
+  colors, 7 singleton). Before/after boards at three candidate palette sizes each are at
+  `docs/design/mockups/palette_quantize/obstacle_rock_compare.png` and `fox_compare.png`.
+
+  Options: **(a) replace both with the quantized version** at the size that reads
+  identically to the original in the boards (the boards suggest k=10 for the rock, k=8 for
+  the fox — both keep every shape and highlight legible); **(b) replace only
+  `obstacle_rock.png`**, whose singleton fraction (55%) is the more extreme case, and leave
+  the fox as authored; **(c) leave both as shipped** and let `quantize_palette` apply only
+  going forward. **Strawman: (a)** — the boards show no visible loss at the recommended
+  sizes, and it clears the two remaining instances of the exact defect that opened this
+  item. `spiral_tower.png` scores higher on raw color count (52) but almost none of it is
+  singleton (2 of 52), which reads as a legitimately rich architectural render rather than
+  uncollapsed noise, so it is not part of this call.
+
 ## M1 — phase 1 detail (active now)
 
 - **Q-117** ~~What should players put inside a room?~~ — ✅ **ruled 2026-09-24:

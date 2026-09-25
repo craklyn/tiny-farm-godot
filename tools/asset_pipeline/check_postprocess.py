@@ -23,13 +23,15 @@ Usage:
 import os
 import re
 import sys
+from collections import Counter
 from pathlib import Path
 
 from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from postprocess import (  # noqa: E402
-    _is_near_white, check_no_white_edges, erase_white_edges, key_background,
+    _is_near_white, check_no_white_edges, default_palette_size,
+    erase_white_edges, key_background, quantize_palette,
 )
 
 CREAM = (248, 244, 230, 255)   # the project's flood-key background colour
@@ -212,6 +214,95 @@ def test_locked_palette_is_preserved():
         assert erase_white_edges(im).getpixel((1, 0)) == rgb + (255,), swatch
 
 
+def test_quantize_palette_collapses_singleton_fringe():
+    # Models the measured songbird: one dominant real body color plus a ring of
+    # near-duplicate shades that each appear exactly once - un-collapsed
+    # anti-aliasing, not real detail. At k=1 there is only one cluster, so
+    # every pixel, fringe included, should snap to the sprite's own most-used
+    # color rather than surviving as a distinct singleton.
+    body = (150, 90, 60, 255)
+    im = Image.new("RGBA", (8, 8), TRANSPARENT)
+    px = im.load()
+    for y in range(2, 6):
+        for x in range(2, 6):
+            px[x, y] = body
+    fringe_coords = [(1, 2), (1, 3), (2, 1), (3, 1), (6, 2), (6, 3), (2, 6), (3, 6)]
+    for i, (x, y) in enumerate(fringe_coords, start=1):
+        px[x, y] = (150 + i, 90 - i, 60 + i, 255)  # each shade used exactly once
+
+    before = Counter(p[:3] for p in im.getdata() if p[3] > 0)
+    assert len(before) == 1 + len(fringe_coords)  # the singleton problem, reproduced
+
+    out = quantize_palette(im, k=1)
+    opx = out.load()
+    after = Counter(p[:3] for p in out.getdata() if p[3] > 0)
+    assert after == Counter({body[:3]: 16 + len(fringe_coords)}), after
+    # transparency is untouched
+    for x in range(8):
+        for y in range(8):
+            if px[x, y] == TRANSPARENT and (x, y) not in fringe_coords and not (2 <= x < 6 and 2 <= y < 6):
+                assert opx[x, y][3] == 0
+
+
+def test_quantize_palette_keeps_real_colors_not_averages():
+    # Two well-separated real colors, each with its own scatter of singleton
+    # near-duplicates (the songbird pattern again, twice over). k=2 should
+    # recover exactly the two dominant real colors - never a color partway
+    # between them, which would mean an average leaked into the palette.
+    red = (200, 40, 40)
+    blue = (40, 40, 200)
+    im = Image.new("RGBA", (10, 4), TRANSPARENT)
+    px = im.load()
+    for x in range(4):
+        px[x, 0] = (*red, 255)
+        px[x, 1] = (*red, 255)
+    for x in range(6, 10):
+        px[x, 0] = (*blue, 255)
+        px[x, 1] = (*blue, 255)
+    # a handful of singleton near-duplicates on each side
+    px[0, 2] = (206, 44, 36, 255)
+    px[1, 2] = (194, 36, 46, 255)
+    px[8, 2] = (36, 46, 206, 255)
+    px[9, 2] = (46, 36, 194, 255)
+
+    out = quantize_palette(im, k=2)
+    colors = set(p[:3] for p in out.getdata() if p[3] > 0)
+    assert colors == {red, blue}, colors
+    midpoint = tuple((a + b) // 2 for a, b in zip(red, blue))
+    assert midpoint not in colors, "an averaged color leaked into the palette"
+
+
+def test_quantize_palette_noop_under_target():
+    im = Image.new("RGBA", (4, 1), TRANSPARENT)
+    im.putpixel((0, 0), (10, 20, 30, 255))
+    im.putpixel((1, 0), (40, 50, 60, 255))
+    im.putpixel((2, 0), (70, 80, 90, 255))
+    before = list(im.getdata())
+    out = quantize_palette(im, k=5)  # already only 3 real colors, well under k
+    assert list(out.getdata()) == before
+
+
+def test_quantize_palette_preserves_transparency():
+    im = Image.new("RGBA", (4, 4), TRANSPARENT)
+    px = im.load()
+    for x in range(4):
+        for y in range(4):
+            if (x + y) % 2 == 0:
+                px[x, y] = (10 * x, 10 * y, 5 * (x + y), 255)
+    out = quantize_palette(im, k=2)
+    opx = out.load()
+    for x in range(4):
+        for y in range(4):
+            assert (opx[x, y][3] == 0) == ((x + y) % 2 != 0)
+
+
+def test_default_palette_size_scales_with_sheet_area():
+    single_cell = Image.new("RGBA", (16, 16), TRANSPARENT)
+    assert default_palette_size(single_cell) == 8
+    big_sheet = Image.new("RGBA", (64, 64), TRANSPARENT)  # 16 cells worth
+    assert default_palette_size(big_sheet) == 16  # capped, not 8 + 2*15
+
+
 TESTS = [
     test_surface_fringe_cleared,
     test_enclosed_pocket_cleared,
@@ -220,6 +311,11 @@ TESTS = [
     test_key_background_spares_thin_seam,
     test_check_fails_without_erase,
     test_locked_palette_is_preserved,
+    test_quantize_palette_collapses_singleton_fringe,
+    test_quantize_palette_keeps_real_colors_not_averages,
+    test_quantize_palette_noop_under_target,
+    test_quantize_palette_preserves_transparency,
+    test_default_palette_size_scales_with_sheet_area,
 ]
 
 if __name__ == "__main__":
