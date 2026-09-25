@@ -64,6 +64,13 @@ window.fetch = async url => ({ ok: true, status: 200, headers: { get: () => null
   const author = document.querySelector(".d-thread .w-msg-w [data-person]");
   const labels = [...document.querySelectorAll(".d-card .opt b")].map(b => b.textContent);
   const link = document.querySelector(".d-card .opt a");
+  // The line length is set in characters, so it is measured in this font's
+  // own character width; a runner with other fonts draws a wider or narrower 72ch.
+  const probe = document.createElement("span");
+  probe.style.cssText = "position:absolute;visibility:hidden;width:1ch";
+  body.appendChild(probe);
+  const ch = probe.getBoundingClientRect().width;
+  probe.remove();
   const sec = document.querySelector(".d-sec");
   const chip = document.querySelector(".d-chip");
   back.focus();
@@ -76,7 +83,8 @@ window.fetch = async url => ({ ok: true, status: 200, headers: { get: () => null
     otherShown: document.getElementById("view").textContent.includes("must not appear"),
     backText: back.textContent, backHref: back.getAttribute("href"), backFocused: document.activeElement === back,
     fromWork, fromCard,
-    bodyFont: style.fontSize, bodyLeading: parseFloat(style.lineHeight), bodyWidth: body.getBoundingClientRect().width,
+    bodyFont: style.fontSize, bodyLeading: parseFloat(style.lineHeight), bodyWidth: body.getBoundingClientRect().width, ch,
+    cardInner: document.querySelector(".d-card").clientWidth,
     headingCase: getComputedStyle(sec).textTransform, chipCase: getComputedStyle(chip).textTransform,
     author: author && author.textContent, authorId: author && author.dataset.person,
     labels, linkColor: link && getComputedStyle(link).color,
@@ -125,7 +133,8 @@ for (const width of [1440, 1280, 375]) {
   assert.match(m.fromCard, /href="#\/work">← Back to questions</, "Back never returns to another single card");
   assert.equal(m.bodyFont, "16px");
   assert.ok(m.bodyLeading >= 24, m);
-  assert.ok(m.bodyWidth <= 16 * 45, `prose measure is held to a readable line length: ${m.bodyWidth}px`);
+  assert.ok(m.bodyWidth <= 72 * m.ch + 1, `prose is held to 72 characters: ${m.bodyWidth}px at ${m.ch}px each`);
+  if (width >= 1280) assert.ok(m.bodyWidth < m.cardInner - 100, "at desktop width the line length, not the card, sets the measure");
   assert.equal(m.headingCase, "none");
   assert.equal(m.chipCase, "none");
   assert.equal(m.author, "Elena Volkov", "a reply shows its author's name, not the seat id");
