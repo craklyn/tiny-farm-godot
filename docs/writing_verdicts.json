@@ -2581,6 +2581,9 @@
   "7cbea3276b2a665ab9c9": {
    "verdict": "ok"
   },
+  "7cc6538ffedb5eab7e88": {
+   "verdict": "ok"
+  },
   "7ccb03375da65eb23f99": {
    "verdict": "ok"
   },
@@ -3648,6 +3651,9 @@
    "quote": "the most we allow, 12% Every session here was played by you or your wife",
    "verdict": "second-look",
    "why": "Fragmentary opening; 'the most we allow, 12%' stands alone without a main clause, and 'days old' is too vague for a metric context."
+  },
+  "aea8d5f0c6715d4957a0": {
+   "verdict": "ok"
   },
   "aee6253f6a8183fb2e59": {
    "verdict": "ok"
@@ -4893,6 +4899,12 @@
   "eb3bc46605c726f5f07d": {
    "verdict": "ok"
   },
+  "eba8a620b688dc480d96": {
+   "instead": "Keep the writing check's verdict for the subject line of the commit that records the rulings",
+   "quote": "Keep the writing check's verdict for the rulings commit subject",
+   "verdict": "decode",
+   "why": "The reader must work out that this means preserving the verdict for the subject line of the commit that records the rulings."
+  },
   "ec53440686a57f47a89f": {
    "verdict": "ok"
   },
@@ -5091,6 +5103,12 @@
   },
   "f7c76357c91567406455": {
    "verdict": "ok"
+  },
+  "f7ee312c8e9ffb02e9bd": {
+   "instead": "Keep the checks that review human-facing writing in the commit that records Daniel's rulings",
+   "quote": "Preserve writing checks for the commit that records Daniel's rulings",
+   "verdict": "decode",
+   "why": "The reader has to work out whether “writing checks” means tests that review human-facing text and what preserving them involves."
   },
   "f7f6a4a3233d55f9a793": {
    "verdict": "ok"
