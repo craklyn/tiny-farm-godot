@@ -2184,6 +2184,12 @@
    "verdict": "second-look",
    "why": "\"It\" has no antecedent — the reader doesn't know what HQ starts."
   },
+  "66a99c62a100d1a90eae": {
+   "instead": "Keep checking the previous commit's title for clear writing",
+   "quote": "writing check for the prior commit's subject",
+   "verdict": "second-look",
+   "why": "A stranger may not know that this means checking the previous commit's title for clear writing."
+  },
   "66cbe0fbc4d57827c34b": {
    "verdict": "ok"
   },
