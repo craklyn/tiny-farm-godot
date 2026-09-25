@@ -25,6 +25,10 @@ var _bed_active: String = ""
 var sfx_streams = {
     "click": [preload("res://assets/audio/sfx/ui_click.wav")],
     "till": [preload("res://assets/audio/sfx/till.wav")],
+    # Q-118 (a), ruled 2026-09-24: the opening two beats of "Planting Sounds.wav"
+    # by wobesound, CC0 — see CREDITS.md. A pat-pat, not the harvest payoff sound;
+    # level set against `till` below (SFX_GAIN_DB) rather than baked into the file.
+    "plant": [preload("res://assets/audio/sfx/plant_cc0_488393.wav")],
     # Q-31 foley: three real can-on-soil pours recorded by the designer
     # (2026-09-02), replacing the synthesized water.wav — the one verb
     # synthesis reliably failed at and CC0 had nothing for.
@@ -85,7 +89,17 @@ var sfx_jitter = {"water": 0.04}
 
 # The collective spray sits behind the player's own can. This is a mix choice,
 # not sim state; a field of sprinklers must never add identical waveforms.
-const SFX_GAIN_DB := {"sprinkler": -9.0}
+#
+# `plant` is boosted +3.7 dB to bring its peak level up to `till`'s, so the two
+# sit together as one verb table rather than one loud and one buried (measured
+# with `ffmpeg -af volumedetect`, 2026-09-25): till peaks at -3.6 dBFS,
+# `plant_cc0_488393.wav` at -7.3 dBFS — a 3.7 dB gap closed here rather than by
+# re-encoding the source file. Matched on peak, not mean/RMS: till is one 0.2 s
+# hit (mean -17.7 dBFS, close to its own peak), while the plant recording is a
+# 1.5 s clip with two beats separated by near-silence (mean -29.9 dBFS) — matching
+# full-clip RMS would have driven the transients almost to clipping to compensate
+# for the gaps between them.
+const SFX_GAIN_DB := {"sprinkler": -9.0, "plant": 3.7}
 
 # The name of the last sound actually dispatched, and how many have been. A
 # headless run has no audio device, so this is the only way a test can assert

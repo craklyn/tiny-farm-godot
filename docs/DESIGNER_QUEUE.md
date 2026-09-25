@@ -651,9 +651,14 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
 - **Q-118** ~~Which soft soil sound belongs to planting?~~ — ✅ **ruled
   2026-09-24: (a), wobesound's two-beat planting cut**
-  (`assets/audio/sfx/plant_cc0_488393.wav`). This licenses wiring it as the `plant`
-  verb's sound for every actor, through the same shared cue path the other verbs
-  use. Not wired yet; the unchosen cut can be removed when that change lands.
+  (`assets/audio/sfx/plant_cc0_488393.wav`). **Wired 2026-09-25**: it is now
+  `systems/audio_manager.gd`'s `plant` sound and `world/farm.gd`'s `plant` row,
+  through the same shared cue path every other verb uses, so the player and every
+  other actor that plants are heard. Its level is matched to `till`'s peak
+  (`docs/design/10-audio-direction.md` has the measurement). The unchosen cut
+  (`plant_cc0_516249.wav`) is kept rather than removed — it is still the second
+  attachment on the ruled decision card (`hq/data/decisions/Q-118.json`), so
+  deleting it would break that record.
   Original entry: **Audio, open 2026-09-24.** Plant remains silent while Daniel
   hears two CC0 candidates on
   `hq/data/decisions/Q-118.json`. The recommended first listen is the two-beat

@@ -85,28 +85,28 @@ frame, and the attract farm remains silent. The source and level are
 `[Playtest]` until they have been heard in a real field of sprinklers; replacing
 that one mixer entry will not change the simulation or the one-cue rule.
 
-**Chosen 2026-09-24, not yet wired (Q-118, option a):** the opening two beats of
-“Planting Sounds.wav” by wobesound (Freesound #488393, CC0), cut to
-`assets/audio/sfx/plant_cc0_488393.wav`. The gap described next closes when that file
-is in the mixer and the cue table, for every actor that plants.
+**Wired 2026-09-25 (Q-118, option a):** the opening two beats of “Planting Sounds.wav”
+by wobesound (Freesound #488393, CC0), cut to `assets/audio/sfx/plant_cc0_488393.wav`,
+are now `systems/audio_manager.gd`'s `plant` sound and `world/farm.gd:ACTOR_VERB_CUES`'s
+`plant` row — every actor that plants is heard, the same rule `water` and `till` already
+follow. Level set against `till` rather than by re-encoding the file: `till` peaks at
+-3.6 dBFS and the plant recording at -7.3 dBFS (measured with `ffmpeg -af volumedetect`),
+so `AudioManager.SFX_GAIN_DB["plant"]` adds +3.7 dB at play time to bring the two peaks
+level. Matched on peak, not mean/RMS — `till` is one 0.2 s hit whose mean (-17.7 dBFS)
+sits close to its own peak, while the 1.5 s planting recording has two beats separated by
+near-silence (mean -29.9 dBFS); matching the means would have pushed the actual beats
+close to clipping to compensate for the quiet gaps between them. What it needed to do: a
+pat-pat, soft and low — soil closing over a seed, not an achievement. It does not borrow
+harvest's payoff shape (pop + chime, no rising pitch or reward sting), so a planted seed
+does not sound like a finished crop.
 
-**Open gap: `plant` has no foley at all** — nothing in the mixer and no entry in the cue
-table. Under the 2026-09-02 rule above that a verb sounds the same whoever performs it,
-that silence is everybody's: the cold open's neighbour, a replay re-applying the action,
-and a future phase-4 bot all plant as silently as the player does. Parity reached by
-nobody being heard is not parity worth having.
+Several rows of the starter table above are still unfinished — `sell`, `sleep` and
+`buy_seed` have no cue either, and the three clears currently reuse the till *chunk*
+instead of the rip, chop and crack the table promises. `plant` was the one fixed first:
+it is the verb the player performs most, so it was the largest amount of silence in the
+game.
 
-Several rows of the starter table above are unfinished — `sell`, `sleep` and `buy_seed`
-have no cue either, and the three clears currently reuse the till *chunk* instead of the
-rip, chop and crack the table promises. `plant` is the one to fix first: it is the verb
-the player performs most, so it is the largest amount of silence in the game.
-
-What the sound needs to do: a pat-pat, soft and low — soil closing over a seed. It should
-read as tucking something in, not as an achievement. Harvest already owns the payoff
-sound (pop + chime); `plant` must not borrow any of that — no rising pitch, no chime, no
-reward sting — or a planted seed will sound like a finished crop.
-
-Sourcing it is Dmitri's, and there is an order to it.
+Sourcing it was Dmitri's, and there is an order to it.
 
 **How a sound gets into this game (ruled 2026-09-04).** Free-to-use sounds are tried
 first, always. Dmitri searches the CC0 and other free sources, brings the candidates back

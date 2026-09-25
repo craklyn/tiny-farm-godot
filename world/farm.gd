@@ -839,14 +839,15 @@ func _notify_day_turn() -> void:
 #
 # `plant` and `sell` are what a Mark III does that nothing but the player did
 # before it (v0.2.1 WI-9b): it sows out of her seed box and it carries what it
-# cuts to the bin. Both are **silent for the player** — there is no plant foley in
-# the mixer yet (`design/10`'s table wants a pat-pat) and no coin for the bin — so
-# both are silent here, and each gets the puff her own hands would have thrown:
-# the dirt of a square being worked for the seed going in, and the harvest burst
-# for the crop leaving the machine's hands. Giving either one a sound the player
-# does not get would make a machine louder than the farmer, which is the one thing
-# this table is not allowed to do. When her own plant and sale get their foley,
-# these two rows get the same names and nothing else changes.
+# cuts to the bin. `plant` got its foley Q-118 (a), 2026-09-24 — wobesound's
+# planting beats, matched against `till`'s level (`AudioManager.SFX_GAIN_DB`) —
+# so it now gets the same "sfx" row as every other worked verb. `sell` is still
+# **silent for the player** — there is no coin for the bin yet — so it stays
+# silent here too, with only the puff her own hands would have thrown: the
+# harvest burst for the crop leaving the machine's hands. Giving `sell` a sound
+# the player does not get would make a machine louder than the farmer, which is
+# the one thing this table is not allowed to do. When her own sale gets its
+# foley, this row gets the same name and nothing else changes.
 #
 # `sell` is gated on `crop_type` for the reason `harvest` is: a sale that shipped
 # nothing looks like nothing, and the machine's result names the crop that
@@ -864,7 +865,7 @@ const ACTOR_VERB_CUES := {
 	"clear_log":  { "sfx": "till",    "puff": "chop", "beats": true },
 	"clear_rock": { "sfx": "till",    "puff": "chop", "beats": true },
 	"clear_tree": { "sfx": "till",    "puff": "chop", "beats": true },
-	"plant":      { "puff": "dirt" },
+	"plant":      { "sfx": "plant",   "puff": "dirt" },
 	"sell":       { "puff": "harvest", "needs": "crop_type" },
 }
 

@@ -880,6 +880,10 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 	elif action == "till":
 		AudioManager.play_sfx("till")
 		_emit_particles("dirt", target_t)
+	elif action == "plant":
+		# Q-118 (a): a pat-pat, soil closing over a seed — not the harvest payoff.
+		AudioManager.play_sfx("plant")
+		_emit_particles("dirt", target_t)
 	elif action == "water":
 		AudioManager.play_sfx("water")
 		_emit_particles("water", target_t)

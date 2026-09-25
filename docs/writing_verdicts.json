@@ -3249,6 +3249,9 @@
    "verdict": "decode",
    "why": "'Ships as once' is grammatically wrong, and 'of steps' is a fragment with no context."
   },
+  "9a5da81812097374f2be": {
+   "verdict": "ok"
+  },
   "9a7cea62a02ef7635391": {
    "verdict": "ok"
   },

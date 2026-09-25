@@ -121,6 +121,7 @@ func _run_scenarios() -> void:
 	await _scenario_ae_the_home()
 	await _scenario_ad_two_hud_findings()
 	await _scenario_af_a_pour_is_heard_whoever_pours()
+	await _scenario_bb_the_planting_beat_is_heard()
 	await _scenario_ag_a_machine_is_bought_placed_and_told_what_to_do()
 	await _scenario_ah_the_mark_one_takes_exact_orders()
 	await _scenario_ai_the_house_has_a_door()
@@ -3529,14 +3530,16 @@ func _scenario_af_a_pour_is_heard_whoever_pours() -> void:
 		"and the trailing beats land — a tree is %d chops whoever swings (Q-50)" % chops)
 
 	# The table is the player's own answers, verb for verb, so a verb she gets
-	# nothing for gives an actor nothing either — an actor is never louder than
-	# the player. `plant` is the live case: there is no plant foley in the mixer.
+	# a sound for gives an actor the same sound. `plant` got its foley Q-118 (a),
+	# 2026-09-24 (wobesound's planting beats) — this row used to assert planting
+	# stayed silent for an actor because it was silent for the player too; now
+	# that she has the sound, the neighbour's own planting must have it as well.
 	_stage_tile(t.x, t.y, "tilled")
-	heard_before = int(audio.sfx_count)
+	audio.last_sfx = ""
 	farm.apply_action({ "verb": "plant", "target": t, "actor": SimWorld.ACTOR_NEIGHBOUR,
 		"seed_type": "wheat" }, GameState)
-	_assert(int(audio.sfx_count) == heard_before,
-		"planting is silent for an actor because it is silent for the player (no foley yet)")
+	_assert(audio.last_sfx == "plant",
+		"planting is heard for an actor now that it is heard for the player (Q-118)")
 
 	# --- and the player keeps her own cues, beside her swing -----------------
 	# If the farm spoke for her too she would pour twice for one tap — the reason
@@ -3594,6 +3597,35 @@ func _scenario_af_a_pour_is_heard_whoever_pours() -> void:
 	farm.mute_feedback = false
 	farm.sim.despawn_actor("af_sprinkler_2")
 	farm.sim.despawn_actor("af_sprinkler")
+
+
+# Q-118 (a), 2026-09-24: wobesound's planting beats are the `plant` verb's
+# sound — the gap `_scenario_af` above used to assert as silence. Driven
+# through the real input path (a held "action" press, the same one
+# `_scenario_c` plants with) rather than by calling `apply_action` directly,
+# so this proves what she actually hears from a tap, not just what the
+# gateway does with a hand-built dictionary.
+func _scenario_bb_the_planting_beat_is_heard() -> void:
+	print("\n--- Scenario BB: the planting beat is heard ---")
+	var audio = get_tree().root.get_node("AudioManager")
+	var t := Vector2i(6, 12)
+
+	_stage_tile(t.x, t.y, "tilled")
+	player.pos = Vector2((t.x - 1 + 0.5) * 16.0, (t.y + 0.5) * 16.0)
+	player.facing = "right"
+	GameState.selected_tool = 5  # Seeds
+	GameState.selected_seed_type = "wheat"
+	GameState.pouch["wheat"] = 5
+	audio.last_sfx = ""
+
+	Input.action_press("action")
+	await _wait_for_action()
+	Input.action_release("action")
+
+	_assert(farm.get_tile(t.x, t.y).state == "seeded",
+		"a tap with a seed selected plants — tilled ground goes to seeded")
+	_assert(audio.last_sfx == "plant",
+		"and the chosen planting beat (Q-118) is heard, not silence or the till chunk")
 
 
 func _scenario_ag_a_machine_is_bought_placed_and_told_what_to_do() -> void:
