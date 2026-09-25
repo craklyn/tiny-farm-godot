@@ -290,6 +290,52 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   further up the ladder — this is it). Design rewrite in `design/06`; build in
   `V0_2_1_PLAN.md` WI-9.
 
+- **Q-124 — Should the Mark III learn to water her crops, or is a robot that only
+  tends its own patch good enough for now?** — **Ruling, open 2026-09-25.** The Mark
+  III — the robot she buys that learns by trial and reward, one rung above the
+  pre-programmed mark-1 — is loose on the farm today, and it works: it hoes bare
+  ground, plants seeds, and waters what comes up. A fresh run of
+  `tools/demo_learning_robot.gd` on tonight's build, over a fixed week and a 24-farm
+  sweep, still shows the shape `V0_2_1_PLAN.md` §9 first flagged: the robot plants
+  about nine seeds and waters about seven growing squares a day, and every one of
+  them is a square it made for itself. It has never once, in any of these test
+  farms, gone and watered a square she planted.
+
+  Why: the reward table pays the robot for outcomes, not for whose tile they land
+  on — Q-100 ruled deliberately that nobody owns a tile. Watering its own soil is
+  free, close, and always inside the little patch it can see two tiles around
+  itself; her field is a fixed spot somewhere else on the farm that it has to
+  stumble onto before it can do anything with it. Nothing it is paid or shown steers
+  it toward looking for her crops in particular.
+
+  **Options: (a) leave it as it is** — a robot that improves its own corner and
+  never touches hers. This matches Q-100's ruled thesis and the standing rule that a
+  capability's first version ships deliberately weak; **(b) pay it more for
+  watering her crops than its own** — the untried half of a lever already tested
+  once: the plan's price experiment found that paying the robot *less* for its own
+  soil never sent it to her field, so paying more for hers is the half that lever
+  never tried, at the cost of a tuning pass that may repeat the same result; **(c)
+  restrict it to her field** — let it water and harvest only squares already
+  growing a crop, and stop it tilling or planting new ground of its own. This forces
+  the behaviour directly, but removes the "make its own practice ground" fix Q-99
+  built specifically so a fresh robot has something to learn from, and risks
+  bringing back Q-99's original problem — a robot that wanders off an empty field
+  and never earns anything; **(d) defer until robots have jobs** — wait for a later
+  design that assigns a bot specific tiles or tasks, rather than teaching one
+  generalist to guess whose field is whose. Costs nothing now, but the robot ships
+  today, and a player who sets one down beside her own crops will notice the gap
+  right away.
+
+  **Recommendation: (a) for v0.2.1.** The robot is deliberately weak by design
+  (P-13), and Q-100 already ruled that reward, not ownership, should drive it — this
+  question does not reopen that ruling, it reports what that ruling produces once
+  measured. But it is worth a direct look before the next tag: `design/06` accepted
+  "not a pen — a denser reward" as a trade-off without yet measuring what it costs a
+  player watching a machine ignore the crops beside her own hands. Saying yes to (b)
+  unblocks a small, already-scoped build — a tuning pass and a fresh 24-farm sweep,
+  a day or so; (c) is a bit more, since it also touches the same tool-table rule the
+  hoe already leans on (Q-99's follow-up work). Card: `hq/data/decisions/Q-124.json`.
+
 - **Q-99** ~~A fresh Mark III walks off the field. Pen it, home it, or give it a nose?~~ —
   ✅ ruled 2026-09-09: **none of the three — give it the hoe.** *"For initial playtesting,
   if this is a problem we can define an additional reward of 0.1 for hoeing a field and

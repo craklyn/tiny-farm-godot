@@ -1,0 +1,53 @@
+{
+  "id": "Q-124",
+  "owner": "kenji",
+  "title": "Should the Mark III learn to water her crops, or is a robot that only tends its own patch good enough for now?",
+  "question": "The Mark III is the robot she can buy that learns by trial and reward instead of running a fixed program — the third rung of the robot ladder, above the pre-programmed mark-1 and the reactive mark-2. It is already loose on the farm: it hoes bare ground into soil, plants seeds from her box, and waters what comes up, all on its own, getting a little better at it every night.\n\nHere is what a fresh measurement of tonight's build found. Over a test week and a 24-farm sweep, the robot plants about nine seeds a day and waters about seven growing squares a day — and every single one of those squares is one it made for itself, not one she planted. In none of the test farms did it ever go and water a square from her own field. This is the same shape the build log first flagged months ago (v0.2.1 plan, section 9): the robot has never been measured watering her crops, only its own.\n\nWhy it does this: what the robot is paid for is an outcome — a square made wet, a seed planted, ground opened — and it is paid the same whether that square is hers or its own. That evenhandedness was a deliberate ruling (Q-100): nobody owns a tile, and the designer's own thesis was that reward alone, without any notion of ownership, would still produce a robust robot. It does — but what it becomes robust at is farming a patch it made for itself, because that patch is always close and always within the small circle it can see, while her field is a fixed spot elsewhere that the robot has no reason to go looking for.\n\nWhat a day's work is made of (24 farms, points earned per day, days 5-7 average — the reward table has no row for whose square this is, only what happened to it):\n\n| what happened | worth | with a week of learning | with learning switched off |\n| --- | --- | --- | --- |\n| a crop sold | 10 | 2.50 | 1.67 |\n| a crow scared off flying | 1 | 0.00 | 0.00 |\n| a crow scared off eating | 3 | 0.00 | 0.00 |\n| harvested | 1 | 0.25 | 0.17 |\n| watered a growing plant | 1 | 7.11 | 6.22 |\n| planted a seed | 1 | 9.24 | 8.39 |\n| tilled bare ground | 0.1 | 0.92 | 0.91 |\n| watered empty soil | 0.1 | 0.30 | 0.43 |\n\nPlanting and watering-a-plant are the two rows the robot reaches every day, well ahead of everything else — and every one of those squares, across every test farm, was one the robot tilled and sowed itself; none were a square already growing from the player's own field. The exact tally the v0.2.1 plan first ran (5.1 waterings a day on soil it opened itself, 0.0 on her sown block) cannot be re-run unchanged — Q-100's whole-farm reward table and the robot's later move to walking between errands removed the per-second position check that tally depended on — but this is the closest current equivalent, and the shape it shows is the same one: the robot reaches squares it made, not squares she made.\n\nThis question does not reopen Q-100 — that ruling stands, and this is what it produces once actually measured. It asks whether that outcome is the one wanted for the robot a player has beside her today.",
+  "why_now": "The robot has shipped and a player can buy one right now. The gap it leaves — a machine that farms next to her but never for her — was flagged as a follow-up when the hoe landed (card wa4b6c18f577) and never turned into a question for you. A fresh run of `tools/demo_learning_robot.gd` on tonight's build confirms the gap is still there, so it is filed now rather than assumed away.",
+  "options": [
+    {
+      "key": "a",
+      "label": "Leave it as it is (Recommended)",
+      "detail": "The robot keeps improving its own corner of the farm and never touches hers. Matches Q-100's ruled thesis (reward, not ownership, drives it) and the standing rule that a capability's first version ships deliberately weak. Changes nothing.",
+      "recommended": true
+    },
+    {
+      "key": "b",
+      "label": "Pay it more for watering her crops than its own",
+      "detail": "Reintroduce a reward split, paying more for a square that is hers. The plan already tried the other half of this lever — paying the robot less for its own soil — and found it never sent the robot to her field; paying more for hers is the untried half, at the cost of a tuning pass and a fresh 24-farm sweep that may land on the same result."
+    },
+    {
+      "key": "c",
+      "label": "Restrict it to her field",
+      "detail": "Let the robot water and harvest only squares that already have a crop growing — hers — and stop it tilling or planting new ground of its own. Forces the behavior directly, but removes the 'make its own practice ground' fix (Q-99) that was built so a fresh robot has something to learn from, and risks bringing back Q-99's original problem: a robot that wanders off an empty field and never earns anything."
+    },
+    {
+      "key": "d",
+      "label": "Defer until robots have jobs",
+      "detail": "Wait for a later design that assigns a bot specific tiles or tasks, instead of teaching one generalist to guess whose field is whose. Costs nothing to build now, but the robot ships today, and a player who sets one down beside her own crops will notice the gap immediately."
+    }
+  ],
+  "links": [
+    {
+      "label": "Q-124, as filed in the designer queue",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
+    },
+    {
+      "label": "Q-100, the ruling that nobody owns a tile",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DECISION_LOG.md"
+    },
+    {
+      "label": "v0.2.1 plan, section 9 — where the 'own soil, never her field' shape was first measured",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/V0_2_1_PLAN.md"
+    },
+    {
+      "label": "The bots and training design chapter",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/06-bots-and-training.md"
+    },
+    {
+      "label": "The original follow-up card that asked for this question",
+      "href": "#/work/wa4b6c18f577"
+    }
+  ],
+  "subject": "Whose field the robot farms"
+}

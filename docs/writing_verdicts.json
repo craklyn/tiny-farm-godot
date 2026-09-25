@@ -245,6 +245,12 @@
    "verdict": "second-look",
    "why": "The title makes the reader decide what “held” means before the explanation settles it."
   },
+  "0c059c357fa93b52f70d": {
+   "instead": "tests across 24 farms",
+   "quote": "a 24-farm sweep",
+   "verdict": "second-look",
+   "why": "“Sweep” is internal testing shorthand for checking the robot across 24 farms."
+  },
   "0c3b0d89c1dbaf5db958": {
    "verdict": "ok"
   },
@@ -894,6 +900,12 @@
   "2979ff1f9186833b2028": {
    "verdict": "ok"
   },
+  "29e33f3581e8a757bc8b": {
+   "instead": "the other reward change",
+   "quote": "the other half of this lever",
+   "verdict": "second-look",
+   "why": "“Lever” names the reward mechanism instead of plainly describing the change."
+  },
   "29e97381911a0d06bcb3": {
    "verdict": "ok"
   },
@@ -1176,6 +1188,12 @@
    "quote": "a frame she would feel",
    "verdict": "decode",
    "why": "'A frame she would feel' is unclear; 'she' is unintroduced and refers to the player."
+  },
+  "35e8895d46d062a408d0": {
+   "instead": "make and farm its own patch",
+   "quote": "make its own practice ground",
+   "verdict": "second-look",
+   "why": "“Practice ground” is a figurative description of soil the robot tills and plants for itself."
   },
   "36307d0d76e02184a8a0": {
    "verdict": "ok"
@@ -1882,6 +1900,12 @@
   "582134e95da4d2551a4d": {
    "verdict": "ok"
   },
+  "5857e4f15d1c28a95929": {
+   "instead": "raised now instead of being left unexamined",
+   "quote": "filed now rather than assumed away",
+   "verdict": "second-look",
+   "why": "The phrase makes the straightforward fact—that the question is being raised now—indirect."
+  },
   "58a3aeee4282d39d34a2": {
    "verdict": "ok"
   },
@@ -1944,6 +1968,12 @@
   },
   "5b996ac3d8c97635d040": {
    "verdict": "ok"
+  },
+  "5bb7e38c145bee35ffb4": {
+   "instead": "File the question: which farmer's field does the Mark III tend? (Q-124)",
+   "quote": "whose field the Mark III tends",
+   "verdict": "second-look",
+   "why": "The inverted wording makes the reader pause to work out that the question is which farmer's field the Mark III looks after."
   },
   "5c1a64fd9702c2f832ae": {
    "verdict": "ok"
@@ -2562,6 +2592,9 @@
   "77071d7f8ff07845bc1d": {
    "verdict": "ok"
   },
+  "771e6db7308df5919d2c": {
+   "verdict": "ok"
+  },
   "77b57bd90e4f98172d17": {
    "verdict": "ok"
   },
@@ -2988,6 +3021,9 @@
   "899b28ef39a9f578186f": {
    "verdict": "ok"
   },
+  "89bc724f52451ac2c81c": {
+   "verdict": "ok"
+  },
   "8a3bfaa44ab06bdb4d3a": {
    "verdict": "ok"
   },
@@ -3052,6 +3088,12 @@
    "quote": "The menu is the harvest",
    "verdict": "decode",
    "why": "Poetic metaphor instead of stating what this design option does."
+  },
+  "8dd6a1f7de2dd71b9776": {
+   "instead": "the player's crops",
+   "quote": "her crops",
+   "verdict": "second-look",
+   "why": "The reader has to infer that “her” means the player."
   },
   "8e0d3fb9604342f6c9ee": {
    "verdict": "ok"
@@ -3499,6 +3541,12 @@
   },
   "a0bc94e710ffb8638e4f": {
    "verdict": "ok"
+  },
+  "a119a4d6848eaa5f25ec": {
+   "instead": "the conclusion recorded in Q-100",
+   "quote": "Q-100's ruled thesis",
+   "verdict": "second-look",
+   "why": "The reader has to decode “ruled thesis” as the conclusion recorded in design question Q-100."
   },
   "a169eec8ee73fcea44d1": {
    "verdict": "ok"
@@ -3965,6 +4013,9 @@
    "verdict": "ok"
   },
   "b6627ba3091fbf4bcb2b": {
+   "verdict": "ok"
+  },
+  "b6b8df2c76e1431686f1": {
    "verdict": "ok"
   },
   "b775f7f916a2590064cb": {
@@ -4794,6 +4845,9 @@
   "dc1ea34b074327526091": {
    "verdict": "ok"
   },
+  "dc5768712c9c9bd53bcc": {
+   "verdict": "ok"
+  },
   "dc5a1eae3a9908b15f50": {
    "verdict": "ok"
   },
@@ -4882,6 +4936,9 @@
    "why": "The reader cannot tell what the candidate is."
   },
   "dfcdc29bf543cb851857": {
+   "verdict": "ok"
+  },
+  "e05f90c05ec048d44315": {
    "verdict": "ok"
   },
   "e0675861bc0af185aa9d": {
