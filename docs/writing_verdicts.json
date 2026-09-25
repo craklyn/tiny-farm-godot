@@ -672,6 +672,12 @@
   "1cfb5e4ce696aba499ae": {
    "verdict": "ok"
   },
+  "1d0ccc9c5c9db4aedd01": {
+   "instead": "eleven harvests could not be collected because the pouch was full",
+   "quote": "the pouch refused eleven harvests",
+   "verdict": "decode",
+   "why": "The reader has to infer that eleven harvests were not collected because the pouch was full."
+  },
   "1d3cf27d4be11571524c": {
    "instead": "The proposed version is on hold; it needs to be restored",
    "quote": "Candidate held; recovery needed",
@@ -1346,6 +1352,12 @@
    "verdict": "decode",
    "why": "The reader has to work out that this means something else the action needs first."
   },
+  "3a9f313fe82326c32a1c": {
+   "instead": "State the fact or request in plain words.",
+   "quote": "x",
+   "verdict": "decode",
+   "why": "The reader cannot tell what this text means or refers to."
+  },
   "3abde4495352d55d4af4": {
    "verdict": "ok"
   },
@@ -1883,6 +1895,9 @@
    "quote": "would we even find out they had?",
    "verdict": "decode",
    "why": "The sentence is grammatically incomplete; \"they had\" needs an object, and the reader must infer what is meant."
+  },
+  "5480e51c2469982040d8": {
+   "verdict": "ok"
   },
   "54c6c32d37d5df61cf0c": {
    "verdict": "ok"
@@ -5232,6 +5247,12 @@
   },
   "e4a1e4e35637a26a9d52": {
    "verdict": "ok"
+  },
+  "e51823e913f6f3eb87a6": {
+   "instead": "Save the player's longer tablet session after the game rejects an attempt to collect an eleventh crop because the pouch already holds ten",
+   "quote": "eleven taps refused by the ten-crop pouch limit",
+   "verdict": "decode",
+   "why": "The reader has to work out what the taps do and what the pouch limit means."
   },
   "e54239837fe58e0a0c2a": {
    "instead": "Make the sprite editor use the seamless ground sheet as one image instead of cutting it into multiple tiles",
