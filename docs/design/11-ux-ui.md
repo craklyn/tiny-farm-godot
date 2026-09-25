@@ -65,7 +65,7 @@ tap bot → tap squad. The interface narrates the delegation arc (P-1 premise 3)
 | 4 | Stomp a critter | World | Tap it when adjacent (resolves to the hands-clear verb) | Click | Space facing it | A facing it |
 | 5 | Use an object (cot, well, seed box, shipping bin, egg, acorn, placed tool) | World | Tap the object from anywhere — auto walk-to; object beats tile state (T-30) | Click | Walk up, Space | Walk up, A |
 | 6 | Sleep from anywhere | World | HUD bed button → literal injected cot tap (T-31) | Click button | — (Finding 2) | — (Finding 2) |
-| 7 | Choose a seed | UI | Tap the seed pill to cycle; **ruled 2026-09-24 (Q-119, S-23), not built:** a button beside it opens a pictured inventory pop-up where one tap selects any item | Click pill | — (Finding 2) | — (Finding 2) |
+| 7 | Choose a seed | UI | Tap the seed pill to cycle, **or** (Q-119, S-23, built 2026-09-25) tap the inventory button beside it to open a pictured pop-up where one tap selects any item directly | Click pill or button | — (Finding 2) | — (Finding 2) |
 | 8 | Cycle held tool | UI | — none, by design: the router auto-selects | — | Q / E / Tab | LB / RB |
 | 9 | Shop: buy & sell | World (transactions are Actions) | Tap seed box → tap a card | Click | Arrows + Space/Z in menu | D-pad + A in menu |
 | 10 | Pause / inventory | UI | HUD menu button | Click / Esc / I | Esc, I; arrows + Space/Z navigate | Start, Y; d-pad + A |
@@ -135,24 +135,38 @@ the bin's deposit/withdraw controls a usable pictorial treatment, then verify
 them on touch. The bottom bar's redundant tool/seed words are a separate
 minimal-literacy review, not grounds to declare the existing HUD wordless.
 
-**The inventory pop-up (Q-119, ruled 2026-09-24; S-23; not built).** Daniel's own
-proposal, chosen over keeping the shipped display. A second corner card sits beside
-the selected-item card at the bottom of the screen. Tapping it opens a pop-up that
-shows every item she holds as a larger picture with its exact count; tapping a
-picture makes that item the active one and closes the pop-up. Tapping the
-selected-item card still cycles, so the pop-up is a second way to choose, not a
-replacement. Selection stays UI state that the router reads when she taps the farm,
-as the cycling already is; it never becomes an Action. The pop-up follows the HUD's
-touch-target rules and should read without words, the same bar as the shop's
-picture cards. The older idea of replacing the crop-count text with tiny basket
-marks is dropped. How counts show on the main game screen is decided while
-building, against a live capture. The keyboard `I` inventory list in
-`ui/menus.gd` is the natural thing for the pop-up to replace.
+**The inventory pop-up (Q-119, ruled 2026-09-24; S-23; built 2026-09-25).** Daniel's
+own proposal, chosen over keeping the shipped display. A second corner card
+(`InventoryButton`, `ui/hud.gd`) sits against the held-item card's own left edge at
+the bottom of the screen, a real gap between the two so a thumb reaching for one
+cannot rest on the other. Tapping it opens a pop-up (`ui/menus.gd`'s "inventory"
+screen) that shows every item she holds as a picture bigger than the held-item
+card's own icon, with its exact count in digits underneath (`×N`, the shop shelf's
+own vocabulary); tapping a picture calls `GameState.select_held_item(key)` — the
+same gates `cycle_seed_type` already honours — and closes the pop-up. Tapping the
+held-item card still cycles, so the pop-up is a second way to choose, not a
+replacement. Selection stays UI state the router reads when she taps the farm, as
+cycling already was; it is never dispatched through the gateway, so nothing lands
+in a replay. The older idea of replacing the crop-count text with tiny basket
+marks is dropped. **How counts show on the main game screen is still open** —
+untouched by this build, and now a live question rather than a hypothetical one:
+`docs/DESIGNER_QUEUE.md`. The keyboard `I` inventory list in `ui/menus.gd`, which
+used to split the pouch into "Seeds" and "Harvested Crops" text, is what the pop-up
+replaced.
 
-**Regression check to add:** reuse `_has_letters` and Scenario J's visible-menu
-walk in `tools/test_runner.gd` for the shop, then exercise the bin with carried
-and reserved crops. Check that every required choice has a tested picture or
-other non-reading cue, that touch mode never shows the SPACE hint, and that
+**Regression check.** `tools/test_runner.gd`'s Scenario BB presses the HUD button,
+taps a pictured item, then taps tilled ground, and asserts the crop that lands is
+the one the picture named — the whole path a finger takes, not just the gateway
+verb. It also asserts the corner geometry (a thumb-sized target, a real gap from
+the held-item card), that the screen carries no letters (`_has_letters`, Scenario
+J's shop precedent), and that choosing an item adds nothing to the replay log
+(P-9). A PNG of the open picker on a real farm state lives at
+`docs/design/mockups/inventory_picker/open.png` (`tools/capture_inventory_picker.tscn`).
+
+The bin's own regression check is still open: reuse `_has_letters` and Scenario
+J's visible-menu walk for the shop, then exercise the bin with carried and
+reserved crops. Check that every required choice has a tested picture or other
+non-reading cue, that touch mode never shows the SPACE hint, and that
 deposit/withdraw plus the sleep settlement still produce the expected state.
 Record the HUD's actual words separately and assert the icon/count controls used
 by the loop; an assertion that *every* HUD label is empty or numeral-only would

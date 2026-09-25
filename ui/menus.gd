@@ -27,6 +27,16 @@ const SHOP_CARD_H := 52.0
 # confuse: side by side, two cards 4px apart read as one long row.
 const SHOP_GUTTER := 16
 
+# The inventory picker's grid (Q-119/S-23, ruled 2026-09-24, built 2026-09-25):
+# three columns fits a phone width with the shop's own gutter, and every card
+# is square so a bigger picture never buys a taller target than the row
+# beside it.
+const INVENTORY_COLUMNS := 3
+const INVENTORY_CARD := 84.0
+const INVENTORY_ICON := 44.0
+const INVENTORY_PANEL_W := INVENTORY_COLUMNS * INVENTORY_CARD \
+	+ (INVENTORY_COLUMNS - 1) * SHOP_GUTTER + PANEL_PAD * 2.0
+
 # Where the look lab's lines start in the pause menu: after Resume and Return to
 # Title, and one line per open axis (`LookLab.AXES`). Named rather than spelled
 # `== 2`, because T-28 turned one debug line into three and the next axis will
@@ -67,6 +77,12 @@ var shop_refused_seed: String = ""  # The full card whose last press was refused
 # 2026-09-10). Counting rows instead of children is true however they are nested.
 var next_option: int = 0
 var shop_items: Array[Dictionary] = []
+
+# The inventory picker's own cards (Q-119/S-23) — everything she can make
+# active by tapping its picture, in the order the grid drew them, so a tap's
+# row number (`next_option`, same as every other panel here) reads back to the
+# item it was drawn from.
+var inventory_items: Array[Dictionary] = []
 
 # The machine menu (2026-09-03) — what a tap on a placed machine opens, and what
 # a freshly placed one opens by itself.
@@ -583,37 +599,36 @@ func _rebuild_options() -> void:
 			gold_icon.visible = false
 
 		"inventory":
-			title_label.text = tr("INVENTORY")
+			# **Q-119/S-23, ruled 2026-09-24, built 2026-09-25.** The keyboard `I`
+			# list this replaced split the pouch into a "Seeds" half and a
+			# "Harvested Crops" half — exactly the split S-18/S-19/S-20 removed
+			# everywhere else, since a cut wheat is the seed for the next one.
+			# This screen is wordless now too (S-7): a grid of pictures bigger
+			# than the held-item card's own icon, one per thing she is holding,
+			# with its exact count in digits underneath. The same alternative to
+			# cycling the designer asked for, reached from the HUD's new
+			# inventory button as well as this key (`main.gd`'s `open_inventory`).
+			title_label.text = ""
 			gold_display.visible = false
 			shop_title_icon.visible = false
 			gold_icon.visible = false
 
-			# **One list, because there is one pouch** (S-18/S-19/S-20). This screen used to
-			# have a Seeds half and a Harvested Crops half, which is exactly the
-			# split the change removed: a cut wheat is the seed for the next one,
-			# so showing it twice would be showing two things that are one.
-			var pouch_header := Label.new()
-			pouch_header.text = tr("Pouch:")
-			pouch_header.add_theme_color_override("font_color", Color(0.7, 0.9, 0.6))
-			options_container.add_child(pouch_header)
-			for crop_name in CropDefs.ORDER:
-				if not CropDefs.is_plantable(crop_name):
-					continue
-				var def: Dictionary = CropDefs.TYPES[crop_name]
-				var count: int = GameState.pouch.get(crop_name, 0)
-				var lbl := Label.new()
-				lbl.text = "  %s: %d" % [tr(def.name), count]
-				lbl.add_theme_color_override("font_color", Color(0.8, 0.8, 0.75))
-				options_container.add_child(lbl)
-			for item_name in ["egg", "scarecrow"]:
-				var amount := int(GameState.items.get(item_name, 0))
-				if amount > 0:
-					var item_label := Label.new()
-					item_label.text = "%s: %d" % [tr(CropDefs.TYPES[item_name].name), amount]
-					options_container.add_child(item_label)
-
-			_add_option(tr("Close"), true)
-			menu_panel.size = Vector2(300, 260)
+			_build_inventory_items()
+			var grid := GridContainer.new()
+			grid.name = "inventory_grid"
+			grid.columns = INVENTORY_COLUMNS
+			grid.add_theme_constant_override("h_separation", SHOP_GUTTER)
+			grid.add_theme_constant_override("v_separation", int(OPTION_SEP))
+			options_container.add_child(grid)
+			for item in inventory_items:
+				_add_inventory_card(grid, item)
+			# A close row even with nothing to show: unlike the shop, a bare
+			# pouch is a legitimate state here, and she still needs a way out
+			# other than the pause key.
+			_add_option("×", true, 28)
+			menu_panel.size = Vector2(
+				minf(INVENTORY_PANEL_W, viewport_size.x - PANEL_PAD * 2.0),
+				_fit_panel_height())
 
 		"bin":
 			title_label.text = tr("Shipping bin")
@@ -987,6 +1002,82 @@ func _add_shop_card(into: Control, item: Dictionary) -> void:
 	btn.focus_entered.connect(func(): selected_option = idx)
 	into.add_child(container)
 
+## Every item she can make active by tapping its picture (Q-119/S-23): the
+## same set `cycle_seed_type`/`select_held_item` recognise, filtered to what
+## she actually has — a card with nothing behind it would offer a choice the
+## tap could not honour.
+func _build_inventory_items() -> void:
+	inventory_items.clear()
+	for crop_name in CropDefs.ORDER:
+		if not CropDefs.is_plantable(crop_name):
+			continue
+		if not CropDefs.is_seed_unlocked(crop_name, GameState.harvest_counts):
+			continue
+		var count: int = GameState.held_count(crop_name)
+		if count <= 0:
+			continue
+		var def: Dictionary = CropDefs.TYPES[crop_name]
+		inventory_items.append({
+			"key": crop_name,
+			"icon": crop_icon(int(def.icon_col)),
+			"count": count,
+		})
+	for machine_key in MachineDefs.ORDER:
+		var count: int = int(GameState.machines.get(machine_key, 0))
+		if count <= 0:
+			continue
+		inventory_items.append({
+			"key": machine_key,
+			"icon": MachineDefs.icon_of(machine_key),
+			"count": count,
+		})
+
+
+## One card in the picker's grid: a picture bigger than the held-item card
+## carries, and its exact count in digits underneath. `×` rather than a bare
+## numeral — the shop shelf's own vocabulary (`_add_shop_card`'s owned row) —
+## so a reader meets one symbol for "this many" everywhere it appears.
+func _add_inventory_card(into: Control, item: Dictionary) -> void:
+	var idx := next_option
+	next_option += 1
+	var container := PanelContainer.new()
+	container.custom_minimum_size = Vector2(INVENTORY_CARD, INVENTORY_CARD)
+	var style := StyleBoxFlat.new()
+	style.bg_color = Color(0.18, 0.18, 0.25, 0.6)
+	style.corner_radius_top_left = 8
+	style.corner_radius_top_right = 8
+	style.corner_radius_bottom_left = 8
+	style.corner_radius_bottom_right = 8
+	container.add_theme_stylebox_override("panel", style)
+
+	var vbox := VBoxContainer.new()
+	vbox.alignment = BoxContainer.ALIGNMENT_CENTER
+	vbox.set_anchors_preset(Control.PRESET_FULL_RECT)
+	container.add_child(vbox)
+
+	var icon := TextureRect.new()
+	icon.custom_minimum_size = Vector2(INVENTORY_ICON, INVENTORY_ICON)
+	icon.size_flags_horizontal = Control.SIZE_SHRINK_CENTER
+	icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	icon.texture = item.icon
+	vbox.add_child(icon)
+
+	var count_label := Label.new()
+	count_label.text = "×%d" % int(item.count)
+	count_label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	count_label.add_theme_color_override("font_color", Color(0.9, 0.9, 0.8))
+	vbox.add_child(count_label)
+
+	var btn := Button.new()
+	btn.flat = true
+	btn.set_anchors_preset(Control.PRESET_FULL_RECT)
+	container.add_child(btn)
+	btn.pressed.connect(_on_option_pressed.bind(idx))
+	btn.focus_entered.connect(func(): selected_option = idx)
+	into.add_child(container)
+
+
 func _on_shop_card_pressed(index: int, container: Control) -> void:
 	selected_option = index
 	container.pivot_offset = container.size / 2.0
@@ -1232,6 +1323,15 @@ func _select_current_option() -> void:
 				menu_action.emit("resume")
 
 		"inventory":
+			# Choosing an item directly (Q-119/S-23) — the alternative to
+			# cycling, through the exact gates `cycle_seed_type` already
+			# honours (`GameState.select_held_item`). UI navigation, never an
+			# Action (P-9 guardrail): the gateway is never called, so nothing
+			# lands in the replay log.
+			if selected_option < inventory_items.size():
+				var item: Dictionary = inventory_items[selected_option]
+				GameState.select_held_item(String(item.key))
+				AudioManager.play_sfx("click")
 			close_menu()
 			menu_action.emit("resume")
 

@@ -101,6 +101,8 @@ var water_label: Label
 var seed_pill: Panel
 var seed_pill_label: Label
 var seed_pill_icon: TextureRect
+var inventory_button: Button
+var inventory_button_icon: TextureRect
 
 # The held-item card (2026-09-08, from the second live tablet session): the
 # thin centred pill was too small a target for a thumb on glass — T-22's known
@@ -554,6 +556,55 @@ func _build_ui() -> void:
 	seed_pill_label.add_theme_color_override("font_color", Color(1, 1, 0.9))
 	seed_pill_label.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	seed_pill.add_child(seed_pill_label)
+
+	# --- Inventory button (Q-119, ruled 2026-09-24; S-23) ----------------------
+	#
+	# **Daniel's own suggestion.** A second corner card beside the held-item
+	# card: the pill still cycles on a tap, and this opens every item she is
+	# carrying as pictures she can choose from directly (`ui/menus.gd`'s
+	# "inventory" screen, rebuilt for this — see that file). Built as an
+	# ordinary `Button`, the bed button's and menu button's own shape, rather
+	# than the pill's bare `Panel` + `gui_input`: this card does one discrete
+	# thing (open a screen) and never needs to track a drag or a hold the way a
+	# cycle-on-tap control does.
+	#
+	# **Placed against the held-item card's own left edge**, not in a fresh
+	# corner. Every other pair of HUD buttons is kept in separate corners so two
+	# tappable targets are never neighbours (T-22, the 2026-09-08 held-item-card
+	# finding) — this is the one control the designer asked to sit *beside*
+	# another instead, so the gap between the two cards is what keeps them from
+	# being one blurred target, not the geometry. The gap matches the one the
+	# teaching-mode's Done/Clear pair already keeps between two adjacent cards.
+	const INV_BTN_GAP := 8.0
+	inventory_button = Button.new()
+	inventory_button.name = "InventoryButton"
+	inventory_button.size = Vector2(CARD_H, CARD_H)  # square, no smaller than the held-item card's own height
+	inventory_button.position = Vector2(
+		seed_pill.position.x - INV_BTN_GAP - CARD_H, seed_pill.position.y)
+	inventory_button.tooltip_text = tr("Open inventory")  # never drawn; for a developer with a mouse
+	var inv_style := StyleBoxFlat.new()
+	inv_style.bg_color = Color(0.16, 0.20, 0.16, 0.9)
+	inv_style.border_color = Color(0.62, 0.72, 0.58)
+	inv_style.set_border_width_all(2)
+	inv_style.set_corner_radius_all(8)
+	inventory_button.add_theme_stylebox_override("normal", inv_style)
+	inventory_button.add_theme_stylebox_override("hover", inv_style)
+	inventory_button.add_theme_stylebox_override("pressed", inv_style)
+	inventory_button.add_theme_stylebox_override("focus", inv_style)
+	inventory_button.pressed.connect(_on_inventory_button)
+	add_child(inventory_button)
+
+	inventory_button_icon = TextureRect.new()
+	inventory_button_icon.name = "inventory_button_icon"
+	inventory_button_icon.size = Vector2(CARD_ICON, CARD_ICON)
+	inventory_button_icon.position = (inventory_button.size - inventory_button_icon.size) / 2.0
+	inventory_button_icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+	inventory_button_icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+	inventory_button_icon.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	# The basket glyph the state chips already draw (T-28): "everything you are
+	# carrying" is exactly what a tap here opens a picture of.
+	inventory_button_icon.texture = _glyph_icon(StationPresentation.GLYPH_BASKET)
+	inventory_button.add_child(inventory_button_icon)
 
 	# --- Toast ---
 	toast_panel = Panel.new()
@@ -1226,6 +1277,14 @@ func _on_bed_button() -> void:
 	# T-27 box 2 covering the button for free.
 	AudioManager.play_sfx("click")
 	_tell_main("go_to_bed")
+
+
+func _on_inventory_button() -> void:
+	# Routed through main for the reason every HUD button is: the HUD does not
+	# own the menu layer, main does. This reaches the same screen the `I` key
+	# opens in `main.gd`'s `_unhandled_input` (Q-119/S-23).
+	AudioManager.play_sfx("click")
+	_tell_main("open_inventory")
 
 
 func _on_menu_button() -> void:

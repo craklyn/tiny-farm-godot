@@ -638,7 +638,11 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   exact counts; tapping an item makes it active and closes the pop-up; tapping the
   selected-item card still cycles. The tiny-basket-marks proposal is dropped. How
   counts show on the main game screen is settled during the build. Recorded as S-23
-  and in `design/11-ux-ui.md`. Not built yet. Original entry: **Look, revised
+  and in `design/11-ux-ui.md`. **Built 2026-09-25**: a corner button beside the
+  held-item card opens a pictured, wordless grid (`ui/hud.gd`, `ui/menus.gd`);
+  tapping a picture calls the new `GameState.select_held_item`. How counts show on
+  the main screen was not decided during the build after all — see the open
+  question below the original entry. Original entry: **Look, revised
   2026-09-24.** Daniel suggested a
   button beside the currently selected item. It would open an inventory modal
   with larger item pictures and exact counts, where tapping an item selects it
@@ -648,6 +652,28 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   basket capture shows the old proposal only, not the modal. The 2026-09-01
   noun-and-tick ruling for taps that change nothing remains settled; Q-78's can
   gauge remains permanent. **No inventory choice or gameplay change is assumed.**
+
+- **Q-122 — Now that the pictured picker exists, how should counts read on the
+  main screen?** — **Ruling, open 2026-09-25.** The bottom bar still shows
+  crop counts as abbreviated text (`Wh:5  To:0`, `crop_counts_label` in
+  `ui/hud.gd`) beside the new picker, which shows the same counts as bigger
+  pictures with digits underneath and no abbreviations. The two readouts now
+  sit one tap apart and say the same thing two different ways. **Options: (a)
+  leave the bar as it is** — it already reads inside the literacy bar S-7 sets
+  (abbreviations plus a digit), and the picker is a detail view rather than a
+  replacement; **(b) swap the bar's abbreviations for small crop pictures**,
+  each with its own digit count, so the bar and the picker use one picture
+  language throughout, at the cost of a fixed picture set replacing whatever
+  crop list is on the farm that day; **(c) drop the bar's crop-count readout
+  entirely** now that a tap on the new button shows the same information as
+  pictures, leaving the bar to the gold and water readouts it already carries.
+  **Recommendation: (a) for now** — the picker was built to answer "what am I
+  carrying and how much", not to replace the ambient bar, and (b)/(c) are
+  visual-language decisions worth judging against a live capture rather than
+  deciding from this description. This question was flagged rather than
+  decided while building Q-119 (S-23): the ruling explicitly left it open
+  ("how counts show on the main game screen is decided while building"), and
+  the build did not change the bar.
 
 - **Q-118** ~~Which soft soil sound belongs to planting?~~ — ✅ **ruled
   2026-09-24: (a), wobesound's two-beat planting cut**

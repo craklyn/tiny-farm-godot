@@ -1117,6 +1117,11 @@ func _handle_action_result(action: String) -> void:
 		menus.open_menu("shop")
 	elif action == "open_bin":
 		menus.open_menu("bin")
+	elif action == "open_inventory":
+		# The HUD's inventory button (Q-119/S-23) — the same screen the `I` key
+		# opens above, reached through this one dispatcher so a bot driving
+		# through Actions and a finger on the corner card land on identical code.
+		menus.open_menu("inventory")
 	elif action == "done_teaching":
 		end_teaching()
 	elif action == "clear_teaching":

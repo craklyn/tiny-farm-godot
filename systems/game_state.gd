@@ -334,6 +334,30 @@ func cycle_seed_type() -> void:
 		selected_seed_type = first_unlocked
 
 
+# Q-119/S-23 (ruled 2026-09-24): the inventory picker's own way of landing on
+# an item — a tap that names the item directly, where `cycle_seed_type` only
+# ever advances to "next". The same gates cycling honours apply here too (a
+# machine has to be owned; a crop has to be plantable, unlocked, and actually
+# in the pouch), so a picker card can never leave the selection somewhere
+# `resolve()` would refuse. Silently does nothing on a key that fails a gate —
+# the picker only ever offers keys it already checked, so this is the gateway's
+# own belt-and-braces rather than a path a real tap can reach.
+#
+# UI navigation, never an Action (P-9 guardrail): the sim gateway is never
+# called, so nothing here lands in a replay.
+func select_held_item(key: String) -> void:
+	if MachineDefs.has(key):
+		if machines.get(key, 0) <= 0:
+			return
+		selected_seed_type = key
+		return
+	if not CropDefs.is_plantable(key) or not CropDefs.is_seed_unlocked(key, harvest_counts):
+		return
+	if held_count(key) <= 0:
+		return
+	selected_seed_type = key
+
+
 # What the selection control can land on: every seed, always, plus each machine
 # she actually has in the crate (2026-09-03).
 #

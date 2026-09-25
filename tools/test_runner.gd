@@ -145,6 +145,7 @@ func _run_scenarios() -> void:
 	await _scenario_ax_three_farms_three_cards()
 	await _scenario_az_robot_unlock_cues()
 	await _scenario_ba_crow_spook_stops_at_room_wall()
+	await _scenario_bb_inventory_picker_selects_and_plants()
 
 
 func _scenario_ba_crow_spook_stops_at_room_wall() -> void:
@@ -164,6 +165,93 @@ func _scenario_ba_crow_spook_stops_at_room_wall() -> void:
 	farm.sim.set_actor_pos(SimWorld.ACTOR_PLAYER, old_player_tile)
 	farm.sim.despawn_actor("boundary_crow")
 	crow.free()
+
+
+func _scenario_bb_inventory_picker_selects_and_plants() -> void:
+	# Q-119/S-23 (ruled 2026-09-24, built 2026-09-25). Daniel's own suggestion:
+	# a corner button beside the held-item card opens every item she is
+	# carrying as pictures, and tapping one is a second way to make it active —
+	# "as an alternative to cycling to new items by clicking the currently
+	# active item." This proves the whole path a finger takes: press the
+	# button, tap a picture, tap tilled ground, and the crop the picture named
+	# is what goes into the soil — not whatever cycling had left selected.
+	print("\n--- Scenario BB: the inventory picker selects a crop and plants it (Q-119, S-23) ---")
+
+	main_scene.menus.close_menu()
+
+	var hud = main_scene.hud
+	var inv_button := _find_button(main_scene, "InventoryButton")
+	_assert(inv_button != null, "the HUD carries an inventory button beside the held-item card")
+	if inv_button == null:
+		return
+
+	# --- Sam's touch-target lens: thumb-sized, and kept apart from its
+	# neighbour by a real gap rather than a shared edge (T-22's own rule,
+	# answered here by the gap between the two cards since the designer asked
+	# for them beside each other rather than in separate corners). ------------
+	_assert(inv_button.size.x >= 40 and inv_button.size.y >= 40,
+		"and it is a thumb-sized target (%dx%d)" % [int(inv_button.size.x), int(inv_button.size.y)])
+	var held_card: Control = hud.seed_pill
+	var inv_rect := Rect2(inv_button.position, inv_button.size)
+	var held_rect := Rect2(held_card.position, held_card.size)
+	_assert(not inv_rect.intersects(held_rect),
+		"and it sits beside the held-item card without overlapping its own target")
+	_assert(held_rect.position.x - (inv_rect.position.x + inv_rect.size.x) >= 4.0,
+		"with a real gap between the two cards, not a shared edge")
+
+	GameState.pouch["wheat"] = 3
+	GameState.pouch["tomato"] = 2
+	GameState.harvest_counts["wheat"] = 1  # unlocks tomato for the picker too
+	GameState.selected_seed_type = "wheat"
+
+	var replay_mark: int = farm.replay.entries.size()
+	inv_button.pressed.emit()
+	var opened := await _wait_until(
+		func(): return main_scene.menus.active_menu == "inventory", 120)
+	_assert(opened, "pressing it opens the picker")
+
+	var menus = main_scene.menus
+
+	# --- Wordless (S-7) --------------------------------------------------------
+	var labels: Array = []
+	_collect_labels(menus.options_container, labels)
+	var worded: Array = []
+	for lbl in labels:
+		if _has_letters(String(lbl.text)):
+			worded.append(String(lbl.text))
+	_assert(worded.is_empty(),
+		"the picker has no letters in it%s" % ("" if worded.is_empty() else " — found %s" % str(worded)))
+	_assert(not _has_letters(String(menus.title_label.text)), "and the title carries none either")
+
+	var tomato_row := -1
+	for i in menus.inventory_items.size():
+		if String(menus.inventory_items[i].key) == "tomato":
+			tomato_row = i
+	_assert(tomato_row >= 0, "the tomato she is carrying has its own picture in the grid")
+
+	if tomato_row >= 0:
+		_press_row(menus.options_container, tomato_row)
+	await get_tree().process_frame
+	_assert(GameState.selected_seed_type == "tomato",
+		"tapping tomato's picture makes it the active item")
+	_assert(menus.active_menu == "", "and the picker closes itself on the tap")
+	_assert(farm.replay.entries.size() == replay_mark,
+		"choosing an item recorded nothing in the replay log — it is navigation, not an Action (P-9)")
+
+	# --- The tap actually reaches the farm: button, item, tile, planted -------
+	var plot := Vector2i(13, 8)
+	_stage_tile(plot.x, plot.y, "tilled")
+	player.pos = Vector2((plot.x + 0.5) * 16.0, (plot.y + 1.5) * 16.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	InputManager.click_tile = plot
+	InputManager.has_click = true
+	var planted := await _wait_until(
+		func(): return String(farm.get_tile(plot.x, plot.y).state) == "seeded", 200)
+	_assert(planted and farm.get_crop_type(plot.x, plot.y) == "tomato",
+		"and the tile takes the crop the picker's tap chose, not the one cycling had left selected")
+	await _wait_until(func(): return not player.is_acting, 120)
 
 
 func _scenario_az_robot_unlock_cues() -> void:
