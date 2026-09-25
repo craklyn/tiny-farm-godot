@@ -2047,6 +2047,9 @@
   "5c1a64fd9702c2f832ae": {
    "verdict": "ok"
   },
+  "5c3341d3968013b55d75": {
+   "verdict": "ok"
+  },
   "5c5886da549115e73e61": {
    "instead": "This preview shows the crop using the current settings",
    "quote": "This preview reads values from … and shows the crop",
