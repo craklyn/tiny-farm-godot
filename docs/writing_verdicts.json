@@ -861,6 +861,12 @@
    "verdict": "decode",
    "why": "Technical language describes how to achieve the effect, not what the player sees."
   },
+  "28cdb7ccd7fdb6956450": {
+   "instead": "Use the Work page's Accept and Drop buttons to decide which Animation Lab items to keep or remove",
+   "quote": "keep and drop verdicts",
+   "verdict": "decode",
+   "why": "The reader must infer that these are decisions about which Animation Lab items to keep or remove."
+  },
   "28e30a8452ab8bdb70d8": {
    "verdict": "ok"
   },
@@ -3137,6 +3143,9 @@
   "95548ee5a9fff2f0d32d": {
    "verdict": "ok"
   },
+  "955b9c810007366814c1": {
+   "verdict": "ok"
+  },
   "956fec063938a09c4372": {
    "verdict": "ok"
   },
@@ -3571,6 +3580,9 @@
    "verdict": "ok"
   },
   "a82b03802e1b6b0a8fad": {
+   "verdict": "ok"
+  },
+  "a8389ad72cbdcfbe0628": {
    "verdict": "ok"
   },
   "a86221a62aba25a4e2fd": {
