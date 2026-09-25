@@ -69,7 +69,6 @@
 {"actor":"player","target":[13,3],"tick":0,"verb":"harvest"}
 {"actor":"player","target":[14,3],"tick":0,"verb":"harvest"}
 {"actor":"player","target":[15,3],"tick":0,"verb":"harvest"}
-{"actor":"player","tick":0,"verb":"sell"}
 {"actor":"player","target":[16,3],"tick":0,"verb":"harvest"}
 {"actor":"player","target":[15,4],"tick":0,"verb":"harvest"}
 {"actor":"player","target":[13,3],"tick":0,"verb":"till"}

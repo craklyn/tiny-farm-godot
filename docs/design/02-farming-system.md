@@ -12,8 +12,8 @@ watering-can charges, well refill; day/weather scaffold (`systems/game_state.gd`
 
 The player starts with five wheat units. Planting spends one carried unit and
 harvesting returns three of the same crop, including when a machine harvests
-(Q-115, `[Playtest]`). She can carry ten of each crop species; a future grain
-silo raises that limit to forty of each (Q-113, `[Playtest]`). Eggs and
+(Q-115, `[Playtest]`). She can carry a hundred of each crop species (Q-113, S-18,
+raised from ten on 2026-09-25, `[Playtest]`); a future grain silo would raise it. Eggs and
 scarecrows remain separate items and do not use crop capacity.
 
 The shipping bin keeps the first ten units of each crop species in a separate,

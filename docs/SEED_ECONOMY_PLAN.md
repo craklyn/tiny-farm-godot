@@ -22,11 +22,11 @@ Date: 2026-09-23. Owner: Adam, Chief of Staff. Status: landed on main and verifi
 | Tapping the bin currently resolves to `sell`; there is no withdraw action or UI. | `systems/action_router.gd:41,165-182,440,507-517`; `main.gd:991-1006`; `ui/menus.gd:215,587-612` |
 | HUD and other consumers still read separate crop and seed maps. | `ui/hud.gd:824,1023`; `systems/action_router.gd:348-355,473,513-517` |
 | The old patch is held and unapplied. It keeps three in the pouch, which conflicts with the new bin-reserve ruling; it also conflicts with current tests and a generated `.uid`. | `hq/data/work/we49bc7771da.json`; `hq/data/patches/we49bc7771da.patch` |
-| No grain silo is currently defined in the catalogue. The 40-capacity rule is a future-building contract, not a playable upgrade yet. | `systems/machine_defs.gd` (surveyed 2026-09-23) |
+| No grain silo is currently defined in the catalogue. Its old 40-capacity rule is void since the carried cap rose to 100 (2026-09-25); a silo's number is set when one is designed. | `systems/machine_defs.gd` (surveyed 2026-09-23) |
 
 ## 3. Settled prototype decisions
 
-- Q-113: capacity is **per species**: 10 carried of each species, or 40 of each once a grain silo exists. No current silo is to be invented for this change. Numbers are `[Playtest]`.
+- Q-113: capacity is **per species**: 100 carried of each species (raised from 10 on 2026-09-25, because ten made harvesting too hard). No current silo is to be invented for this change. Numbers are `[Playtest]`.
 - Q-115: every successful harvest of one planted crop grants exactly **three** plantable units of that species.
 - Q-116: the shipping bin holds a persistent, separate reserve of up to **ten plantable units per species**. Deposits fill this reserve first. Only excess of that species sells. The reserve does not count against carrying capacity. Numbers are `[Playtest]`.
 - A carried crop and a seed are the same plantable unit. Use one canonical carried-stock map for plantable species, not independently mutable `seeds` and `crops` balances. Inventory entries that are not plantable crops (notably eggs and scarecrows) retain their existing sale/use behavior but never count toward crop capacity or enter the replanting reserve. `CropDefs.TYPES`/`ORDER` membership alone is not a plantability test: define an explicit crop-kind predicate or metadata.

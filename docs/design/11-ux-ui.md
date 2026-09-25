@@ -214,9 +214,9 @@ now, since it stands on its own regardless of Q-123, and revisit moving it onto
 per-species icons only if Q-123 lands on (b).
 
 **Scope boundary, carried over from the original spec.** On-person tier only.
-A future silo raises a species' cap to forty (S-18); no silo exists in the
-current catalogue, and a pulse that fires "at ten" would be wrong the day one
-does. The trigger must read `SimWorld.carry_cap(crop_type)` live, never the
+A future silo raises a species' cap (S-18); no silo exists in the
+current catalogue, and a pulse that fires at a fixed number was wrong the day the
+cap itself moved from ten to a hundred (2026-09-25). The trigger must read `SimWorld.carry_cap(crop_type)` live, never the
 literal `ON_PERSON_CAP` constant, so it keeps working unmodified once a silo
 is added.
 

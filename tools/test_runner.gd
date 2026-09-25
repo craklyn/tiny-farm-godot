@@ -1493,7 +1493,7 @@ func _scenario_j_wordless_shop() -> void:
 		"and pressing a later card buys that row's own thing (%s)" % later.seed_type)
 
 	# The cap is part of the shop's visible state, not just a gateway refusal:
-	# she sees a darkened 10/10 card, and a press rings that card in red while
+	# she sees a darkened full card (10/10 at a cap of ten), and a press rings that card in red while
 	# the existing nope sound plays. The live shop remains wordless (S-7).
 	var gold_before_cap: int = GameState.gold
 	var harvests_before_cap: Dictionary = GameState.harvest_counts.duplicate()
@@ -1512,14 +1512,15 @@ func _scenario_j_wordless_shop() -> void:
 		var all_buttons: Array = menus.options_container.find_children("*", "Button", true, false)
 		_assert(bool(tomato_card.full_pouch) and not bool(tomato_card.affordable)
 			and not (all_buttons[tomato_row] as Button).disabled,
-			"a full 10/10 tomato card is darkened but answers a press")
+			"a full tomato card is darkened but answers a press")
 		var full_labels: Array = []
 		_collect_labels(menus.options_container, full_labels)
+		var full_text := "%d/%d" % [farm.sim.carry_cap("tomato"), farm.sim.carry_cap("tomato")]
 		var shows_capacity := false
 		for label in full_labels:
-			if String(label.text) == "10/10":
+			if String(label.text) == full_text:
 				shows_capacity = true
-		_assert(shows_capacity, "the full card shows its ten-of-ten capacity")
+		_assert(shows_capacity, "the full card shows its capacity as full, cap over cap")
 		_press_row(menus.options_container, tomato_row)
 		await get_tree().create_timer(0.3).timeout
 		# `find_child` rather than a fixed relative path: the shelf's scroll now
@@ -1538,8 +1539,9 @@ func _scenario_j_wordless_shop() -> void:
 			if _has_letters(String(label.text)):
 				worded_after_press = true
 		_assert(not worded_after_press,
-			"the failed press leaves the live shop wordless, with 10/10 as the reason")
-		_assert(GameState.gold == 100 and int(GameState.pouch.tomato) == 10,
+			"the failed press leaves the live shop wordless, with the full count as the reason")
+		_assert(GameState.gold == 100
+			and int(GameState.pouch.tomato) == farm.sim.carry_cap("tomato"),
 			"the rejected purchase changes neither gold nor stock")
 	GameState.gold = gold_before_cap
 	GameState.harvest_counts = harvests_before_cap

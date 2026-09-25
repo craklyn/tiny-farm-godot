@@ -693,9 +693,9 @@ spends one unit; a successful harvest gives three plantable units of that specie
 the shop or earning gold. Selling is an outlet for surplus, not the source of the next
 starter seed. Other species' existing unlock and purchase rules remain separate.
 
-**Storage supplies the reason to visit the bin later.** The player may carry ten
-plantable units *of each species* (S-18, Q-113). A future grain silo raises that to
-forty per species; it is not yet a playable building. Both numbers are `[Playtest]`.
+**Storage supplies the reason to visit the bin later.** The player may carry a hundred
+plantable units *of each species* (S-18, Q-113; ten until 2026-09-25). A future grain
+silo would raise that; it is not yet a playable building. The number is `[Playtest]`.
 The shipping bin holds a separate reserve of ten plantable units per species and sells
 only what a delivery adds beyond that reserve (S-20, Q-116). The player can take
 reserved units back into carried stock. These are distinct limits: the reserve does

@@ -844,6 +844,8 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   2026-09-21 and clarified 2026-09-23: **10 plantable units of each crop species
   on her person; 40 of each with a future grain silo.** Both limits are
   `[Playtest]`. The silo is not available in the prototype. See S-18.
+  **Amended 2026-09-25 by Daniel: 100 of each species**, because ten made
+  harvesting too hard; the silo's forty is void until a silo is designed.
 
 - **Q-115** ~~How many crops one planted seed returns~~ — ✅ ruled 2026-09-23:
   **one harvested crop yields three plantable units of its species.** This

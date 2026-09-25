@@ -440,7 +440,12 @@ follow-up is still under the original yes. Why: measured the same day, each verd
 filed 1.6 new verdicts on him (97 follow-ups on 61 cards, every one returning), so the queue
 could not converge on effort alone.
 
-### S-18. The player can carry ten plantable units of each crop species
+### S-18. The player can carry one hundred plantable units of each crop species
+**Amended 2026-09-25 by Daniel, from playtesting.** The limit is now **100** of each
+species, up from ten: at ten, harvesting was too hard ("it's too hard to harvest right
+now"). The future silo's forty below is void, since it no longer raises anything; a
+silo's number is set when one is designed. Still `[Playtest]`.
+
 **Onboarding consequence, recorded 2026-09-24.** Daniel accepted harvest-as-seed
 for starter plants, promoting the fallback named in `design/13-teaching-and-onboarding.md`
 §7a. Harvested crop stock is directly plantable; the first session no longer requires
@@ -448,8 +453,9 @@ selling a crop to buy its replacement seed. Selling serves surplus. This does no
 change other species' unlocks or purchases, and the separate implementation details
 are in `SEED_ECONOMY_PLAN.md`.
 
-**Ruled 2026-09-21 and clarified 2026-09-23 (Q-113, option b).** The carried
-limit is ten wheat, ten tomato, and so on, independently. A future grain silo
+**Ruled 2026-09-21 and clarified 2026-09-23 (Q-113, option b); the numbers in this
+paragraph are superseded by the amendment above.** The carried
+limit was ten wheat, ten tomato, and so on, independently. A future grain silo
 raises each species limit to forty; no grain silo is sold or placed in this
 prototype. Both limits are `[Playtest]`. A harvest that would add three units
 beyond its species limit leaves the crop ripe and spends no energy. Stock already

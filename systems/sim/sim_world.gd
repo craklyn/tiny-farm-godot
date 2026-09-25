@@ -1477,6 +1477,7 @@ func count_objects(kind: String) -> int:
 #
 # **How much of one thing fits in the pouch.** The designer's rule is that early
 # on the only storage she has is what is on her — "not a large number, 5 or 10" —
+# though playing it, ten made harvesting too hard, so it is now a hundred —
 # and that a grain silo and the storage after it are what raise it, so that a
 # later farm can hold enough to stock its defences.
 #
@@ -1497,8 +1498,9 @@ func count_objects(kind: String) -> int:
 # and his own example of a later phase *is* the silo. So a farm's capacity is its
 # buildings, and phase 1 is simply a farm with none of them.
 #
-# [Playtest] — Q-113 fixed the starting number and its future silo value.
-const ON_PERSON_CAP := 10
+# [Playtest] — Q-113 fixed the starting number at ten; Daniel raised it to 100 on
+# 2026-09-25 (S-18's amendment). The silo's old forty is void.
+const ON_PERSON_CAP := 100
 
 
 # The cap for one crop species. A future storage row declares its resulting

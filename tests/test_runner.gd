@@ -16162,17 +16162,17 @@ func test_one_pouch() -> void:
 		"tomato fills its own reserve without changing wheat or gold")
 	var clock_before: int = GameState.actions_today
 	var energy_before: int = GameState.energy
-	GameState.pouch["wheat"] = 10
+	GameState.pouch["wheat"] = SimWorld.ON_PERSON_CAP
 	var no_room := world.apply_action({"actor": "player", "verb": "withdraw_seed",
 		"params": {"crop_type": "wheat"}}, GameState)
 	_assert(not no_room.ok and int(GameState.bin_reserve.wheat) == 10
-		and int(GameState.pouch.wheat) == 10,
+		and int(GameState.pouch.wheat) == SimWorld.ON_PERSON_CAP,
 		"a full stack cannot withdraw or change either balance")
 	GameState.pouch["wheat"] = 0
 	var taken := world.apply_action({"actor": "player", "verb": "withdraw_seed",
 		"params": {"crop_type": "wheat"}}, GameState)
 	_assert(taken.ok and taken.moved == 10 and int(GameState.pouch.wheat) == 10
-		and int(GameState.bin_reserve.wheat) == 0, "withdrawal fills the carried stack")
+		and int(GameState.bin_reserve.wheat) == 0, "withdrawal moves the reserve into the pouch")
 	_assert(GameState.actions_today == clock_before and GameState.energy == energy_before,
 		"bin errands spend no action time or energy")
 
@@ -16185,21 +16185,22 @@ func test_carry_cap() -> void:
 	world.generate()
 	var plot := Vector2i(20, 10)
 	world.set_tile_state(plot.x, plot.y, "ready", "wheat")
-	GameState.pouch = {"wheat": 8, "tomato": 10}
+	var cap: int = SimWorld.ON_PERSON_CAP
+	GameState.pouch = {"wheat": cap - 2, "tomato": cap}
 	var energy_before: int = GameState.energy
 	var rng_before: int = SimRng.rng.state
 	var refused := world.apply_action({"actor": "player", "verb": "harvest",
 		"target": plot}, GameState)
 	_assert(not refused.ok and refused.reason == "pouch_full"
 		and world.get_tile(plot.x, plot.y).state == "ready"
-		and GameState.energy == energy_before and int(GameState.pouch.wheat) == 8,
-		"8 of 10 refuses a three-unit harvest without changing the crop or energy")
+		and GameState.energy == energy_before and int(GameState.pouch.wheat) == cap - 2,
+		"two short of the cap refuses a three-unit harvest without changing the crop or energy")
 	_assert(SimRng.rng.state == rng_before, "full-pouch refusal consumes no RNG")
-	GameState.pouch["wheat"] = 7
+	GameState.pouch["wheat"] = cap - 3
 	var accepted := world.apply_action({"actor": "player", "verb": "harvest",
 		"target": plot}, GameState)
-	_assert(accepted.ok and int(GameState.pouch.wheat) == 10,
-		"7 of 10 reaches the wheat cap exactly, independent of tomato's full stack")
+	_assert(accepted.ok and int(GameState.pouch.wheat) == cap,
+		"three short of the cap reaches the wheat cap exactly, independent of tomato's full stack")
 	GameState.gold = 100
 	GameState.harvest_counts["wheat"] = 1
 	var gold_before: int = GameState.gold
@@ -16207,28 +16208,29 @@ func test_carry_cap() -> void:
 		"seed_type": "tomato"}, GameState)
 	_assert(not buy.ok and GameState.gold == gold_before,
 		"a full tomato stack refuses a purchase before gold changes")
-	MachineDefs.TYPES["test_silo"] = {"object": "silo_fixture", "crop_capacity": 40}
+	var silo: int = cap * 4
+	MachineDefs.TYPES["test_silo"] = {"object": "silo_fixture", "crop_capacity": silo}
 	MachineDefs.ORDER.append("test_silo")
 	world.set_object(21, 10, "silo_fixture")
-	_assert(world.carry_cap("wheat") == 40 and world.carry_cap("tomato") == 40,
-		"a placed silo fixture raises each species cap to forty")
+	_assert(world.carry_cap("wheat") == silo and world.carry_cap("tomato") == silo,
+		"a placed silo fixture raises each species cap to its own capacity")
 	world.set_tile_state(plot.x, plot.y, "ready", "wheat")
-	GameState.pouch["wheat"] = 38
+	GameState.pouch["wheat"] = silo - 2
 	energy_before = GameState.energy
 	rng_before = SimRng.rng.state
 	var silo_refusal := world.apply_action({"actor": "player", "verb": "harvest",
 		"target": plot}, GameState)
 	_assert(not silo_refusal.ok and silo_refusal.reason == "pouch_full"
 		and String(world.get_tile(plot.x, plot.y).state) == "ready"
-		and int(GameState.pouch.wheat) == 38 and GameState.energy == energy_before
+		and int(GameState.pouch.wheat) == silo - 2 and GameState.energy == energy_before
 		and SimRng.rng.state == rng_before,
-		"38 of 40 refuses all three units without changing tile, energy, or RNG")
-	GameState.pouch["wheat"] = 37
+		"two short of the silo's cap refuses all three units without changing tile, energy, or RNG")
+	GameState.pouch["wheat"] = silo - 3
 	var silo_harvest := world.apply_action({"actor": "player", "verb": "harvest",
 		"target": plot}, GameState)
-	_assert(silo_harvest.ok and int(GameState.pouch.wheat) == 40
+	_assert(silo_harvest.ok and int(GameState.pouch.wheat) == silo
 		and String(world.get_tile(plot.x, plot.y).state) == "cleared",
-		"37 of 40 accepts all three units and cuts the crop")
+		"three short of the silo's cap accepts all three units and cuts the crop")
 	MachineDefs.ORDER.erase("test_silo")
 	MachineDefs.TYPES.erase("test_silo")
 
@@ -16249,19 +16251,19 @@ func test_save_v5_migration() -> void:
 	old.state.erase("items")
 	old.state.erase("bin_reserve")
 	old.state.erase("last_bin_delivery")
-	old.state["seeds"] = {"wheat": 9, "tomato": 1, "scarecrow": 2}
+	old.state["seeds"] = {"wheat": SimWorld.ON_PERSON_CAP - 1, "tomato": 1, "scarecrow": 2}
 	old.state["crops"] = {"wheat": 7, "egg": 3}
 	old.state["shipping_bin"] = {"wheat": 2}
 	var migrated := SaveGame.migrate(old)
 	_assert(int(migrated.world.actors.legacy_picker.extra.carrying_count) == 1,
 		"a v4 machine hand migrates as one carried unit")
-	_assert(migrated.version == 6 and int(migrated.state.pouch.wheat) == 16
+	_assert(migrated.version == 6 and int(migrated.state.pouch.wheat) == SimWorld.ON_PERSON_CAP + 6
 		and int(migrated.state.items.egg) == 3 and int(migrated.state.items.scarecrow) == 2,
 		"v4 stock sums plantable units without clipping and preserves noncrop items")
 	var restored := SimWorld.new()
 	GameState.reset()
 	_assert(SaveGame.restore(old, restored, GameState), "v4 farm restores into v5")
-	_assert(int(GameState.pouch.wheat) == 16 and GameState.bin_reserve.is_empty(),
+	_assert(int(GameState.pouch.wheat) == SimWorld.ON_PERSON_CAP + 6 and GameState.bin_reserve.is_empty(),
 		"over-cap carried stock survives; new reserve starts empty")
 	var plot := Vector2i(20, 10)
 	restored.set_tile_state(plot.x, plot.y, "ready", "wheat")
