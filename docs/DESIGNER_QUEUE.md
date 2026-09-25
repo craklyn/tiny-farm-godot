@@ -290,6 +290,15 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   further up the ladder — this is it). Design rewrite in `design/06`; build in
   `V0_2_1_PLAN.md` WI-9.
 
+- **Q-125 — Where should HQ keep its work cards?** — **Ruling, open 2026-09-25.**
+  Every HQ card exists twice: the copy HQ reads and writes in the shared checkout, and
+  the copy on main that sessions edit when they close work. Nothing copies changes
+  between them, so finished work kept showing as unfinished (23 of 26 held cards on
+  2026-09-25 were already done on main). Options: (a) move HQ's records to their own
+  folder and close cards only through an HQ command that carries the evidence; (b) sync
+  the two copies automatically; (c) keep closing by hand. **Strawman: (a).** Card:
+  `hq/data/decisions/Q-125.json`.
+
 - **Q-124 — Should the Mark III learn to water her crops, or is a robot that only
   tends its own patch good enough for now?** — **Ruling, open 2026-09-25.** The Mark
   III — the robot she buys that learns by trial and reward, one rung above the
