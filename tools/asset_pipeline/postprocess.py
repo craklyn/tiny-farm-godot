@@ -30,11 +30,41 @@ from collections import deque
 from PIL import Image, ImageSequence
 
 
-def key_background(im, tol=26):
-    """Flood-fill the flat background from the four corners to transparency.
+def key_background(im, tol=26, min_span=3):
+    """Flood-fill the flat background from the four corners to transparency, then
+    clear any leftover opaque pocket the corner flood can never reach.
 
     More predictable than the API's remove_bg, and free. Tolerance covers the slight
     dithering generators put in "flat" backgrounds.
+
+    The corner flood only clears background connected to a corner through pixels
+    within `tol` of it. A pocket the sprite's own silhouette walls off on every
+    side - the gap between two fence posts, boxed in by the posts and rails - is
+    never on that path no matter how loose `tol` gets, because the walk never
+    leaves the four corners. Daniel hand-erased exactly this on Obstacle Set (the
+    fence's post gap) after it had already needed his hand on two other sheets;
+    the raws that produced it (`assets/raw/2026-08-29-obstacles-and-acorn/`) still
+    carry the defect. So after the flood, a second full-canvas pass finds every
+    remaining opaque region that still matches the corner-sampled colour within
+    the same tight `tol` - not the generous `_is_near_white` test `erase_white_edges`
+    uses for the anti-aliased fringe - and clears it, provided the region never
+    touches the canvas border and is at least `min_span` pixels wide AND tall.
+    A border-touching region is background the flood above already means to reach
+    (or the fringe `erase_white_edges` widens the tolerance for next); only a
+    genuinely enclosed region is a pocket. Matching this image's own exact corner
+    sample, not a general "looks pale" rule, is what keeps a legitimate enclosed
+    design colour (a highlight, a patch of fur) safe unless it happens to equal
+    this one generation's specific backdrop shade.
+
+    The size floor exists because that coincidence does happen at small scale: the
+    workbench raw (`assets/raw/2026-09-10-workbench/bench_1.png`) draws a thin
+    highlight seam along the bench top in a handful of one-row, disconnected
+    islands that land on the exact backdrop shade by chance. Real trapped pockets
+    measured off the affected obstacle raws are at least 4 pixels in both
+    directions (the fence gap is 20x4, the open gate's two pockets are 5x5);
+    every one of those seam islands is 1-2 pixels in its shorter dimension.
+    `min_span=3` sits between the two and is exercised by both directions in
+    check_postprocess.py.
     """
     im = im.convert("RGBA")
     w, h = im.size
@@ -51,6 +81,36 @@ def key_background(im, tol=26):
         if a == 0 or all(abs(c - c0) <= tol for c, c0 in zip((r, g, b), bg)):
             px[x, y] = (0, 0, 0, 0)
             queue.extend([(x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)])
+
+    def matches_bg(x, y):
+        r, g, b, a = px[x, y]
+        return a > 0 and all(abs(c - c0) <= tol for c, c0 in zip((r, g, b), bg))
+
+    visited = [[False] * h for _ in range(w)]
+    for sx in range(w):
+        for sy in range(h):
+            if visited[sx][sy] or not matches_bg(sx, sy):
+                continue
+            pts = [(sx, sy)]
+            visited[sx][sy] = True
+            touches_border = sx in (0, w - 1) or sy in (0, h - 1)
+            x0 = x1 = sx
+            y0 = y1 = sy
+            q = deque([(sx, sy)])
+            while q:
+                x, y = q.popleft()
+                for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
+                    nx, ny = x + dx, y + dy
+                    if 0 <= nx < w and 0 <= ny < h and not visited[nx][ny] and matches_bg(nx, ny):
+                        visited[nx][ny] = True
+                        pts.append((nx, ny))
+                        touches_border = touches_border or nx in (0, w - 1) or ny in (0, h - 1)
+                        x0, x1 = min(x0, nx), max(x1, nx)
+                        y0, y1 = min(y0, ny), max(y1, ny)
+                        q.append((nx, ny))
+            if not touches_border and x1 - x0 + 1 >= min_span and y1 - y0 + 1 >= min_span:
+                for (x, y) in pts:
+                    px[x, y] = (0, 0, 0, 0)
     return im
 
 
