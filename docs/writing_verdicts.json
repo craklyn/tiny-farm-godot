@@ -76,6 +76,9 @@
   "04cbd4273be66eef6e7d": {
    "verdict": "ok"
   },
+  "06177d95a3bdb091bb00": {
+   "verdict": "ok"
+  },
   "0618fa022409df9ba7f6": {
    "verdict": "ok"
   },
@@ -818,6 +821,9 @@
   "262be3b8ba2c56d9b06d": {
    "verdict": "ok"
   },
+  "2633b3b17ac2439a54a0": {
+   "verdict": "ok"
+  },
   "2679e3b4b0bec7e573e3": {
    "verdict": "ok"
   },
@@ -1534,6 +1540,12 @@
   "4afee470a795a68ac263": {
    "verdict": "ok"
   },
+  "4b29981d2a17e0e6c696": {
+   "instead": "Add the decision card asking whether to redraw the rock and fox images with fewer colours",
+   "quote": "rock and fox sprites",
+   "verdict": "decode",
+   "why": "“Sprites” is game-development shorthand for the images the player sees, so a stranger may need to ask what is being redrawn."
+  },
   "4b2c68b467fc44802125": {
    "verdict": "ok"
   },
@@ -1749,6 +1761,12 @@
   "54ea7be720971a816022": {
    "verdict": "ok"
   },
+  "54ef620b1411f43891bd": {
+   "instead": "the original files remain available in the project's change history",
+   "quote": "the originals stay in git history",
+   "verdict": "second-look",
+   "why": "“Git history” is internal version-control language; a cold reader may need to work out that the original files remain recoverable."
+  },
   "5535d8aa3acbc9605f67": {
    "instead": "Eight machines running at once, and the tablet still draws smoothly",
    "quote": "the tablet's busiest frame spends 3.45 ms of its 16.7 ms",
@@ -1894,6 +1912,9 @@
    "verdict": "decode",
    "why": "'It' refers to 'feedback' from the previous sentence; rule 3 requires the referent be in the same sentence."
   },
+  "5cec18d6e249fecdf06a": {
+   "verdict": "ok"
+  },
   "5cf408057e1e2b523c70": {
    "verdict": "ok"
   },
@@ -1940,6 +1961,9 @@
    "verdict": "ok"
   },
   "5f506eaf7582dd152e37": {
+   "verdict": "ok"
+  },
+  "5fa1f606f8730cae5cbf": {
    "verdict": "ok"
   },
   "5fa26fce262954cac6bc": {
@@ -2572,6 +2596,9 @@
   "7b4ebc9bb58ec62fe160": {
    "verdict": "ok"
   },
+  "7b6206e1dba488a3822e": {
+   "verdict": "ok"
+  },
   "7bbdb17b73662853f5e6": {
    "verdict": "ok"
   },
@@ -2692,6 +2719,9 @@
    "verdict": "ok"
   },
   "8154afc11c1d890b1277": {
+   "verdict": "ok"
+  },
+  "81a0e9dfdbc35698f800": {
    "verdict": "ok"
   },
   "81b4995d97a4fb8b564d": {
@@ -3060,6 +3090,9 @@
    "verdict": "ok"
   },
   "93ab0384c44be5d0ab19": {
+   "verdict": "ok"
+  },
+  "93b8a5fc32cd65c7df18": {
    "verdict": "ok"
   },
   "93e7ccbab50d5ffb8971": {
@@ -4066,6 +4099,9 @@
   "c337cdf6cf9fc31ee578": {
    "verdict": "ok"
   },
+  "c33eb8122a417956d0a7": {
+   "verdict": "ok"
+  },
   "c38a4845d98ee8162d4e": {
    "baselined": "2026-09-19",
    "instead": "leaves this step undefended, so someone will one day forget to do it",
@@ -4086,6 +4122,9 @@
    "verdict": "ok"
   },
   "c42935c07e3d7c64a9b5": {
+   "verdict": "ok"
+  },
+  "c42df01cbbb43ecb7a84": {
    "verdict": "ok"
   },
   "c436e32f165b63e0e422": {
