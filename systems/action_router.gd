@@ -63,6 +63,10 @@ const SPECIAL_OBJECTS := {
 	WorldLayout.ROOM_DOORWAY: "use_door",
 	WorldLayout.CHICKEN_COOP: "open_structure",
 	WorldLayout.CHICKEN_COOP_PART: "open_structure",
+	# The tower has a room too (2026-09-25): it was built with one, but no tap led
+	# into it, so she could buy it, put it down, and never go in.
+	WorldLayout.SPIRAL_TOWER: "open_structure",
+	WorldLayout.SPIRAL_TOWER_PART: "open_structure",
 	"tool_axe":     "take_tool",
 	"tool_pickaxe": "take_tool",
 	# The door, both ends of it (2026-09-06). A tap on the farmhouse's door or on

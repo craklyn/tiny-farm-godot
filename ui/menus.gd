@@ -323,14 +323,32 @@ func open_menu(menu_name: String) -> void:
 const ENTER_DELAY_SECONDS := 0.10
 
 var structure_tile: Vector2i = Vector2i(-1, -1)
+var structure_item: String = ""
 var structure_options: Array = []
 
 
+## Any building with a room opens this panel: the coop, and the Spiral Tower.
+## Only the coop offers "Pick up" — taking a building up is written around the
+## coop in the sim, and the tower's has not been built or tested.
 func open_structure_menu(at: Vector2i) -> void:
-	if farm == null or not farm.sim.is_coop_tile(at):
+	if farm == null or farm.sim.room_door_at(at).is_empty():
+		return
+	structure_item = _structure_item_at(at)
+	if structure_item == "":
 		return
 	structure_tile = at
 	open_menu("structure")
+
+
+func _structure_item_at(at: Vector2i) -> String:
+	var obj: String = farm.get_object(at.x, at.y)
+	for key in MachineDefs.ORDER:
+		if MachineDefs.room_of(key).is_empty():
+			continue
+		var def: Dictionary = MachineDefs.TYPES.get(key, {})
+		if obj == String(def.get("object", "")) or obj == String(def.get("part", "")):
+			return key
+	return ""
 
 
 func open_machine_menu(at: Vector2i) -> void:
@@ -673,15 +691,16 @@ func _rebuild_options() -> void:
 			# reason — there is no icon vocabulary for "go inside" yet, and the
 			# shop, which a pre-reader must use to play at all, stays wordless.
 			# Filed with Q-87.
-			title_label.text = tr(MachineDefs.name_of(SimWorld.COOP_ITEM)).to_upper()
+			title_label.text = tr(MachineDefs.name_of(structure_item)).to_upper()
 			gold_display.visible = false
 			shop_title_icon.visible = false
 			gold_icon.visible = false
 			structure_options = []
 			structure_options.append({ "kind": "enter" })
 			_add_option(tr("Go inside"), true)
-			structure_options.append({ "kind": "collect" })
-			_add_option(tr("Pick up"), true)
+			if structure_item == SimWorld.COOP_ITEM:
+				structure_options.append({ "kind": "collect" })
+				_add_option(tr("Pick up"), true)
 			structure_options.append({ "kind": "close" })
 			_add_option("\u00d7", true, 28)
 			menu_panel.size = Vector2(320.0, _fit_panel_height())

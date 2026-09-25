@@ -154,6 +154,7 @@ func _run_scenarios() -> void:
 	await _scenario_basket_chip_pulses_at_cap()
 	await _scenario_bg_the_mark_three_is_given_its_squares()
 	await _scenario_bi_teach_controls_clear_the_corner_cards()
+	await _scenario_bj_a_tap_on_the_tower_goes_inside()
 
 
 func _scenario_ba_crow_spook_stops_at_room_wall() -> void:
@@ -8299,3 +8300,72 @@ func _scenario_bi_teach_controls_clear_the_corner_cards() -> void:
 			farm.apply_action({ "verb": "collect", "target": farm.sim.actor_pos(id),
 				"actor": "player" }, GameState)
 	await get_tree().process_frame
+
+
+func _scenario_bj_a_tap_on_the_tower_goes_inside() -> void:
+	# Found in play, 2026-09-25: the Spiral Tower was bought and put down, and no
+	# tap led into it. Its room was proved at the `use_door` verb only, so this
+	# drives the taps a player makes: the tower, "Go inside", then the doorway out.
+	print("\n--- Scenario BJ: a tap on the Spiral Tower goes inside (found in play, 2026-09-25) ---")
+	var real_paths := [GameState.save_path, GameState.replay_path, GameState.trace_path]
+	GameState.save_path = "user://tower_autosave.json"
+	GameState.replay_path = "user://tower_replay.json"
+	GameState.trace_path = "user://tower_trace.jsonl"
+	var menus = main_scene.menus
+	menus.close_menu()
+	GameState.gold = 1000
+	GameState.machines = {}
+	GameState.set_energy(GameState.max_energy)
+	main_scene.end_teaching()
+
+	var anchor := Vector2i(24, 16)   # front-left; the tower rises four rows above it.
+	# Clear of the coop an earlier scenario leaves at (15, 9): staging erases its
+	# picture but not its room, and a tap there would go through the coop's door.
+	for ty in range(11, 19):
+		for tx in range(22, 30):
+			_stage_tile(tx, ty, "cleared")
+	GameState.machines["spiral_tower"] = 1
+	var clear := await _wait_for_clear_ground(anchor, "spiral_tower")
+	_assert(clear, "the tower's sixteen squares are free")
+	var laid: Dictionary = farm.apply_action({ "verb": "place", "target": anchor,
+		"item": "spiral_tower", "actor": "player" }, GameState)
+	var id := String(laid.get("room", ""))
+	_assert(laid.get("ok", false) and id != "", "a tower with an inside stands on the farm")
+	if id == "":
+		return
+	await get_tree().process_frame
+
+	player.pos = Vector2(25 * 16.0 + 8.0, 17 * 16.0 + 8.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	InputManager.click_tile = anchor + Vector2i(1, -2)   # the middle of the picture
+	InputManager.has_click = true
+	var asked := await _wait_until(func(): return menus.active_menu == "structure", 200)
+	_assert(asked, "a tap on the tower asks what she wants to do with it")
+	if not asked:
+		return
+	_assert(menus.structure_item == "spiral_tower" and menus.structure_options.size() == 2,
+		"the tower's panel offers going inside and closing, not a pick-up it cannot do yet")
+	menus.selected_option = 0      # "Go inside"
+	menus._select_current_option()
+	# She arrives on the tower's indoor doorway, which is its room's way out.
+	var indoor_door: Vector2i = farm.sim.rooms[id]["door"]
+	var inside := await _wait_until(
+		func(): return _in_room_or_door(id, indoor_door), 200)
+	_assert(inside, "and she goes into the tower (%s)" % player.get_tile_pos())
+
+	InputManager.click_tile = player.get_tile_pos()
+	InputManager.has_click = true
+	var outside := await _wait_until(
+		func(): return farm.sim.page_of(player.get_tile_pos()) == 0, 300)
+	_assert(outside, "and a tap on the doorway brings her back out (%s)" % player.get_tile_pos())
+
+	GameState.save_path = real_paths[0]
+	GameState.replay_path = real_paths[1]
+	GameState.trace_path = real_paths[2]
+
+
+func _in_room_or_door(id: String, door: Vector2i) -> bool:
+	var at: Vector2i = player.get_tile_pos()
+	return farm.sim.room_of_cell(at) == id or at == door
