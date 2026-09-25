@@ -848,6 +848,9 @@
   "2679e3b4b0bec7e573e3": {
    "verdict": "ok"
   },
+  "270e95f908c745cb9684": {
+   "verdict": "ok"
+  },
   "27310bee322cbc6bfaeb": {
    "verdict": "ok"
   },
@@ -2216,6 +2219,12 @@
   },
   "65728ba657297f5b0517": {
    "verdict": "ok"
+  },
+  "657626c94c7902c3e3a1": {
+   "instead": "Count the nest box and rug images in the HQ test that checks the game's colours",
+   "quote": "HQ palette test's list of game sprites",
+   "verdict": "decode",
+   "why": "The reader has to work out what the palette test checks and what a sprite is."
   },
   "65afd7b6fab012b252f7": {
    "verdict": "ok"
