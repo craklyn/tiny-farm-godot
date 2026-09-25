@@ -220,6 +220,23 @@ does. The trigger must read `SimWorld.carry_cap(crop_type)` live, never the
 literal `ON_PERSON_CAP` constant, so it keeps working unmodified once a silo
 is added.
 
+**Built 2026-09-25 (wcd10abfcff2).** `ui/hud.gd`'s `_update_state_chips` calls
+a new `_any_species_at_cap()`, which checks `GameState.pouch` against the live
+`SimWorld.carry_cap(crop_type)` — never `ON_PERSON_CAP` — and sets a public
+`basket_cap_pulse` flag a test can read directly rather than decoding a
+colour. When it is true the chip is shown even under the shipped default bar
+(`basket_chip.visible = full_b or basket_cap_pulse`, so this does not wait on
+Q-123 either) and its modulate is lerped toward the teaching ring's own
+`Color(1.0, 0.78, 0.25)` (`CAP_PULSE_COLOR`) on the same `sin(t * 4.0)`
+cadence — no second ring, no new colour. The five-pip tally is untouched. A
+new integration scenario (`_scenario_basket_chip_pulses_at_cap`,
+`tools/test_runner.gd`) harvests a real wheat tile up to its cap through a
+real tap, plants one unit back out through another real tap to drop below it,
+then confirms a second species alone at its own cap turns the pulse on again.
+A capture of the chip lit on the shipped default bar is
+`docs/design/mockups/basket_full/basket_full_pulse.png`
+(`tools/capture_basket_pulse.tscn`).
+
 **Regression check.** `tools/test_runner.gd`'s Scenario BB presses the HUD button,
 taps a pictured item, then taps tilled ground, and asserts the crop that lands is
 the one the picture named — the whole path a finger takes, not just the gateway

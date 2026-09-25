@@ -2119,6 +2119,12 @@
   "5fa26fce262954cac6bc": {
    "verdict": "ok"
   },
+  "5fe73a975c06475e1cf3": {
+   "instead": "Highlight the basket indicator in gold when the carried crop reaches its maximum amount",
+   "quote": "Pulse the basket chip gold when a carried crop hits its cap",
+   "verdict": "decode",
+   "why": "“Basket chip,” “pulse,” and “hits its cap” describe an internal interface mechanism instead of plainly stating what the player will see."
+  },
   "5ff187a4fa3e8f389947": {
    "baselined": "2026-09-19",
    "instead": "Scored on a build that is commits behind what you would ship today",
@@ -2197,6 +2203,12 @@
    "quote": ")[0])} — who they are, what they are responsible for",
    "verdict": "decode",
    "why": "Code is embedded in the prose, making the sentence unreadable."
+  },
+  "63107ac06d00820f5bf8": {
+   "instead": "Glow the basket icon gold when the basket is full of crops",
+   "quote": "when a carried crop is full",
+   "verdict": "second-look",
+   "why": "The reader has to pause to understand whether the crop or the basket is full."
   },
   "6313db5c4dfcf3f598cd": {
    "instead": "Farm build history is now available",

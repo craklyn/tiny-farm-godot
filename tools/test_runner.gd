@@ -148,6 +148,7 @@ func _run_scenarios() -> void:
 	await _scenario_bb_inventory_picker_selects_and_plants()
 	await _scenario_bc_a_nest_box_goes_down_by_tap()
 	await _scenario_bd_the_shop_shelf_scrolls()
+	await _scenario_basket_chip_pulses_at_cap()
 
 
 func _scenario_ba_crow_spook_stops_at_room_wall() -> void:
@@ -7615,3 +7616,86 @@ func _scenario_bd_the_shop_shelf_scrolls() -> void:
 		GameState.machines["fence"] = machines_before
 	else:
 		GameState.machines.erase("fence")
+
+
+func _scenario_basket_chip_pulses_at_cap() -> void:
+	# docs/design/11-ux-ui.md, "The storage-full pulse" (spec revised 2026-09-25,
+	# e6b4ba3, supersedes we69b8f43065's 2026-09-04 result). A per-species cap
+	# (S-18/S-19/S-20) means there is no single "the basket is full" number left
+	# to size a pip row to, so a second signal lives on the chip itself: it
+	# pulses the teaching ring's own warm gold (main.gd:1543-1554) whenever any
+	# one carried species sits at its own cap, and stops the moment none does.
+	# Exercised through a real harvest and a real plant, not the gateway alone —
+	# a passing unit test on the verb says nothing about whether the HUD she is
+	# actually looking at answers the same way.
+	print("\n--- Scenario: the basket chip pulses gold when any carried crop is full ---")
+
+	var hud = main_scene.hud
+	var wheat_cap: int = farm.sim.carry_cap("wheat")
+	var tomato_cap: int = farm.sim.carry_cap("tomato")
+	var harvest_target := Vector2i(7, 10)
+	_stage_tile(harvest_target.x, harvest_target.y, "ready", "wheat")
+	farm.sim.get_tile(harvest_target.x, harvest_target.y).growth_stage = \
+		CropDefs.TYPES["wheat"]["days_to_grow"]
+	var plant_target := Vector2i(8, 10)
+	_stage_tile(plant_target.x, plant_target.y, "tilled")
+
+	GameState.pouch["wheat"] = wheat_cap - 3
+	GameState.pouch["tomato"] = 0
+	GameState.selected_tool = 0
+	GameState.set_energy(GameState.max_energy)
+	player.pos = Vector2(7.5 * 16.0, 11.5 * 16.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_assert(not hud.basket_cap_pulse and not hud.basket_chip.visible,
+		"starts off: nothing carried is at its own cap yet")
+
+	var mark: int = farm.trace.entries.size()
+	InputManager.click_tile = harvest_target
+	InputManager.has_click = true
+	var picked := await _wait_until(
+		func(): return int(GameState.pouch.get("wheat", 0)) == wheat_cap, 240)
+	_assert(picked, "a real harvest tap lands the last three units of wheat")
+	_assert(not _full_pouch_refusal_since(mark),
+		"and it is not a refusal — she had exactly the room for it")
+	# The tile changes at the strike, before the harvest animation releases its
+	# action lock (the same gap scenario E's own sow noted) — a tap queued while
+	# she is still acting is dropped rather than taken.
+	await _wait_until(func(): return not player.is_acting, 120)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_assert(hud.basket_cap_pulse and hud.basket_chip.visible,
+		"wheat sitting at its own cap turns the chip's pulse on and shows the chip")
+
+	# Below cap again through a real plant, not a direct write — one unit spent
+	# the same way the harvest above added three.
+	GameState.selected_seed_type = "wheat"
+	player.pos = Vector2(8.5 * 16.0, 11.5 * 16.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	InputManager.click_tile = plant_target
+	InputManager.has_click = true
+	var planted := await _wait_until(
+		func(): return int(GameState.pouch.get("wheat", 0)) == wheat_cap - 1, 240)
+	_assert(planted, "a real plant tap spends one unit through the same gateway")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_assert(not hud.basket_cap_pulse,
+		"one unit under its cap and the pulse stops — it is not a one-time teaching beat")
+
+	# A second species, alone at its own cap, is just as much "something is
+	# stuck" — the trigger is any species, not a fixed one.
+	GameState.pouch["tomato"] = tomato_cap
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_assert(hud.basket_cap_pulse,
+		"tomato alone at its cap turns the pulse on too, wheat now under its own")
+
+	GameState.pouch["wheat"] = 5
+	GameState.pouch["tomato"] = 0
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_assert(not hud.basket_cap_pulse, "and with neither at its cap, the pulse is off again")

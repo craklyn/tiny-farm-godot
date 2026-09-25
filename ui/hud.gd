@@ -124,6 +124,11 @@ const CARD_ICON := 28.0
 var state_chips: Control
 var basket_chip: TextureRect
 var basket_pips: Array[ColorRect] = []
+
+# The storage-full pulse (docs/design/11-ux-ui.md, spec revised 2026-09-25,
+# supersedes we69b8f43065's 2026-09-04 result). Public so a test can read the
+# same on/off signal the chip itself is drawing, without decoding a colour.
+var basket_cap_pulse: bool = false
 var can_chip: TextureRect
 var can_gauge_back: ColorRect
 var can_gauge_fill: ColorRect
@@ -748,6 +753,11 @@ const GAUGE_W := 9.0
 const GAUGE_H := 22.0
 const BASKET_PIPS := 5     # [Playtest] past five, "lots" is the honest reading
 
+# The teaching ring's own warm-gold "do this now" family (main.gd:1543-1554),
+# moved onto this chip's modulate rather than reinvented — same colour, same
+# roughly-one-second cadence. Not a new colour, numeral or gauge.
+const CAP_PULSE_COLOR := Color(1.0, 0.78, 0.25)
+
 
 func _build_state_chips(viewport_size: Vector2) -> void:
 	state_chips = Control.new()
@@ -839,14 +849,25 @@ func _update_state_chips() -> void:
 	if crop_counts_label != null:
 		crop_counts_label.visible = not full_b
 
-	basket_chip.visible = full_b
+	# The storage-full pulse is independent of which "satisfied" treatment is
+	# live (docs/design/11-ux-ui.md): it lives on this same chip under both the
+	# shipped default bar and the draft picture-chip one, so it does not wait on
+	# that ruling. Durable, unlike the bin's one-time teaching ring — it fires
+	# every time any one species reaches its own cap, for as long as it stays there.
+	basket_cap_pulse = _any_species_at_cap()
+	basket_chip.visible = full_b or basket_cap_pulse
 	# What the bin would take (S-18/S-19/S-20), so the chip, the pip out in the yard and
 	# the bin's own answer all count the same thing.
 	var basket: int = GameState.sellable_total()
-	# Empty is the state this treatment exists to show, so it is the loud one:
-	# the basket goes grey and stays visibly unfilled. Q-46(a)'s vocabulary —
-	# darkened means "not there" — reused rather than reinvented.
-	basket_chip.modulate = Color(1, 1, 1, 1) if basket > 0 else Color(0.42, 0.44, 0.48, 0.9)
+	if basket_cap_pulse:
+		var t := Time.get_ticks_msec() / 1000.0
+		var pulse := 0.5 + 0.5 * sin(t * 4.0)
+		basket_chip.modulate = Color(1, 1, 1, 1).lerp(CAP_PULSE_COLOR, 0.4 + 0.4 * pulse)
+	else:
+		# Empty is the state this treatment exists to show, so it is the loud one:
+		# the basket goes grey and stays visibly unfilled. Q-46(a)'s vocabulary —
+		# darkened means "not there" — reused rather than reinvented.
+		basket_chip.modulate = Color(1, 1, 1, 1) if basket > 0 else Color(0.42, 0.44, 0.48, 0.9)
 	for i in basket_pips.size():
 		basket_pips[i].visible = full_b and i < basket
 
@@ -856,6 +877,24 @@ func _update_state_chips() -> void:
 	can_gauge_fill.position = Vector2(1.0, GAUGE_H - 1.0 - h)
 	can_gauge_fill.size = Vector2(GAUGE_W - 2.0, h)
 	can_chip.modulate = Color(1, 1, 1, 1) if frac > 0.0 else Color(0.42, 0.44, 0.48, 0.9)
+
+
+# Is any one carried plantable species sitting at its own carry cap right now?
+# Reads the cap live off the sim (`SimWorld.carry_cap`, S-18) rather than a HUD
+# constant, so a future silo that raises one species' cap keeps this true
+# unmodified — the trap `docs/design/11-ux-ui.md` names for `ON_PERSON_CAP`.
+# Presentation only: reads GameState and the sim, writes neither.
+func _any_species_at_cap() -> bool:
+	var main: Node = main_node
+	if main == null or not is_instance_valid(main):
+		main = get_tree().get_first_node_in_group("Main")
+	if main == null or main.farm == null or main.farm.sim == null:
+		return false
+	var sim: SimWorld = main.farm.sim
+	for crop_name in GameState.pouch:
+		if int(GameState.pouch[crop_name]) >= sim.carry_cap(String(crop_name)):
+			return true
+	return false
 
 
 func _process(delta: float) -> void:
