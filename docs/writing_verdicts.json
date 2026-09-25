@@ -947,6 +947,9 @@
   "2d6515b60d826026fecc": {
    "verdict": "ok"
   },
+  "2d9faee3751fb0486875": {
+   "verdict": "ok"
+  },
   "2dccd169fc5ec163a7af": {
    "verdict": "ok"
   },
@@ -1397,6 +1400,12 @@
   },
   "47069a9ea70697fcaa56": {
    "verdict": "ok"
+  },
+  "47131af8d4683bdbf720": {
+   "instead": "Keep the writing-check result for the commit that added the playtest.",
+   "quote": "Preserve the writing check verdict for the playtest vintage commit",
+   "verdict": "decode",
+   "why": "“Playtest vintage commit” is internal shorthand and does not tell a stranger which commit or result to preserve."
   },
   "471cfc3b88ddd2b52172": {
    "verdict": "ok"
@@ -3705,6 +3714,12 @@
   },
   "b98e990b653f6882af75": {
    "verdict": "ok"
+  },
+  "b9b60faa77655dde6a81": {
+   "instead": "Preserve writing checks for the note about playtest text",
+   "quote": "playtest corpus",
+   "verdict": "decode",
+   "why": "“Corpus” is internal shorthand for a collection of text and leaves a stranger to work out what the note contains."
   },
   "b9bff2a0e715ab40f03c": {
    "verdict": "ok"
