@@ -2,18 +2,7 @@
  "id": "close-m15-gate",
  "name": "Close the M1.5 exit gate (cot re-evidence)",
  "priority": 1,
- "status": "waiting",
- "waiting": {
-  "authorized_by": {
-   "kind": "decision",
-   "id": "Q-90"
-  },
-  "wake_event": {
-   "type": "release_reached",
-   "release_id": "update-1-1"
-  },
-  "resume_status": "planned"
- },
+ "status": "planned",
  "owner": "sofia",
  "contributors": [
   "wei",
@@ -26,7 +15,7 @@
   "No regression on the standing bars: dead taps \u2264 12% (current baseline 5%), longest honest stall \u2264 16.3s",
   "Session recorded to playtests/ and verified against its autosave"
  ],
- "current_status": "Rescheduled by the CEO's 2026-09-02 ruling: no standing fresh-player recruiting at this phase \u2014 the CEO is the primary playtester, and one genuinely fresh (green) tester is sought before each public feature release. The cot re-evidence session therefore happens as the pre-v0.2.0 green-tester pass, not before. Everything technical is ready: the build carries the cot dusk-glow, the purpose pips, and the yard rework, and the tablet has the current build. That session double-counts as the human artifact Replay Phase B needs.",
+ "current_status": "Resumed 2026-09-25: work on Player Update 1.1 has begun. Per the designer's 2026-09-02 ruling, no standing fresh-player recruiting happens at this phase \u2014 the CEO is the primary playtester, and one genuinely fresh (green) tester is sought before each public feature release; the 2026-09-08 amendment moved that session to the pre-v0.2.1 pass. Everything technical is ready: the build carries the cot dusk-glow, the purpose pips, and the yard rework, and the tablet has the current build. That session double-counts as the human artifact Replay Phase B needs.",
  "plan": [
   {
    "step": "Ship the cot and station presentation fixes",
@@ -37,7 +26,7 @@
    "done": true
   },
   {
-   "step": "When v0.2.0 approaches, find one green tester for the pre-release pass (ruled 2026-09-02: not before)",
+   "step": "Find one fresh tester for the pre-v0.2.1 pass",
    "done": false
   },
   {

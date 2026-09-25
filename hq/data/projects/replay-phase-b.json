@@ -9,8 +9,9 @@
       "id": "Q-90"
     },
     "wake_event": {
-      "type": "release_reached",
-      "release_id": "update-1-1"
+      "type": "project_status",
+      "project_id": "close-m15-gate",
+      "status": "done"
     },
     "resume_status": "in_progress"
   },

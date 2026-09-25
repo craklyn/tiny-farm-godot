@@ -4111,6 +4111,9 @@
   "b9bff2a0e715ab40f03c": {
    "verdict": "ok"
   },
+  "b9c4b1f46ebf0520523e": {
+   "verdict": "ok"
+  },
   "b9ead1425b68911e3982": {
    "verdict": "ok"
   },
@@ -5469,6 +5472,12 @@
   },
   "f98b0e51ed711f866678": {
    "verdict": "ok"
+  },
+  "f99d9a0757f448c138b4": {
+   "instead": "Resume the M1.5 gate project and make Replay Phase B use it as its direct source",
+   "quote": "Resume the M1.5 gate project and point Replay Phase B at it directly",
+   "verdict": "decode",
+   "why": "The reader cannot tell what Replay Phase B is or what it means to point it at the project."
   },
   "f9abc4b0981cfe8ccdf0": {
    "instead": "Build the Mark III's name plate and the grid of what it likes and dislikes.",
