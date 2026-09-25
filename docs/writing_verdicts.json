@@ -205,6 +205,12 @@
   "0b0f19f19392d4f5e4bb": {
    "verdict": "ok"
   },
+  "0b283b72549e25ce3f6c": {
+   "instead": "Keep the writing checks in place while fixing the missing check for commit subjects",
+   "quote": "fence-gap fix",
+   "verdict": "decode",
+   "why": "The reader cannot tell what gap is being fixed or what the change does."
+  },
   "0b2c4e886db53ed12ad7": {
    "verdict": "ok"
   },
@@ -1054,6 +1060,9 @@
   "32fea48c1a3e13b961cb": {
    "verdict": "ok"
   },
+  "3317792c37856f4548b4": {
+   "verdict": "ok"
+  },
   "332bfe14c983b2183155": {
    "instead": "Nothing is failing; we are still building the check for [area name] of the [number] areas.",
    "quote": "Nothing is failing; we are still building the check for … of the … areas.",
@@ -1165,6 +1174,12 @@
    "quote": "not runnable yet",
    "verdict": "second-look",
    "why": "“Runnable” is engineering shorthand for something that can start."
+  },
+  "37a8630457ab58300ab6": {
+   "instead": "Remove the small background area behind the fence post that the fill tool cannot reach",
+   "quote": "Clear the fence-post background pocket the corner flood cannot reach",
+   "verdict": "decode",
+   "why": "The reader has to work out what a “background pocket” and “corner flood” are and what should be changed."
   },
   "37b3589f059bbcd6ebd1": {
    "verdict": "ok"
@@ -1413,6 +1428,9 @@
   "46e328bc71620ce2fc61": {
    "verdict": "ok"
   },
+  "46fc760b76203f93f83b": {
+   "verdict": "ok"
+  },
   "47069a9ea70697fcaa56": {
    "verdict": "ok"
   },
@@ -1478,6 +1496,9 @@
    "verdict": "ok"
   },
   "49aa355431716fcce71d": {
+   "verdict": "ok"
+  },
+  "49e22a75912e1e0e75ab": {
    "verdict": "ok"
   },
   "49fc8e3895e5861014bd": {
@@ -1607,6 +1628,12 @@
    "quote": "failed of the last finished runs",
    "verdict": "second-look",
    "why": "The construction \"failed of\" requires a second read to parse; the natural phrasing would omit \"of\"."
+  },
+  "5041efce0008c22a323e": {
+   "instead": "Remove the background color from generated sprite art",
+   "quote": "sealed inside",
+   "verdict": "second-look",
+   "why": "This metaphor makes the reader pause to work out that the background color is embedded in the sprite art."
   },
   "505c59338fbdde3fa253": {
    "instead": "the total shown may be higher",
@@ -2394,6 +2421,12 @@
   "7652c71a6bffeeb0bb57": {
    "verdict": "ok"
   },
+  "76695f2ce68c7140e6e7": {
+   "instead": "Fix background removal so it also removes background colour enclosed within the artwork",
+   "quote": "catch color boxed in by the art itself",
+   "verdict": "decode",
+   "why": "The reader has to work out that this means removing background colour enclosed within the artwork."
+  },
   "76741438fbf74ed40a70": {
    "verdict": "ok"
   },
@@ -2757,6 +2790,12 @@
    "verdict": "decode",
    "why": "A reader has to work out that this means making new animation images from pixels already in the game."
   },
+  "87337fce4eaee88bd8cf": {
+   "instead": "Fix background removal so it removes the background showing through the fence's gaps",
+   "quote": "clear gaps like the one in the fence",
+   "verdict": "decode",
+   "why": "The reader has to work out whether this means removing the background visible through the fence's gaps."
+  },
   "87339152f33b1c468422": {
    "instead": "the charts match what the test suite logged",
    "quote": "the charts say the same thing as the robot's own scorecard",
@@ -3003,6 +3042,9 @@
    "verdict": "ok"
   },
   "94ef3a10f02aea25f467": {
+   "verdict": "ok"
+  },
+  "95216f05bb5b06216e7b": {
    "verdict": "ok"
   },
   "95244adc2979d6981a80": {
@@ -4826,6 +4868,12 @@
    "quote": "Some have an earlier record of being started, but HQ has no live worker session recorded for them now.",
    "verdict": "decode",
    "why": "The reader must infer what “Some” refers to and what a live worker session means."
+  },
+  "ea455f9a83fb0810833b": {
+   "instead": "Remove the background color hidden behind the art's shape",
+   "quote": "Remove background color the art's own shape was hiding it behind",
+   "verdict": "second-look",
+   "why": "The sentence makes the reader untangle what is hiding what before the request is clear."
   },
   "ead7228104c4e84ca19e": {
    "verdict": "ok"
