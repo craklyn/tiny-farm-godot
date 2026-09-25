@@ -1909,6 +1909,12 @@
   "5a8b0481e8a09b50f745": {
    "verdict": "ok"
   },
+  "5aada23899fbd3fbf97a": {
+   "instead": "Record whether the sprinkler-price change follows the studio's writing rules",
+   "quote": "writing verdict",
+   "verdict": "decode",
+   "why": "A stranger would not know that this means recording whether the text follows the studio's writing rules."
+  },
   "5adc192ac172aedcf03f": {
    "verdict": "ok"
   },
@@ -3661,6 +3667,9 @@
    "why": "This indirect phrase makes the reader infer that no next step has been chosen yet."
   },
   "a978a344c8918b1617f1": {
+   "verdict": "ok"
+  },
+  "a97bee00ba607cd97d4e": {
    "verdict": "ok"
   },
   "a99157c40225da14adac": {
