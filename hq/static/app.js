@@ -572,6 +572,9 @@ async function renderDashboard() {
   };
   const humanGoals = issues.filter(g => g.needs_you);
   const projectActions = (sig.eye || []).filter(e => e.kind === "action" && e.unblocks && e.unblocks.length);
+  // A project parked on purpose whose wake-up has arrived (Q-90): the owner
+  // resumes it. A wait that has not arrived never appears here.
+  const wokenWaits = (sig.eye || []).filter(e => e.wake_arrived);
   const actions = [
     ...(!sig.waiting || sig.waiting.count == null ? [{
       headline: "Attention count is unavailable", owner: "The studio",
@@ -585,6 +588,8 @@ async function renderDashboard() {
       href: surfaceParked("/pillar/" + g.pillar) ? "#/program/goals" : "#/pillar/" + g.pillar })),
     ...projectActions.map(e => ({ headline: e.headline, owner: "Daniel",
       next: e.headline, href: e.href })),
+    ...wokenWaits.map(e => ({ headline: e.headline, owner: e.owner_name || "The studio",
+      next: "Open the project page and resume the work", href: e.href })),
   ];
   const hero = actions[0];
   const rest = actions.slice(1, 8);
@@ -636,10 +641,10 @@ async function renderDashboard() {
         </details>
         <div class="side-nums small">
           <a class="plain" href="#/work/queue">Open the action queue</a>
-          <a class="plain" href="#/program">${sig.projects.in_progress} in flight · ${sig.projects.blocked} blocked</a>
+          <a class="plain" href="#/program">${sig.projects.in_progress} in flight · ${sig.projects.blocked} blocked${sig.projects.waiting ? ` · ${sig.projects.waiting} waiting on purpose` : ""}</a>
           <a class="plain" href="#/playtests">${sig.playtests.count} playtests</a>
           <a class="plain" href="#/org">${org.employees.length - 1} on your team</a>
-          <a class="plain" href="#/chat">chase anything via your chief of staff</a>
+          <a class="plain" href="#/chat">Ask your chief of staff about anything</a>
         </div>
       </div>
     </div>
@@ -1074,13 +1079,16 @@ function blockedOnChip(p, byId) {
 function waitingLine(p) {
   const evaluation = p.wake_evaluation;
   if (!evaluation) return "";
-  const ruling = evaluation.authorized_by && evaluation.authorized_by.id;
-  const rulingLink = ruling ? ` Set by <a class="plain" href="#/inbox/${esc(ruling)}">${esc(ruling)}</a>.` : "";
+  const auth = evaluation.authorized_by || {};
+  const ruling = auth.id;
+  // Named by the question it answered, so the line reads without knowing the ID.
+  const label = auth.title || ruling || "";
+  const rulingLink = ruling ? ` Set by your ruling on <a class="plain" href="#/inbox/${esc(ruling)}">${esc(label)}</a>${/[?.!]$/.test(label) ? "" : "."}` : "";
   if (evaluation.state === "waiting") {
     return `<span class="waits">Waiting on purpose: ${esc(evaluation.reason)}.</span>${rulingLink}`;
   }
   if (evaluation.state === "satisfied") {
-    return `<span class="waits">The work is ready to resume: ${esc(evaluation.reason)}.</span>${rulingLink}`;
+    return `<span class="waits">The work is ready to resume, because ${esc(evaluation.reason)}, but its status still says waiting.</span>${rulingLink}`;
   }
   return `<span class="waits">The rule that decides when this work waits is not working: ${esc(evaluation.reason)}.</span>${rulingLink}`;
 }

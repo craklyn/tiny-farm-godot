@@ -889,6 +889,12 @@
   "2acf0113598d72f997af": {
    "verdict": "ok"
   },
+  "2ad2cfcfa800f5c7ed8e": {
+   "instead": "Playtests are on your team; ask your chief of staff to follow up on anything",
+   "quote": "playtests … on your team chase anything via your chief of staff",
+   "verdict": "decode",
+   "why": "The reader has to work out whether this is a playtest status, a team relationship, or an instruction."
+  },
   "2b2d3689d26528457b66": {
    "baselined": "2026-09-19",
    "instead": "the room mockups look sparse and would need furnishing",
@@ -1933,6 +1939,9 @@
   "5f40e1bfefcee5e73870": {
    "verdict": "ok"
   },
+  "5f506eaf7582dd152e37": {
+   "verdict": "ok"
+  },
   "5fa26fce262954cac6bc": {
    "verdict": "ok"
   },
@@ -2230,6 +2239,9 @@
    "verdict": "ok"
   },
   "6e13f57c97f4fd458beb": {
+   "verdict": "ok"
+  },
+  "6e47b7cdca7d3a0f9bf2": {
    "verdict": "ok"
   },
   "6e76da981c06ec392ee5": {
@@ -2605,6 +2617,9 @@
   "7d5c916502c41ee24c69": {
    "verdict": "ok"
   },
+  "7d711e56025757f4eed4": {
+   "verdict": "ok"
+  },
   "7e302981a72a5efe040b": {
    "verdict": "ok"
   },
@@ -2693,6 +2708,12 @@
   },
   "8260cd6930e7d4de9645": {
    "verdict": "ok"
+  },
+  "828c01b63b556a1fb67c": {
+   "instead": "but its status still says waiting",
+   "quote": "it still reads as waiting",
+   "verdict": "second-look",
+   "why": "This describes how the status appears instead of plainly saying that the status still says “waiting.”"
   },
   "82bc093135391478ee2d": {
    "verdict": "ok"
@@ -2967,6 +2988,9 @@
    "verdict": "ok"
   },
   "906a794e6e83c4285b9b": {
+   "verdict": "ok"
+  },
+  "9071ad25fc1b7022eb3b": {
    "verdict": "ok"
   },
   "9072c5defa3a69c93458": {
@@ -3552,6 +3576,12 @@
   },
   "aaa63a7a0753a011b719": {
    "verdict": "ok"
+  },
+  "aae595ac37abaec85705": {
+   "instead": "Open the project to see what started running",
+   "quote": "what woke it",
+   "verdict": "decode",
+   "why": "The phrase does not say what started or changed, and “it” has no clear referent."
   },
   "aaed50c7cc4bce16a0b4": {
    "verdict": "ok"
@@ -4282,6 +4312,12 @@
   },
   "ceb467b17aecef160c4a": {
    "verdict": "ok"
+  },
+  "cec7682b357d15454952": {
+   "instead": "Name the release and decision that paused a project, and list the projects that have been reactivated on the dashboard",
+   "quote": "Name the release and ruling behind a parked project, and list woken ones on the dashboard",
+   "verdict": "decode",
+   "why": "“Ruling behind” and “woken ones” make the reader work out which decision and which projects are meant."
   },
   "cecb59f0713e193e9fd5": {
    "verdict": "ok"

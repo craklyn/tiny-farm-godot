@@ -21,7 +21,9 @@ const LEVEL_META = {ok:{dcls:"d-ok",label:"under control"}};
 const signals = async () => ({generated_at:"05:13:25",waiting:{count:0,title:"What waits on you",target:0,goal:"None",nights:0},
   goals:{art:{goals:[{id:"rights",statement:"Rights on record",state:"unchecked",owner_person_name:"Ingrid",
     measured_human:"not monitored yet",reading:{as_of:"2026-09-24T05:13:25"}}]}},
-  eye:[],status:{},per_pillar:{},projects:{in_progress:0,blocked:0},playtests:{count:0},brief_fingerprint:"now"});
+  eye:[{kind:"fire",pillar:"product",headline:"Resume The planned pause",wake_arrived:"pause",
+    owner_name:"Sofia Reyes",why_you:"Its planned wake-up has arrived",href:"#/project/pause"}],
+  status:{},per_pillar:{},projects:{in_progress:0,blocked:0,waiting:2},playtests:{count:0},brief_fingerprint:"now"});
 let getCount=0, postCount=0;
 const responses = {
   "/api/org":{employees:[{id:"daniel"}]}, "/api/pillars":{pillars:[]},
@@ -61,6 +63,9 @@ try {
   assert.match(result.dashboardText, /Owner: Ingrid/);
   assert.match(result.dashboardText, /Next: Open full status and available options/);
   assert.doesNotMatch(result.dashboardText, /\bNEW\b/);
+  // A parked project whose wake-up arrived is its owner's move, not Daniel's (Q-90).
+  assert.match(result.dashboardText, /Resume The planned pause\s*Owner: Sofia Reyes · Next: Open the project page and resume the work/);
+  assert.match(result.dashboardText, /0 blocked · 2 waiting on purpose/);
   assert.equal(result.getCount, 1, "opening reads the saved brief once");
   assert.equal(result.postCount, 0, "opening never generates a brief");
   assert.equal(result.open, true, "the opened disclosure stays open after the fetch replaces it");

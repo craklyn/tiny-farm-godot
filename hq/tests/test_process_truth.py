@@ -135,6 +135,55 @@ class WaitingTests(unittest.TestCase):
                                                  today=datetime.date(2026, 9, 22))
         self.assertEqual(result["state"], "invalid")
 
+    def test_wait_reasons_name_the_release_and_project_not_their_ids(self):
+        # A status sentence must stand alone: the release by its name and
+        # version, the project by its name, never the plan's internal id.
+        project = self.project({"type": "release_reached", "release_id": "update-2"})
+        plan = {"releases": [
+            {"id": "update-1", "stories": [{"id": "s1", "done": False}]},
+            {"id": "update-2", "name": "Player Update 2", "codename": "v0.3.0",
+             "stories": [{"id": "s1", "done": False}]},
+        ]}
+        result = server.evaluate_waiting_project(project, {"waiter": project}, plan, {"Q-90"})
+        self.assertEqual(result["reason"], "waiting for work on Player Update 2 (v0.3.0) to begin")
+        plan["releases"][0]["stories"][0]["done"] = True
+        result = server.evaluate_waiting_project(project, {"waiter": project}, plan, {"Q-90"})
+        self.assertEqual(result["reason"], "work on Player Update 2 (v0.3.0) has begun")
+        other = {"id": "other", "name": "The other project", "status": "planned"}
+        chained = self.project({"type": "project_status", "project_id": "other", "status": "done"})
+        result = server.evaluate_waiting_project(
+            chained, {"waiter": chained, "other": other}, plan, {"Q-90"})
+        self.assertEqual(result["reason"], "waiting for the project The other project to finish")
+        self.assertNotIn("update-2", json.dumps([result["reason"]]))
+
+    def test_reader_names_the_ruling_that_parked_the_work(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            data = Path(tmp)
+            for sub in ("projects", "rulings", "decisions"):
+                (data / sub).mkdir()
+            (data / "rulings" / "Q-90.json").write_text(
+                json.dumps({"id": "Q-90", "option": "a"}), encoding="utf-8")
+            (data / "decisions" / "Q-90.json").write_text(
+                json.dumps({"id": "Q-90", "title": "How should waits show?"}), encoding="utf-8")
+            (data / "release_plan.json").write_text(json.dumps({"releases": [
+                {"id": "later", "stories": []},
+            ]}), encoding="utf-8")
+            waiter = self.project({"type": "release_reached", "release_id": "later"})
+            (data / "projects" / "waiter.json").write_text(json.dumps(waiter), encoding="utf-8")
+            with patch.object(server, "DATA", str(data)), \
+                 patch.object(server, "_last_touched", return_value="now"):
+                row = server.load_projects()[0]
+        self.assertEqual(row["status"], "waiting")
+        self.assertEqual(row["wake_evaluation"]["authorized_by"]["title"], "How should waits show?")
+
+    def test_arrived_wake_up_names_the_owner_who_resumes_it(self):
+        woken = {"id": "waiter", "name": "A planned pause", "status": "waiting", "owner": "sofia",
+                 "wake_evaluation": {"state": "satisfied", "reason": "the date arrived"}}
+        with patch.object(server, "_person_name", return_value="Sofia Reyes"):
+            fire = server._stale_wait_fires([woken])[0]
+        self.assertEqual(fire["wake_arrived"], "waiter")
+        self.assertEqual(fire["owner_name"], "Sofia Reyes")
+
     def test_only_real_blockage_gates_a_release(self):
         projects = [
             {"id": "patient", "status": "waiting", "release": "r1", "release_critical": True,

@@ -112,6 +112,13 @@ WAITING_RESUME_STATUSES = {"planned", "in_progress"}
 WAITING_EVENT_TYPES = {"date_reached", "project_status", "release_reached"}
 
 
+def _release_label(row):
+    """A release as a reader with no context knows it: its name and version,
+    never the plan's internal id."""
+    name, version = row.get("name") or row.get("id", ""), row.get("codename")
+    return f"{name} ({version})" if version else name
+
+
 def _release_reached(event, plan):
     """Whether a release train has reached the named release.
 
@@ -127,6 +134,7 @@ def _release_reached(event, plan):
                    if isinstance(row, dict) and row.get("id") == release_id), None)
     if not release_id or target is None:
         return "invalid", f"release '{release_id or ''}' does not exist"
+    label = _release_label(releases[target])
     for row in releases[:target + 1]:
         stories = row.get("stories") if isinstance(row, dict) else None
         if not isinstance(stories, list):
@@ -134,10 +142,10 @@ def _release_reached(event, plan):
         if any(not isinstance(story, dict) for story in stories):
             return "invalid", f"release '{row.get('id', '')}' has a malformed story"
         if not stories:
-            return "waiting", f"waiting for release {release_id} to be sketched"
+            return "waiting", f"waiting for {label} to be planned"
         if row is not releases[target] and any(not story.get("done") for story in stories):
-            return "waiting", f"waiting for release {release_id} to become current"
-    return "satisfied", f"release {release_id} has been reached"
+            return "waiting", f"waiting for work on {label} to begin"
+    return "satisfied", f"work on {label} has begun"
 
 
 def evaluate_waiting_project(project, projects_by_id, release_plan, ruling_ids, today=None):
@@ -173,9 +181,9 @@ def evaluate_waiting_project(project, projects_by_id, release_plan, ruling_ids, 
         elif expected != "done":
             state, reason = "invalid", "a project wake event must wait for status 'done'"
         elif target.get("status") == expected:
-            state, reason = "satisfied", f"project {project_id} is {expected.replace('_', ' ')}"
+            state, reason = "satisfied", f"the project {target.get('name') or project_id} is finished"
         else:
-            state, reason = "waiting", f"waiting for project {project_id} to become {expected.replace('_', ' ')}"
+            state, reason = "waiting", f"waiting for the project {target.get('name') or project_id} to finish"
     else:
         raw = event.get("date")
         try:
@@ -190,6 +198,14 @@ def evaluate_waiting_project(project, projects_by_id, release_plan, ruling_ids, 
                 state, reason = "waiting", f"waiting until {due.isoformat()}"
     return {"state": state, "reason": reason, "event": copy.deepcopy(event),
             "authorized_by": copy.deepcopy(auth)}
+
+
+def _decision_title(decision_id):
+    """The question a ruling answered, so a wait names the decision in words."""
+    try:
+        return load_json(os.path.join(DATA, "decisions", f"{decision_id}.json")).get("title", "")
+    except Exception:
+        return ""
 
 
 def _waiting_ruling_ids():
@@ -222,6 +238,9 @@ def load_projects():
             continue
         result = evaluate_waiting_project(p, by_id, release_plan, ruling_ids)
         p["declared_status"] = "waiting"
+        auth = result.get("authorized_by")
+        if isinstance(auth, dict) and auth.get("id"):
+            auth["title"] = _decision_title(auth["id"])
         p["wake_evaluation"] = result
         if result["state"] == "invalid":
             # A broken wait is ordinary blocked work, not a quiet exemption.
@@ -5317,6 +5336,8 @@ def _stale_wait_fires(projects):
              "headline": f"Resume {project['name']}",
              "why_you": "Its planned wake-up has arrived, but the project is still waiting.",
              "text": f"{project['name']}: {project['wake_evaluation']['reason']}; resume this work.",
+             "wake_arrived": project["id"],
+             "owner_name": _person_name(project.get("owner")),
              "href": f"#/project/{project['id']}"}
             for project in projects
             if project.get("status") == "waiting"
@@ -5555,6 +5576,7 @@ def _compute_signals_now():
         "queue": {"open": len(open_items), "prepped": len(curated_fresh),
                   "pending_integration": len(pending_rulings)},
         "projects": {"total": len(projects), "blocked": len(blocked),
+                     "waiting": len([p for p in projects if p["status"] == "waiting"]),
                      "in_progress": len([p for p in projects if p["status"] == "in_progress"])},
         "playtests": {"count": len(sessions), "latest": last_session,
                       "days_since": days_since_session},
