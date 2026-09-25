@@ -410,7 +410,12 @@ function qPaneHtml(row, org) {
   const ruling = row.priorRuling;
   return `
     <div class="q-pane-q">${mdi(row.question)}</div>
-    <div class="q-pane-src">${esc(row.title)}${row.kind === "review" ? reviewHeadingArtifact(row.artifact) : ""} · ${esc(row.source)} · ${esc(ownerName)}</div>
+    <div class="q-pane-src">${[
+      // A decision's title is its question, already the heading above; saying
+      // it twice is the first line he has to skip.
+      row.title !== row.question ? esc(row.title) : "",
+      row.kind === "review" ? reviewHeadingArtifact(row.artifact).trim() : "",
+      esc(row.source), esc(ownerName)].filter(Boolean).join(" · ")}</div>
     ${sources.length ? `<div class="q-sec"><h3>Requests this answer serves</h3><ul>${sources.map(source =>
       `<li><a class="plain" href="#/work/${encodeURIComponent(source.id)}">${esc(source.title)}</a></li>`).join("")}</ul></div>` : ""}
     ${artifact.decision_id || artifact.decision ? `<p class="q-pane-src">Earlier decision: <a class="plain" href="#/inbox/${encodeURIComponent(artifact.decision_id || artifact.decision)}">${esc(artifact.decision_id || artifact.decision)}</a></p>` : ""}
@@ -429,7 +434,7 @@ function qPaneHtml(row, org) {
     ${row.isDecision ? `<div class="q-sec q-decision-form"><h3>Choose an answer</h3>
       <fieldset><legend class="sr-only">Recorded options for ${esc(row.title)}</legend>${row.options.map(o =>
         `<label class="q-choice"><input type="radio" name="q-choice-${esc(row.id)}" value="${esc(o.key)}" data-intent="choose" data-label="${esc(o.label)}">
-          <span><b>${esc(o.label)}</b>${o.recommended ? ' <span class="rec">recommended</span>' : ""}<small>${mdi(o.detail)}</small></span></label>`).join("")}
+          <span><b>${esc(o.label.replace(" (Recommended)", ""))}</b>${o.recommended ? ' <span class="rec">Recommended</span>' : ""}<small>${mdi(o.detail)}</small></span></label>`).join("")}
         <label class="q-choice q-revise"><input type="radio" name="q-choice-${esc(row.id)}" value="" data-intent="revise" data-label="None of these — revise and ask me again">
           <span><b>None of these — revise and ask me again.</b><small>Tell the studio what needs to change. The decision stays open.</small></span></label>
       </fieldset>

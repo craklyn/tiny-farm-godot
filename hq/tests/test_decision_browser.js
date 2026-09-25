@@ -1,4 +1,6 @@
-// Render the real queue view in Chrome at desktop and narrow widths.
+// Render the real queue view in Chrome at desktop widths and on a 375 px phone
+// screen (headless Chrome will not open a window narrower than 500 px, so the
+// phone case runs inside a 375 px frame, which has its own viewport).
 const assert = require('node:assert/strict');
 const fs = require('node:fs');
 const os = require('node:os');
@@ -41,11 +43,15 @@ const cards = Array.from({length:12}, (_,i) => ({id:'review-'+i,title:i===0?'The
   state:'for_review',owner:'rin',tier:2,review_question:'Does this reviewed result stand?',
   recommend:{answer:'Approve this version',why:'The result is ready for inspection at game scale. The revised motion reads clearly and keeps the original farm palette.'},
   result:'The playable result and its checks are recorded here.', ask:'Review the result and choose what happens next.'}));
-qRender({org:{},hisWork:cards.map(card=>({card,reason:'Ready for a review of the finished result.'})),hisDecisions:[],
+const decision = {id:'Q-900',title:'Which soft soil sound belongs to planting?',owner:'rin',
+  why_now:'Planting is the most repeated action without a sound.',question:'Which recording reads as covering a seed?',
+  options:[{key:'a',label:'The two-beat recording (Recommended)',detail:'Two soft beats. Source: https://freesound.org/people/averyveryverylongcontributorname/sounds/488393/'},
+    {key:'b',label:'The single placement',detail:'One smoother placement.'}]};
+qRender({org:{},hisWork:cards.map(card=>({card,reason:'Ready for a review of the finished result.'})),hisDecisions:[decision],
   pendingCompletion:[],waitingToStart:[],studioWork:[],wentIn:[],closedWork:[],studioDecisions:[],awaitingStudio:[],heldToStart:[],
   waiting:{available:true,items:[]},execution:{paused:false,timer:{active:true},batch_limit:3,interval_minutes:20},executionQueue:{eligible:[]}});
 const mode = new URLSearchParams(location.search).get('mode');
-const first = document.querySelector('.q-row');
+const first = document.querySelector('.q-row:not([data-id="Q-900"])');
 let backWorked = false, focusWorked = false, escapeWorked = false;
 first.focus();
 first.dispatchEvent(new KeyboardEvent('keydown',{key:'j',bubbles:true}));
@@ -66,6 +72,21 @@ if (mode === 'detail') {
   backWorked = !document.getElementById('q-app').classList.contains('q-detail-open') && document.activeElement === first;
   first.click();
 } else first.focus();
+let decisionPane = null;
+if (mode === 'decision') {
+  document.querySelector('.q-row[data-id="Q-900"]').click();
+  const legend = document.querySelector('#q-pane legend');
+  const tag = document.querySelector('#q-pane .q-choice .rec');
+  decisionPane = {legendWidth:legend.getBoundingClientRect().width,
+    labels:[...document.querySelectorAll('#q-pane .q-choice b')].map(b=>b.textContent),
+    recommendedTag:tag.textContent, recommendedCase:getComputedStyle(tag).textTransform,
+    source:document.querySelector('#q-pane .q-pane-src').textContent,
+    // Card text is authored markdown; this fixture's renderer escapes it, so
+    // the check places the kind of plain link that markdown would produce.
+    linkColor:(() => { const a = document.createElement('a'); a.href = 'https://example.com/';
+      document.querySelector('#q-pane .q-choice small').appendChild(a); return getComputedStyle(a).color; })()};
+  first.focus();
+}
 const list = document.querySelector('.q-list'), pane=document.getElementById('q-pane');
 const listStyle=getComputedStyle(list), paneStyle=getComputedStyle(pane);
 const token=name=>getComputedStyle(document.documentElement).getPropertyValue(name).trim();
@@ -80,12 +101,21 @@ const metrics={width:innerWidth,listWidth:Math.round(list.getBoundingClientRect(
   rowFocused:document.activeElement===first,keyboardNext,backWorked,focusWorked,escapeWorked,rowActions:document.querySelectorAll('.q-row-acts').length,
   horizontalOverflow:document.documentElement.scrollWidth>innerWidth,
   scrollWidth:document.documentElement.scrollWidth,bodyWidth:document.body.scrollWidth,mutedContrast,
+  decisionPane,
   overflowElements:[...document.querySelectorAll('*')].filter(e=>e.scrollWidth>e.clientWidth+2).slice(0,8).map(e=>e.tagName+'.'+e.className+':'+e.scrollWidth+'/'+e.clientWidth)};
 document.body.dataset.metrics=JSON.stringify(metrics);
+if (parent !== window) parent.postMessage(metrics, '*');
 </script></html>`, 'utf8');
+const phone = path.join(temp, 'phone.html');
+fs.writeFileSync(phone, `<!doctype html><meta charset="utf-8"><body style="margin:0">
+<iframe id="f" style="border:0;width:375px;height:812px"></iframe><script>
+addEventListener('message', event => { document.body.dataset.metrics = JSON.stringify(event.data); });
+document.getElementById('f').src = 'queue.html' + location.search;
+</script>`, 'utf8');
 
 function run(width, mode, screenshot) {
-  const url = 'file://' + page + (mode ? '?mode='+mode : '');
+  const url = 'file://' + (width < 500 ? phone : page) + (mode ? '?mode='+mode : '');
+  width = Math.max(width, 500);
   const args = ['--headless=new','--no-sandbox','--disable-gpu','--disable-dev-shm-usage',
     '--window-size='+width+',900','--force-device-scale-factor=1',
     '--user-data-dir='+path.join(temp,'profile-'+width+'-'+(mode||'list')),
@@ -116,12 +146,22 @@ try {
     assert.ok(m.mutedContrast>=4.5,m);
     outputs[width]=m;
   }
-  const list=run(500,'',path.join(temp,'queue-500-list.png'));
+  const pick=run(1440,'decision',path.join(temp,'queue-1440-decision.png'));
+  assert.ok(pick.decisionPane.legendWidth<=1,'the options legend is for screen readers only');
+  assert.deepEqual(pick.decisionPane.labels.slice(0,2),['The two-beat recording','The single placement']);
+  assert.equal(pick.decisionPane.recommendedTag,'Recommended');
+  assert.equal(pick.decisionPane.recommendedCase,'none');
+  assert.equal(pick.decisionPane.source,'decision card Q-900 · Rin','the question is not repeated under itself');
+  assert.equal(pick.decisionPane.linkColor,'rgb(126, 179, 217)','links in card text use the readable blue');
+  assert.equal(pick.horizontalOverflow,false);
+  const list=run(375,'',path.join(temp,'queue-375-list.png'));
+  assert.equal(list.width,375);
   assert.equal(list.paneDisplay,'none');
   assert.notEqual(list.listDisplay,'none');
   assert.equal(list.horizontalOverflow,false,JSON.stringify(list));
   assert.ok(list.mutedContrast>=4.5,list);
-  const detail=run(500,'detail',path.join(temp,'queue-500-detail.png'));
+  const detail=run(375,'detail',path.join(temp,'queue-375-detail.png'));
+  assert.equal(detail.width,375);
   assert.equal(detail.listDisplay,'none');
   assert.equal(detail.paneDisplay,'block');
   assert.equal(detail.backWorked,true);
@@ -131,5 +171,6 @@ try {
   assert.equal(detail.horizontalOverflow,false);
   outputs.narrow={list,detail};
   console.log(JSON.stringify({screenshots:Object.keys(outputs).flatMap(k=>
-    k==='narrow'?[path.join(temp,'queue-500-list.png'),path.join(temp,'queue-500-detail.png')]:[path.join(temp,'queue-'+k+'.png')]),outputs},null,2));
+    k==='narrow'?[path.join(temp,'queue-375-list.png'),path.join(temp,'queue-375-detail.png')]:[path.join(temp,'queue-'+k+'.png')])
+    .concat(path.join(temp,'queue-1440-decision.png')),outputs},null,2));
 } catch (error) { throw error; }

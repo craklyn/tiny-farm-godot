@@ -13,6 +13,9 @@
 .q-pane-content p, .q-pane-content li, .q-pane-content details div,
 .q-pane-content .q-msg { max-width: 70ch; overflow-wrap: anywhere; }
 .q-pane-content .q-review-artifact, .q-pane-content .q-atts { max-width: none; }
+/* Links written into a card's own text arrive without a class; unstyled, they
+   are the browser's dark blue on a dark panel. */
+.q-pane-content a:not([class]) { color: var(--blue); }
 .q-back { display: none; }
 
 .q-band { border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px;
@@ -132,9 +135,10 @@
 @media (max-width: 600px) {
   .q-list .exec-control { display: flex; width: 100%; flex-wrap: wrap; border-radius: 10px; }
   .q-list .exec-status { min-width: 0; }
-  .q-list .tip::after { max-width: min(280px, calc(100vw - 90px)); transform: none; }
-  .q-list .exec-status::after { left: 0; right: auto; }
-  .q-list .exec-toggle::after { left: auto; right: 0; }
+  /* A hidden tooltip still widens the page, so on a phone each one hangs off
+     the whole control row rather than its own few pixels of text. */
+  .q-list .exec-control .tip { position: static; }
+  .q-list .exec-control .tip::after { left: 0; right: 0; width: auto; max-width: none; transform: none; }
   .q-list .exec-view { margin: 0; padding: 2px 8px; }
   .q-pane { padding: 20px 16px; }
 }

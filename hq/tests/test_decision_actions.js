@@ -73,7 +73,7 @@ function fakeFetch(url, options) {
 const ctx = vm.createContext({ console, Date, Math, globalThis: {}, fetch: fakeFetch,
   alert: message => alerts.push(message), esc: String, md: String, mdi: String,
   h: decisionElement, attachmentEl() { throw new Error("no attachments expected"); },
-  location: { hash: "#/work" }, renderWork() {}, encodeURIComponent,
+  location: { hash: "#/work" }, renderWork() {}, encodeURIComponent, cache: {},
 });
 const actionStart = appSource.indexOf("function ruleWhen");
 const actionEnd = appSource.indexOf("\n\n/* ---------------- chat", actionStart);

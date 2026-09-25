@@ -11,7 +11,8 @@
 .review-media figcaption { font-weight: 600; margin-bottom: 8px; }
 .review-media img, .review-media video { display: block; width: auto; height: auto; max-width: 100%; image-rendering: pixelated; }
 .review-media audio { display: block; width: 100%; }
-.review-media a { display: inline-block; margin-top: 8px; }
+.review-media a { display: inline-block; margin-top: 8px; color: var(--blue); }
+.review-heading-link { color: var(--blue); }
 .review-copy { white-space: pre-wrap; line-height: 1.55; overflow-wrap: anywhere; }
 .review-copy-grid > div { min-width: 0; padding: 12px; border: 1px solid var(--line); border-radius: 8px; }
 .review-copy-grid h5 { margin: 0 0 8px; font-size: 1rem; }

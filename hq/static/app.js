@@ -1422,7 +1422,7 @@ function decisionCard(c, ruling, entData, onRuled, looks) {
     return `
     <label class="opt" data-opt="${esc(o.key)}">
       <input type="radio" name="opt-${c.id}" value="${esc(o.key)}" data-intent="choose" data-label="${esc(o.label)}">
-      <span><b>(${esc(o.key)}) ${esc(o.label)}</b>${recommended ? ' <span class="rec">recommended</span>' : ""}<br>
+      <span><b>(${esc(o.key)}) ${esc(String(o.label || "").replace(" (Recommended)", ""))}</b>${recommended ? ' <span class="rec">Recommended</span>' : ""}<br>
       <span class="small muted">${mdi(o.detail || "")}</span></span>
     </label>`;
   }).join("") + `
@@ -1477,6 +1477,13 @@ function decisionCard(c, ruling, entData, onRuled, looks) {
   (c.attachments || []).forEach(a => firstRow.appendChild(attachmentEl(a, entData, looks)));
   if (!firstRow.children.length) firstRow.remove();
 
+  // A reply records its author as a seat id; the page shows the person, with
+  // the shared who-is-this card on hover, never the raw id.
+  const people = (cache["/api/org"] || {}).employees || [];
+  const author = id => {
+    const person = people.find(e => e.id === id && e.name);
+    return person ? `<span data-person="${esc(person.id)}">${esc(person.name)}</span>` : esc(id);
+  };
   const thread = card.querySelector(".d-thread");
   if (thread) turns.forEach(t => {
     const you = t.role === "daniel";
@@ -1486,7 +1493,7 @@ function decisionCard(c, ruling, entData, onRuled, looks) {
           : `<span class="w-move w-move-follow">sent it back</span>`)
       : `<span class="w-move w-move-revise">answered you</span>`;
     const el = h(`<div class="w-msg${you ? " w-msg-you" : ""}">
-      <div class="w-msg-w">${you ? "You" : esc(t.who)} <span class="d-when">${esc(ruleWhen(t.at))}</span>${pill}</div>
+      <div class="w-msg-w">${you ? "You" : author(t.who)} <span class="d-when">${esc(ruleWhen(t.at))}</span>${pill}</div>
       <div class="w-msg-b">${t.text ? (you ? `<p>${esc(t.text)}</p>` : md(t.text)) : `<p class="muted">No words — just the pick.</p>`}</div>
       ${(t.attachments || []).length ? `<div class="att-row"></div>` : ""}
     </div>`).firstElementChild;

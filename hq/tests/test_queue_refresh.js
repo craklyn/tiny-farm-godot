@@ -70,7 +70,7 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/queue.js'), 'utf
   const pane = ctx.qPaneHtml(decision, { employees: [] });
   assert.match(pane, /name="q-choice-Q-quiz" value="a"/);
   assert.match(pane, /name="q-choice-Q-quiz" value="b"/);
-  assert.match(pane, /recommended/);
+  assert.match(pane, /<b>Large room<\/b> <span class="rec">Recommended<\/span>/);
   assert.match(pane, /None of these — revise and ask me again\./);
   assert.ok(pane.indexOf('None of these — revise and ask me again.') < pane.indexOf('q-decision-feedback'));
   assert.match(pane, /disabled>Choose an option/);

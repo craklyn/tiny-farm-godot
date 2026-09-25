@@ -853,6 +853,30 @@ function workFold(title, note, count, buildCards) {
   return sec;
 }
 
+/* A link that names one card opens that card on its own, with a way back to
+   wherever he came from — the decision list, Work, the dashboard — rather than
+   the card somewhere down a page holding the whole backlog. The origin is the
+   last address that was not itself one card, so advancing from one decision
+   to the next does not make Back step through every one of them. */
+let workBackHash = "";
+let workRenderedFocus = null;
+function workIsCardHash(hash) {
+  const path = String(hash || "").replace(/^#/, "").split("?")[0];
+  return /^\/(work|inbox)\/./.test(path) && !routes[path];
+}
+window.addEventListener("hashchange", ev => {
+  const old = new URL(ev.oldURL).hash;
+  if (!workIsCardHash(old)) workBackHash = old || "#/";
+});
+function workBackLink() {
+  const target = workBackHash && !workIsCardHash(workBackHash) ? workBackHash : "#/work";
+  const path = target.replace(/^#/, "").split("?")[0] || "/";
+  const label = path === "/work" || path === "/inbox" ? "Back to questions"
+    : path === "/work-status" ? "Back to Work"
+    : path === "/" ? "Back to Overview" : "Back";
+  return `<a class="w-back" href="${esc(target)}">← ${esc(label)}</a>`;
+}
+
 function workFocusId() {
   const hash = location.hash.slice(1).split("?")[0];
   if (hash.startsWith("/work/")) return decodeURIComponent(hash.slice("/work/".length));
@@ -933,6 +957,8 @@ async function renderWork(focusId = workFocusId()) {
   const repairHeld = snap.items.filter(i => workflowOutcomeBlocked(i));
   const by = st => snap.items.filter(i => i.state === st && !workflowOutcomeBlocked(i));
   const focusedItem = focusId ? snap.items.find(i => i.id === focusId) : null;
+  const focusedDecision = focusId && !focusedItem ? curated.find(c => c.id === focusId) : null;
+  const focused = !!(focusedItem || focusedDecision);
   const doingNow = by("doing").filter(i => workflowView(i).availability === "running");
   const waitingToStart = by("doing").filter(i => workflowView(i).availability !== "running");
   const waitingEvent = by("waiting_session").filter(i => workflowView(i).availability === "waiting_event");
@@ -954,7 +980,13 @@ async function renderWork(focusId = workFocusId()) {
     saveOpen(new Set([waiting[0].id]));
   }
 
-  $view.replaceChildren(h(`
+  $view.replaceChildren(h(focused ? `
+    <div class="w-direct">
+      ${workBackLink()}
+      <h1 class="sr-only">${esc((focusedItem || focusedDecision).title || focusId)}</h1>
+      <div id="w-body"></div>
+      ${tokenStrip(snap.tokens)}
+    </div>` : `
     <h1>🧾 Your queue</h1>
     <p class="sub">Design questions waiting for your ruling, and everything the studio
     started because you said something. Nobody asked you before starting any of
@@ -963,9 +995,23 @@ async function renderWork(focusId = workFocusId()) {
     <div id="w-body"></div>`));
   const body = document.getElementById("w-body");
 
+  if (focusedDecision) {
+    const c = focusedDecision;
+    const onRuled = decisions.some(d => d.id === c.id)
+      ? () => advanceDirectDecision(c.id, decisions, focusId)
+      : () => renderWork(focusId);
+    const sec = h(`<section class="w-sec"><div class="w-list"></div></section>`).firstElementChild;
+    sec.querySelector(".w-list").appendChild(decisionCard(c, rulings[c.id] || null, entData, onRuled, looks));
+    body.appendChild(sec);
+    // A new decision opens at its question; a poll re-rendering the same one
+    // leaves him where he was reading.
+    if (workRenderedFocus !== focusId) window.scrollTo(0, 0);
+  }
+  workRenderedFocus = focusId;
+
   // His rulings come first: a design question he has not settled is holding up
   // work, and the work below it is already done.
-  if (!focusedItem && decisions.length) {
+  if (!focused && decisions.length) {
     const sec = h(`<section class="w-sec">
       <h2>Waiting for your ruling <span class="w-count">${decisions.length}</span></h2>
       <p class="sub">Design questions prepped for you, each in plain language with what you
@@ -985,7 +1031,7 @@ async function renderWork(focusId = workFocusId()) {
   // Cards he has answered that are waiting on somebody here. Not folded away:
   // he should be able to see what he said is still unanswered, and how long it
   // has been, without opening anything.
-  if (!focusedItem && withStudio.length) {
+  if (!focused && withStudio.length) {
     const sec = h(`<section class="w-sec">
       <h2>You answered — waiting on the studio <span class="w-count">${withStudio.length}</span></h2>
       <p class="sub">These are the studio's move now: either your ruling is waiting to be
@@ -997,7 +1043,7 @@ async function renderWork(focusId = workFocusId()) {
       decisionCard(c, rulings[c.id] || null, entData, () => renderWork(), looks)));
   }
 
-  const secs = focusedItem ? [
+  const secs = focusedDecision ? [] : focusedItem ? [
     workSection("This work", "The work named by the link you opened.", [focusedItem], org, pol),
   ] : [
     workSection(attentionUnavailable ? "Queue count unavailable" : "Waiting on you",
@@ -1018,12 +1064,12 @@ async function renderWork(focusId = workFocusId()) {
   ].filter(Boolean);
   secs.forEach(s => body.appendChild(s));
 
-  if (!focusedItem && !attentionUnavailable && !waiting.length && !preparing.length && !repairHeld.length
+  if (!focused && !attentionUnavailable && !waiting.length && !preparing.length && !repairHeld.length
       && !by("doing").length && !by("waiting_session").length) {
     body.querySelector(".w-list").appendChild(h(`<p class="muted">Nothing open. Work lands here on its own as you talk to the team — you never have to file anything.</p>`).firstElementChild);
   }
 
-  if (!focusedItem && closed.length) {
+  if (!focused && closed.length) {
     const hist = h(`<section class="w-sec"><h2 id="w-hist-t" class="w-toggle">▸ Closed (${closed.length})</h2>
       <div class="w-list" id="w-hist" hidden></div></section>`).firstElementChild;
     const box = hist.querySelector("#w-hist");
@@ -1036,13 +1082,13 @@ async function renderWork(focusId = workFocusId()) {
   }
 
   let settledFold = null, rawFold = null;
-  if (!focusedItem && (ruled.length || answered.length)) {
+  if (!focused && (ruled.length || answered.length)) {
     settledFold = workFold("Decisions already settled", "", ruled.length + answered.length,
       () => [...ruled.map(c => decisionCard(c, rulings[c.id], entData, () => renderWork(), looks)),
              ...answered.map(queueCard)]);
     body.appendChild(settledFold);
   }
-  if (!focusedItem && rawOpen.length) {
+  if (!focused && rawOpen.length) {
     rawFold = workFold("Questions not yet prepped for you",
       "Open questions still in raw internal form. Ask your chief of staff to turn any of these into a decision you can rule on.",
       rawOpen.length, () => rawOpen.map(queueCard));
@@ -1059,7 +1105,9 @@ async function renderWork(focusId = workFocusId()) {
     inFold(settledFold, [...ruled, ...answered]);
     inFold(rawFold, rawOpen);
     const card = body.querySelector("#card-" + focusId);
-    if (card) {
+    // Alone on the page, the card starts at its question; scrolling it to the
+    // middle would open on the options with the question above the fold.
+    if (card && !focusedDecision) {
       const target = card.closest(".card") || card;
       target.scrollIntoView({ block: "center" });
       target.classList.add("ms-flash");
