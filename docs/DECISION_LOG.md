@@ -545,6 +545,22 @@ it up (Q-98). The limit of sixteen and the choice of a hard limit over a prefere
 are `[Playtest]`. Built the same day; design in `design/06-bots-and-training.md`
 ("Her squares").
 
+### S-27. The rock ships at ten colours; the fox is redrawn, not just quantized
+**Ruled 2026-09-25 (Q-122, option b), amended in chat: "the fox needs to be
+redrawn. It's not recognizable at any sprite color count."** `obstacle_rock.png`
+is replaced with its `quantize_palette` k=10 version (55 colours, 30 of them
+singleton pixels, down to 10; same 48x16 layout). The fox board's own
+candidates were rejected: quantizing the shipped `fox.png` could not fix it,
+because the defect was in the source pose and colour placement, not the colour
+count — the original raw's white chest fur was the same exact pixel value as
+the flat cream background, so no keying threshold can separate them, and the
+pose's detail does not survive collapsing to one 16x16 cell by any downscale
+method tried (NEAREST or k-centroid). The shipped `fox.png` is hand-plotted at
+16x16 from a new Retro Diffusion raw's colours and pose (four calls, $0.216;
+`assets/raw/2026-09-25-fox-redraw/`), the same tradition `tools/rederive_critters.py`
+uses for the ants. Full account and an honest self-assessment of the result in
+`CREDITS.md`. Card: `hq/data/decisions/Q-122.json`.
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported

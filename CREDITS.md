@@ -514,6 +514,51 @@ before the first public build ships.*
   The second variant — a closed shed with a coin-sized round hole — contributed no
   pixels and is in the archive. It was rejected on the design rather than the
   drawing: a hen who goes inside has to be visible inside.
+- **Q-122 (b), the rock at ten colours, 2026-09-25** — **not generated, $0.00.**
+  Daniel ruled option (b) on the board `tools/compose_palette_quantize_candidates.py`
+  drew (`docs/design/mockups/palette_quantize/obstacle_rock_compare.png`):
+  `obstacle_rock.png` collapses 55 opaque colours, 30 of them singleton pixels, to
+  10 with `quantize_palette` (weighted k-means in OKLab, seeded farthest-point, no
+  invented averages), same layout (48x16, three chip stages), no code changes. The
+  fox board's own candidates were rejected in the same ruling — see the next entry.
+- **The fox redrawn, 2026-09-25 (card w1f2bb35bd5d)** — **generated, $0.216 for
+  four calls** (`rd_plus__default`, 64x64, two images per call, palette locked to
+  the shipped anchors `#f0a03c`/`#bf5a3a`/`#f8f4e6`/`#2f2b3d`/`#c39a6c`; raws with
+  `*_meta.json` and each call's params archived at
+  `assets/raw/2026-09-25-fox-redraw/`). Daniel's ruling on Q-122 didn't stop at
+  a colour count for the fox — his note was "the fox needs to be redrawn. It's not
+  recognizable at any sprite color count" — so quantizing the shipped 16x16 was
+  never going to answer it: the original M2.5-bench fox (a sitting three-quarter
+  pose) was investigated first and turned out to have the same defect at its
+  source, not just in the palette. Its raw drew a fox that reads clearly at 64px,
+  but its white chest fur was rendered the *exact* pixel value of the flat cream
+  backdrop (`#f8f4e6`, both), so every keying method in the pipeline necessarily
+  keys it away with the background — there is no threshold that separates "belly"
+  from "backdrop" when they are the same number. The four calls chased two fixes:
+  a background colour that never collides with white or the fox's own orange
+  (attempt 2 asked for magenta and got a rust-brown instead, which still worked),
+  and a pose compact and unbroken enough to survive collapsing to one 16x16 cell —
+  a standing three-quarter-height fox squeezes into a tall diagonal streak at that
+  scale, and even the best of the four raws' k-centroid downscales (the
+  `tools/rederive_critters.py` algorithm) came out as a blurred, partly-connected
+  blob, not a fox, because a downward statistical average cannot invent the crisp
+  single-pixel edges (an ear tip, a leg's edge) that a silhouette this small reads
+  by — the same limit that sent the critter re-derivation to hand-plotted ants.
+  The shipped cell is hand-plotted in that tradition: colours and pose read from
+  the best raw (`fox_v4_1.png`, a standing profile facing right, ears up, tail
+  trailing low and touching the haunch with no gap), plotted pixel-by-pixel at
+  16x16 rather than downscaled, so the four colours in the fill
+  (`#f0a03c` orange, `#bf5a3a` a back-saddle shade, `#f8f4e6` the chest and tail
+  tip, `#2f2b3d` the legs, ears and nose) sit exactly where an artist's eye put
+  them. Same 16x16 single-cell sheet, no code changes — nothing in `entities/`
+  or the atlas reads `fox.png` today (`hq/data/entities.json` still lists it as
+  "no brain, no registry row"). Honest self-assessment, not a designer sign-off:
+  the silhouette now reads as a small four-legged animal with pointed ears, a
+  pale belly and a pale tail tip on an orange body, which is a real step up from
+  the unreadable blob it replaces, but it is a deliberately simplified
+  abstraction rather than an instantly-obvious fox the way the chicken's white
+  body and red comb are instantly a chicken — see the before/after captures at
+  `docs/design/mockups/q122_result/` and judge for yourself.
 
 ## Audio (placeholder)
 - `assets/audio/music/bgm_wholesome.ogg` — **"Wholesome" by Kevin MacLeod

@@ -1,0 +1,8 @@
+{
+  "prompt": "a small red fox standing in profile facing right, simple rounded cartoon silhouette easy to read at tiny size, orange-red fur on the back and head, a distinct separate white chest and belly patch, dark navy paws and legs, two small pointed triangular ears, one bushy curled tail with a white tip, cozy pastel 2d farming game sprite, rounded soft silhouette, colored outlines (no black), dark navy blue outlines only, each part a clearly distinct color with strong color separation, no sepia wash, no ground shadow, no perch, plain flat cream background",
+  "width": 64,
+  "height": 64,
+  "prompt_style": "rd_plus__default",
+  "num_images": 2,
+  "palette_hex": ["#f0a03c", "#bf5a3a", "#f8f4e6", "#2f2b3d", "#c39a6c", "#a97959"]
+}

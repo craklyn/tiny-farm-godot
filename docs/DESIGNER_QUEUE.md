@@ -585,8 +585,19 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   own wake-up event is the difference between a queue that is stuck and a queue that is
   patient. Filed to Sofia: the status, its two fields, and the two projects moved onto it.
 
-- **Q-122 — Should the loosest shipped sprites be replaced with a color-collapsed version?**
-  — **Ruling, open 2026-09-25.** Daniel measured the songbird carrying ~30 opaque colors
+- **Q-122** ~~Should the loosest shipped sprites be replaced with a color-collapsed
+  version?~~ — ✅ **ruled 2026-09-25: (b), replace only `obstacle_rock.png`,** amended
+  in chat: "the fox needs to be redrawn. It's not recognizable at any sprite color
+  count." `obstacle_rock.png` ships at its quantized k=10 version (55 colors, 30
+  singleton, down to 10; same 48x16 layout). The fox is not quantized — it is
+  redrawn: the original raw's white chest fur turned out to be the exact pixel
+  value of the flat cream background it was keyed against, so no color count could
+  ever separate them, and the sitting pose does not survive collapsing to one
+  16x16 cell by any downscale method tried. The new `fox.png` is hand-plotted at
+  16x16 from a fresh Retro Diffusion raw's colors and pose (four calls, $0.216).
+  Recorded as S-27; full account and an honest self-assessment in `CREDITS.md`,
+  before/after captures in `docs/design/mockups/q122_result/`. Original entry:
+  Daniel measured the songbird carrying ~30 opaque colors
   over 234 pixels, nine of them used by a single pixel — generator anti-aliasing that was
   never collapsed, against disciplined sprites like the chicken (7 colors) and crow. The
   pipeline's post-processing (`tools/asset_pipeline/postprocess.py`) now has a

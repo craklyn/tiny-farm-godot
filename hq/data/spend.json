@@ -330,6 +330,58 @@
       "balance_after": 3.212,
       "reconciled": true,
       "recorded_by": "record_spend"
+    },
+    {
+      "id": "2026-09-25-fox-redraw-attempt-1-standing-profile-ch",
+      "date": "2026-09-25",
+      "vendor": "Retro Diffusion",
+      "kind": "generation",
+      "purpose": "Fox redraw attempt 1, standing profile (chest fur matched the cream backdrop exactly, unusable)",
+      "work_item": "w1f2bb35bd5d",
+      "dollars": 0.054,
+      "credits": 5.4,
+      "balance_after": 3.158,
+      "reconciled": true,
+      "recorded_by": "record_spend"
+    },
+    {
+      "id": "2026-09-25-fox-redraw-attempt-2-sitting-compact-pos",
+      "date": "2026-09-25",
+      "vendor": "Retro Diffusion",
+      "kind": "generation",
+      "purpose": "Fox redraw attempt 2, sitting compact pose on a non-cream background (background too close to the fur, superseded)",
+      "work_item": "w1f2bb35bd5d",
+      "dollars": 0.054,
+      "credits": 5.4,
+      "balance_after": 3.104,
+      "reconciled": true,
+      "recorded_by": "record_spend"
+    },
+    {
+      "id": "2026-09-25-fox-redraw-attempt-3-chibi-sitting-pose-",
+      "date": "2026-09-25",
+      "vendor": "Retro Diffusion",
+      "kind": "generation",
+      "purpose": "Fox redraw attempt 3, chibi sitting pose (bounding box did not survive collapse to 16x16, superseded)",
+      "work_item": "w1f2bb35bd5d",
+      "dollars": 0.054,
+      "credits": 5.4,
+      "balance_after": 3.05,
+      "reconciled": true,
+      "recorded_by": "record_spend"
+    },
+    {
+      "id": "2026-09-25-fox-redraw-attempt-4-standing-profile-wi",
+      "date": "2026-09-25",
+      "vendor": "Retro Diffusion",
+      "kind": "generation",
+      "purpose": "Fox redraw attempt 4, standing profile with continuous silhouette (shipped: colours and pose read for the hand-plotted 16x16 cell)",
+      "work_item": "w1f2bb35bd5d",
+      "dollars": 0.054,
+      "credits": 5.4,
+      "balance_after": 2.996,
+      "reconciled": true,
+      "recorded_by": "record_spend"
     }
   ]
 }

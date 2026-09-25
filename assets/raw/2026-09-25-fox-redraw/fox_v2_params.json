@@ -1,0 +1,8 @@
+{
+  "prompt": "a small red fox sitting compactly with its bushy tail curled around its front paws, facing right, chibi squat proportions, simple rounded cartoon silhouette easy to read at tiny size, orange-red fur on the back and head, a clearly separate bright white chest and muzzle patch, dark navy paws, two small pointed triangular ears, cozy pastel 2d farming game sprite, colored dark navy blue outlines only (no black), each part a clearly distinct color with strong color separation, no sepia wash, no ground shadow, no perch, plain flat solid magenta background, no gradient, no texture",
+  "width": 64,
+  "height": 64,
+  "prompt_style": "rd_plus__default",
+  "num_images": 2,
+  "palette_hex": ["#f0a03c", "#bf5a3a", "#f8f4e6", "#2f2b3d", "#c39a6c"]
+}
