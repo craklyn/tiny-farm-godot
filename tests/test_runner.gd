@@ -14209,6 +14209,31 @@ func test_learning_robot() -> void:
 		"and %d of the %d farms ended better than they began, which is two thirds or more"
 			% [int(taught["rose"]), farms])
 
+	# --- and it is worth it on her squares too, not only on open ground --------
+	# **S-26, 2026-09-25.** Given her sown squares (Q-124), a day that ships her
+	# ripe crop is worth two or three times the day the rate above was tuned on —
+	# ten a square, where open ground shipped one or two a day — so the same gate
+	# used to fail here: 47.1 a day with the nights against 60.4 without them,
+	# worse than never learning at all, on these same eight farms. `LEARN_DAY_REF`
+	# in `bot_brain.gd` charges the night for the day it actually had rather than
+	# the day the rate assumes, and this is the arm that proves it: the same
+	# eight farms, the same `compare()`, with her squares given before the first
+	# morning instead of left open.
+	var acmp: Dictionary = LearningRobot.compare(LearningRobot.GATE_SEEDS, 7, true)
+	var ataught: Dictionary = LearningRobot.summary(acmp, "learn")
+	var auntaught: Dictionary = LearningRobot.summary(acmp, "control")
+	_assert(int(ataught["seeds"]) == farms and int(auntaught["seeds"]) == farms,
+		"the assigned-squares arm is played on the same %d farms" % farms)
+	_assert(float(ataught["late"]) > 0.0 and float(auntaught["late"]) > 0.0,
+		"both arms earned something over days 5-7 on her squares, so there is a comparison to make")
+	_assert(float(ataught["late"]) >= float(auntaught["late"]),
+		("on her squares a week with its nights is worth %.2f a day over days 5-7 against %.2f "
+			+ "without them — no longer the one place learning made her worse off")
+			% [float(ataught["late"]), float(auntaught["late"])])
+	_assert(int(ataught["rose"]) * 3 >= farms * 2,
+		"and %d of the %d farms given her squares ended better than they began, two thirds or more"
+			% [int(ataught["rose"]), farms])
+
 	# --- and which of the eight rows a week actually reaches -------------------
 	# **Printed, never narrowed.** The designer's thesis is recorded in
 	# `design/06`: a row the robot fails to reach is a learner or an exploration

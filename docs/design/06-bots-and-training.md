@@ -621,14 +621,44 @@ Days 5-7 fall only because by then it has cut her crop, carried it to the bin an
 squares again — those are its own sowing now, still on her bed. The score rises because her
 ripe crop reaches the bin: 32 points a day from shipping, against 2.5 on open ground.
 
-**Open, for the ML seat (Kenji):** on its given squares a week of nights ends *below* the same
-week without them (46.4 against 60.4), the reverse of open ground (20.3 against 17.8). The
-learning rate's own note predicts it — the bigger the biggest row of the day, the gentler the
-night must be, and a bed of her ripe crop makes days of 40–60 points against the 20 the rate
-was tuned on. Measured on the gate's eight farms: at a quarter of the rate (0.0075) the nights
-come out level with the control (61.2 against 60.4). Nothing is changed yet — the open-ground
-gate still passes as it did; the rate, or a night step scaled by the size of the day, is the
-ML seat's call.
+**Closed by the ML seat (Kenji), 2026-09-25.** On its given squares a week of nights used to
+end *below* the same week without them (46.4 against 60.4), the reverse of open ground (20.3
+against 17.8) — the one place in the whole gate where learning left her worse off. The learning
+rate's own note predicted it: the bigger the biggest row of the day, the gentler the night must
+be, and a bed of her ripe crop makes days of 40–60 points against the 20 the rate was tuned on.
+A quarter of the rate (0.0075) leveled the gate's eight farms (61.2 against 60.4) but was
+rejected: it is a global cut, so it also softens every open-ground night, and the open-ground
+gate's own margin (20.6 against 16.9 there) is not spare to give away for a scenario that never
+sees the reward table's ten-point row.
+
+The fix instead charges the night for the day it actually had. `_sleep_on_it`
+(`systems/sim/brains/bot_brain.gd`) already divides the step by the day's decision count so a
+busy day cannot out-shout a quiet one (WI-2); it now divides by `max(1, score / LEARN_DAY_REF)`
+as well, `LEARN_DAY_REF` being 20 — the day size the rate above was chosen on, named in the
+paragraph above rather than invented for this fix. A day at or under that reference costs what
+it always cost; a day of forty or sixty, hers or anyone else's, costs two or three times less,
+in proportion to how far past the reference it ran. It is one more running quantity read off the
+day that just closed, the same shape as the baseline three lines above it, and it self-adjusts
+to whatever a future reward table's biggest row turns out to be rather than needing a hand-tuned
+rate for every new scenario the robot is put in.
+
+**Measured, before and after** (`tools/demo_learning_robot.gd`; the 8-farm rows are the same
+farms `tests/test_runner.gd:test_learning_robot` gates on, now on both arms):
+
+| Score a day, days 5-7 | Open ground, 24 farms | Given her squares, 24 farms | Open ground, gate's 8 | Given her squares, gate's 8 |
+| --- | --- | --- | --- | --- |
+| Before — nights on | 20.3 | 46.4 | 20.6 | 47.1 |
+| Before — night off | 17.8 | 60.4 | 16.9 | 60.4 |
+| After — nights on | 20.9 | 60.7 | 20.6 | 62.7 |
+| After — night off | 17.8 | 60.4 | 16.9 | 60.4 |
+
+Learning now matches or beats not learning on both arms: 60.7 against 60.4 over the two dozen
+farms given her squares, 62.7 against 60.4 on the gate's eight. Open ground is unmoved within
+rounding (20.9 against 20.3 before — its days sit at or under the reference, so the new divisor
+is at most a touch over one) and 20 of the same 24 farms still end their week better than they
+began. `tests/test_runner.gd:test_learning_robot` gates both arms now: the existing open-ground
+comparison, and a second one played on the same eight farms with her squares assigned before the
+first morning.
 
 **Not in this version:** a robot that chooses its own squares; squares shared out between
 several robots (two may be given the same square, and both will work it); a limit other than

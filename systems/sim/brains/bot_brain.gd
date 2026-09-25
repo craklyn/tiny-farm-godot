@@ -282,6 +282,31 @@ const SHOO_CHASE_TILES := 6
 # [Playtest]
 const LEARN_RATE := 0.03
 
+# **The day size the rate above was tuned on** (S-26, 2026-09-25). The sweep
+# just above chose 0.03 against a control day of about seventeen points and a
+# taught one of about twenty — call it twenty. Give the same robot her sown
+# squares (Q-124) and a night's step gets no gentler while the day it is
+# stepping from gets two or three times bigger, because a bed of her ripe crop
+# ships for ten points a square where open ground shipped for one or two: days
+# of forty to sixty against the twenty the division by `decisions` alone was
+# ever measured at. Measured on the gate's eight farms, days 5-7: 47.1 a day
+# with the night against 60.4 without it — worse than not learning at all,
+# where the open-ground control never fell before the taught arm.
+#
+# **So the night is charged for the day it actually had, not the day the rate
+# assumes.** `_sleep_on_it` divides the step by `max(1, score / LEARN_DAY_REF)`
+# on top of the per-decision division above: a day near the reference costs
+# what it always cost (the open-ground gate moves by fractions of a point),
+# and a day of forty or sixty costs two or three times less, in proportion to
+# how far past the reference it ran — self-adjusting to whatever a future
+# reward table's biggest row turns out to be, rather than a rate re-tuned by
+# hand for one more scenario. A quarter-rate global cut was tried first and
+# rejected: it also softens every open-ground night, and the gate's margin
+# there is not spare to give away. Reproduce both arms with
+# `tools/demo_learning_robot.gd`; the gated comparison is
+# `test_learning_robot`'s assigned-squares arm.
+const LEARN_DAY_REF := 20.0
+
 # **What we would do instead if this rung of the ladder does not learn** (P-5),
 # written here rather than in a doc so that the workbench's plate says what the
 # code says: the plate reads both of these, and the day a fallback is actually
@@ -1864,6 +1889,13 @@ func _sleep_on_it(extra: Dictionary) -> void:
 	var days := int(extra.get("days", 0))
 	var baseline := float(extra.get("baseline", 0.0))
 	var score := float(extra.get("score", 0.0))
+	# **The day-size charge, on top of the per-decision one above** (S-26). A day
+	# at or under `LEARN_DAY_REF` pays what it always paid; a bigger one — her
+	# ripe squares reaching the bin, ten points apiece — pays proportionally
+	# less, so the step stays the size the rate was chosen at regardless of
+	# which farm handed the robot its score. See `LEARN_DAY_REF` for the
+	# measurement this replaced.
+	per_decision /= maxf(1.0, score / LEARN_DAY_REF)
 	# **Everything the ledger row needs, read before the slate below wipes it.**
 	# The day's counts are zeroed a dozen lines from here, so a row assembled at
 	# the end of this function would record a day of zeros — and would still look

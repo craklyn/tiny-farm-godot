@@ -151,6 +151,12 @@
   "0800f7f73f760824569c": {
    "verdict": "ok"
   },
+  "0802760b5ce07fcb1542": {
+   "instead": "Set the learning robot's nightly training amount based on what it earned during the day",
+   "quote": "Scale the learning robot's nightly step to what the day earned",
+   "verdict": "decode",
+   "why": "The reader has to work out what the robot's “nightly step” is and what the day “earned” means."
+  },
   "08359d55326086002d83": {
    "instead": "A scheduled run will automatically start the next attempt; you don't need to trigger it",
    "quote": "the studio's own scheduled run starts it, not you",
@@ -3949,6 +3955,12 @@
   "ab547754a0026de522c1": {
    "verdict": "ok"
   },
+  "ab582c7a12ee6335dafd": {
+   "instead": "Record the Mark III's overnight activity against the day it actually ran",
+   "quote": "Charge the Mark III's night for the day it actually had",
+   "verdict": "decode",
+   "why": "The reader cannot tell what action “charge” describes or how the Mark III's night relates to its day."
+  },
   "ab69013a24cffcc898b0": {
    "verdict": "ok"
   },
@@ -5787,6 +5799,9 @@
    "why": "Observation language about what the visual communicates, not what the player actually sees."
   },
   "ff530cf8a1918fb03393": {
+   "verdict": "ok"
+  },
+  "ff712d9fdde726509767": {
    "verdict": "ok"
   },
   "ff8581926e20eb44a440": {
