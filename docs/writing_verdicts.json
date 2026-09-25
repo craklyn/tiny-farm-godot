@@ -1624,6 +1624,12 @@
    "verdict": "decode",
    "why": "Three internal terms at once — test suites are undefined, 'stamps' and 'proved' are terms of art, not language."
   },
+  "4c8ad8fe21e4d9a5aac2": {
+   "instead": "the check that recorded the robot's position every second and that the old tally depended on",
+   "quote": "the per-second position check that tally depended on",
+   "verdict": "decode",
+   "why": "This names an internal measurement mechanism instead of plainly saying what information the old tally recorded."
+  },
   "4cc38281e5b79e3c333d": {
    "verdict": "ok"
   },
@@ -1749,6 +1755,9 @@
    "quote": "monitoring is still landing on {unassured} of {total} checks a release has to pass",
    "verdict": "decode",
    "why": "Landing is internal shorthand for plans being filed; the construction is unclear to a reader unfamiliar with this term."
+  },
+  "51e3ada09d27ea3707a7": {
+   "verdict": "ok"
   },
   "52a6246b6f531c32018d": {
    "verdict": "ok"
@@ -1935,6 +1944,12 @@
   },
   "59a881673f4d1e3383d2": {
    "verdict": "ok"
+  },
+  "59dabb5b106b6a8bfcdb": {
+   "instead": "Correct the robot's watering problem from when it was first found, and identify the person meant by 'she' in the robot decision card.",
+   "quote": "'she'",
+   "verdict": "decode",
+   "why": "The sentence uses a pronoun without saying who it refers to, so a cold reader must look elsewhere to identify her."
   },
   "5a518d956d4889435aed": {
    "verdict": "ok"
@@ -3031,6 +3046,9 @@
    "verdict": "ok"
   },
   "8a7551044d50c59e7eb1": {
+   "verdict": "ok"
+  },
+  "8a81b16d0e4509655347": {
    "verdict": "ok"
   },
   "8b20e2cd2afb68125b81": {
