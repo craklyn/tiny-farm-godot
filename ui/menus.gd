@@ -27,6 +27,21 @@ const SHOP_CARD_H := 52.0
 # confuse: side by side, two cards 4px apart read as one long row.
 const SHOP_GUTTER := 16
 
+# The shelf scrolls past a height cap rather than growing without one
+# (w2989282532d, 2026-09-25). The nest box and rug already left the panel at
+# 572 of an 800x600 screen's 600px with nothing new added; the next thing for
+# sale would have pushed the close button off the bottom, which is exactly
+# the bug Scenario J exists to catch. A third column was the other option, but
+# a shop card carries a price and an owned count beside its picture — the
+# reason two columns were chosen over one on 2026-09-10 — and a third column
+# leaves no room to read either. Scrolling keeps that card untouched and keeps
+# the buy flow exactly as it is: opening, closing and scrolling the shop are
+# all UI navigation, never a recorded Action, same as they always were.
+# Measured against the panel's own top/bottom inset (`PANEL_PAD`), so the
+# capped shelf leaves the same breathing room above and below it that every
+# other panel in this file already keeps.
+const SHOP_SCROLL_MARGIN := PANEL_PAD * 2.0
+
 # The inventory picker's grid (Q-119/S-23, ruled 2026-09-24, built 2026-09-25):
 # three columns fits a phone width with the shop's own gutter, and every card
 # is square so a bigger picture never buys a taller target than the row
@@ -429,9 +444,23 @@ func _rebuild_options() -> void:
 			shelf.columns = SHOP_COLUMNS
 			shelf.add_theme_constant_override("h_separation", SHOP_GUTTER)
 			shelf.add_theme_constant_override("v_separation", int(OPTION_SEP))
-			options_container.add_child(shelf)
 			for item in shop_items:
 				_add_shop_card(shelf, item)
+			# The shelf sits inside a scroll rather than straight in the options
+			# column, capped to whatever is left of the screen (see
+			# `SHOP_SCROLL_MARGIN`). Read from the shelf's own measured height
+			# rather than counted rows, so the cap tracks the real card the way
+			# `_fit_panel_height` already does for every other panel here.
+			var shop_scroll := ScrollContainer.new()
+			shop_scroll.name = "shop_scroll"
+			shop_scroll.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+			shop_scroll.add_child(shelf)
+			options_container.add_child(shop_scroll)
+			var shelf_natural_h: float = shelf.get_combined_minimum_size().y
+			var shop_scroll_max_h: float = viewport_size.y - OPTIONS_TOP - PANEL_PAD \
+				- OPTION_SEP - OPTION_H - SHOP_SCROLL_MARGIN
+			shop_scroll.custom_minimum_size = Vector2(0,
+				minf(shelf_natural_h, maxf(shop_scroll_max_h, SHOP_CARD_H)))
 			# × — a symbol, not a word. The row is already full-width and 52px
 			# tall, so the *target* was never the problem; the glyph was — twice:
 			# U+2715 ✕ lives outside the bundled font, and the web export has no

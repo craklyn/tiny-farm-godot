@@ -96,7 +96,7 @@ surface audit, **not** an observed pre-reader playtest or a tablet export test.
 | Water | Tap a seeded/growing tile in the farm view; HUD stays up. | No. The router chooses the can. |
 | Sleep | Tap the pictured cot in the farm, or the HUD's pictured cot button; the **day-transition overlay** appears and returns to the farm. | The overlay displays `Day N`, but reading it is not needed to advance or return. Story nights may add an animation before that card. |
 | Harvest | Tap a ready crop in the farm view; HUD stays up. | No for the tap; the ripe crop is shown in the world. |
-| Buy seeds | Tap the seed box in the farm, then a pictured card in the **shop panel**, then its × close control. | The shelf uses pictures, coin icons and numerals, not crop names. Wheat is no longer on the shelf: harvest supplies replantable wheat; later crops are purchasable when unlocked. |
+| Buy seeds | Tap the seed box in the farm, then a pictured card in the **shop panel**, then its × close control. | The shelf uses pictures, coin icons and numerals, not crop names. Wheat is no longer on the shelf: harvest supplies replantable wheat; later crops are purchasable when unlocked. Past a screenful the shelf scrolls (w2989282532d) rather than growing the panel off the screen; the close row stays put underneath it. |
 
 Thus the seven named verbs use four recurring presentation surfaces: **farm view,
 HUD, shop panel, and day-transition overlay**. They do not open a machine panel.

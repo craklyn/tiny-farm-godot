@@ -147,6 +147,7 @@ func _run_scenarios() -> void:
 	await _scenario_ba_crow_spook_stops_at_room_wall()
 	await _scenario_bb_inventory_picker_selects_and_plants()
 	await _scenario_bc_a_nest_box_goes_down_by_tap()
+	await _scenario_bd_the_shop_shelf_scrolls()
 
 
 func _scenario_ba_crow_spook_stops_at_room_wall() -> void:
@@ -1518,7 +1519,7 @@ func _scenario_j_wordless_shop() -> void:
 		_assert(shows_capacity, "the full card shows its ten-of-ten capacity")
 		_press_row(menus.options_container, tomato_row)
 		await get_tree().create_timer(0.3).timeout
-		var live_shelf: Node = menus.options_container.get_node("shop_shelf")
+		var live_shelf: Node = menus.options_container.get_node("shop_scroll/shop_shelf")
 		var live_card: PanelContainer = live_shelf.get_child(tomato_row) as PanelContainer
 		var outline: StyleBoxFlat = live_card.get_theme_stylebox("panel") as StyleBoxFlat
 		_assert(menus.active_menu == "shop" and menus.shop_refused_seed == "tomato"
@@ -7530,3 +7531,87 @@ func _full_pouch_refusal_since(since: int) -> bool:
 				and not e.get("ok", true) and String(e.get("why", "")) == "pouch_full":
 			return true
 	return false
+
+
+func _scenario_bd_the_shop_shelf_scrolls() -> void:
+	# w2989282532d: after the nest box and rug (c7f7134) the shelf's panel sat
+	# 28px from the bottom of an 800x600 screen with nothing new added, so the
+	# next thing for sale would have pushed the close button off the bottom —
+	# what Scenario J's own screen-bounds check exists to catch. This stocks
+	# ten more rows onto `MachineDefs.ORDER`, the exact list `_build_shop_items`
+	# reads, so it is what a genuine new item does to the panel rather than a
+	# fixture standing in for one, and proves the shelf now scrolls inside a
+	# fixed window instead of growing the panel past the screen.
+	print("\n--- Scenario BD: the shop shelf scrolls instead of overflowing (w2989282532d) ---")
+
+	var menus = main_scene.menus
+	menus.close_menu()
+
+	var original_order: Array[String] = MachineDefs.ORDER.duplicate()
+	var stocked: Array[String] = original_order.duplicate()
+	# Ten more posts-and-rails than the shelf has ever carried — comfortably
+	# past anything a 480-wide, two-column shelf of 52px cards could hold on
+	# an 800x600 screen without scrolling.
+	for i in 10:
+		stocked.append("fence")
+	MachineDefs.ORDER = stocked
+
+	GameState.gold = 5000
+	GameState.harvest_counts = {"wheat": 5, "tomato": 5}
+	menus.open_menu("shop")
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var vp: Vector2 = menus.get_viewport().get_visible_rect().size
+	var panel: Control = menus.menu_panel
+	_assert(panel.position.y >= 0.0 and panel.position.y + panel.size.y <= vp.y,
+		"the panel stays on an 800x600 screen with %d things on the shelf (bottom at %.0f of %.0f)"
+			% [menus.shop_items.size(), panel.position.y + panel.size.y, vp.y])
+
+	var shop_scroll: Control = menus.options_container.get_node_or_null("shop_scroll")
+	_assert(shop_scroll != null, "the shelf now sits in a scroll")
+	var shelf: Control = shop_scroll.get_node_or_null("shop_shelf") if shop_scroll != null else null
+	_assert(shelf != null and shelf.get_child_count() == menus.shop_items.size(),
+		"every one of the %d things for sale drew its own card" % menus.shop_items.size())
+	if shop_scroll == null or shelf == null:
+		MachineDefs.ORDER = original_order
+		return
+
+	var shelf_h: float = shelf.get_combined_minimum_size().y
+	_assert(menus.OPTIONS_TOP + shelf_h + menus.OPTION_SEP + menus.OPTION_H + menus.PANEL_PAD > vp.y,
+		"and the whole shelf, unclipped, really would have overflowed the screen (%.0f needed)"
+			% (menus.OPTIONS_TOP + shelf_h + menus.OPTION_SEP + menus.OPTION_H + menus.PANEL_PAD))
+	_assert(shop_scroll.custom_minimum_size.y < shelf_h,
+		"but the visible window is shorter than the shelf (%.0f of %.0f) — it is actually scrolling"
+			% [shop_scroll.custom_minimum_size.y, shelf_h])
+
+	# The last card is one the old, unscrolled layout could never have shown at
+	# all. Scroll to the end, as a drag would, and check it actually lands
+	# inside the window before trusting a press on it.
+	var last_idx: int = shelf.get_child_count() - 1
+	var last_card: Control = shelf.get_child(last_idx)
+	shop_scroll.scroll_vertical = 1000000  # past the end; Godot clamps to the real max
+	await get_tree().process_frame
+	var window_rect := Rect2(shop_scroll.global_position, shop_scroll.size)
+	var card_rect := Rect2(last_card.global_position, last_card.size)
+	_assert(window_rect.encloses(card_rect),
+		"scrolling to the end brings the once-unreachable last card fully inside the window")
+
+	var last_item: Dictionary = menus.shop_items[last_idx]
+	_assert(String(last_item.seed_type) == "fence", "and it is one of the new fence rows (%s)" % last_item.seed_type)
+	var fence_def: Dictionary = MachineDefs.TYPES["fence"]
+	var machines_before: int = int(GameState.machines.get("fence", 0))
+	var gold_before: int = GameState.gold
+	_press_row(shelf, last_idx)
+	var bought := await _wait_until(
+		func(): return GameState.gold == gold_before - int(fence_def.price), 240)
+	_assert(bought, "and pressing the once-off-screen card still buys it, through the same gateway verb")
+	_assert(int(GameState.machines.get("fence", 0)) == machines_before + int(fence_def.get("bundle", 1)),
+		"crate gets fencing's own bundle, not a partial one")
+
+	menus.close_menu()
+	MachineDefs.ORDER = original_order
+	if machines_before > 0:
+		GameState.machines["fence"] = machines_before
+	else:
+		GameState.machines.erase("fence")
