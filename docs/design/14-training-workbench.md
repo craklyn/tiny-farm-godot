@@ -185,7 +185,8 @@ later tier may let her *paint* a cell, which is the "show it" rung arriving as a
 
 The trial ground; painting the mosaic; sharing or copying a brain between robots;
 per-day replay of a robot's route (the replay log has it; a later page); any curriculum
-from her own sessions (the next rung). Each has a home above and waits.
+from her own sessions (the next rung); anything for sale on the bench (§11, ruled later).
+Each has a home above and waits.
 
 ## 9. Ruled (Q-101, 2026-09-10)
 
@@ -222,3 +223,22 @@ the shop. Four things settled in the building, none of which change §§1–9's 
 | The plate and the mosaic | Sam (UX) | 1 |
 | Bench sprite and plate art via the pipeline | Yuki | 0.5 + generation |
 | Per-metric tests, the replay round-trip with `tune`, the panel/bench chart parity test | Grace | 0.5 |
+
+## 11. The shelf — learning upgrades are bought here (Q-126, ruled 2026-09-25; S-29)
+
+**Ruled: (b), at the workbench, beside the robot's training.** Every other machine is bought
+at the seed box (P-12); a Mark III's learning upgrades are the exception. A new way of
+seeing, a new mind, a new way of training, or data to train on is bought at the bench, from
+a small shelf of its own, beside the dials and the eyes where she already tunes what the
+robot is paid for. The bench, the robots and everything else keep their place in the shop.
+
+Nothing is on the shelf yet, and nothing is built. The candidates are Milo's sketch
+(`mockups/mk3_learning_shop/SKETCH.md`); which is built first waits on Q-128 to Q-130. The
+first one designed is the wider view (§3 already draws whatever view the robot has), and
+what it does to what the robot learned is settled in `06-bots-and-training.md`, "A wider
+view keeps what it learned" (S-30): it keeps what still applies and relearns the rest.
+
+**What the shelf inherits from the bench.** A purchase is a verb through the gateway, like
+`tune` (§10), so a replay rebuilds the robot it bought for. It applies to the robot the
+bench is showing, not to every robot she owns, for the reason the dials are per robot.
+Prices and the shelf's look are for its build, `[Playtest]` like every other price.

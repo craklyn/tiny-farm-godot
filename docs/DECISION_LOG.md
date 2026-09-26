@@ -575,6 +575,33 @@ than one shared basket ever could; the badge keeps its pulse only under the
 still-open picture-basket Look Lab treatment, which has no per-species icon to
 light instead. Built in `ui/hud.gd` (w67d3bedbdc6); detail in `design/11-ux-ui.md`.
 
+### S-29. A Mark III's learning upgrades are bought at the training workbench
+**Ruled 2026-09-25 (Q-126, option b).** Anything that changes how a Mark III learns — a
+wider view, a new mind, a new way of training, data to train on — is bought at the
+training workbench, from a small shelf of its own beside the robot's training, and not at
+the seed box. It applies to the robot the bench is showing. Every other purchase,
+including the bench and the robots themselves, stays in the shop, so this narrows P-12
+for one kind of item rather than replacing it. Nothing is on the shelf yet; which upgrade
+comes first waits on Q-128 to Q-130. Candidates in
+`design/mockups/mk3_learning_shop/SKETCH.md`; design in `design/14-training-workbench.md` §11.
+
+### S-30. A Mark III given a wider view keeps what it learned
+**Ruled 2026-09-25 (Q-127, option c), with Daniel's question: "Is keeping what it
+previously learned mathematically valid? Does each robot's recorded history remain
+valid if we use it to continue re-training on it after we expanded the view size? If
+there's any theoretical problems, then I think we can make the robot start over."**
+Checked against the code, both answers are yes, so (c) stands. Each learned weight moves
+to the slot where its own tile and channel sit in the wider view, and the new outer ring
+starts at zero. Every input means the same thing at any view size, the eight actions do
+not grow, and the widened robot gives every action exactly the chance it gave before
+(checked to the bit over 7,200 seconds on 24 farms), so it is the same robot until the
+nights teach it about the ring. Each night learns only from that day, so nothing narrow
+is ever re-read, and the purchase replays as one recorded Action. Measured on 24 farms
+after a week at the old view, the kept robot's next week averages 32.3 points a day
+against 26.7 for one that starts over. Full reasoning, the mapping and the table in
+`design/06-bots-and-training.md` ("A wider view keeps what it learned"); the measurement
+is `tools/measure_wider_view.gd`, the identity is gated by `test_wider_view`. Not built.
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported
@@ -777,7 +804,8 @@ experience, for now please make everything we introduce to the farm a purchasabl
 item from the shop."** When a machine, structure, tool or creature is built and its
 acquisition has not been designed yet, the acquisition is: it goes on sale at the seed
 box for gold, priced `[Playtest]`. No new content waits behind an unanswered
-acquisition question, and none is reachable only from a test.
+acquisition question, and none is reachable only from a test. *Narrowed 2026-09-25
+(S-29): a Mark III's learning upgrades are bought at the training workbench instead.*
 
 **What it settled immediately.** Two machines were finished, tested, drawn — and
 unobtainable. The sprinkler (M2.5 WI-10) waited on Q-15's resource loop; the robot

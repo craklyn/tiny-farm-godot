@@ -4867,6 +4867,9 @@
   "a4f7061abe86bad2a1d0": {
    "verdict": "ok"
   },
+  "a4f98236161349fe51d8": {
+   "verdict": "ok"
+  },
   "a4ff397733715b9be73e": {
    "verdict": "ok"
   },
@@ -6984,6 +6987,12 @@
    "quote": "Say it plainly at Continue",
    "verdict": "decode",
    "why": "The reader is not told what “it” is or what the Continue control should say."
+  },
+  "f05e15c3801d68c8675f": {
+   "instead": "Record the Mark III learning upgrade at the workbench and the information that lets it keep what it learned when the view gets wider",
+   "quote": "the wider-view mapping that keeps its learning",
+   "verdict": "decode",
+   "why": "“Mapping” and “keeps its learning” do not tell a stranger what is being recorded or how the Mark III benefits."
   },
   "f07a313ebdc46321a927": {
    "instead": "List work cards that no one has assigned on the Engineering page, and stop saving card statuses the system does not recognize",

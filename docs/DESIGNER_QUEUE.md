@@ -290,7 +290,8 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   further up the ladder — this is it). Design rewrite in `design/06`; build in
   `V0_2_1_PLAN.md` WI-9.
 
-- **Q-126 to Q-130 — The Mark III learning shop.** — **Ruling, open 2026-09-25.**
+- **Q-126 to Q-130 — The Mark III learning shop.** — **Ruling, open 2026-09-25; Q-126
+  and Q-127 ruled the same day, Q-128 to Q-130 still open.**
   Milo's sketch (`docs/design/mockups/mk3_learning_shop/SKETCH.md`, 4f6ae2f) lays out
   twelve options for buying new brains, training methods and training data for the
   Mark III, and making your own. Its open questions are one card each, with no
@@ -299,6 +300,24 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   a bigger brain waits for a pretrained base (Q-128), which new way of training
   comes first (Q-129), and whether making your own training data starts with
   picking your best day (Q-130). Cards: `hq/data/decisions/Q-126.json` to `Q-130.json`.
+
+  - **Q-126** ~~Where should the Mark III's learning upgrades be bought: the seed box or
+    the workbench?~~ — ✅ **ruled 2026-09-25: (b), at the workbench, beside the robot's
+    training.** Recorded as S-29. The bench gets a small shelf of its own; every other
+    purchase stays in the shop. Nothing is on the shelf or built yet; design in
+    `design/14-training-workbench.md` §11.
+  - **Q-127** ~~What should happen to a Mark III's learning when it gets a wider
+    view?~~ — ✅ **ruled 2026-09-25: (c), it keeps the learning that still works and
+    relearns the rest** — with his question whether keeping it is mathematically sound
+    and whether the robot's recorded history stays valid, and "start over" if not.
+    **Both hold, so (c) stands; recorded as S-30.** Each learned weight moves to where
+    its own tile sits in the wider view and the new ring starts at zero; the widened
+    robot makes exactly the choices it made before (checked to the bit, 7,200 seconds on
+    24 farms), each night learns only from that day so nothing narrow is re-read, and
+    the purchase replays as one recorded Action. Measured on 24 farms: the week after
+    widening averages 32.3 points a day kept against 26.7 started over (17 of 24 farms
+    better). Reasoning and table in `design/06-bots-and-training.md` ("A wider view keeps
+    what it learned"); `tools/measure_wider_view.gd`. Not built.
 
 - **Q-125 — Where should HQ keep its work cards?** — **Ruling, open 2026-09-25.**
   Every HQ card exists twice: the copy HQ reads and writes in the shared checkout, and

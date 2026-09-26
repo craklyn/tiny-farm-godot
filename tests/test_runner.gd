@@ -102,6 +102,10 @@ const LearningRobot := preload("res://tools/demo_learning_robot.gd")
 # it is shared rather than copied). Static functions only, as above.
 const RaidRace := preload("res://tools/measure_raid_race.gd")
 
+# A Mark III given a wider view (Q-127), shared with the tool that plays the
+# 24-farm comparison. Static functions only, as above.
+const WiderView := preload("res://tools/measure_wider_view.gd")
+
 
 func _init() -> void:
 	GameState = load("res://systems/game_state.gd").new()
@@ -217,6 +221,7 @@ func _init() -> void:
 	test_robot_ladder()
 	test_robot_story_night()
 	test_learning_robot()
+	test_wider_view()
 	test_world_pages()
 	test_the_door()
 	test_the_window()
@@ -14276,6 +14281,57 @@ func test_learning_robot() -> void:
 			% opened)
 	_assert(grown > 0.0,
 		"and it sowed and watered a farm rather than only opening ground (%.1f points)" % grown)
+
+
+# --- A wider view keeps what it learned (Q-127, 2026-09-25) --------------------
+#
+# Daniel ruled that a Mark III given a wider view keeps the learning that still
+# applies, and asked whether that is mathematically sound. The answer in
+# `design/06` rests on one identity: moving each weight to the slot where its
+# tile and channel now sit, with the new ring at zero, leaves the robot making
+# exactly the choices it made before — only now able to learn about the ring.
+# This holds `tools/measure_wider_view.gd`'s `widen` to that identity on a robot
+# that has learned for two nights; the tool plays the 24-farm week after it.
+func test_wider_view() -> void:
+	print("\n--- A wider view keeps what it learned (Q-127) Tests ---")
+	var spec := Observation.spec_default()
+	var from := int(spec["vision"])
+	var map: Array = WiderView.index_map(spec, from + 1)
+	var wide_spec := spec.duplicate(true)
+	wide_spec["vision"] = from + 1
+	var n_old := Observation.size(spec)
+	var n_new := Observation.size(wide_spec)
+	var seen := {}
+	var in_range := true
+	for i in map:
+		seen[int(i)] = true
+		in_range = in_range and int(i) >= 0 and int(i) < n_new
+	_assert(map.size() == n_old and seen.size() == n_old and in_range,
+		"every one of the %d inputs moves to its own slot of the %d" % [n_old, n_new])
+	_assert(int(map[0]) == 0 and int(map[6]) == 6,
+		"and the seven that do not depend on the view keep theirs")
+
+	var f: Dictionary = WiderView.farm(LearningRobot.SEED)
+	for _d in 2:
+		WiderView.play_day(f)
+	var extra: Dictionary = f["world"].actor(f["robot"])["extra"]
+	var narrow := { "spec": (extra["spec"] as Dictionary).duplicate(true),
+		"weights": (extra["weights"] as Array).duplicate() }
+	var twin := extra.duplicate(true)
+	WiderView.widen(extra, from + 1)
+	WiderView.widen(twin, from + 1)
+	_assert(extra["weights"] == twin["weights"] and int(extra["spec"]["vision"]) == from + 1
+			and (extra["weights"] as Array).size() == BotBrain.LEARN_ACTIONS * (n_new + 1),
+		"widening is a pure function: the same robot widens into the same robot")
+	var tally: Dictionary = WiderView.new_tally()
+	WiderView.play_day(f, WiderView.probe_second.bind(f, narrow, tally))
+	var states := int(tally["states"])
+	_assert(states > 0 and int(tally["outer_seen"]) > 0,
+		"its first wider morning is checked every second (%d), with the new ring in view on %d"
+			% [states, int(tally["outer_seen"])])
+	_assert(int(tally["same_chances"]) == states and int(tally["same_draw"]) == states,
+		"and on every one it gives all eight actions the chances it gave before, to the bit, and draws the same one")
+	f["gs"].free()
 
 
 # --- The door (2026-09-06) ----------------------------------------------------

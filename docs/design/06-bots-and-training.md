@@ -17,6 +17,8 @@ standardized scenarios) → deploy (assign role/zone) → observe → re-curate.
 
 ## Unlock ladders (all real capability, ARCHITECTURE.md)
 Sensors: vision radius / audio (receive) / speaker (transmit) / smell (scent layer).
+A Mark III's learning upgrades, a wider view among them, are bought at the training
+workbench, not the seed box (S-29, Q-126), and a wider view keeps what it learned (S-30).
 Minds: model size tiers → frozen base tiers + adapter rank tiers (P-5).
 Bodies: gardening tools → weapons (enabling tower retirement, D-7/P-4 gate).
 
@@ -665,6 +667,95 @@ several robots (two may be given the same square, and both will work it); a limi
 sixteen; a picture in place of the panel row's words (it is words, like the mark-1's
 row, pending Q-87).
 
+### A wider view keeps what it learned (Q-127, ruled 2026-09-25; S-30)
+
+**The ruling.** A wider view is one of the learning upgrades sold at the workbench (Q-126,
+S-29). When a Mark III gets one, it keeps the learning that still applies and relearns the
+rest (option c). Daniel asked two questions with the ruling, and said the robot should
+start over instead if either turned up a theoretical problem. Neither does. The reasons,
+read from the code, and the measurement follow.
+
+**Is keeping what it learned mathematically sound? Yes.**
+
+- The brain is a linear softmax (`Policy`): each of the eight actions gives each of the 207
+  inputs one weight, plus a bias of its own. The inputs (`Observation`) are seven numbers
+  about the robot — position, energy, full hands, her seed box, the bin's direction — then
+  eight yes/no facts for every tile of the square around it, row by row.
+- **Every input means the same thing at any view size.** A tile's slot answers "the tile
+  two east and one north of me: is it dry?" — a fixed offset from the robot, not a place
+  inside the view. The seven numbers are divided by constants of the map and the meter,
+  never by the radius. There are no counts, no "nearest X" inputs, and no averages or
+  scaling taken over the view.
+- **The actions do not grow.** The eight verbs are the same at any view size, so no new
+  action needs a starting score.
+- **The mapping** (`widen` in `tools/measure_wider_view.gd`). Each weight moves to the slot
+  where its own tile offset and channel sit in the wider vector — every slot moves, because
+  the tiles are numbered row by row across a wider row, though no tile changes meaning. The
+  new outer ring starts at zero. The seven number weights and the biases stay where they
+  are. Radius 2 to 3 is 207 inputs to 399, and 1,664 numbers to 3,200. The day's three
+  running sums (`trace`, `acc`, `base_trace`) share the weights' layout and move the same
+  way. The baseline, day count, scorecard, ledger and dials are kept unchanged.
+- **So the widened robot is the same robot until it learns otherwise.** A zero weight adds
+  exactly nothing, and the old terms are added in the same order, so every action keeps
+  the chance it had, to the last bit, and the same draw picks the same action. Checked
+  every second of the first widened day on 24 farms: 7,200 of 7,200 seconds identical,
+  though the new ring was non-zero in every one of them.
+- **The learning rule stays valid.** Each night's update is computed only from that day's
+  decisions, made by the robot as it was that day, so it is on-policy whatever weights the
+  day started from; the old weights only decide where learning resumes. The baseline — the
+  running average of past days' scores — never depends on what the robot chose, which is
+  all the rule asks of it. It will lag for a few days, since a wider view earns more; the
+  day-size charge (S-26, `LEARN_DAY_REF`) already softens the step on a big day.
+- **What does change is what an action reaches**, and that is the "relearns the rest". A
+  verb goes to the nearest square in view where it is legal, so it can now reach the new
+  ring, and sometimes a ring square is nearer than the old pick (three squares straight
+  ahead is nearer than two across and two up). On the first widened morning, 138 of the
+  3,813 moments at which the robot was free to pick a square verb pointed at a different
+  square (3.6%). Its choices are the same; their results shift slightly, and the nights
+  learn from that as from anything else.
+
+**Does its recorded history stay valid? Yes — nothing re-reads it.**
+
+- A Mark III never retrains on past days. Each night learns from that one day and wipes the
+  day's sums; earlier days survive only inside the weights. The `history` and `ledger` it
+  keeps are the workbench's scorecard, and no learning code reads them. There is no store
+  of narrow-view observations for a wider robot to misread.
+- The replay log holds her actions and the seed, not what the robot saw; the robot's
+  choices are recomputed on replay (Q-53). The purchase would be one recorded Action, and
+  `widen` is a pure function with no draw in it, so a replay through the purchase rebuilds
+  the identical widened robot. Saves and replays from before the upgrade keep their robot
+  at radius 2, because the view is saved on the robot with its weights.
+- For the later rung that learns from recorded days (P-5, and "A permanent experience
+  store" below): the log holds actions, so the observation at any moment can be rebuilt at
+  any view size. Learning from stored days is off-policy whether or not the view grew; the
+  one thing widening adds is that the chance the robot gave an old action must be
+  recomputed with the view it had that day, which the replay knows.
+
+**Measured** (`tools/measure_wider_view.gd`, the demo's 24 farms). Each robot learns for a
+week at radius 2 — its last three days average 20.9 points — then plays a second week
+three ways on the identical farm. Points a day:
+
+| Second week | Days 1-3 | Days 5-7 | Whole week | Farms better than starting over |
+| --- | --- | --- | --- | --- |
+| Kept, widened (the ruling) | 29.7 | 34.9 | 32.3 | 17 of 24 |
+| Started over, widened | 24.1 | 29.1 | 26.7 | — |
+| Not widened | 25.9 | 33.1 | 29.7 | 18 of 24 |
+
+Keeping is worth 5.6 points a day over starting again. A robot that starts over spends its
+week catching up to where the kept one began, and still ends it behind a robot that was
+never upgraded. The kept robot beats the one that was never upgraded by 2.6 points a day,
+on 15 of the 24 farms — so the wider view is worth having, and worth having only if what
+the robot learned comes with it.
+
+**When in the day it takes hold** is left to the build. The mapping is sound at any
+moment — the part of the day before the purchase simply earns the new ring no credit —
+and cleanest at the day turn, when the day's sums are empty.
+
+**Not built.** The upgrade itself, its price, its shelf (S-29) and whether radius 3 is the
+first step. `widen` lives in the tool, held to the identity above by
+`tests/test_runner.gd:test_wider_view`, until it moves into the sim with the verb that buys
+it.
+
 ### Its day
 
 It wakes at the day turn with a full meter (600 units — `ACTOR_MAX_ENERGY`, the same as
@@ -799,7 +890,8 @@ she would have made herself.
 
 ### Not in v1
 
-A stall or home; vision beyond radius 2; choosing which seed to plant (it plants what she
+A stall or home; vision beyond radius 2 (designed, not built: bought at the workbench,
+S-29, and keeping what it learned, S-30 — "A wider view keeps what it learned"); choosing which seed to plant (it plants what she
 has most of); carrying more than one crop; learning from her recorded days (the next rung,
 P-5 as amended); sharing weights between robots (P-7); any night surface beyond the panel
 itself (D-4). Each is a later mark or a later tier, on purpose. Known wart, filed: the
@@ -869,6 +961,7 @@ that reads as broken.
 | The panel's two numbers, and the pips beside them | `ui/menus.gd`, the `policy` arm of the machine menu |
 | The two-farm learning-curve demo and its gate | `tools/demo_learning_robot.gd` + `test_learning_robot()` |
 | Her squares: the `assign_tiles` verb, the limit and walk back, the masked view (S-26) | `systems/sim/sim_world.gd`, `bot_brain.gd`, `observation.gd`; the tap in `systems/action_router.gd`; the mode in `main.gd`; the marks in `world/farm.gd`; tests `test_mark_three_assigned_tiles()` and Scenario BG; pictures `tools/capture_assign_tiles.tscn` |
+| A wider view keeping what it learned (S-30): the proposed mapping `widen` and the 24-farm measurement; not built | `tools/measure_wider_view.gd` + `test_wider_view()` |
 
 The build plan, with interfaces and acceptance criteria per work item, is
 `docs/V0_2_1_PLAN.md`.

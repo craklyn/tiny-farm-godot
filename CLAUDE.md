@@ -64,6 +64,11 @@ godot --headless --path . --script res://tools/demo_robot_value.gd
 # squares of her sowing it watered
 godot --headless --path . --script res://tools/demo_learning_robot.gd
 
+# A Mark III given a wider view (S-30): a week at radius 2 on 24 farms, then a second
+# week kept-and-widened, started over, and not widened; also checks the widened robot's
+# first morning chooses exactly as before (about three minutes)
+godot --headless --path . --script res://tools/measure_wider_view.gd
+
 # Giving a Mark III its squares (S-26): its panel, the pointing mode, and the quiet
 # marks afterwards, as PNGs under docs/design/mockups/q124_assign/ — needs a display
 godot --path . res://tools/capture_assign_tiles.tscn
