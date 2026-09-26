@@ -276,10 +276,11 @@ func _apply_v2(world: SimWorld, gs) -> void:
 # it, all inside the clock advance, which is what keeps everything after it in
 # step. It is only left out of the comparison.
 #
-# Play first hit it with the Mark III, which picks a square by the tool table and
-# asks the gateway afterwards: set down on a stall's floor, it
-# swings its hoe at the floor, and the stall wins (playtests/2026-09-25_113814,
-# entry 653 — "diverged" on a till the live game had refused twice as well).
+# Play first hit it with the Mark III, which then picked a square by the tool table
+# alone: set down on a stall's floor, it swung its hoe at the floor and the stall
+# won (playtests/2026-09-25_113814, entry 653 — "diverged" on a till the live game
+# had refused twice as well). Its scan now skips a building's floor, so no brain is
+# refused in ordinary play; this rule is for the next one that disagrees.
 static func _collect(into: Array[Dictionary], taken: Array[Dictionary]) -> void:
 	for t in taken:
 		if t["result"].get("ok", false):

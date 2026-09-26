@@ -590,6 +590,11 @@ static func order_verb(world: SimWorld, t: Vector2i) -> String:
 	var tile := world.get_tile(t.x, t.y)
 	if tile.is_empty():
 		return ""
+	# A building's floor is not ground to work, whatever soil is under it — the
+	# gateway refuses every tile verb there (`is_structure_floor`), so a square
+	# offered here would be a walk that ends in a refusal.
+	if world.is_structure_floor(t):
+		return ""
 	if String(tile.get("state", "")) == "cleared":
 		return "till"
 	# **Only a square that can take water gets watered**, and only if it has not
@@ -1550,6 +1555,10 @@ func _do_job(world: SimWorld, actor_id: String, extra: Dictionary, verb: String,
 		var mine := assigned_keys(extra)
 		if not mine.is_empty() and not mine.has(at.y * SimWorld.MAP_WIDTH + at.x):
 			return {}
+		# A stall bay, a coop cell or the tower's floor: `_legal_at`'s rule, asked
+		# again one beat before the verb for the same reason as everything here.
+		if world.is_structure_floor(at):
+			return {}
 	match verb:
 		"till":
 			# **A robot swings the hoe where she could swing it, and nowhere else
@@ -1673,11 +1682,20 @@ func _walk_back(world: SimWorld, actor_id: String, extra: Dictionary, tick: int,
 # the two facts the router reads off her instead of off the ground: whether there
 # is a seed in the box (`seed`, already looked up by the caller) and whether the
 # hands are already full.
+#
+# **A building's floor is never a candidate** (2026-09-25). A stall bay is walkable
+# and may sit on cleared soil, and the tool table alone called it hoeable — so a
+# Mark III parked in its stall picked `till` on its own bay and the gateway refused
+# it, seven times in its first minute on a test farm. The gateway's rule is that
+# the structure wins over the soil, and the router now asks it before the table
+# too, so this stays the router's rule.
 func _legal_at(world: SimWorld, extra: Dictionary, choice: int, t: Vector2i,
 		seed: String) -> bool:
 	var state := String(world.get_tile(t.x, t.y).get("state", ""))
 	if state == "":
 		return false   # off the map, or a square nobody generated
+	if world.is_structure_floor(t):
+		return false
 	match choice:
 		LEARN_TILL:
 			return Tools.get_action(Tools.index_of_key(HOE_KEY), state) == "till"

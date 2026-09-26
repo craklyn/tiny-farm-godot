@@ -346,6 +346,16 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 		return {}  # Out of bounds
 	var state: String = tile.get("state", "")
 
+	# 2-i. A building's floor is not ground to work (2026-09-25). A stall bay, a
+	# coop cell or the tower's floor may sit on soil, and the gateway refuses every
+	# tile verb there because the structure wins (`SimWorld.is_structure_floor`).
+	# Asked here, after placement (a robot still goes into its bay) and before the
+	# ground's states, so a tap on the floor is what a tap on the yard is: she walks
+	# over and stands on it. A Mark III's scan asks the same question
+	# (`BotBrain._legal_at`), which is what keeps the two agreeing.
+	if world != null and world.is_structure_floor(tap_t):
+		return {}
+
 	# 2a. A window is for looking out of (2026-09-11). The home's north wall has
 	# two cut in it (`WorldLayout.HOME`), and a tap on the glass is a look: she
 	# walks up to the sill — from anywhere, as she walks to the well — and the
@@ -507,6 +517,12 @@ func blocked_reason(farm: Node2D, gs: Node, tap_t: Vector2i) -> String:
 		if bw != null and bw.buildable_at(tap_t):
 			return "none_left"
 
+	# A building's floor answers nothing, as resolve() says — silence, not a
+	# "no energy" wobble over soil no tool may touch.
+	var fw = farm.get("sim")
+	if fw != null and fw.is_structure_floor(tap_t):
+		return ""
+
 	if state == "tilled":
 		if MachineDefs.has(seed_type):
 			return ""   # she is holding a machine, not a seed; the clause above spoke
@@ -598,6 +614,9 @@ func is_workable(farm: Node2D, tap_t: Vector2i, gs: Node = null) -> bool:
 			return true
 	var tile: Dictionary = farm.get_tile(tap_t.x, tap_t.y)
 	if tile.is_empty():
+		return false
+	# A building's floor is walked onto, not worked (resolve()'s 2-i).
+	if w != null and w.is_structure_floor(tap_t):
 		return false
 	return String(tile.get("state", "")) in [
 		"obstacle_rock", "obstacle_log", "obstacle_tree", "obstacle_weed",

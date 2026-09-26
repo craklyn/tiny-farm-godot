@@ -224,6 +224,7 @@ func _init() -> void:
 	test_bed_cue_shape()
 	test_save_v3_migration()
 	test_robot_stall()
+	test_stall_floor_is_not_ground()
 	test_chicken_coop()
 	test_coop_interior()
 	test_room_fittings()
@@ -14964,6 +14965,121 @@ func test_save_v3_migration() -> void:
 # its round, and it goes out again **the next morning without being told**. That
 # last one is the whole value of the 80 gold — a machine that has to be sent out
 # by hand every day is a chore with a sprite.
+# --- A stall's floor is not ground to work (2026-09-25) ------------------------
+#
+# From play (playtests/2026-09-25_113814): a Mark III parked in its stall picked
+# `till` on its own bay, and the gateway refused it, because a building's floor
+# wins over the soil under it (`SimWorld.is_structure_floor`). The robot's scan and
+# her tap both judged the square by the tool table alone, so both offered a verb
+# the gateway would never take. Both now ask the gateway's question first — and
+# this pins that the two still agree with each other and with the gateway.
+func test_stall_floor_is_not_ground() -> void:
+	print("\n--- A stall's floor is not ground to work, for the robot or for her tap (2026-09-25) Tests ---")
+
+	# --- the Mark III, parked in its stall on bare soil ------------------------
+	var s := _mk3_yard(2509)
+	var stall := Vector2i(20, 13)
+	var bay := stall + Vector2i(1, 0)
+	_assert(s.world.placeable_at(stall, "stall"), "the yard has room for a stall at %s" % stall)
+	s.act({ "verb": "buy_machine", "item": "stall", "actor": "player" })
+	_assert(s.act({ "verb": "place", "target": stall, "item": "stall",
+			"actor": "player" }).get("ok", false), "she puts a stall down on cleared soil")
+	# Everything the robot can see is ground a hoe cannot open, except its own
+	# two bays (still `cleared` underneath) and one square of open soil two steps
+	# away — so the nearest "tillable" square by the tool table alone is the one
+	# it is standing on, and the only square the gateway would take is the far one.
+	var open_soil := stall + Vector2i(0, -2)
+	for dy in range(-3, 4):
+		for dx in range(-3, 4):
+			var t := stall + Vector2i(dx, dy)
+			if t != stall and t != bay and t != open_soil:
+				s.world.set_tile_state(t.x, t.y, "tilled")
+	_assert(String(s.world.get_tile(stall.x, stall.y).get("state", "")) == "cleared"
+			and String(s.world.get_tile(bay.x, bay.y).get("state", "")) == "cleared",
+		"both bays stand on cleared soil, which is the case the play session found")
+	var bot := _mk3_place(s, stall)
+	_assert(bot != "" and s.world.actor_pos(bot) == stall, "a Mark III is parked in the left bay")
+	var extra: Dictionary = s.world.actor(bot)["extra"]
+	_mk3_make_certain(extra, BotBrain.LEARN_TILL)
+
+	_assert(BotBrain.order_verb(s.world, stall) == "" and BotBrain.order_verb(s.world, bay) == "",
+		"the robots' shared answer for a square offers no verb on a stall's floor")
+	_assert(BotBrain.order_verb(s.world, open_soil) == "till",
+		"...and still offers the hoe on the open soil beside it")
+
+	var on_floor := 0
+	var refused_occupied := 0
+	var tilled_open := 0
+	for t in s.tick(SimClock.RATE * 60):
+		if String(t["action"].get("actor", "")) != bot:
+			continue
+		var at: Vector2i = t["action"].get("target", Vector2i(-1, -1))
+		var verb := String(t["action"].get("verb", ""))
+		if verb in ["till", "plant", "water", "harvest"] and s.world.is_structure_floor(at):
+			on_floor += 1
+		if String(t["result"].get("reason", "")) == "occupied":
+			refused_occupied += 1
+		if verb == "till" and at == open_soil and t["result"].get("ok", false):
+			tilled_open += 1
+	_assert(on_floor == 0,
+		"in its first minute it never asks to work its own stall's floor (%d times)" % on_floor)
+	_assert(refused_occupied == 0,
+		"so the gateway never has to refuse it as occupied (%d refusals; once a second, 60 in all, before the fix)" % refused_occupied)
+	_assert(tilled_open == 1,
+		"and the hoe it was certain to swing went into the open soil instead (%d)" % tilled_open)
+
+	# --- her tap on the same floor ---------------------------------------------
+	GameState.reset()
+	var farm = load("res://world/farm.gd").new()
+	farm.generate_on_ready = false
+	SimRng.reseed(2509)
+	farm.sim.generate()
+	GameState.gold = 1000
+	var shed := Vector2i(-1, -1)
+	for y in range(9, 16):
+		for x in range(5, 23):
+			if farm.sim.placeable_at(Vector2i(x, y), "stall"):
+				shed = Vector2i(x, y)
+				break
+		if shed.x >= 0:
+			break
+	_assert(shed.x >= 0, "the generated farm has room for a stall")
+	for dy in range(-1, 2):
+		for dx in range(-1, 3):
+			farm.sim.set_tile_state(shed.x + dx, shed.y + dy, "cleared")
+	farm.sim.apply_action({ "verb": "buy_machine", "item": "stall", "actor": "player" }, GameState)
+	_assert(farm.sim.apply_action({ "verb": "place", "target": shed, "item": "stall",
+			"actor": "player" }, GameState).get("ok", false), "a stall stands on the generated farm")
+	var beside := shed + Vector2i(0, 1)
+	GameState.selected_seed_type = "wheat"
+	GameState.pouch["wheat"] = 5
+	GameState.energy = 100
+	GameState.watering_can_charges = 5
+	_assert(String(ActionRouter.resolve(farm, GameState, beside, beside).get("action", "")) == "till",
+		"the cleared square beside the stall still resolves to the hoe")
+	for state in ["cleared", "tilled", "seeded", "ready"]:
+		farm.sim.set_tile_state(shed.x, shed.y, state, "wheat")
+		var r: Dictionary = ActionRouter.resolve(farm, GameState, shed, beside)
+		var gate: Dictionary = farm.sim.apply_action({ "verb": { "cleared": "till",
+				"tilled": "plant", "seeded": "water", "ready": "harvest" }[state],
+				"target": shed, "seed_type": "wheat", "actor": "player" }, GameState)
+		_assert(r.is_empty() and String(gate.get("reason", "")) == "occupied",
+			"a tap on %s soil under a stall's floor offers nothing, as the gateway would refuse it" % state)
+	_assert(not ActionRouter.is_workable(farm, shed),
+		"so she walks onto the floor rather than stopping beside it to work it")
+	farm.sim.set_tile_state(shed.x, shed.y, "cleared")
+	GameState.energy = 0
+	_assert(ActionRouter.blocked_reason(farm, GameState, shed) == "",
+		"and an empty meter is no reason to wobble at a floor no tool may touch")
+	GameState.energy = 100
+	GameState.machines["bot_mk1"] = 1
+	GameState.selected_seed_type = "bot_mk1"
+	_assert(String(ActionRouter.resolve(farm, GameState, shed, beside).get("action", "")) == "place",
+		"holding a robot, the same tap still stands it in the bay")
+	farm.free()
+	GameState.reset()
+
+
 func test_robot_stall() -> void:
 	print("\n--- The robot stall: a robot with an address (CEO, 2026-09-06) Tests ---")
 
@@ -16734,9 +16850,16 @@ func test_mark_three_assigned_tiles() -> void:
 # The recorder writes down only what succeeded, and the replay used to compare the
 # recording against everything the brains *tried* — so the first refused brain
 # Action in a session read as a desync, naming a robot that had done exactly what
-# it did live. The tablet found it with a Mark III set down in a stall: it swings
-# its hoe at the stall's floor, the stall wins, and the verifier said the brain
+# it did live. The tablet found it with a Mark III set down in a stall: it swung
+# its hoe at the stall's floor, the stall won, and the verifier said the brain
 # had diverged. This is that farm in miniature.
+#
+# **The robot no longer asks** (2026-09-25, `test_stall_floor_is_not_ground`): its
+# scan skips a building's floor, as her tap does, so this farm now plays with no
+# refusal at all and still has to replay cleanly. No brain in the game is refused
+# in ordinary play any more, so the verifier's rule — a refusal is left out of the
+# comparison — is pinned below on a recomputed list directly, where the next brain
+# that disagrees with the gateway will meet it.
 func test_refused_brain_action_replays() -> void:
 	print("\n--- A refused brain Action is not a desync (2026-09-25 playtest) Tests ---")
 	var s := _mk3_yard(7307)
@@ -16752,12 +16875,24 @@ func test_refused_brain_action_replays() -> void:
 		"and a Mark III is set down inside it (%s)" % robot)
 
 	var refused := 0
+	var acted := 0
 	for t in s.tick(SimClock.RATE * 60):
-		if t["action"].get("actor", "") == robot and not t["result"].get("ok", false):
+		if t["action"].get("actor", "") != robot:
+			continue
+		acted += 1
+		if not t["result"].get("ok", false):
 			refused += 1
-	_assert(refused > 0,
-		"in its first minute the gateway refuses it at least once (%d), which is what this is about"
-			% refused)
+	_assert(acted > 0 and refused == 0,
+		"in its first minute it works and is never refused (%d Actions, %d refused)" % [acted, refused])
+
+	var tried: Array[Dictionary] = [
+		{ "action": { "verb": "till", "actor": robot }, "result": { "ok": false, "reason": "occupied" }, "tick": 5 },
+		{ "action": { "verb": "water", "actor": robot }, "result": { "ok": true }, "tick": 6 },
+	]
+	var recomputed: Array[Dictionary] = []
+	ReplayLog._collect(recomputed, tried)
+	_assert(recomputed.size() == 1 and String(recomputed[0]["action"]["verb"]) == "water",
+		"a refused brain Action is left out of what the recording is compared against")
 
 	var live_canonical := SaveGame.capture_canonical(s.world, s.gs)
 	var again := SimWorld.new()

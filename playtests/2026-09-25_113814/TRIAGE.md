@@ -35,3 +35,17 @@ miniature. That test fails without the fix.
 With only that change applied to a04429a, `tools/verify_replay.gd` on this
 session reports **MATCH: replay reproduces the autosave state exactly**. The
 recording itself was sound, and nothing in it needed to change.
+
+## Later the same day — the robot no longer tills its stall floor
+
+The refusals themselves are gone. The Mark III's square scan, and her own tap,
+now skip a building's floor before consulting the tool table, which is the rule
+the gateway already applied (`test_stall_floor_is_not_ground`). Two consequences
+for this folder:
+
+- Replay this session under its recording build (a04429a plus the checker fix),
+  not a newer one. From this change on, the recomputed robot never makes those
+  two refused tills, so its later choices differ from the recording.
+- `test_refused_brain_action_replays` no longer produces a refusal, because the
+  robot is no longer refused. It now checks that this farm replays with no
+  refusals, and checks the checker's rule on a hand-built list.

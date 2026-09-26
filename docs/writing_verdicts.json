@@ -1644,6 +1644,12 @@
   "39175b6cfb4598bf71bb": {
    "verdict": "ok"
   },
+  "39364857fa7507e7035e": {
+   "instead": "Stop the Mark III and stop the player from tapping a stall's floor to farm it",
+   "quote": "the player's tap offering to farm a stall's floor",
+   "verdict": "decode",
+   "why": "It is unclear whether the player is tapping, offering something, or farming the floor, so the reader must work out what action should stop."
+  },
   "397000310cbf0eb76b1c": {
    "verdict": "ok"
   },
@@ -5738,6 +5744,9 @@
    "quote": "Check whether the generation pipeline's alpha step leaves near-white behind",
    "verdict": "decode",
    "why": "\"Alpha step\" is image-processing jargon (transparency channel handling); \"leaves near-white behind\" cryptically describes a technical artifact the reader would have to decode."
+  },
+  "cb31d6a2510b10e29bba": {
+   "verdict": "ok"
   },
   "cb3cf67cf1ceb7a6957d": {
    "verdict": "ok"
