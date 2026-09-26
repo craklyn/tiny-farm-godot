@@ -1,0 +1,48 @@
+{
+  "id": "Q-131",
+  "owner": "tomas",
+  "title": "Keep the workbench shelf's first pace setting as built, or change one of its four choices?",
+  "question": "The pace setting you picked (Q-129) is built as the first item on a new shelf at the training workbench. For 150 gold, a Mark III gets three picture buttons, one, two and three chevrons, for calm, normal and bold. They change how hard each night's learning pushes. Normal behaves exactly like today, and even bold cannot push harder on an unusually big day. The pictures are attached.\n\nTomás made four small choices while building it. Pick (a) to keep all four, or one of the others to change it. Measured on 24 test farms: bold gives a faster first week on open ground and is no better by the second week; calm starts slower and is steadier. On a robot given your squares, bold ends its first week about 2 points a day behind normal.",
+  "why_now": "It landed tonight in commit 82ca583, with both test suites and the automated checks passing. These are placeholder choices marked for playtesting, so none of them blocks anything.",
+  "options": [
+    {
+      "key": "a",
+      "label": "Keep all four as built (Recommended)",
+      "detail": "Each robot buys its own pace setting, matching the ruling that a shelf upgrade applies to the robot the bench is showing. Bold stays available on a robot with squares, as an honest trade-off. The buttons stay as chevrons. The price stays 150 gold until playtesting says otherwise.",
+      "recommended": true
+    },
+    {
+      "key": "b",
+      "label": "Buy it once for every Mark III",
+      "detail": "One purchase gives every Mark III on the farm the pace buttons, now and later."
+    },
+    {
+      "key": "c",
+      "label": "Grey out bold while a robot has squares",
+      "detail": "On your squares bold does slightly worse in week one, so hide that choice there."
+    },
+    {
+      "key": "d",
+      "label": "Use a snail and a hare instead of chevrons",
+      "detail": "Two small new pictures in place of the line-drawn chevrons."
+    }
+  ],
+  "links": [
+    {
+      "type": "image",
+      "src": "docs/design/mockups/workbench_shelf/1_shelf.png",
+      "caption": "The workbench's new sixth plate: the shelf, with the pace setting for sale."
+    },
+    {
+      "type": "image",
+      "src": "docs/design/mockups/workbench_shelf/3_bought.png",
+      "caption": "After buying: calm, normal (lit) and bold, as one, two and three chevrons."
+    },
+    {
+      "type": "image",
+      "src": "docs/design/mockups/workbench_shelf/4_bold.png",
+      "caption": "The same robot set to bold."
+    }
+  ],
+  "subject": "The Mark III learning shop"
+}

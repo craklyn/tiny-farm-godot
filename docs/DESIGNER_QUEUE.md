@@ -290,6 +290,11 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   further up the ladder — this is it). Design rewrite in `design/06`; build in
   `V0_2_1_PLAN.md` WI-9.
 
+- **Q-131 — Keep the workbench shelf's first pace setting as built?** — **Ruling, open
+  2026-09-26.** Built in 82ca583 (S-31): four placeholder choices — per-robot purchase,
+  bold allowed on a robot with squares, chevron pictures, 150 gold. Strawman: keep all
+  four. Card: `hq/data/decisions/Q-131.json`.
+
 - **Q-126 to Q-130 — The Mark III learning shop.** — **Ruling, open 2026-09-25; Q-126
   and Q-127 ruled the same day and Q-129 that night; Q-128 and Q-130 still open.**
   Milo's sketch (`docs/design/mockups/mk3_learning_shop/SKETCH.md`, 4f6ae2f) lays out

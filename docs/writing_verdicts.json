@@ -266,6 +266,9 @@
   "091e2703352b716df54d": {
    "verdict": "ok"
   },
+  "0920bb7cf241f240d3f2": {
+   "verdict": "ok"
+  },
   "095ba4370aa6a15dcff3": {
    "verdict": "ok"
   },
@@ -650,6 +653,9 @@
   "14e916bbe70b581f9093": {
    "verdict": "ok"
   },
+  "152ab4e65f400329febe": {
+   "verdict": "ok"
+  },
   "15334b08f906abd4106d": {
    "instead": "Merged into the main code branch; automated checks are not confirmed",
    "quote": "Landed on main; CI not confirmed",
@@ -836,6 +842,9 @@
    "quote": "another picture treatment",
    "verdict": "second-look",
    "why": "“Treatment” makes the reader translate a design term into the plain fact that Elena is preparing another picture design."
+  },
+  "1b4cc5fa3bd15c1fbd3a": {
+   "verdict": "ok"
   },
   "1b566635d87cc74bc23a": {
    "verdict": "ok"
@@ -2108,6 +2117,9 @@
    "verdict": "decode",
    "why": "The internal name for the pipeline step does not tell a cold reader what it does."
   },
+  "4885e317790452dbbe1b": {
+   "verdict": "ok"
+  },
   "48a1ad7755020d35b857": {
    "baselined": "2026-09-19",
    "instead": "Label animation frames in the entity system so preview animations show real variations, not the same frame repeatedly",
@@ -2676,6 +2688,9 @@
   "5adc192ac172aedcf03f": {
    "verdict": "ok"
   },
+  "5ae0b3d49dbd39c1f3fa": {
+   "verdict": "ok"
+  },
   "5afa63722fa272974319": {
    "verdict": "ok"
   },
@@ -2906,6 +2921,9 @@
    "verdict": "ok"
   },
   "61dee3f77e65f9151eba": {
+   "verdict": "ok"
+  },
+  "623cdb987a3a65b30ce9": {
    "verdict": "ok"
   },
   "623f42302be02ec26cf4": {
@@ -3447,6 +3465,9 @@
   "7423bfb04f6c23a86024": {
    "verdict": "ok"
   },
+  "74340a37c75f8e7fa1b9": {
+   "verdict": "ok"
+  },
   "74681e96d76a5dab6214": {
    "instead": "Keep the decision list usable when there are no earlier rulings",
    "quote": "when no earlier rulings are loaded",
@@ -3662,6 +3683,12 @@
    "quote": "saw them, and asked what they were and whether they were a bug",
    "verdict": "second-look",
    "why": "The pronoun 'them' has no named referent in the same sentence."
+  },
+  "7ae9f3fd5ee215688b71": {
+   "instead": "Buy the pace setting once for every Mark III",
+   "quote": "Buy it once for every Mark III",
+   "verdict": "second-look",
+   "why": "“It” refers to the pace setting from earlier text rather than naming the thing in this option."
   },
   "7af85404025b030e4979": {
    "verdict": "ok"
@@ -5097,6 +5124,12 @@
    "verdict": "second-look",
    "why": "The actor is unclear and the construction is awkward; the reader would have to work out whose action this describes."
   },
+  "a912134e6255721189b5": {
+   "instead": "The four choices are placeholders for playtesting",
+   "quote": "These are placeholder choices marked for playtesting",
+   "verdict": "second-look",
+   "why": "“These” appears to refer to the tests and checks in the previous sentence before the reader resolves that it means the four choices."
+  },
   "a94c4d1fbc9d181685bd": {
    "instead": "Your answer is recorded and the card closes. No next step has been chosen yet; this card will show it before you decide.",
    "quote": "is still working out what should follow",
@@ -5198,6 +5231,9 @@
    "verdict": "ok"
   },
   "abed11863313680b84a1": {
+   "verdict": "ok"
+  },
+  "abf1d882ecb4eff2f4cf": {
    "verdict": "ok"
   },
   "abf4e71172bb2afe0205": {
@@ -5486,6 +5522,9 @@
    "why": "“Held” can mean either paused or physically retained, so the title makes the reader stop to determine which meaning applies."
   },
   "b798094b925671e1070f": {
+   "verdict": "ok"
+  },
+  "b7f22097fc28097f2953": {
    "verdict": "ok"
   },
   "b81c7adf051af84411ca": {
@@ -7124,6 +7163,9 @@
    "verdict": "ok"
   },
   "ef54d38034eca8249b94": {
+   "verdict": "ok"
+  },
+  "ef96a1617275430567cb": {
    "verdict": "ok"
   },
   "efbd83015d0ec8e96187": {
