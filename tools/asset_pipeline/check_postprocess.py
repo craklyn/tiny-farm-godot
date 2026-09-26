@@ -13,9 +13,18 @@ between two fence posts on Obstacle Set (w8dadba4841e) - never does, so
 `key_background` itself now sweeps for those, gated on size so it cannot mistake
 a small design coincidence (the workbench raw's highlight seam happens to land
 on its own backdrop shade) for a real pocket.
-These tests build small synthetic sheets with all three shapes and prove each
-function clears exactly what it should, without touching a legitimate opaque
-pixel, and that `check_no_white_edges` fails exactly when it should.
+
+`erase_white_edges` and `check_no_white_edges` used to test absolute
+brightness ("does this look pale") rather than this image's own sampled
+backdrop, so a pale-figured sprite could not be told apart from the backdrop
+it was keyed against: run over the shipped chicken the old test erased 560 of
+its 826 pixels, almost all of them the bird's own white plumage (Ingrid,
+docs/design/09-art-direction.md "Where a figure meets the ground", card
+w34792c5046a). These tests build small synthetic sheets with all three shapes
+and prove each function clears exactly this image's own backdrop and its
+fringe, without touching a legitimate opaque pixel or a pale figure that has
+no known backdrop to compare against - and exercise the actual shipped
+sprites and raws that motivated the fix.
 
 Usage:
     python3 tools/asset_pipeline/check_postprocess.py
@@ -30,9 +39,12 @@ from PIL import Image
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from postprocess import (  # noqa: E402
-    _is_near_white, check_no_white_edges, default_palette_size,
-    erase_white_edges, key_background, quantize_palette,
+    _matches_backdrop, check_no_white_edges, default_palette_size,
+    erase_white_edges, fit_cell, key_background, quantize_palette,
+    sample_backdrop,
 )
+
+REPO = Path(__file__).resolve().parents[2]
 
 CREAM = (248, 244, 230, 255)   # the project's flood-key background colour
 FRINGE = (224, 217, 196, 255)  # a shade off CREAM — anti-aliasing blend, still near-white
@@ -56,6 +68,10 @@ def _grid(rows, colors=None):
 def test_surface_fringe_cleared():
     # A body block with one ring of fringe already surrounded by transparent
     # background (as if key_background had run and stopped one pixel short).
+    # The grid's own corners are transparent - as they would be after
+    # key_background ran - so this passes the backdrop explicitly, the way
+    # key_background's stashed `im.info["backdrop"]` would if this were the
+    # real chain instead of a synthetic grid.
     im = _grid([
         "......",
         ".ffff.",
@@ -64,7 +80,7 @@ def test_surface_fringe_cleared():
         ".ffff.",
         "......",
     ])
-    out = erase_white_edges(im)
+    out = erase_white_edges(im, backdrop=CREAM[:3])
     px = out.load()
     for x in range(6):
         for y in range(6):
@@ -72,7 +88,7 @@ def test_surface_fringe_cleared():
                 assert px[x, y][3] == 255, "body pixel erased at (%d,%d)" % (x, y)
             else:
                 assert px[x, y][3] == 0, "fringe/background survived at (%d,%d)" % (x, y)
-    check_no_white_edges(out)
+    check_no_white_edges(out, backdrop=CREAM[:3])
 
 
 def test_enclosed_pocket_cleared():
@@ -81,9 +97,10 @@ def test_enclosed_pocket_cleared():
     # below - modelling the gap between two feet, open to the ground under
     # them and closed everywhere else. `key_background`'s single-anchor
     # tolerance can lose this path partway along it (shading drifts it past
-    # the tolerance); the absolute near-white test does not depend on a path
-    # holding a fixed distance from one sampled anchor, so it reaches the
-    # whole corridor once it starts from the open ground below.
+    # the tolerance); testing against the sampled backdrop with a wider
+    # tolerance does not depend on a path holding a fixed distance from one
+    # sampled anchor, so it reaches the whole corridor once it starts from the
+    # open ground below.
     im = _grid([
         ".....",
         ".bbb.",
@@ -93,20 +110,21 @@ def test_enclosed_pocket_cleared():
         ".b.b.",
         ".....",
     ])
-    out = erase_white_edges(im)
+    out = erase_white_edges(im, backdrop=CREAM[:3])
     px = out.load()
     for y in (2, 3, 4):
         assert px[2, y][3] == 0, "enclosed near-white corridor survived at (2,%d)" % y
     for x, y in ((1, 1), (2, 1), (3, 1), (1, 2), (3, 2), (1, 3), (3, 3), (1, 4), (3, 4)):
         assert px[x, y][3] == 255, "body pixel wrongly erased at (%d,%d)" % (x, y)
-    check_no_white_edges(out)
+    check_no_white_edges(out, backdrop=CREAM[:3])
 
 
 def test_isolated_near_white_untouched():
     # A near-white patch with no path at all to the transparent border — every
     # neighbour on its own boundary is BODY, not near-white, on every side —
     # must survive, same as the fox's white chest fur in the original
-    # investigation.
+    # investigation. Passing the backdrop explicitly proves this is a
+    # connectivity result, not just "no backdrop was known so nothing happened".
     im = _grid([
         "......",
         ".bbbb.",
@@ -115,11 +133,11 @@ def test_isolated_near_white_untouched():
         ".bbbb.",
         "......",
     ])
-    out = erase_white_edges(im)
+    out = erase_white_edges(im, backdrop=CREAM[:3])
     px = out.load()
     for x, y in ((2, 2), (3, 2), (2, 3), (3, 3)):
         assert px[x, y][3] == 255, "isolated interior near-white wrongly erased at (%d,%d)" % (x, y)
-    check_no_white_edges(out)  # never bordered transparency, so nothing to flag either
+    check_no_white_edges(out, backdrop=CREAM[:3])  # never bordered transparency, nothing to flag either
 
 
 def test_key_background_clears_sealed_pocket():
@@ -176,6 +194,9 @@ def test_key_background_spares_thin_seam():
 
 
 def test_check_fails_without_erase():
+    # An un-erased sheet, checked against the backdrop it was actually keyed
+    # against (as `im.info["backdrop"]` or an explicit argument would carry
+    # in the real chain) - this must still fail.
     im = _grid([
         "......",
         ".ffff.",
@@ -185,10 +206,31 @@ def test_check_fails_without_erase():
         "......",
     ])
     try:
-        check_no_white_edges(im)
+        check_no_white_edges(im, backdrop=CREAM[:3])
     except AssertionError:
         return
     raise AssertionError("check_no_white_edges should have failed on an un-erased sheet")
+
+
+def test_check_passes_with_unknown_backdrop():
+    # The same un-erased sheet, but with no backdrop known at all - as if this
+    # were an already-finished sprite with no raw generation behind it any
+    # more (the shipped chicken, neighbour, farmer and first robot are all in
+    # exactly this state: `test_shipped_sprites_untouched` below exercises the
+    # real files). Flagging a pale figure's own colour as leftover background
+    # just because it looks pale is exactly the bug this fix removes, so with
+    # no way to know what the backdrop even was, the check must pass rather
+    # than guess.
+    im = _grid([
+        "......",
+        ".ffff.",
+        ".fbbf.",
+        ".fbbf.",
+        ".ffff.",
+        "......",
+    ])
+    check_no_white_edges(im)  # no backdrop param, and the grid's own corners are transparent
+    assert erase_white_edges(im.copy()).tobytes() == im.tobytes(), "unknown backdrop must be a no-op"
 
 
 def test_locked_palette_is_preserved():
@@ -202,16 +244,104 @@ def test_locked_palette_is_preserved():
     assert len(swatches) >= 30
     for swatch in swatches:
         rgb = tuple(bytes.fromhex(swatch[1:]))
-        assert not _is_near_white(rgb), swatch
-    assert _is_near_white(CREAM[:3])
-    assert _is_near_white(FRINGE[:3])
+        assert not _matches_backdrop(rgb, CREAM[:3]), swatch
+    assert _matches_backdrop(CREAM[:3], CREAM[:3])
+    assert _matches_backdrop(FRINGE[:3], CREAM[:3])
 
     # Check the actual erase behavior on the two closest anchors and stone.
+    # The backdrop is passed explicitly: this 3x1 swatch has no raw generation
+    # of its own, so there is nothing for a corner sample to find.
     for swatch in ("#eddab5", "#f6ddc4", "#b8b2ac"):
         rgb = tuple(bytes.fromhex(swatch[1:]))
         im = Image.new("RGBA", (3, 1), TRANSPARENT)
         im.putpixel((1, 0), rgb + (255,))
-        assert erase_white_edges(im).getpixel((1, 0)) == rgb + (255,), swatch
+        out = erase_white_edges(im, backdrop=CREAM[:3])
+        assert out.getpixel((1, 0)) == rgb + (255,), swatch
+
+
+def test_shipped_pale_sprites_untouched():
+    # The actual finding (card w34792c5046a): these four shipped sheets all
+    # carry the plain project cream, or a near-white blend of it, as real
+    # opaque body colour (a white chicken, a pale robot shell) - and all four
+    # already have fully transparent corners, because they are finished
+    # sprites with no raw generation behind them any more. The old absolute
+    # test erased 560 of the chicken's 826 pixels and failed the check on
+    # every one of the four; both must now leave them alone.
+    for name in ("chicken.png", "neighbour.png", "characters.png", "bot.png"):
+        im = Image.open(REPO / "assets" / "sprites" / "generated" / name).convert("RGBA")
+        before = im.tobytes()
+        check_no_white_edges(im)  # must not raise
+        out = erase_white_edges(im.copy())
+        assert out.tobytes() == before, "%s lost pixels to erase_white_edges" % name
+
+
+def test_obstacle_set_raws_still_cleaned():
+    # Regression guard for the raws the sealed-pocket rule (0b24999) was
+    # calibrated against. Unlike the shipped sprites above, these are real raw
+    # generations - opaque cream corners, backdrop still known - so
+    # key_background's own sealed-pocket sweep (untouched by this fix) should
+    # still close the big fence/gate pockets, and the newly backdrop-targeted
+    # erase_white_edges must neither regress that nor leave anything the check
+    # would flag. The opaque-pixel counts are a fingerprint against the
+    # unfixed code's own output (measured before this change): the fence keeps
+    # 13 scattered single-pixel cream flecks below `key_background`'s
+    # `min_span` floor, same as the workbench seam - real, but too thin to be
+    # the fence-gap pocket the floor exists to catch - and neither function
+    # removes anything further here.
+    raw_dir = REPO / "assets" / "raw" / "2026-08-29-obstacles-and-acorn"
+    expect_opaque = {"fence_0": 942, "gate_open_0": 2002, "gate_closed_0": 1605}
+    for name, want in expect_opaque.items():
+        im = Image.open(raw_dir / (name + ".png")).convert("RGBA")
+        assert im.getpixel((0, 0))[:3] == CREAM[:3], name  # the raw still has its backdrop
+        out = erase_white_edges(key_background(im))
+        check_no_white_edges(out)
+        opaque = sum(1 for p in out.getdata() if p[3] > 0)
+        assert opaque == want, (name, opaque, want)
+
+
+def test_cream_fringe_case_still_cleaned():
+    # "The cream-fringe case": a raw-style sheet with real opaque cream at its
+    # corners (so key_background samples the real backdrop and threads it
+    # through `im.info`) and a one-pixel anti-aliased fringe ring the corner
+    # flood's tight tolerance stops one step short of. Run through the real
+    # production chain - key_background then erase_white_edges with no
+    # backdrop passed by hand - the fringe must still come off.
+    im = _grid([
+        "cccccccc",
+        "ccffffcc",
+        "ccfbbfcc",
+        "ccfbbfcc",
+        "ccffffcc",
+        "cccccccc",
+    ], colors={"c": CREAM, "f": FRINGE, "b": BODY})
+    out = erase_white_edges(key_background(im))
+    px = out.load()
+    w, h = out.size
+    for x in range(w):
+        for y in range(h):
+            if (x, y) in ((3, 2), (4, 2), (3, 3), (4, 3)):
+                assert px[x, y][3] == 255, "body pixel erased at (%d,%d)" % (x, y)
+            else:
+                assert px[x, y][3] == 0, "cream/fringe survived at (%d,%d)" % (x, y)
+    check_no_white_edges(out)
+
+
+def test_key_background_stashes_backdrop_for_downstream():
+    im = Image.new("RGBA", (4, 4), CREAM[:3] + (255,))
+    out = key_background(im)
+    assert out.info.get("backdrop") == CREAM[:3]
+
+
+def test_fit_cell_propagates_backdrop():
+    im = Image.new("RGBA", (4, 4), (150, 90, 60, 255))
+    im.info["backdrop"] = CREAM[:3]
+    cell = fit_cell(im, 8, 8)
+    assert cell.info.get("backdrop") == CREAM[:3]
+
+
+def test_sample_backdrop_reads_the_corner():
+    im = Image.new("RGBA", (4, 4), CREAM[:3] + (255,))
+    assert sample_backdrop(im) == CREAM[:3]
 
 
 def test_quantize_palette_collapses_singleton_fringe():
@@ -310,7 +440,14 @@ TESTS = [
     test_key_background_clears_sealed_pocket,
     test_key_background_spares_thin_seam,
     test_check_fails_without_erase,
+    test_check_passes_with_unknown_backdrop,
     test_locked_palette_is_preserved,
+    test_shipped_pale_sprites_untouched,
+    test_obstacle_set_raws_still_cleaned,
+    test_cream_fringe_case_still_cleaned,
+    test_key_background_stashes_backdrop_for_downstream,
+    test_fit_cell_propagates_backdrop,
+    test_sample_backdrop_reads_the_corner,
     test_quantize_palette_collapses_singleton_fringe,
     test_quantize_palette_keeps_real_colors_not_averages,
     test_quantize_palette_noop_under_target,

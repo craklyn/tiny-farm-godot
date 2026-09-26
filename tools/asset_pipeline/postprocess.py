@@ -47,7 +47,7 @@ def key_background(im, tol=26, min_span=3):
     the raws that produced it (`assets/raw/2026-08-29-obstacles-and-acorn/`) still
     carry the defect. So after the flood, a second full-canvas pass finds every
     remaining opaque region that still matches the corner-sampled colour within
-    the same tight `tol` - not the generous `_is_near_white` test `erase_white_edges`
+    the same tight `tol` - not the wider `_matches_backdrop` test `erase_white_edges`
     uses for the anti-aliased fringe - and clears it, provided the region never
     touches the canvas border and is at least `min_span` pixels wide AND tall.
     A border-touching region is background the flood above already means to reach
@@ -71,6 +71,9 @@ def key_background(im, tol=26, min_span=3):
     w, h = im.size
     px = im.load()
     bg = px[0, 0][:3]
+    im.info["backdrop"] = bg  # so erase_white_edges/check_no_white_edges downstream
+    # know this generation's own key colour without re-sampling a corner that,
+    # by the time they run, this function has already cleared to transparent.
     seen = set()
     queue = deque([(0, 0), (w - 1, 0), (0, h - 1), (w - 1, h - 1)])
     while queue:
@@ -115,28 +118,51 @@ def key_background(im, tol=26, min_span=3):
     return im
 
 
-def _is_near_white(rgb, floor=180, spread=40):
-    """Bright AND low-saturation - a colour test, not a distance-from-one-swatch test.
+def _matches_backdrop(rgb, backdrop, tol=40, spread=40):
+    """True where `rgb` reads as THIS image's own sampled backdrop, not a real
+    design colour that happens to be pale.
 
-    A plain "every channel above N" test can't tell a measured real fringe pixel
-    (224, 217, 196) from this project's own skin-base swatch (246, 221, 196) -
-    they share the same minimum channel. What actually separates backdrop cream
-    from every locked palette anchor (`styles/tiny-farm.md`) is that the anchors
-    are all noticeably warm (a wide gap between their highest and lowest
-    channel) while cream and its anti-aliased blends are nearly grey: high and
-    close together. Measured against every anchor in that file, floor=180 /
-    spread=40 catches the backdrop (`#f8f4e6`, spread 18) and the measured
-    fringe shade above (spread 28) while clearing every real swatch. The
-    closest anchors are skin `#f6ddc4` (spread 50) and dirt highlight
-    `#eddab5` (spread 56). Stone `#b8b2ac` has spread 12 but sits eight
-    below the floor: raising its channels could erase a lighter stone tint.
+    Two gates, both needed:
+
+    - Within `tol` of the actual sampled `backdrop`, every channel. This is
+      what anchors the test to this generation's own key colour instead of a
+      generic "looks pale" rule - the project's first attempt at this
+      (`_is_near_white`, before this fix) tested absolute brightness with no
+      idea what any particular image's backdrop even was, so it erased a pale
+      figure's own edge right along with the real backdrop: run over the
+      shipped chicken it took 560 of its 826 pixels, most of them the bird's
+      own white plumage, nowhere near this sprite's background.
+    - Spread (max channel minus min) no wider than `spread`. `tol` alone still
+      catches this project's own skin swatch `#f6ddc4` - only 34 off the
+      standard cream backdrop `#f8f4e6`, well inside a tolerance wide enough
+      to reach the measured anti-aliased fringe blend (also up to 34 off).
+      What tells them apart is that backdrop and its blends are nearly grey
+      (spread <= 28 measured) while the skin swatch is noticeably warm
+      (spread 50); every anchor in `styles/tiny-farm.md` fails at least one
+      of the two gates against the standard cream backdrop.
     """
-    lo, hi = min(rgb), max(rgb)
-    return lo >= floor and hi - lo <= spread
+    if max(abs(c - c0) for c, c0 in zip(rgb, backdrop)) > tol:
+        return False
+    return (max(rgb) - min(rgb)) <= spread
 
 
-def erase_white_edges(im, floor=180, spread=40):
-    """Clear near-white opaque pixels that border the already-transparent region.
+def sample_backdrop(im):
+    """This generation's own backdrop colour, sampled the same corner
+    `key_background` reads (top-left).
+
+    Call it on the raw image, before `key_background` clears anything -
+    once a corner reads as background, the opaque colour used to key it is
+    gone, and no later step can recover it from the pixels alone. Ordinarily
+    nothing needs to call this directly: `key_background` samples the same
+    corner itself and stashes the result on `im.info["backdrop"]` for
+    `erase_white_edges` and `check_no_white_edges` to find.
+    """
+    im = im.convert("RGBA")
+    return im.load()[0, 0][:3]
+
+
+def erase_white_edges(im, backdrop=None, tol=40, spread=40):
+    """Clear this image's own backdrop colour where it still borders transparency.
 
     `key_background` only clears background reachable by flooding from the four
     corners. Two things survive that corner-only flood, and both were being
@@ -153,13 +179,37 @@ def erase_white_edges(im, floor=180, spread=40):
     pocket borders the outside background the moment the opening next to it is
     cleared. So instead of seeding from the four corners with a tight
     per-image tolerance, this floods outward from every pixel that is *already*
-    transparent, through any opaque pixel that reads as near-white in absolute
-    terms (`_is_near_white`) rather than relative to one sampled corner. Run it
-    right after `key_background`.
+    transparent, through any opaque pixel that reads as THIS image's own
+    sampled backdrop (`_matches_backdrop`) - never a generic "looks pale" rule,
+    which cannot tell a pale figure's own colour from the background it happens
+    to resemble. Run it right after `key_background`.
+
+    `backdrop` is normally supplied for you: `key_background` stashes the
+    corner colour it samples onto `im.info["backdrop"]`, and every call site in
+    this file runs this function right after that one on the same image
+    object, so the default here finds it there without either function having
+    to be told twice. Pass a colour explicitly to process an image
+    `key_background` did not touch. With no backdrop at all - none in
+    `im.info`, and this image's own corner already transparent, which is what
+    an already-finished, already-shipped sprite looks like - there is nothing
+    to compare against, and this is a no-op: a sprite with no known raw
+    backdrop is never touched, whatever colours it happens to carry. This is
+    why re-running this function over a shipped sprite (the chicken, the
+    neighbour, the farmer, the first robot) does nothing to it, rather than
+    eating into a pale figure that no longer carries any record of what
+    background it was ever keyed against.
     """
     im = im.convert("RGBA")
     w, h = im.size
     px = im.load()
+    if backdrop is None:
+        backdrop = im.info.get("backdrop")
+    if backdrop is None:
+        corner = px[0, 0]
+        if corner[3] > 0:
+            backdrop = corner[:3]
+    if backdrop is None:
+        return im
     seen = [[px[x, y][3] == 0 for y in range(h)] for x in range(w)]
     queue = deque((x, y) for x in range(w) for y in range(h) if seen[x][y])
     while queue:
@@ -168,29 +218,49 @@ def erase_white_edges(im, floor=180, spread=40):
             nx, ny = x + dx, y + dy
             if 0 <= nx < w and 0 <= ny < h and not seen[nx][ny]:
                 r, g, b, a = px[nx, ny]
-                if a > 0 and _is_near_white((r, g, b), floor, spread):
+                if a > 0 and _matches_backdrop((r, g, b), backdrop, tol, spread):
                     seen[nx][ny] = True
                     px[nx, ny] = (0, 0, 0, 0)
                     queue.append((nx, ny))
     return im
 
 
-def check_no_white_edges(im, floor=180, spread=40):
-    """Raise if any opaque near-white pixel still borders transparency.
+def check_no_white_edges(im, backdrop=None, tol=40, spread=40):
+    """Raise if any opaque pixel matching this image's own backdrop still
+    borders transparency.
 
     Call this on the finished cell/sheet right before it is written - the same
     place `check()` in a build script already asserts things like cell size and
     the palette lock. A clean pass means `erase_white_edges` ran and nothing
-    after it (a touch-up, a redrawn outline) painted near-white back in next to
-    the transparent background.
+    after it (a touch-up, a redrawn outline) painted the backdrop colour back
+    in next to the transparent background.
+
+    `backdrop` resolves the same way `erase_white_edges` resolves it: an
+    explicit argument, then `im.info["backdrop"]` (which survives a crop,
+    copy, or resize, but not a fresh `Image.new` canvas - a composed sheet
+    built that way carries none, same as a finished shipped sprite), then this
+    image's own corner if it is still opaque. With no backdrop known, there is
+    nothing to flag as leftover background, so this passes - it is not this
+    check's job to guess that a pale figure's own edge is background just
+    because it looks pale, which is the false failure this replaced (the
+    shipped chicken, neighbour, farmer, and first robot all failed the old
+    absolute test on their own pale pixels, not on any leftover backdrop).
     """
+    if backdrop is None:
+        backdrop = im.info.get("backdrop")
+    if backdrop is None:
+        corner = im.load()[0, 0]
+        if corner[3] > 0:
+            backdrop = corner[:3]
+    if backdrop is None:
+        return
     w, h = im.size
     px = im.load()
     bad = []
     for x in range(w):
         for y in range(h):
             r, g, b, a = px[x, y]
-            if a == 0 or not _is_near_white((r, g, b), floor, spread):
+            if a == 0 or not _matches_backdrop((r, g, b), backdrop, tol, spread):
                 continue
             for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
                 nx, ny = x + dx, y + dy
@@ -198,8 +268,9 @@ def check_no_white_edges(im, floor=180, spread=40):
                     bad.append((x, y))
                     break
     assert not bad, (
-        f"{len(bad)} near-white opaque pixel(s) border transparency, e.g. "
-        f"{bad[:5]} - run erase_white_edges before writing this sheet"
+        f"{len(bad)} opaque pixel(s) matching this image's backdrop border "
+        f"transparency, e.g. {bad[:5]} - run erase_white_edges before writing "
+        f"this sheet"
     )
 
 
@@ -219,6 +290,10 @@ def fit_cell(im, cw, ch, bottom=True, pad=1, lift=0):
     nw, nh = max(1, round(im.width * scale)), max(1, round(im.height * scale))
     im = im.resize((nw, nh), Image.NEAREST)
     cell = Image.new("RGBA", (cw, ch), (0, 0, 0, 0))
+    cell.info.update(im.info)  # carries `backdrop` (see key_background) through
+    # the one step in the typical chain that would otherwise lose it - a fresh
+    # canvas has none of its own - so check_no_white_edges still knows what to
+    # look for on the finished cell without every call site passing it by hand.
     y = (ch - nh - lift) if bottom else (ch - nh) // 2
     cell.alpha_composite(im, ((cw - nw) // 2, max(0, y)))
     return cell

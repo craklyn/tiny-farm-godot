@@ -2589,6 +2589,12 @@
   "58a3aeee4282d39d34a2": {
    "verdict": "ok"
   },
+  "58a7523d0d429fd81345": {
+   "instead": "Stop the sprite clean-up step from erasing the edges of pale figures",
+   "quote": "pale figures' own edges",
+   "verdict": "second-look",
+   "why": "The possessive construction makes the reader pause to understand that the cleanup is erasing the figures' edges."
+  },
   "58b9e84387db3fe71724": {
    "verdict": "ok"
   },
