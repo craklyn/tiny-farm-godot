@@ -892,6 +892,12 @@
    "verdict": "decode",
    "why": "“Candidate” and “recovery” are internal process terms that do not say what is on hold or what must be restored."
   },
+  "1d3ec6f8d4107873b79e": {
+   "instead": "Measure how long the game takes to draw a field of ripe crops, using a test scene and recording the result",
+   "quote": "a profile scene and a benchmark note",
+   "verdict": "decode",
+   "why": "The reader has to work out that this means a test scene used to measure performance and a written record of the result."
+  },
   "1d7d1f5065a6588426be": {
    "verdict": "ok"
   },
@@ -2666,6 +2672,12 @@
   },
   "5afa63722fa272974319": {
    "verdict": "ok"
+  },
+  "5afc89b3845c43393f02": {
+   "instead": "Measure how much a field of ripe crops slows the game, and record which part of the ripe appearance causes the slowdown",
+   "quote": "which part of the ripe look costs it",
+   "verdict": "second-look",
+   "why": "The reader has to translate “costs it” into which visual detail causes the slowdown."
   },
   "5b09805fd90265f5b55e": {
    "verdict": "ok"

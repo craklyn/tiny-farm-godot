@@ -94,6 +94,12 @@ python3 tools/measure_door_transition.py
 godot --path . res://tools/profile_door_backdrop.tscn
 tools/profile_android.sh
 
+# What a field of ripe crops costs: 10/25/50/100 ripe against the same crops unripe, plus
+# cheaper ways of drawing the ripe light, timed in place (docs/benchmarks/ripe-field-*.md)
+# — needs a display; on the tablet as its own profile package, like the one above
+godot --path . res://tools/profile_ripe_field.tscn
+TINY_FARM_PROFILE_MODE=ripe tools/profile_android.sh
+
 # The training workbench's five plates as PNGs (tools/shot_workbench_0..4.png) on a fresh
 # Mark III — needs a display; saves to scratch so it never seeds the next suite run
 godot --path . res://tools/capture_workbench.tscn

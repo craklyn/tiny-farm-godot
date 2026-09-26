@@ -9,6 +9,7 @@
 #   tools/profile_android.sh            # to whatever device `adb devices` lists
 #   tools/profile_android.sh --reuse    # the APK from the last run, no rebuild
 #   TINY_FARM_PROFILE_MODE=sim tools/profile_android.sh  # eight busy machines
+#   TINY_FARM_PROFILE_MODE=ripe tools/profile_android.sh # a field of ripe crops
 #
 # The build happens in a snapshot of the working tree (tracked files plus untracked
 # ones, playtests and raw art aside) under $TMPDIR, so project.godot and
@@ -29,6 +30,11 @@ if [[ "$MODE" == "sim" ]]; then
 	WORK="${TMPDIR:-/tmp}/tiny-farm-sim-profile"
 	SCENE="res://tools/profile_sim.tscn"
 	DONE="SIM_PROFILE done"
+elif [[ "$MODE" == "ripe" ]]; then
+	PKG="com.daniel.tinyfarm.ripeprofile"
+	WORK="${TMPDIR:-/tmp}/tiny-farm-ripe-profile"
+	SCENE="res://tools/profile_ripe_field.tscn"
+	DONE="PROFILE ripe field done"
 else
 	PKG="com.daniel.tinyfarm.profile"
 	WORK="${TMPDIR:-/tmp}/tiny-farm-profile"
@@ -91,7 +97,7 @@ adb -s "$SERIAL" logcat -c
 # The launcher activity is GodotAppLauncher, not GodotApp, and it is not exported to
 # the shell; let the system resolve it, as tools/deploy_android.sh does.
 adb -s "$SERIAL" shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null 2>&1
-for _i in $(seq 1 120); do
+for _i in $(seq 1 180); do
 	sleep 2
 	if adb -s "$SERIAL" logcat -d -s godot:* 2>/dev/null | grep -q "$DONE"; then
 		break
