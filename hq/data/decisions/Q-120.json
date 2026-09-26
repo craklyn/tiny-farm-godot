@@ -40,5 +40,11 @@
       "label": "The work that prepared this choice",
       "href": "#/work/wb95a0985e33"
     }
-  ]
+  ],
+  "ruled": {
+    "date": "2026-09-25",
+    "option": "a",
+    "summary": "Ruled 2026-09-25: (a). Dedicated marketing restarts with the next public update, with one small measured announcement; dormancy holds until then (S-24).",
+    "written_up": "docs/DECISION_LOG.md"
+  }
 }

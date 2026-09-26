@@ -41,5 +41,11 @@
       "at": "2026-09-24T18:07:17",
       "text": "I revised Q-119 around your bottom-bar inventory button: it would sit beside the current selected-item button, open a pop-up with larger item pictures and exact counts, and let you choose an item directly while the current button still cycles. The choices now let you choose that direction, keep the shipped on-screen display, or see a live comparison using buttons sized for touch first. The attached old text-versus-tiny-basket capture is labeled as historical; it does not show the pop-up. Your earlier noun-and-check-mark tap ruling remains separate. No gameplay controls were changed for this revision."
     }
-  ]
+  ],
+  "ruled": {
+    "date": "2026-09-24",
+    "option": "a",
+    "summary": "Ruled 2026-09-24: (a). A bottom-bar button opens a pictured inventory for direct selection (S-23, design/11). Not built yet.",
+    "written_up": "docs/DECISION_LOG.md"
+  }
 }

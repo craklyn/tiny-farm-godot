@@ -49,5 +49,11 @@
       "href": "#/work/wa4b6c18f577"
     }
   ],
-  "subject": "Whose field the robot farms"
+  "subject": "Whose field the robot farms",
+  "ruled": {
+    "date": "2026-09-25",
+    "option": "a",
+    "summary": "Ruled 2026-09-25: (a) keep the reward as it is, with Daniel's note to build tile assignment now. Built as S-26 in ccf0f9b: the player gives a Mark III up to 16 squares and it works only those.",
+    "written_up": "docs/design/06-bots-and-training.md"
+  }
 }

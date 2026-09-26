@@ -32,5 +32,11 @@
       "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
     }
   ],
-  "subject": "What goes inside a room"
+  "subject": "What goes inside a room",
+  "ruled": {
+    "date": "2026-09-24",
+    "option": "a",
+    "summary": "Ruled 2026-09-24: (a). Players place and rearrange separate furnishings on room floors (S-22, design/15 §9a). Not built yet.",
+    "written_up": "docs/design/15-interiors.md"
+  }
 }

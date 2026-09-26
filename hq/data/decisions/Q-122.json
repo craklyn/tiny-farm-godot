@@ -38,5 +38,11 @@
       "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
     }
   ],
-  "subject": "Sprite colour speckle"
+  "subject": "Sprite colour speckle",
+  "ruled": {
+    "date": "2026-09-25",
+    "option": "b",
+    "summary": "Ruled 2026-09-25: (b) replace only the rock at 10 colours, with Daniel's note that the fox must be redrawn. Both done in 5bd04fc (S-27).",
+    "written_up": "docs/DECISION_LOG.md"
+  }
 }

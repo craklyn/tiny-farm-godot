@@ -33,5 +33,11 @@
       "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/DESIGNER_QUEUE.md"
     }
   ],
-  "subject": "Crop counts on the main screen"
+  "subject": "Crop counts on the main screen",
+  "ruled": {
+    "date": "2026-09-25",
+    "option": "b",
+    "summary": "Ruled 2026-09-25: (b) small crop pictures with a count in the bar. Built as S-28 in abeab70.",
+    "written_up": "docs/design/11-ux-ui.md"
+  }
 }

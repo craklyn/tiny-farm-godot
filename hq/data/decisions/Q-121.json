@@ -40,5 +40,11 @@
       "href": "#/work/w6ff2240c1fb"
     }
   ],
-  "subject": "What a harvest is worth"
+  "subject": "What a harvest is worth",
+  "ruled": {
+    "date": "2026-09-25",
+    "option": "a",
+    "summary": "Ruled 2026-09-25: (a), amended in chat — keep the x3 harvest yield and lower the sprinkler to 50g, matching the scarecrow (S-25). Built in c3f204f.",
+    "written_up": "docs/DECISION_LOG.md"
+  }
 }

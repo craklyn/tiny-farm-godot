@@ -47,5 +47,11 @@
       "label": "butler's command list — every one of them moves build files",
       "href": "https://github.com/itchio/butler"
     }
-  ]
+  ],
+  "ruled": {
+    "date": "2026-09-19",
+    "option": "b",
+    "summary": "Ruled 2026-09-19: (b). A tagged release fills in the itch.io store page from a headless browser (S-21). Not built yet.",
+    "written_up": "docs/DECISION_LOG.md"
+  }
 }

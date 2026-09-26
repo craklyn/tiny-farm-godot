@@ -13,6 +13,12 @@
    "verdict": "second-look",
    "why": "“Resting” and “treatment” make the intended final way of displaying the counts take a second read."
   },
+  "008a60e6a00967c63e0f": {
+   "instead": "Record on nine decision cards what Daniel chose and where each decision was implemented",
+   "quote": "where it was built",
+   "verdict": "decode",
+   "why": "The sentence does not say what “it” refers to or what “built” means here."
+  },
   "00b51884d09275f08850": {
    "verdict": "ok"
   },
@@ -1814,6 +1820,9 @@
    "verdict": "ok"
   },
   "41fcc1471d7cb97e16b7": {
+   "verdict": "ok"
+  },
+  "4205dbd2f453c5197709": {
    "verdict": "ok"
   },
   "4272d303a8db36810dbf": {

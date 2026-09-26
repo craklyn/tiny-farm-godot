@@ -23,13 +23,39 @@
     }
   ],
   "links": [
-    {"label": "wobesound source and CC0 licence", "href": "https://freesound.org/people/wobesound/sounds/488393/"},
-    {"label": "wyronroberth source and CC0 licence", "href": "https://freesound.org/people/wyronroberth/sounds/516249/"},
-    {"label": "The sound direction", "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/10-audio-direction.md"},
-    {"label": "Source and processing credits", "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/CREDITS.md"}
+    {
+      "label": "wobesound source and CC0 licence",
+      "href": "https://freesound.org/people/wobesound/sounds/488393/"
+    },
+    {
+      "label": "wyronroberth source and CC0 licence",
+      "href": "https://freesound.org/people/wyronroberth/sounds/516249/"
+    },
+    {
+      "label": "The sound direction",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/10-audio-direction.md"
+    },
+    {
+      "label": "Source and processing credits",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/CREDITS.md"
+    }
   ],
   "attachments": [
-    {"type": "audio", "src": "assets/audio/sfx/plant_cc0_488393.wav", "caption": "(a) Planting beats — wobesound, CC0 1.0 (recommended for listening first)"},
-    {"type": "audio", "src": "assets/audio/sfx/plant_cc0_516249.wav", "caption": "(b) Planting (Seeds) — wyronroberth, CC0 1.0"}
-  ]
+    {
+      "type": "audio",
+      "src": "assets/audio/sfx/plant_cc0_488393.wav",
+      "caption": "(a) Planting beats — wobesound, CC0 1.0 (recommended for listening first)"
+    },
+    {
+      "type": "audio",
+      "src": "assets/audio/sfx/plant_cc0_516249.wav",
+      "caption": "(b) Planting (Seeds) — wyronroberth, CC0 1.0"
+    }
+  ],
+  "ruled": {
+    "date": "2026-09-24",
+    "option": "a",
+    "summary": "Ruled 2026-09-24: (a). wobesound's planting beats become the planting sound (design/10). Not wired yet.",
+    "written_up": "docs/design/10-audio-direction.md"
+  }
 }
