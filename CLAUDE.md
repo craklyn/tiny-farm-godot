@@ -101,6 +101,11 @@ tools/profile_android.sh
 godot --path . res://tools/profile_ripe_field.tscn
 TINY_FARM_PROFILE_MODE=ripe tools/profile_android.sh
 
+# How much of the farm page's every-frame redraw is the walk over every square, versus the
+# depth sort, versus actors and overlays (docs/benchmarks/farm-page-redraw-*.md) — needs a
+# display
+godot --path . res://tools/profile_farm_page.tscn
+
 # The training workbench's six plates as PNGs (tools/shot_workbench_0..5.png) on a fresh
 # Mark III — needs a display; saves to scratch so it never seeds the next suite run
 godot --path . res://tools/capture_workbench.tscn

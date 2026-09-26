@@ -83,6 +83,23 @@ var glyph_regions: Dictionary = {}    # T-28 glyph key -> [texture, Rect2]
 # counter is checked instead of the log. One int, no branch.
 var ripe_draws: int = 0
 
+# Wall-clock split of `_draw_pages`'s call for the visible farm page (y0 == 0 —
+# the same page `tools/profile_ripe_field.gd` already times whole as `page_ms`),
+# in microseconds: the walk over every square, queuing the overlay marks
+# (teaching, acks, refusals), inserting the player and every actor, the depth
+# sort, and executing every queued draw. Read by `tools/profile_farm_page.gd`;
+# five `Time.get_ticks_usec()` calls, the same cost `ripe_draws` above already
+# pays every frame for the same reason, and never branched on except by which
+# var a caller reads.
+var draw_walk_usec: int = 0
+var draw_overlay_usec: int = 0
+var draw_actor_usec: int = 0
+var draw_sort_usec: int = 0
+var draw_exec_usec: int = 0
+var draw_queue_len: int = 0
+var draw_queue_len_walk: int = 0
+var draw_queue_len_overlay: int = 0
+
 # The pools of light treatment C is currently emitting: one entry per ripe square
 # on the farm, `{ "at": Vector2, "light": Color }`, collected by the tile pass
 # that is already walking the map and drawn by the additive child above.
@@ -1424,6 +1441,9 @@ func _rows_hold(py: float, y0: int, y1: int) -> bool:
 
 func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 	var render_queue: Array[Dictionary] = []
+	# See `draw_walk_usec` etc. above: kept only for the visible farm page.
+	var _profiling := y0 == 0
+	var _t0 := Time.get_ticks_usec() if _profiling else 0
 	# Rebuilt by the pass that walks the farm page, then handed to the additive
 	# child at the end of it; crops grow nowhere else.
 	if y0 == 0:
@@ -1696,6 +1716,11 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 						"draw": func(): canvas.draw_texture_rect_region(tex, Rect2(px, py - (region.size.y - TILE_SIZE), region.size.x, region.size.y), region)
 					})
 
+	if _profiling:
+		draw_walk_usec = Time.get_ticks_usec() - _t0
+		draw_queue_len_walk = render_queue.size()
+		_t0 = Time.get_ticks_usec()
+
 	# **The orders a mark-1 robot has been taught** (2026-09-03), drawn while she
 	# is teaching it and only then. Without this, teaching is a gesture with no
 	# record: she taps eight tiles and the farm looks exactly as it did, so she
@@ -1867,6 +1892,11 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 				Color(1, 1, 1, fade))
 		})
 
+	if _profiling:
+		draw_overlay_usec = Time.get_ticks_usec() - _t0
+		draw_queue_len_overlay = render_queue.size()
+		_t0 = Time.get_ticks_usec()
+
 	# Insert player into render queue if player exists
 	var player = get_node_or_null("../Player")
 	if player and player.has_method("queue_render") \
@@ -1882,6 +1912,11 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 			if child.has_method("queue_render") and _rows_hold(child.position.y, y0, y1):
 				child.queue_render(canvas, render_queue)
 
+	if _profiling:
+		draw_actor_usec = Time.get_ticks_usec() - _t0
+		draw_queue_len = render_queue.size()
+		_t0 = Time.get_ticks_usec()
+
 	# Inject insertion order for stable sorting
 	for i in range(render_queue.size()):
 		if not render_queue[i].has("order"):
@@ -1894,9 +1929,16 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 		return a.y < b.y
 	)
 
+	if _profiling:
+		draw_sort_usec = Time.get_ticks_usec() - _t0
+		_t0 = Time.get_ticks_usec()
+
 	# Execute drawing commands
 	for entity in render_queue:
 		entity.draw.call()
+
+	if _profiling:
+		draw_exec_usec = Time.get_ticks_usec() - _t0
 
 	# And the light the ripe squares are giving off, on the layer that adds
 	# rather than paints. Told rather than polled: the layer has no idea which

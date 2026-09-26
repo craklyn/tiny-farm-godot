@@ -1588,6 +1588,12 @@
   "344667d7047c47ba005f": {
    "verdict": "ok"
   },
+  "344f95fe4dea00057615": {
+   "instead": "The farm spends almost as much time deciding what appears on screen as checking every square",
+   "quote": "sorting what it draws",
+   "verdict": "second-look",
+   "why": "“Sorting” describes an internal rendering step, while the reader needs the plain result of that work."
+  },
   "345a775a2fccb2867d12": {
    "verdict": "ok"
   },
@@ -2573,6 +2579,12 @@
   },
   "56edacfac767e32ceb78": {
    "verdict": "ok"
+  },
+  "570442a2eff219f7681e": {
+   "instead": "The farm spends almost as much time sorting what it draws as checking every square again",
+   "quote": "Measure the farm's every-frame redraw: sorting it costs nearly as much as checking every square",
+   "verdict": "decode",
+   "why": "The reader has to work out what “every-frame redraw” and “sorting it” mean and what observable problem they describe."
   },
   "57327c4559c29a32a63c": {
    "verdict": "ok"
@@ -6497,6 +6509,12 @@
   },
   "d69ae61da5b7b617ae96": {
    "verdict": "ok"
+  },
+  "d6c9575dda5213881fd5": {
+   "instead": "Measure how quickly the farm page redraws: sorting the farm takes nearly as long as checking every item in it",
+   "quote": "every-frame redraw: the sort costs nearly as much as the walk",
+   "verdict": "decode",
+   "why": "It uses engineering shorthand without saying what the page redraws, what is being sorted, or what the walk checks."
   },
   "d6e917b25b9bea983f16": {
    "instead": "None of the recorded options — revise and ask me again. Tell the studio what needs to change. The decision stays open.",
