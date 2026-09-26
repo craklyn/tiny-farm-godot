@@ -248,6 +248,7 @@ func _init() -> void:
 	test_mark_three_assigned_tiles()
 	test_refused_brain_action_replays()
 	test_workbench_shelf()
+	test_farm_page_draw_order_merge()
 
 	print("")
 	print(String("=").repeat(60))
@@ -512,6 +513,91 @@ func test_farm() -> void:
 	_assert(t.tiles[2][2]["growth_stage"] == 0, "Unwatered crop doesn't advance")
 	_assert(t.tiles[2][2]["state"] == "seeded", "Unwatered crop stays seeded")
 	t.free()
+
+
+# A queue shaped like `_draw_pages`'s own: `rows * per_row` tile-style entries,
+# one `TILE_SIZE` apart per row and unique-tagged — not a real tile walk, but
+# the same non-decreasing-Y shape it always produces, which is the only thing
+# `_merge_render_queue` (wec1e9f9eb27) assumes about its head.
+func _draw_order_test_head(rows: int, per_row: int, tile_size: int) -> Array[Dictionary]:
+	var head: Array[Dictionary] = []
+	for row in rows:
+		for col in per_row:
+			head.append({ "y": row * tile_size, "tag": "tile_%d_%d" % [row, col] })
+	return head
+
+
+# Runs both algorithms on the same queue and asserts they land on the
+# identical sequence of tags — the order-equality test wec1e9f9eb27 asks for,
+# checked entry by entry rather than trusting a size match alone.
+func _assert_draw_order_matches(FarmScript, label: String, queue: Array[Dictionary], walk_len: int) -> void:
+	var merged: Array[Dictionary] = FarmScript._merge_render_queue(queue, walk_len)
+	var reference: Array[Dictionary] = FarmScript._sort_render_queue_reference(queue)
+	_assert(merged.size() == reference.size() and merged.size() == queue.size(),
+		"%s: merge keeps every entry (%d merged, %d reference, %d queued)"
+			% [label, merged.size(), reference.size(), queue.size()])
+	for i in min(merged.size(), reference.size()):
+		_assert_quiet(merged[i]["tag"] == reference[i]["tag"],
+			"%s entry %d: got %s, old sort had %s"
+				% [label, i, merged[i].get("tag"), reference[i].get("tag")])
+	_flush_quiet("%s: the merge's order matches the old full sort's" % label)
+
+
+func test_farm_page_draw_order_merge() -> void:
+	print("\n--- Farm page draw-order merge (wec1e9f9eb27) ---")
+	# `_draw_pages` used to re-sort its whole render queue every frame even
+	# though the tile walk already emits its entries in non-decreasing Y
+	# (docs/benchmarks/farm-page-redraw-2026-09-26.md: 1.25-2 ms a frame on a
+	# roughly 300-400 entry queue). `_merge_render_queue` replaces that full
+	# sort with a merge of the tile queue's pre-sorted head against a small
+	# sorted tail of overlay and actor entries; this asserts the merge lands
+	# on exactly the order the retired full sort did
+	# (`_sort_render_queue_reference`, kept only for this comparison), across
+	# an empty, a mid-sized and a crowded farm, with actors deliberately tied
+	# to tile rows and to each other and with the overlay marks' own large
+	# sentinel Y values — the cases a merge is easiest to get wrong.
+	var FarmScript = load("res://world/farm.gd")
+	var tile_size := 16
+
+	# Empty: nothing tilled or standing on it, but the walk still queues
+	# every ground square — the tail is what is actually empty here.
+	var empty_head := _draw_order_test_head(8, 5, tile_size)
+	_assert_draw_order_matches(FarmScript, "empty farm", empty_head, empty_head.size())
+
+	# Mid-sized: a modest tile queue plus a few actors — one on the exact row
+	# of a tile entry (ties with tiles), two sharing a row with each other
+	# (ties with each other), one between rows (no tie at all).
+	var mid_head := _draw_order_test_head(24, 5, tile_size)
+	var mid_queue: Array[Dictionary] = mid_head.duplicate()
+	mid_queue.append_array([
+		{ "y": 3 * tile_size, "tag": "actor_on_tile_row" },
+		{ "y": 11 * tile_size, "tag": "actor_a_shared_row" },
+		{ "y": 11 * tile_size, "tag": "actor_b_shared_row" },
+		{ "y": 3.5 * tile_size, "tag": "actor_between_rows" },
+	])
+	_assert_draw_order_matches(FarmScript, "mid farm", mid_queue, mid_head.size())
+
+	# Crowded: a large tile queue, a dozen actors in scrambled append order
+	# (several sharing rows with tiles and with each other) and the overlay
+	# marks' own sentinel Ys, including two overlays tied with each other —
+	# a tie only the tail's own sort ever has to settle.
+	var crowded_head := _draw_order_test_head(20, 20, tile_size)
+	var crowded_queue: Array[Dictionary] = crowded_head.duplicate()
+	crowded_queue.append_array([
+		{ "y": 15 * tile_size, "tag": "actor_1_on_tile_row" },
+		{ "y": 2 * tile_size, "tag": "actor_2_on_tile_row" },
+		{ "y": 2 * tile_size, "tag": "actor_3_shares_actor_2s_row" },
+		{ "y": 7.5 * tile_size, "tag": "actor_4_between_rows" },
+		{ "y": 15 * tile_size, "tag": "actor_5_shares_actor_1s_row" },
+		{ "y": 0, "tag": "actor_6_top_row" },
+		{ "y": 19 * tile_size, "tag": "actor_7_bottom_row" },
+		{ "y": 9 * tile_size, "tag": "actor_8_lone_row" },
+		{ "y": 98000.0, "tag": "overlay_teach_dim" },
+		{ "y": 99000.0, "tag": "overlay_teach_order" },
+		{ "y": 100000.0, "tag": "overlay_ack_1" },
+		{ "y": 100000.0, "tag": "overlay_ack_2_ties_ack_1" },
+	])
+	_assert_draw_order_matches(FarmScript, "crowded farm", crowded_queue, crowded_head.size())
 
 
 func test_integration() -> void:

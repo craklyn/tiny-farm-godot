@@ -1730,9 +1730,16 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 						"draw": func(): canvas.draw_texture_rect_region(tex, Rect2(px, py - (region.size.y - TILE_SIZE), region.size.x, region.size.y), region)
 					})
 
+	# Where the tile walk's entries end and the overlay/actor tail begins —
+	# `_merge_render_queue` below needs this every frame, not only while
+	# profiling, so it is computed unconditionally rather than folded into
+	# the `_profiling`-gated block that used to be the only reader of this
+	# count.
+	var walk_len := render_queue.size()
+
 	if _profiling:
 		draw_walk_usec = Time.get_ticks_usec() - _t0
-		draw_queue_len_walk = render_queue.size()
+		draw_queue_len_walk = walk_len
 		_t0 = Time.get_ticks_usec()
 
 	# **The orders a mark-1 robot has been taught** (2026-09-03), drawn while she
@@ -1931,17 +1938,13 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 		draw_queue_len = render_queue.size()
 		_t0 = Time.get_ticks_usec()
 
-	# Inject insertion order for stable sorting
-	for i in range(render_queue.size()):
-		if not render_queue[i].has("order"):
-			render_queue[i]["order"] = i
-
-	# Sort by Y-coordinate (using order as tie-breaker)
-	render_queue.sort_custom(func(a, b): 
-		if a.y == b.y:
-			return a.order < b.order
-		return a.y < b.y
-	)
+	# The tile walk above already emitted `render_queue[0 ..< walk_len]` in
+	# non-decreasing Y (see `_merge_render_queue`'s own comment for why) — so
+	# merging that pre-sorted head against a stable sort of the small
+	# overlay/actor tail reproduces the old full `sort_custom` over every
+	# entry, for a fraction of its cost
+	# (docs/benchmarks/farm-page-redraw-2026-09-26.md, wec1e9f9eb27).
+	render_queue = _merge_render_queue(render_queue, walk_len)
 
 	if _profiling:
 		draw_sort_usec = Time.get_ticks_usec() - _t0
@@ -1959,6 +1962,79 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 	# squares are ripe and never looks.
 	if _ripe_glow_node != null:
 		_ripe_glow_node.queue_redraw()
+
+
+# Merges `_draw_pages`'s pre-sorted tile head with its small actor/overlay
+# tail, replacing the `sort_custom` over the *whole* queue this file used to
+# run every frame (wec1e9f9eb27; docs/benchmarks/farm-page-redraw-2026-09-26.md
+# measured that full sort at 1.25-2 ms on a roughly 300-400 entry queue, work
+# that touches no pixels — the tile walk visits rows in increasing Y and
+# stamps every entry it queues with that row's own Y, `py` or `py + 0.5`,
+# never anything else, so the head was always already in order).
+#
+# **Why this reproduces the retired sort exactly, not approximately.** That
+# sort stamped every entry's array index as `order` and broke Y-ties by
+# `a.order < b.order` — a *total* order, since every stamped `order` is
+# unique, so the result is the same however `sort_custom` itself walks the
+# array; it is fully determined by the `(y, order)` key. `queue`'s first
+# `walk_len` entries (the tile walk's own) carry exactly that key already —
+# their `order` would have been their array index, which is their position,
+# and their Y is non-decreasing by construction, so they are already sorted
+# by `(y, order)` among themselves. Every entry after `walk_len` (overlay
+# marks, the player, every actor) would have carried a strictly larger
+# `order` than every head entry — so on a Y-tie between a head entry and a
+# tail entry, the head entry always used to win, whatever the tie-breaking
+# values were. Sorting the tail alone by its own local append order (cheap:
+# a handful of entries, not hundreds) and then merging it against the
+# pre-sorted head, taking the head on a tie, produces the identical
+# sequence — the tail's relative order matches what the old `order` stamps
+# would have given it (a constant shift, `walk_len`, changes no comparison),
+# and the head-wins-ties rule holds unconditionally, not just for today's Y
+# ranges.
+static func _merge_render_queue(queue: Array[Dictionary], walk_len: int) -> Array[Dictionary]:
+	var head: Array[Dictionary] = queue.slice(0, walk_len)
+	var tail: Array[Dictionary] = queue.slice(walk_len)
+	for i in tail.size():
+		tail[i]["order"] = i
+	tail.sort_custom(func(a, b):
+		if a.y == b.y:
+			return a.order < b.order
+		return a.y < b.y
+	)
+	var merged: Array[Dictionary] = []
+	var hi := 0
+	var ti := 0
+	while hi < head.size() and ti < tail.size():
+		if head[hi].y <= tail[ti].y:
+			merged.append(head[hi])
+			hi += 1
+		else:
+			merged.append(tail[ti])
+			ti += 1
+	while hi < head.size():
+		merged.append(head[hi])
+		hi += 1
+	while ti < tail.size():
+		merged.append(tail[ti])
+		ti += 1
+	return merged
+
+
+# Test-only: the full sort `_merge_render_queue` replaced, over the same
+# `(y, order)` key its comment above works out — kept so the order-equality
+# test (`tests/test_runner.gd`) can assert the merge lands on exactly the
+# same sequence a full re-sort would have, on queues built to look like this
+# file's own. Never called from `_draw_pages` itself.
+static func _sort_render_queue_reference(queue: Array[Dictionary]) -> Array[Dictionary]:
+	var copy: Array[Dictionary] = queue.duplicate(true)
+	for i in copy.size():
+		copy[i]["order"] = i
+	copy.sort_custom(func(a, b):
+		if a.y == b.y:
+			return a.order < b.order
+		return a.y < b.y
+	)
+	return copy
 
 
 # Treatment C's light, drawn on the additive child built in `_ready`. Rings

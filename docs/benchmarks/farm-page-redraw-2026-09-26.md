@@ -172,12 +172,59 @@ out-of-order entries into an already-ordered list is `O(entries + actors)`, not
 1. TK — run `tools/profile_farm_page.tscn` on the tablet (needs its own profile-mode
    wiring, on the model of `TINY_FARM_PROFILE_MODE=ripe tools/profile_android.sh`) once it
    is back on wireless debugging, and fill in the tablet figures.
-2. Ship the sort fix (§6), with a test asserting the merged order matches today's
-   `sort_custom` output, and re-run this harness to confirm the measured gain (owner: the
-   farm renderer's seat).
+2. **Done (wec1e9f9eb27, §9 below)** — shipped the sort fix (§6), with a test asserting
+   the merge's order matches the old full sort's, and re-ran this harness to confirm the
+   measured gain.
 3. Measure a viewport-culled tile walk the same way, rather than trusting §6's estimate.
 
-## Raw output
+## 9. The sort fix, measured (wec1e9f9eb27, 2026-09-26)
+
+`_draw_pages` no longer calls `sort_custom` over the whole render queue. The tile walk's
+own entries (`render_queue[0 ..< walk_len]`) are already in non-decreasing Y — the fact §5
+above worked out — so `_merge_render_queue` (`world/farm.gd`) merges that pre-sorted head
+against a stable sort of just the small overlay/actor tail, instead of re-sorting
+everything. `_sort_render_queue_reference` keeps the retired full sort as a test-only
+comparison function; `tests/test_runner.gd`'s `test_farm_page_draw_order_merge` asserts the
+merge lands on exactly the same sequence the old sort did, on an empty-farm-shaped queue, a
+mid-sized one, and a crowded one with actors sharing rows with tiles and with each other and
+with the overlay marks' own sentinel Y values — 576 entries checked, all matching.[^order]
+
+Before/after, same six scenarios as §4, run back to back under `xvfb-run` (software
+rendering — a different renderer from §4's, so only the **within-this-run** before/after
+comparison is meaningful, not a cross-reference to §4's own millisecond figures):[^merge]
+
+| Scenario | sort_ms before | sort_ms after | Cut |
+| --- | ---: | ---: | ---: |
+| empty | 1.235 | 0.104 | 92% |
+| mid, no actors | 1.294 | 0.103 | 92% |
+| mid | 1.370 | 0.117 | 91% |
+| dense, no actors | 1.606 | 0.119 | 93% |
+| dense | 1.986 | 0.135 | 93% |
+| dense, assigned squares | 1.387 | 0.184 | 87% |
+
+The sort's own cost — previously comparable to a third of the tile walk (§4) — is now a
+small fraction of it, on every scenario. The walk, actor and overlay figures are unchanged
+(they use the same code, untouched by this fix), and `exec_ms` is unaffected as expected.
+
+**Checks run:** both Godot suites and the robot session pass, including the existing
+draw-order source-text assertions in `tools/test_runner.gd` (Scenario AJ — the parked
+robot still queues on the stall's own row and still wins its tie against the shed by
+insertion order) and `check_gateway.py`. `tools/check_visuals.sh` fails in this
+environment on *both* commits — 479,996 pixels differ (plus a `main.gd` script error
+unrelated to drawing) on the unfixed `3f97908`, 3,659 on the fix — so the failure predates
+this change and is not caused by it; this note does not touch the baseline. This matches
+this repo's own note on the check: it is a local diagnostic, untested on a GitHub runner,
+and not a release gate.
+
+[^order]: `python3 tools/run_godot_test.py -- godot --headless --path . --script
+res://tests/test_runner.gd`, `test_farm_page_draw_order_merge`, 2026-09-26.
+
+[^merge]: `xvfb-run -a godot --rendering-driver opengl3 --path . res://tools/profile_farm_page.tscn -- --passes=5`,
+before on commit `3f97908` (this note's own baseline commit), after on wec1e9f9eb27's
+commit, both desktop, 2026-09-26, llvmpipe software rendering under `xvfb-run` (not the
+gl_compatibility/radeonsi run §4 used) — output below.
+
+## Raw output (§4)
 
 ```text
 PROFILE farm page window=(800.0, 600.0) renderer=gl_compatibility device=AMD Radeon Graphics (radeonsi, rembrandt, LLVM 19.1.5, DRM 3.64, 7.0.0-31-generic) passes=5 frames=240 open_squares=106
@@ -199,3 +246,34 @@ under 0.08 ms throughout.
 
 [^method]: `godot --path . res://tools/profile_farm_page.tscn -- --passes=5`, desktop,
 2026-09-26 01:06-01:12, output above.
+
+## Raw output (§9 — before/after the merge fix, `xvfb-run`/llvmpipe)
+
+```text
+# Before (commit 3f97908 — the full sort_custom this note's §5-§6 measured)
+PROFILE farm page window=(800.0, 600.0) renderer=gl_compatibility device=llvmpipe (LLVM 19.1.5, 256 bits) passes=5 frames=240 open_squares=108
+PROFILE field                     crops actors  frame_ms    fps    calls |  walk_ms   ovl_ms actor_ms  sort_ms  exec_ms | q_walk  q_ovl  q_tot
+PROFILE empty                         0      0    16.490     61      378 |    4.012    0.007    0.024    1.235    0.108 |    270      0    272
+PROFILE mid, no actors               30      0    17.501     57      470 |    4.155    0.008    0.024    1.294    0.125 |    300      0    302
+PROFILE mid                          30      3    17.243     58      474 |    4.225    0.010    0.031    1.370    0.137 |    300      0    305
+PROFILE dense, no actors            108      0    24.922     40      689 |    4.693    0.007    0.022    1.606    0.146 |    378      0    380
+PROFILE dense                       108     10    26.113     38      696 |    4.759    0.016    0.040    1.986    0.171 |    378      0    389
+PROFILE dense, assigned squares     108     10    26.478     38      698 |    4.714    0.034    0.044    1.387    0.194 |    378      1    391
+PROFILE farm page done
+
+# After (wec1e9f9eb27 — _merge_render_queue)
+PROFILE farm page window=(800.0, 600.0) renderer=gl_compatibility device=llvmpipe (LLVM 19.1.5, 256 bits) passes=5 frames=240 open_squares=108
+PROFILE field                     crops actors  frame_ms    fps    calls |  walk_ms   ovl_ms actor_ms  sort_ms  exec_ms | q_walk  q_ovl  q_tot
+PROFILE empty                         0      0    17.482     57      380 |    4.001    0.007    0.022    0.104    0.113 |    285      0    287
+PROFILE mid, no actors               30      0    20.460     49      468 |    4.176    0.006    0.021    0.103    0.122 |    315      0    317
+PROFILE mid                          30      3    20.470     49      471 |    4.222    0.008    0.030    0.117    0.132 |    315      0    320
+PROFILE dense, no actors            108      0    27.267     37      689 |    4.675    0.007    0.018    0.119    0.150 |    393      0    395
+PROFILE dense                       108     10    27.903     36      696 |    4.640    0.013    0.037    0.135    0.163 |    393      0    404
+PROFILE dense, assigned squares     108     10    28.432     35      698 |    4.656    0.029    0.038    0.184    0.184 |    393      1    406
+PROFILE farm page done
+```
+
+Frame/fps figures above are noisier and slower throughout than §4's own (llvmpipe software
+rendering under `xvfb-run`, not the desktop's `radeonsi` — see the note on the table in §9)
+and are not compared before/after for that reason; `sort_ms` is measured on the same
+renderer in the same run and is what §9's table reports.
