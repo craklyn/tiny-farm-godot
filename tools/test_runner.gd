@@ -156,6 +156,7 @@ func _run_scenarios() -> void:
 	await _scenario_bi_teach_controls_clear_the_corner_cards()
 	await _scenario_bj_a_tap_on_the_tower_goes_inside()
 	await _scenario_bk_the_bin_hint_hides_on_touch()
+	await _scenario_bl_the_shelf_sells_a_pace()
 
 
 func _scenario_ba_crow_spook_stops_at_room_wall() -> void:
@@ -5328,8 +5329,8 @@ func _scenario_an_the_workbench_opens_from_the_yard() -> void:
 			and bench.portraits[0].size.y >= Workbench.TOUCH,
 		"at a size a small thumb can hit (%s)" % str(bench.portraits[0].size))
 
-	# --- five plates, five pages, one of them showing -------------------------
-	_assert(bench.pages.size() == 5, "the bench has five pages (%d)" % bench.pages.size())
+	# --- six plates, six pages, one of them showing ---------------------------
+	_assert(bench.pages.size() == 6, "the bench has six pages (%d)" % bench.pages.size())
 	var every_plate := true
 	var one_page := true
 	for i in bench.PLATES:
@@ -5343,7 +5344,7 @@ func _scenario_an_the_workbench_opens_from_the_yard() -> void:
 				showing += 1
 		if showing != 1 or not (bench.pages[i] as Control).visible:
 			one_page = false
-	_assert(every_plate, "each of the five plates lights when it is pressed")
+	_assert(every_plate, "each of the six plates lights when it is pressed")
 	_assert(one_page, "and exactly one page is showing at a time, its own")
 	var told_pages := true
 	for p in bench.pages:
@@ -5353,7 +5354,7 @@ func _scenario_an_the_workbench_opens_from_the_yard() -> void:
 
 	var plate_button := _find_button(bench, "Plate0")
 	_assert(plate_button != null and plate_button.size == Workbench.PLATE_SIZE,
-		"a plate is a target 148 by 60 (%s)"
+		"a plate is a target 120 by 60 (%s)"
 			% (str(plate_button.size) if plate_button != null else "-"))
 
 	bench.select_plate(0)
@@ -8470,3 +8471,149 @@ func _scenario_bk_the_bin_hint_hides_on_touch() -> void:
 	var real := InputEventMouseMotion.new()
 	real.position = Vector2(120, 90)
 	InputManager._unhandled_input(real)
+
+
+# --- Scenario BL: the bench's shelf sells a pace, and the pace is set by tap -----
+#
+# S-29 put a Mark III's learning upgrades on a shelf at the training workbench, and
+# Q-129 (a) made the first of them a pace setting. Both are Actions — a purchase and
+# an instruction — so a page that bought or set anything by writing the robot would
+# break the one rule `tools/check_gateway.py` cannot see in `ui/`. This walks the
+# real thing: a real bench set down, the real bench screen opened, the shelf's plate
+# pressed, the shelf's card pressed, the pace buttons pressed.
+func _scenario_bl_the_shelf_sells_a_pace() -> void:
+	print("\n--- Scenario BL: the workbench's shelf sells a pace, set by tap ---")
+
+	var menus = main_scene.menus
+	menus.close_menu()
+	main_scene.end_teaching()
+	GameState.gold = 3000
+	GameState.machines = {}
+	GameState.selected_seed_type = ""
+	await get_tree().process_frame
+	for raw in farm.sim.learners():
+		farm.apply_action({ "verb": "collect",
+			"target": farm.sim.actor_pos(String(raw)), "actor": "player" }, GameState)
+	await get_tree().process_frame
+
+	var mk3: String = await _buy_and_place("bot_mk3", Vector2i(16, 13))
+	_assert(mk3 != "", "a Mark III goes down for the shelf to sell to (%s)" % mk3)
+	if mk3 == "":
+		return
+	await _wait_until(func(): return menus.active_menu == "machine", 60)
+	menus.close_menu()
+	await get_tree().process_frame
+
+	# A real bench, because the purchase is refused anywhere else.
+	var bench_spot := _yard_spot_for_bench()
+	GameState.machines["workbench"] = 1
+	var set_down: Dictionary = farm.apply_action({ "verb": "place", "target": bench_spot,
+		"item": "workbench", "actor": "player" }, GameState)
+	_assert(set_down.get("ok", false), "a bench is set down in the yard (%s)" % str(set_down))
+	menus.open_workbench(bench_spot)
+	var opened := await _wait_until(func(): return menus.active_menu == "workbench", 60)
+	var bench = menus.workbench
+	_assert(opened and bench != null and bench.robot_id == mk3,
+		"the bench opens with the robot on it (%s)" % (bench.robot_id if bench != null else "-"))
+	if bench == null or bench.robot_id != mk3:
+		menus.close_menu()
+		return
+
+	# --- the sixth plate -------------------------------------------------------
+	var plate5 := _find_button(bench, "Plate5")
+	_assert(plate5 != null and plate5.size.x >= Workbench.TOUCH
+			and plate5.size.y >= Workbench.TOUCH,
+		"the bench has a sixth plate, the shelf, a thumb's size (%s)"
+			% (str(plate5.size) if plate5 != null else "-"))
+	if plate5 == null:
+		menus.close_menu()
+		return
+	plate5.pressed.emit()
+	for i in 3: await get_tree().process_frame
+	var shelf = bench.pages[5]
+	_assert(bench.plate == 5 and (shelf as Control).visible,
+		"pressing it shows the shelf (%d)" % bench.plate)
+
+	# --- a card she cannot afford ----------------------------------------------
+	var card := _find_button(shelf, "ShelfBuy0")
+	_assert(card != null and card.visible and card.size.x >= Workbench.TOUCH
+			and card.size.y >= Workbench.TOUCH,
+		"the pace setting is a card on the shelf, the whole of it a target (%s)"
+			% (str(card.size) if card != null else "-"))
+	if card == null:
+		menus.close_menu()
+		return
+	GameState.gold = 100
+	bench.refresh()
+	await get_tree().process_frame
+	_assert(card.disabled, "with 100 gold, the 150 card will not take a tap")
+	var before: int = farm.replay.entries.size()
+	card.pressed.emit()
+	await get_tree().process_frame
+	_assert(farm.replay.entries.size() == before and GameState.gold == 100,
+		"and nothing is bought or recorded (%d gold)" % GameState.gold)
+
+	# --- buying it ---------------------------------------------------------------
+	GameState.gold = 1000
+	bench.refresh()
+	await get_tree().process_frame
+	_assert(not card.disabled, "with 1000 gold it will")
+	AudioManager.last_sfx = ""
+	card.pressed.emit()
+	await get_tree().process_frame
+	_assert(GameState.gold == 850, "a tap buys it: 850 gold left (%d)" % GameState.gold)
+	_assert(BotBrain.has_upgrade(farm.sim.actor(mk3).get("extra", {}), "pace"),
+		"and the robot on the bench owns the pace setting")
+	_assert(AudioManager.last_sfx == "jingle",
+		"with the shop's own purchase sound (%s)" % AudioManager.last_sfx)
+	_assert(farm.replay.entries.size() == before + 1,
+		"exactly one Action reached the gateway (%d)" % (farm.replay.entries.size() - before))
+	var bought: Dictionary = farm.replay.entries[farm.replay.entries.size() - 1]
+	var aimed = bought.get("target", null)
+	_assert(String(bought.get("verb", "")) == "buy_upgrade"
+			and String(bought.get("item", "")) == "pace"
+			and String(bought.get("machine", "")) == mk3
+			and String(bought.get("actor", "")) == "player"
+			and aimed is Array and int(aimed[0]) == bench_spot.x and int(aimed[1]) == bench_spot.y,
+		"recorded as the player's `buy_upgrade` of pace for that robot, at the bench (%s)"
+			% str(bought))
+	_assert(not card.visible, "the bought card no longer takes a tap as a purchase")
+
+	# --- the pace, by tap ----------------------------------------------------------
+	var paces: Array = []
+	for p in 3:
+		paces.append(_find_button(shelf, "Pace%d" % p))
+	var all_there := true
+	for b in paces:
+		if b == null or not (b as Button).visible or (b as Button).size.x < Workbench.TOUCH \
+				or (b as Button).size.y < Workbench.TOUCH:
+			all_there = false
+	_assert(all_there, "three pace buttons appear in its place, each a thumb's size")
+	if not all_there:
+		menus.close_menu()
+		return
+	before = farm.replay.entries.size()
+	(paces[BotBrain.PACE_BOLD] as Button).pressed.emit()
+	await get_tree().process_frame
+	_assert(BotBrain.pace_of(farm.sim.actor(mk3).get("extra", {})) == BotBrain.PACE_BOLD,
+		"a tap on three chevrons sets it bold")
+	var paced: Dictionary = farm.replay.entries[farm.replay.entries.size() - 1]
+	_assert(farm.replay.entries.size() == before + 1
+			and String(paced.get("verb", "")) == "set_pace"
+			and int(paced.get("pace", -1)) == BotBrain.PACE_BOLD
+			and String(paced.get("machine", "")) == mk3,
+		"recorded as one `set_pace` (%s)" % str(paced))
+	(paces[BotBrain.PACE_BOLD] as Button).pressed.emit()
+	await get_tree().process_frame
+	_assert(farm.replay.entries.size() == before + 1,
+		"a second tap on the step it is already on records nothing")
+	(paces[BotBrain.PACE_CALM] as Button).pressed.emit()
+	await get_tree().process_frame
+	_assert(BotBrain.pace_of(farm.sim.actor(mk3).get("extra", {})) == BotBrain.PACE_CALM,
+		"and a tap on one chevron sets it calm")
+
+	menus.close_menu()
+	await get_tree().process_frame
+	farm.apply_action({ "verb": "collect", "target": farm.sim.actor_pos(mk3),
+		"actor": "player" }, GameState)
+	await get_tree().process_frame

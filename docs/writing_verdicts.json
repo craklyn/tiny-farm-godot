@@ -798,6 +798,12 @@
   "1a23a3a8cdd0cf089e4e": {
    "verdict": "ok"
   },
+  "1a2924f3062c0ab13b92": {
+   "instead": "Give each Mark III a slow, normal or fast learning speed from a new shelf on the workbench",
+   "quote": "calm, normal or bold learning speed",
+   "verdict": "second-look",
+   "why": "The labels do not plainly tell a stranger how the three speeds differ."
+  },
   "1a5942056df6383d948f": {
    "verdict": "ok"
   },
@@ -6096,6 +6102,12 @@
   "cbb8b323fcc104ce6735": {
    "verdict": "ok"
   },
+  "cbc67345d03256d72a7b": {
+   "instead": "Sell each Mark III a slow, normal or fast work speed from a new shelf on the workbench",
+   "quote": "a calm, normal or bold pace",
+   "verdict": "second-look",
+   "why": "The reader has to infer what these pace choices change for a Mark III."
+  },
   "cbf47ae76a4d7a992501": {
    "verdict": "ok"
   },
@@ -7195,6 +7207,9 @@
    "quote": "provenance entry",
    "verdict": "decode",
    "why": "'Provenance' is unexplained internal terminology, and 'entry' obscures that what's missing is a line in the credits."
+  },
+  "f27516532b743a7f7ed2": {
+   "verdict": "ok"
   },
   "f27580c9447f3618068b": {
    "verdict": "ok"

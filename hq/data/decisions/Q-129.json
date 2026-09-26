@@ -27,5 +27,11 @@
       "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/mockups/mk3_learning_shop/SKETCH.md"
     }
   ],
-  "subject": "The Mark III learning shop"
+  "subject": "The Mark III learning shop",
+  "ruled": {
+    "date": "2026-09-25",
+    "option": "a",
+    "summary": "Ruled 2026-09-25: (a) a pace setting for each robot. Built as the first thing on the workbench's shelf: bought once for a Mark III, then set calm, normal or bold, which changes how hard its nightly learning pushes without letting a big day push harder than before. Recorded as S-31.",
+    "written_up": "docs/design/06-bots-and-training.md"
+  }
 }

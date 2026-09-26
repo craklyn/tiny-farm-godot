@@ -1,16 +1,17 @@
-# workbench.gd — the bench she puts a learning robot on, and the five plates
+# workbench.gd — the bench she puts a learning robot on, and its six plates
 #
 # **What the bench is** (`design/14`, ruled whole as Q-101 on 2026-09-10). A
 # Mark III is the first machine in the game that decides for itself, and until now
 # the only thing the player could see of that was a scorecard on its panel. The
 # bench is where she reads the machine properly and where she turns the one dial
-# it has: what each thing it does is worth to her. Five plates across the top, one
-# page each — the dials, its eyes, its plate, its ledger, its mosaic.
+# it has: what each thing it does is worth to her. Six plates across the top, one
+# page each — the dials, its eyes, its plate, its ledger, its mosaic, and the shelf
+# its learning upgrades are bought from (S-29, 2026-09-25; design/14 §11).
 #
-# **This file is the shell and nothing else.** It draws the chrome, holds the five
+# **This file is the shell and nothing else.** It draws the chrome, holds the six
 # pages, decides which robot is on the bench, and owns the two pictures every page
 # needs (`draw_action_glyph` here, `BotScorecard.draw_pip` there). Every page is
-# its own file with one method, `show_robot(farm, actor_id)`, so the five of them
+# its own file with one method, `show_robot(farm, actor_id)`, so the pages
 # were built side by side without touching each other or this.
 #
 # **It is a menu, so the world holds while it is open** (ground rule 7). That is
@@ -18,9 +19,9 @@
 # the moment she opened the bench, not a feed she has to keep up with.
 #
 # **It never writes the robot.** Everything on screen is read out of `extra`
-# through `farm.sim`; the one thing the bench changes is a reward value, and that
-# goes through the gateway as a `tune` Action like every other change in the game
-# (S-3). `tools/check_gateway.py` does not scan `ui/`, so this rule is held here
+# through `farm.sim`; what the bench changes — a reward value, a purchase from the
+# shelf, a robot's pace — goes through the gateway as a `tune`, `buy_upgrade` or
+# `set_pace` Action like every other change in the game (S-3). `tools/check_gateway.py` does not scan `ui/`, so this rule is held here
 # by review and by the tests rather than by CI.
 #
 # Geometry is the mockups' (`docs/design/mockups/workbench/`), absolute against
@@ -41,11 +42,13 @@ const STRIP_RECT := Rect2(14, 14, 772, 62)     # the robots, the name, the close
 const WOOD_RECT := Rect2(14, 76, 772, 76)      # the bench top the plates sit on
 const BODY_RECT := Rect2(14, 152, 772, 434)    # everything a page may draw in
 
-const PLATES := 5
-const PLATE_SIZE := Vector2(148, 60)
+# Six plates since the shelf (S-29): 120 wide rather than the mockup's 148, so all
+# six sit on the bench top. Still twice a thumb's width and a finger's height.
+const PLATES := 6
+const PLATE_SIZE := Vector2(120, 60)
 const PLATE_Y := 84.0
 const PLATE_X0 := 20.0
-const PLATE_STRIDE := 152.0
+const PLATE_STRIDE := 126.0
 
 # **Every target a thumb has to find is 56 across.** The HUD's rule (S-6/S-7 — a
 # four-year-old's hand on a tablet), and the number the dials page uses for its
@@ -55,7 +58,7 @@ const PORTRAITS_SHOWN := 6
 
 # --- the colours the pages share ----------------------------------------------
 #
-# One language across the five pages, so a page cannot invent its own dark blue.
+# One language across the six pages, so a page cannot invent its own dark blue.
 # Reward rows are `BotScorecard.LINE_COLOURS` (the machine panel's chart already
 # speaks it); observation channels are `CHANNEL_COLOURS` below.
 const CARD := Color("1f1f2e")
@@ -136,10 +139,10 @@ var robots: Array = []
 ## The one on the bench, or "" when the player owns no learning robot yet.
 var robot_id: String = ""
 
-## Which plate is lit: 0 dials, 1 eyes, 2 plate, 3 ledger, 4 mosaic.
+## Which plate is lit: 0 dials, 1 eyes, 2 plate, 3 ledger, 4 mosaic, 5 shelf.
 var plate: int = 0
 
-## The five page Controls, in plate order.
+## The six page Controls, in plate order.
 var pages: Array = []
 
 ## A channel index the mosaic has asked the eyes to outline next time they draw,
@@ -181,6 +184,7 @@ func _build_pages() -> void:
 		"res://ui/workbench_plate.gd",
 		"res://ui/workbench_ledger.gd",
 		"res://ui/workbench_mosaic.gd",
+		"res://ui/workbench_shelf.gd",
 	]:
 		var page := Control.new()
 		page.set_script(load(script_path))
@@ -196,7 +200,7 @@ func _build_pages() -> void:
 		(pages[0] as Control).visible = true
 
 
-# --- the five plates ----------------------------------------------------------
+# --- the six plates -----------------------------------------------------------
 #
 # The faces and the glyphs are drawn by this node's own `_draw`, one place for the
 # whole strip of them; these are the touch targets on top, transparent so the
@@ -289,7 +293,7 @@ func refresh() -> void:
 
 
 ## Light one plate and show its page. Out-of-range is clamped rather than refused:
-## a plate index is never user input, it is one of five buttons.
+## a plate index is never user input, it is one of six buttons.
 func select_plate(index: int) -> void:
 	plate = clampi(index, 0, PLATES - 1)
 	for i in pages.size():
@@ -458,9 +462,9 @@ static func plate_rect(i: int) -> Rect2:
 	return Rect2(PLATE_X0 + PLATE_STRIDE * i, PLATE_Y, PLATE_SIZE.x, PLATE_SIZE.y)
 
 
-# The five plate faces, drawn from lines: sliders, an eye, three lines, a rising
-# line, a grid. No new art — the plates say what their page is about with the
-# simplest shape that could mean it.
+# The six plate faces, drawn from lines: sliders, an eye, three lines, a rising
+# line, a grid, a shelf with a coin on it. No new art — the plates say what their
+# page is about with the simplest shape that could mean it.
 static func _draw_plate_glyph(canvas: CanvasItem, index: int, r: Rect2, ink: Color) -> void:
 	var c := r.position + r.size / 2.0
 	match index:
@@ -496,6 +500,13 @@ static func _draw_plate_glyph(canvas: CanvasItem, index: int, r: Rect2, ink: Col
 				for gx in 3:
 					var cell := Rect2(c.x - 21.0 + gx * 14.0, c.y - 21.0 + gy * 14.0, 11.0, 11.0)
 					canvas.draw_rect(cell, ink if (gx == 2 and gy == 0) else Color(ink, 0.45))
+		5:
+			# The shelf: a plank on two brackets, a coin and a box standing on it.
+			canvas.draw_rect(Rect2(c.x - 34.0, c.y + 8.0, 68.0, 4.0), ink)
+			canvas.draw_rect(Rect2(c.x - 26.0, c.y + 12.0, 3.0, 8.0), Color(ink, 0.55))
+			canvas.draw_rect(Rect2(c.x + 23.0, c.y + 12.0, 3.0, 8.0), Color(ink, 0.55))
+			canvas.draw_circle(Vector2(c.x - 12.0, c.y - 2.0), 9.0, ink)
+			canvas.draw_rect(Rect2(c.x + 4.0, c.y - 14.0, 18.0, 22.0), Color(ink, 0.7))
 
 
 # --- the pictures every page shares -------------------------------------------
@@ -507,7 +518,7 @@ static func _draw_plate_glyph(canvas: CanvasItem, index: int, r: Rect2, ink: Col
 ## wandering and waiting — are lines, because the game has never had to say either
 ## of them before.
 ##
-## It lives on the shell rather than on a page because four of the five pages need
+## It lives on the shell rather than on a page because four of the six pages need
 ## it, and eight pictures defined twice is eight chances for two pages of one
 ## screen to disagree about what watering looks like.
 static func draw_action_glyph(canvas: CanvasItem, action: int, at: Vector2, size: float) -> void:
@@ -586,7 +597,7 @@ static func _draw_lens(canvas: CanvasItem, c: Vector2, half_w: float, half_h: fl
 
 
 ## The dash a page draws when there is no robot on the bench — one picture of
-## "nothing to show", in the middle of the body, the same on all five pages.
+## "nothing to show", in the middle of the body, the same on all six pages.
 static func draw_empty_dash(canvas: CanvasItem) -> void:
 	var c := BODY_RECT.position + BODY_RECT.size / 2.0
 	canvas.draw_rect(Rect2(c.x - 18.0, c.y - 3.0, 36.0, 6.0), INK_DIM)

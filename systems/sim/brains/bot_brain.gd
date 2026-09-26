@@ -307,6 +307,49 @@ const LEARN_RATE := 0.03
 # `test_learning_robot`'s assigned-squares arm.
 const LEARN_DAY_REF := 20.0
 
+# **Its pace: how hard its nights push** (Q-129 a, ruled 2026-09-25). A Mark III
+# she has bought the pace setting for at the workbench (S-29) can be set calm,
+# normal or bold, and the step each night takes is scaled by this table. Normal is
+# 1.0 and is the night every robot already had, to the bit: `_sleep_on_it`
+# multiplies by exactly 1.0 and divides by exactly the day-size charge it always
+# divided by, so a robot never paced — every robot in every save and replay written
+# before this — learns exactly as it did.
+#
+# **Pace rides under the day-size guard, not beside it.** The night's step is
+# `rate × pace ÷ max(1, pace × score ÷ LEARN_DAY_REF)`, which is
+# `rate × min(pace, LEARN_DAY_REF ÷ score)`: whatever the pace, no night pushes
+# harder than a normal night does on a day of `LEARN_DAY_REF` points. Bold makes a
+# quiet day count for as much as a reference day and no more; calm halves the step
+# on any day under twice the reference. The plain alternative — multiply the rate
+# and leave the guard as it was — was measured and rejected, because it is the
+# failure S-26 fixed come back through a menu: on her squares, 24 farms, days
+# 12-14, bold that way ended at 36.2 points a day against 51.7 at normal, behind
+# on 22 of the 24 farms.
+#
+# **Measured on the demo's 24 farms** (`tools/demo_learning_robot.gd`, which
+# prints this table every run; `--fortnight` for the second week). Points a day:
+#
+#                         open ground              given her squares
+#               days 4-7   days 5-7   days 12-14   days 5-7   days 12-14
+#     calm        19.0       19.2        32.3        60.2        51.4
+#     normal      20.8       20.9        33.1        60.7        51.7
+#     bold        22.1       22.1        31.6        58.4        50.3
+#     night off   17.6       17.8        29.1        60.4        52.7
+#
+# So each step is a trade and none is the trap S-26 closed. Bold gives a robot on
+# open ground a faster first week, with bigger swings from day to day (7.0 points
+# against 5.6), and is no better by the second; on her squares, where the days are
+# big and the guard holds it to normal after the third night, it is a point or two
+# behind normal, inside one week's spread. Calm is the slower start with the best
+# worst farm (15.6 against 11.6 over days 5-7) and is level again by the second week. The
+# step sizes are powers of two on purpose: on a day past the reference, bold's
+# night and normal's are the same number, not merely close
+# (`test_workbench_shelf`). [Playtest]
+const PACE_CALM := 0
+const PACE_NORMAL := 1
+const PACE_BOLD := 2
+const PACE_SCALES := [0.5, 1.0, 2.0]
+
 # **What we would do instead if this rung of the ladder does not learn** (P-5),
 # written here rather than in a doc so that the workbench's plate says what the
 # code says: the plate reads both of these, and the day a fallback is actually
@@ -851,6 +894,47 @@ static func assigned_keys(extra: Dictionary) -> Dictionary:
 		out[int(flat[i + 1]) * SimWorld.MAP_WIDTH + int(flat[i])] = true
 		i += 2
 	return out
+
+
+# --- what she has bought it at the bench (S-29) ----------------------------------
+#
+# The shelf's rows (`ShelfDefs`) are bought for one robot, and what it owns is a
+# sorted list of their keys in `extra["upgrades"]`. Absent is "nothing bought", so
+# a robot from a save written before the shelf existed needs no migration, and the
+# crate carries it with the rest of `extra` (Q-98). Sorted so two robots that were
+# bought the same things in a different order are the same robot to
+# `capture_canonical`.
+static func has_upgrade(extra: Dictionary, key: String) -> bool:
+	return key in (extra.get("upgrades", []) as Array)
+
+
+static func add_upgrade(extra: Dictionary, key: String) -> void:
+	var owned: Array = (extra.get("upgrades", []) as Array).duplicate()
+	if key in owned:
+		return
+	owned.append(key)
+	owned.sort()
+	extra["upgrades"] = owned
+
+
+# Its pace as a `PACE_*` step. Normal is the key's absence (see `set_pace`), and
+# anything unreadable is normal too, so a hand-edited save cannot make a night
+# push harder than the three steps allow.
+static func pace_of(extra: Dictionary) -> int:
+	var p := int(extra.get("pace", PACE_NORMAL))
+	if p < 0 or p >= PACE_SCALES.size():
+		return PACE_NORMAL
+	return p
+
+
+# **Normal is stored as nothing**, the way an empty assignment is: a robot she set
+# to bold and back is then the same robot, key for key, as one she never touched,
+# and the learning gate's robots — which are never paced — carry no new key.
+static func set_pace(extra: Dictionary, pace: int) -> void:
+	if pace == PACE_NORMAL:
+		extra.erase("pace")
+		return
+	extra["pace"] = pace
 
 
 # --- follow --------------------------------------------------------------------
@@ -1913,7 +1997,16 @@ func _sleep_on_it(extra: Dictionary) -> void:
 	# less, so the step stays the size the rate was chosen at regardless of
 	# which farm handed the robot its score. See `LEARN_DAY_REF` for the
 	# measurement this replaced.
-	per_decision /= maxf(1.0, score / LEARN_DAY_REF)
+	#
+	# **And the pace she set at the bench, inside that same charge** (Q-129 a):
+	# `pace × step ÷ max(1, pace × score ÷ LEARN_DAY_REF)`. At normal both factors
+	# are exactly 1.0, so this is the S-26 charge `step ÷ max(1, score ÷
+	# LEARN_DAY_REF)` to the bit; at any pace, no night pushes harder than a normal
+	# night on a reference day. See `PACE_SCALES` for why the pace sits inside the
+	# guard and not beside it.
+	var pace := float(PACE_SCALES[pace_of(extra)])
+	per_decision *= pace
+	per_decision /= maxf(1.0, pace * score / LEARN_DAY_REF)
 	# **Everything the ledger row needs, read before the slate below wipes it.**
 	# The day's counts are zeroed a dozen lines from here, so a row assembled at
 	# the end of this function would record a day of zeros — and would still look

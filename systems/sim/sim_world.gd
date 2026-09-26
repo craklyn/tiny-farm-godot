@@ -1593,7 +1593,7 @@ func water_tile(tx: int, ty: int) -> void:
 # Verbs that can change milestone inputs (harvest counts, gold); other verbs
 # skip the check — it dominated fast-forward throughput when run per action.
 const MILESTONE_VERBS := { "harvest": true, "collect": true, "sell": true, "sleep": true,
-		"buy_seed": true, "buy_machine": true }
+		"buy_seed": true, "buy_machine": true, "buy_upgrade": true }
 
 
 # Verbs that do not advance the day's clock: sleep ends it, and the shop and bin
@@ -1613,6 +1613,9 @@ const NON_WORK_VERBS := { "sleep": true, "sell": true, "withdraw_seed": true,
 		# player who spent a minute at the bench must not come back to a field
 		# full of crows she paid for by thinking.
 		"tune": true,
+		# ...and so is buying from the bench's shelf and setting a robot's pace
+		# (S-29, Q-129): an errand at the bench and an instruction to a machine.
+		"buy_upgrade": true, "set_pace": true,
 		# Teaching a mark-1 and sending it out are instructions, not strokes of
 		# work (2026-09-03). Charging the day's clock for pointing at eight tiles
 		# would make delegating the round cost more than doing it.
@@ -3162,6 +3165,58 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				dialled_extra["tuned"] = marks
 			return { "ok": true, "machine": dialled, "row": row, "value": value,
 				"previous": previous }
+
+		# **Buying a learning upgrade from the workbench's shelf** (S-29, Q-126 b;
+		# design/14 §11). A sibling of `buy_machine`, for the same corpus reason
+		# that verb gives for not reusing `buy_seed`: an old verb written into
+		# replays on disk is never reinterpreted.
+		#
+		# **At a bench, for a robot.** `target` is the square the bench stands on,
+		# and it has to be one — the shelf is on the bench, so a purchase made
+		# anywhere else is one the player could not have made (ground rule 1). The
+		# robot is named, as `assign_tiles` names it, because the bench's square
+		# is not the robot's. It applies to that robot only (S-29: per robot, for
+		# the reason the dials are), and goes into its `extra["upgrades"]`, which
+		# is saved with it and carried in the crate like everything else it has.
+		#
+		# Off the day's clock and free of energy, like `buy_machine`: an errand.
+		"buy_upgrade":
+			if gs == null: return _fail("no_state")
+			if get_object(target.x, target.y) != WorldLayout.WORKBENCH:
+				return _fail("no_workbench")
+			var upgraded := String(action.get("machine", ""))
+			if not actors.has(upgraded): return _fail("no_machine_here")
+			var upgraded_extra: Dictionary = actors[upgraded]["extra"]
+			if not upgraded_extra.has("weights"): return _fail("not_a_learner")
+			var shelf_key := String(action.get("item", ""))
+			if not shelf_key in ShelfDefs.ORDER: return _fail("not_offered")
+			if BotBrain.has_upgrade(upgraded_extra, shelf_key): return _fail("already_owned")
+			var cost := ShelfDefs.price_of(shelf_key)
+			if gs.gold < cost: return _fail("no_gold")
+			gs.set_gold(gs.gold - cost)
+			BotBrain.add_upgrade(upgraded_extra, shelf_key)
+			return { "ok": true, "machine": upgraded, "item": shelf_key, "price": cost }
+
+		# **Setting a Mark III's pace** (Q-129 a, ruled 2026-09-25). How hard the
+		# robot's nightly update pushes: calm, normal or bold (`BotBrain.PACE_*`).
+		# A setting on the robot, not a dial on the reward table, so a verb of its
+		# own rather than a row of `tune`. Only on a robot that was bought the pace
+		# setting at the bench; normal is the key's absence, so a robot set back to
+		# normal is exactly a robot never set. Named robot, flat int, free and off
+		# the clock — the shape of every other instruction she gives a machine.
+		"set_pace":
+			var paced := String(action.get("machine", ""))
+			if not actors.has(paced): return _fail("no_machine_here")
+			var paced_extra: Dictionary = actors[paced]["extra"]
+			if not paced_extra.has("weights"): return _fail("not_a_learner")
+			if not BotBrain.has_upgrade(paced_extra, "pace"): return _fail("not_owned")
+			var wanted_pace := int(action.get("pace", -1))
+			if wanted_pace < 0 or wanted_pace >= BotBrain.PACE_SCALES.size():
+				return _fail("bad_pace")
+			var previous_pace := BotBrain.pace_of(paced_extra)
+			BotBrain.set_pace(paced_extra, wanted_pace)
+			return { "ok": true, "machine": paced, "pace": wanted_pace,
+				"previous": previous_pace }
 
 		# **Teaching a mark-1 a tile** (designer, 2026-09-03). One tap, one entry in
 		# the machine's list, one recorded Action — so a session in which she

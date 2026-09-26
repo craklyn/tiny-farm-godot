@@ -232,16 +232,53 @@ seeing, a new mind, a new way of training, or data to train on is bought at the 
 a small shelf of its own, beside the dials and the eyes where she already tunes what the
 robot is paid for. The bench, the robots and everything else keep their place in the shop.
 
-Nothing is on the shelf yet, and nothing is built. The candidates are Milo's sketch
-(`mockups/mk3_learning_shop/SKETCH.md`); which is built first waits on Q-128 to Q-130. The
-first one designed is the wider view (§3 already draws whatever view the robot has), and
-what it does to what the robot learned is settled in `06-bots-and-training.md`, "A wider
-view keeps what it learned" (S-30): it keeps what still applies and relearns the rest.
+**Built 2026-09-26, with one thing on it: the pace setting (Q-129 a, S-31).** The other
+candidates are Milo's sketch (`mockups/mk3_learning_shop/SKETCH.md`) and wait on Q-128 and
+Q-130. The wider view is designed (§3 already draws whatever view the robot has), and what
+it does to what the robot learned is settled in `06-bots-and-training.md`, "A wider view
+keeps what it learned" (S-30): it keeps what still applies and relearns the rest.
 
 **What the shelf inherits from the bench.** A purchase is a verb through the gateway, like
 `tune` (§10), so a replay rebuilds the robot it bought for. It applies to the robot the
 bench is showing, not to every robot she owns, for the reason the dials are per robot.
 Prices and the shelf's look are for its build, `[Playtest]` like every other price.
+
+### What was built: the shelf and the pace card (Q-129 a, built 2026-09-26; S-31)
+
+Pictures of each moment: `mockups/workbench_shelf/` (shelf open, too little gold, bought,
+set bold), taken from the game by `tools/capture_workbench_shelf.tscn`.
+
+- **The shelf is the bench's sixth plate**, after the mosaic; its face is a plank with a coin
+  and a box on it. To fit six plates on the bench top each is now 120 wide rather than the
+  mockups' 148, still twice a thumb's width.
+- **One card per row of the catalogue** (`systems/shelf_defs.gd`, `ShelfDefs.ORDER`), top to
+  bottom across the page, so the next item — a practice (above), a pretrained brain (Q-128),
+  the wider view (S-30) — is one more row there and one more card here.
+- **Unbought, a card is its picture and its price, and the whole card is the button**, as a
+  packet is in the seed box: tap to buy. Too little gold, and the price is red and the card
+  refuses the tap. Her gold is shown with a coin at the page's bottom left, so a red price
+  has its reason on the same screen.
+- **Bought, the price is replaced by the item's controls, in the same place.** For the pace
+  setting that is three buttons, 96 by 72: one, two and three chevrons for calm, normal and
+  bold, the robot's current step lit in the bench's brass. The picture is the Mark III with
+  two chevrons beside it; once bought the chevrons leave the picture, so the three buttons
+  are the only chevrons on the card.
+- **Buying is the Action `buy_upgrade`**, with the bench's own square as its target, the
+  robot named, and the item's key. The gateway refuses it away from a bench
+  (`no_workbench`), for a machine that does not learn (`not_a_learner`), for anything not
+  on the shelf (`not_offered`), twice for the same robot (`already_owned`) and without the
+  gold (`no_gold`). What a robot owns is saved on it as `extra["upgrades"]` and carried in
+  the crate when she picks it up (Q-98).
+- **Setting the pace is the Action `set_pace`** (`machine`, `pace` 0 to 2), refused on a
+  robot not bought the setting (`not_owned`). A tap on the step it is already on sends
+  nothing. What the pace does to the robot's nights, and the measurement, are in `06`,
+  "Its pace: how hard its nights push".
+- **Per robot**, as ruled above: a second Mark III on the strip shows the card unbought
+  until it is bought for that robot too. Both Actions are free and off the day's clock.
+- **The price is 150** — a fifth of the robot it is for, half the bench. `[Playtest]`
+- Every row so far belongs to one robot (`scope: "robot"` in the catalogue). A row that
+  belonged to the whole farm would need a home for it on the farm's own state; none exists
+  yet, so none is written.
 
 ### The practice cards (Q-130, revised 2026-09-26; not built)
 

@@ -291,7 +291,7 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   `V0_2_1_PLAN.md` WI-9.
 
 - **Q-126 to Q-130 — The Mark III learning shop.** — **Ruling, open 2026-09-25; Q-126
-  and Q-127 ruled the same day, Q-128 to Q-130 still open.**
+  and Q-127 ruled the same day and Q-129 that night; Q-128 and Q-130 still open.**
   Milo's sketch (`docs/design/mockups/mk3_learning_shop/SKETCH.md`, 4f6ae2f) lays out
   twelve options for buying new brains, training methods and training data for the
   Mark III, and making your own. Its open questions are one card each, with no
@@ -318,6 +318,16 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
     widening averages 32.3 points a day kept against 26.7 started over (17 of 24 farms
     better). Reasoning and table in `design/06-bots-and-training.md` ("A wider view keeps
     what it learned"); `tools/measure_wider_view.gd`. Not built.
+  - **Q-129** ~~Which new way of training the Mark III should be built first?~~ — ✅
+    **ruled 2026-09-25: (a), a pace setting for each robot.** Recorded as S-31 and built
+    2026-09-26 as the first thing on the workbench's shelf: bought once for a robot (150
+    gold, `[Playtest]`), then calm, normal or bold, drawn as one, two and three chevrons.
+    Normal is the robot's night unchanged, to the bit; the pace sits inside the guard
+    against big days, so bold cannot push a sixty-point day harder than normal. On 24 farms
+    bold is a faster, less steady first week on open ground and no better by the second;
+    calm is slower and steadier. Design in `design/06-bots-and-training.md` ("Its pace")
+    and `design/14-training-workbench.md` §11; pictures in
+    `design/mockups/workbench_shelf/`.
   - **Q-130** Nightly practice for the Mark III: should the crow practice come first, with
     a size the player sets and no energy cost? — **revised 2026-09-26, open again.** Daniel
     picked none of the three options (best day, separate features, editor) and described

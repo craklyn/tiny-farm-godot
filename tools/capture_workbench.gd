@@ -2,13 +2,13 @@
 # (Q-101, v0.2.2 WI-2). The `capture_machines.gd` pattern. Needs a display:
 #   godot --path . res://tools/capture_workbench.tscn
 #
-# Writes `tools/shot_workbench_0.png` … `_4.png`, one per plate in bench order:
-# dials, eyes, plate, ledger, mosaic. The shots are for comparing against
+# Writes `tools/shot_workbench_0.png` … `_5.png`, one per plate in bench order:
+# dials, eyes, plate, ledger, mosaic, shelf. The shots are for comparing against
 # `docs/design/mockups/workbench/` by eye and are **not committed** — they are a
 # developer's look at the screen, regenerated whenever the bench changes.
 extends Node2D
 
-const PLATE_NAMES := ["dials", "eyes", "plate", "ledger", "mosaic"]
+const PLATE_NAMES := ["dials", "eyes", "plate", "ledger", "mosaic", "shelf"]
 
 
 func _ready() -> void:

@@ -61,7 +61,8 @@ godot --headless --path . --script res://tools/demo_robot_value.gd
 # farm, then the same week on 24 more against a control with the night switched
 # off — prints the tables the unit test's gate is taken from — and the same 24
 # weeks again with the robot given her sown squares (S-26), counting how many
-# squares of her sowing it watered
+# squares of her sowing it watered — and both again at calm and bold pace (S-31), about
+# three minutes in all; add `-- --fortnight` for the pace table over fourteen days
 godot --headless --path . --script res://tools/demo_learning_robot.gd
 
 # A Mark III given a wider view (S-30): a week at radius 2 on 24 farms, then a second
@@ -100,7 +101,7 @@ tools/profile_android.sh
 godot --path . res://tools/profile_ripe_field.tscn
 TINY_FARM_PROFILE_MODE=ripe tools/profile_android.sh
 
-# The training workbench's five plates as PNGs (tools/shot_workbench_0..4.png) on a fresh
+# The training workbench's six plates as PNGs (tools/shot_workbench_0..5.png) on a fresh
 # Mark III — needs a display; saves to scratch so it never seeds the next suite run
 godot --path . res://tools/capture_workbench.tscn
 

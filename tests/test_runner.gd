@@ -242,6 +242,7 @@ func _init() -> void:
 	test_save_v5_migration()
 	test_mark_three_assigned_tiles()
 	test_refused_brain_action_replays()
+	test_workbench_shelf()
 
 	print("")
 	print(String("=").repeat(60))
@@ -16961,3 +16962,263 @@ func test_refused_brain_action_replays() -> void:
 		"landing on the same farm and the same robot")
 	gs_again.free()
 	s.done()
+
+
+
+# --- The workbench's shelf, and the pace setting (S-29; Q-129 a, 2026-09-25) -----
+#
+# Daniel ruled that a Mark III's learning upgrades are bought at the training
+# workbench (S-29) and that the first of them is a pace setting (Q-129 a). The
+# purchase and the pace are both recorded player Actions, so everything below goes
+# through the gateway: what each refuses, what each costs, that normal pace is the
+# night the robot already had to the bit, that bold cannot push past what the
+# day-size guard allows on a big day, and that the pace survives the disk, the crate
+# and a replay. Design in `design/14` §11 and `design/06` ("Its pace").
+
+# A farm with a Mark III on it and a bench in the yard, both put down through the
+# gateway. Returns the session, the robot and the bench's square.
+func _shelf_yard(seed_value: int) -> Dictionary:
+	var s := _mk3_yard(seed_value)
+	var bot := _mk3_place(s, MK3_SPOT)
+	var bench := _yard_square(s.world)
+	s.act({ "verb": "buy_machine", "item": "workbench", "actor": "player" })
+	s.act({ "verb": "place", "target": bench, "item": "workbench", "actor": "player" })
+	s.gs.gold = 2000
+	return { "s": s, "bot": bot, "bench": bench }
+
+
+func _shelf_buy(s: LiveSession, bot: String, bench: Vector2i, item := "pace") -> Dictionary:
+	return s.act({ "verb": "buy_upgrade", "target": bench, "machine": bot, "item": item,
+		"actor": "player" })
+
+
+func _set_pace(s: LiveSession, bot: String, pace: int) -> Dictionary:
+	return s.act({ "verb": "set_pace", "target": s.world.actor_pos(bot), "machine": bot,
+		"pace": pace, "actor": "player" })
+
+
+func test_workbench_shelf() -> void:
+	print("\n--- The workbench's shelf and a Mark III's pace (S-29, Q-129) Tests ---")
+
+	# --- the catalogue ---------------------------------------------------------
+	_assert(ShelfDefs.ORDER == (["pace"] as Array[String]) and ShelfDefs.has("pace"),
+		"the shelf sells one thing so far, the pace setting (%s)" % str(ShelfDefs.ORDER))
+	_assert(ShelfDefs.price_of("pace") == 150 and ShelfDefs.scope_of("pace") == "robot",
+		"for 150 gold, bought for one robot (S-29)")
+	_assert(not MachineDefs.has("pace") and not ("pace" in MachineDefs.ORDER),
+		"and it is not in the seed box's catalogue — learning upgrades are sold at the bench")
+	_assert(BotBrain.PACE_SCALES.size() == 3
+			and float(BotBrain.PACE_SCALES[BotBrain.PACE_NORMAL]) == 1.0
+			and float(BotBrain.PACE_SCALES[BotBrain.PACE_CALM]) < 1.0
+			and float(BotBrain.PACE_SCALES[BotBrain.PACE_BOLD]) > 1.0,
+		"three steps, and normal is exactly the rate the robot always had (%s)"
+			% str(BotBrain.PACE_SCALES))
+
+	# --- what buying refuses ---------------------------------------------------
+	var yard := _shelf_yard(12901)
+	var s: LiveSession = yard["s"]
+	var bot := String(yard["bot"])
+	var bench: Vector2i = yard["bench"]
+	_assert(s.world.get_object(bench.x, bench.y) == WorldLayout.WORKBENCH,
+		"a bench stands in the yard (%s)" % str(bench))
+	var away := _shelf_buy(s, bot, MK3_SPOT)
+	_assert(not away.get("ok", true) and String(away.get("reason", "")) == "no_workbench",
+		"bought anywhere but at a bench, it is refused as no_workbench (%s)"
+			% String(away.get("reason", "")))
+	var junk := _shelf_buy(s, bot, bench, "nonsense")
+	_assert(not junk.get("ok", true) and String(junk.get("reason", "")) == "not_offered",
+		"a thing the shelf does not sell is refused as not_offered")
+	var hen := _shelf_buy(s, SimWorld.ACTOR_CHICKEN, bench)
+	_assert(not hen.get("ok", true) and String(hen.get("reason", "")) == "not_a_learner",
+		"and only a learning robot can be bought for (%s)" % String(hen.get("reason", "")))
+	var early_pace := _set_pace(s, bot, BotBrain.PACE_BOLD)
+	_assert(not early_pace.get("ok", true)
+			and String(early_pace.get("reason", "")) == "not_owned",
+		"a robot nobody bought the pace setting for cannot be set bold (%s)"
+			% String(early_pace.get("reason", "")))
+	s.gs.gold = 149
+	var short := _shelf_buy(s, bot, bench)
+	_assert(not short.get("ok", true) and String(short.get("reason", "")) == "no_gold"
+			and s.gs.gold == 149,
+		"a gold short, it is refused as no_gold and costs nothing (%d left)" % s.gs.gold)
+	_assert(not BotBrain.has_upgrade(s.world.actor(bot)["extra"], "pace"),
+		"and none of those refusals gave the robot anything")
+
+	# --- buying it -------------------------------------------------------------
+	s.gs.gold = 1000
+	var energy_before: int = s.gs.energy
+	var clock_before: int = s.gs.actions_today
+	var bought := _shelf_buy(s, bot, bench)
+	var extra: Dictionary = s.world.actor(bot)["extra"]
+	_assert(bought.get("ok", false) and s.gs.gold == 850
+			and BotBrain.has_upgrade(extra, "pace"),
+		"at the bench with 1000 gold, she buys it: 850 left, and the robot has it (%s)"
+			% str(bought))
+	_assert(s.gs.energy == energy_before and s.gs.actions_today == clock_before,
+		"an errand at the bench costs no energy and does not move the day's clock")
+	_assert(BotBrain.pace_of(extra) == BotBrain.PACE_NORMAL and not extra.has("pace"),
+		"it starts on normal, which is stored as nothing — buying alone changes no night")
+	var twice := _shelf_buy(s, bot, bench)
+	_assert(not twice.get("ok", true) and String(twice.get("reason", "")) == "already_owned"
+			and s.gs.gold == 850,
+		"a second purchase for the same robot is refused as already_owned, at no cost")
+	_assert(_json_plain(extra), "and what it owns is plain JSON, like everything on the robot")
+
+	# --- setting the pace ------------------------------------------------------
+	for wrong in [-1, 3]:
+		var bad := _set_pace(s, bot, wrong)
+		_assert_quiet(not bad.get("ok", true) and String(bad.get("reason", "")) == "bad_pace",
+			"pace %d is refused as bad_pace" % wrong)
+	_flush_quiet("a pace off the three steps is refused as bad_pace")
+	var bolder := _set_pace(s, bot, BotBrain.PACE_BOLD)
+	_assert(bolder.get("ok", false) and int(bolder.get("previous", -1)) == BotBrain.PACE_NORMAL
+			and BotBrain.pace_of(extra) == BotBrain.PACE_BOLD,
+		"she sets it bold, and the Action says what it was before (%s)" % str(bolder))
+	_assert(s.gs.energy == energy_before and s.gs.actions_today == clock_before,
+		"setting it is an instruction, free and off the clock")
+	_set_pace(s, bot, BotBrain.PACE_NORMAL)
+	_assert(not extra.has("pace"),
+		"and set back to normal it carries no key at all — the same robot as one never touched")
+
+	# --- per robot (S-29) ------------------------------------------------------
+	s.gs.gold = 2000
+	s.act({ "verb": "buy_machine", "item": "bot_mk3", "actor": "player" })
+	var second := String(s.act({ "verb": "place", "target": MK3_SPOT + Vector2i(3, 0),
+		"item": "bot_mk3", "actor": "player" }).get("machine", ""))
+	_assert(second != "" and not BotBrain.has_upgrade(s.world.actor(second)["extra"], "pace"),
+		"a second Mark III on the same farm has not been bought it (%s)" % second)
+	var theirs := _set_pace(s, second, BotBrain.PACE_BOLD)
+	_assert(not theirs.get("ok", true) and String(theirs.get("reason", "")) == "not_owned",
+		"so its pace cannot be set until it is bought for that robot too")
+	s.done()
+
+	# --- normal is today's night, to the bit -----------------------------------
+	# Four robots on one seed: never touched; bought the setting and left on normal
+	# after a trip to bold and back; bold; and calm. Pace acts only at night, so
+	# their first minute is the same minute. After the night the first two are the
+	# same robot weight for weight, calm has moved less and bold more.
+	var arms := {
+		"plain": -1, "normal": BotBrain.PACE_NORMAL, "bold": BotBrain.PACE_BOLD,
+		"calm": BotBrain.PACE_CALM,
+	}
+	var twins: Array = []
+	for arm in ["plain", "normal", "bold", "calm"]:
+		var t := _shelf_yard(12902)
+		var ts: LiveSession = t["s"]
+		var tb := String(t["bot"])
+		if int(arms[arm]) >= 0:
+			_shelf_buy(ts, tb, t["bench"])
+			_set_pace(ts, tb, BotBrain.PACE_BOLD)
+			_set_pace(ts, tb, int(arms[arm]))
+		ts.tick(SimClock.RATE * 60)
+		twins.append(t)
+	var day_scores: Array = []
+	for t in twins:
+		day_scores.append(float(t["s"].world.actor(t["bot"])["extra"]["score"]))
+	_assert(day_scores[0] == day_scores[1] and day_scores[0] == day_scores[2]
+			and day_scores[0] == day_scores[3],
+		"four robots on one seed play the same first minute whatever their pace (%s)"
+			% str(day_scores))
+	_assert(float(day_scores[0]) > 0.0 and float(day_scores[0]) < BotBrain.LEARN_DAY_REF,
+		"a small day with something in it, under the day-size reference (%.1f < %.1f)"
+			% [float(day_scores[0]), BotBrain.LEARN_DAY_REF])
+	var moved: Array = []
+	for t in twins:
+		t["s"].gs.weather = "sunny"
+		t["s"].act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+		moved.append(float(t["s"].world.actor(t["bot"])["extra"]["last_update"]))
+	var w_plain: Array = twins[0]["s"].world.actor(twins[0]["bot"])["extra"]["weights"]
+	var w_normal: Array = twins[1]["s"].world.actor(twins[1]["bot"])["extra"]["weights"]
+	_assert(w_plain == w_normal and w_plain.size() > 0,
+		"after the night, normal pace is the untouched robot weight for weight (%d weights)"
+			% w_plain.size())
+	_assert(float(moved[3]) < float(moved[1]) and float(moved[1]) < float(moved[2]),
+		"and on a small day calm moves it less and bold more: %.4f, %.4f, %.4f"
+			% [float(moved[3]), float(moved[1]), float(moved[2])])
+	for t in twins:
+		t["s"].done()
+
+	# --- a big day cannot be pushed harder -------------------------------------
+	# The failure the day-size guard fixed (S-26): a hard push on a day three times
+	# the size the rate was tuned on ended a week below a robot that never learned.
+	# Bold rides under the same guard, so on such a day it moves the robot exactly
+	# as far as normal does — whatever bold adds, it adds on small days only.
+	var big: Array = []
+	for pace in [BotBrain.PACE_NORMAL, BotBrain.PACE_BOLD]:
+		var t := _shelf_yard(12903)
+		var ts: LiveSession = t["s"]
+		var tb := String(t["bot"])
+		_shelf_buy(ts, tb, t["bench"])
+		_set_pace(ts, tb, pace)
+		ts.tick(SimClock.RATE * 60)
+		var ex: Dictionary = ts.world.actor(tb)["extra"]
+		ex["score"] = BotBrain.LEARN_DAY_REF * 3.0
+		ts.gs.weather = "sunny"
+		ts.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+		big.append((ex["weights"] as Array).duplicate())
+		ts.done()
+	_assert(big[0] == big[1],
+		"on a day of %d points a bold night moves the robot exactly as far as a normal one"
+			% int(BotBrain.LEARN_DAY_REF * 3.0))
+
+	# --- the disk, the crate and a replay --------------------------------------
+	var kept := _shelf_yard(12904)
+	var ks: LiveSession = kept["s"]
+	var kb := String(kept["bot"])
+	_shelf_buy(ks, kb, kept["bench"])
+	_set_pace(ks, kb, BotBrain.PACE_BOLD)
+	ks.tick(SimClock.RATE * 20)
+	var snapshot = JSON.parse_string(JSON.stringify(SaveGame.capture(ks.world, ks.gs)))
+	var gs_back = load("res://systems/game_state.gd").new()
+	gs_back.reset()
+	var restored := SimWorld.new()
+	_assert(SaveGame.restore(snapshot, restored, gs_back), "a farm with a paced Mark III saves")
+	var back_extra: Dictionary = restored.actor(kb)["extra"]
+	_assert(BotBrain.has_upgrade(back_extra, "pace")
+			and BotBrain.pace_of(back_extra) == BotBrain.PACE_BOLD,
+		"and the robot comes back owning the setting and still bold")
+	_assert(SaveGame.capture_canonical(restored, gs_back)
+			== SaveGame.capture_canonical(ks.world, ks.gs),
+		"the restored farm is the saved farm")
+	gs_back.free()
+	var lifted := ks.act({ "verb": "collect", "target": ks.world.actor_pos(kb),
+		"actor": "player" })
+	var boxed: Array = ks.gs.boxed.get("bot_mk3", [])
+	_assert(lifted.get("ok", false) and boxed.size() == 1
+			and BotBrain.has_upgrade(boxed[0], "pace")
+			and BotBrain.pace_of(boxed[0]) == BotBrain.PACE_BOLD,
+		"picked up, the crate keeps what she bought it and its pace (Q-98)")
+	var down_id := String(ks.act({ "verb": "place", "target": Vector2i(5, 5),
+		"item": "bot_mk3", "actor": "player" }).get("machine", ""))
+	_assert(down_id != ""
+			and BotBrain.pace_of(ks.world.actor(down_id)["extra"]) == BotBrain.PACE_BOLD,
+		"and set down elsewhere, it is still bold")
+	ks.done()
+
+	var yard_live := _shelf_yard(12905)
+	var live: LiveSession = yard_live["s"]
+	var lb := String(yard_live["bot"])
+	live.rebase()
+	_shelf_buy(live, lb, yard_live["bench"])
+	_set_pace(live, lb, BotBrain.PACE_BOLD)
+	live.tick(SimClock.RATE * 40)
+	live.gs.weather = "sunny"
+	live.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	_set_pace(live, lb, BotBrain.PACE_CALM)
+	live.tick(SimClock.RATE * 30)
+	live.gs.weather = "sunny"
+	live.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	var live_canonical := SaveGame.capture_canonical(live.world, live.gs)
+	var gs_again = load("res://systems/game_state.gd").new()
+	var again := SimWorld.new()
+	var replayed := ReplayLog.from_json(live.log.to_json())
+	replayed.apply_to(again, gs_again)
+	_assert(replayed.divergence == "",
+		"a session that bought the setting, went bold for a night and calm the next recomputes cleanly (%s)"
+			% replayed.divergence)
+	_assert(SaveGame.capture_canonical(again, gs_again) == live_canonical,
+		"landing on the same farm, the same gold and the same robot")
+	_assert(BotBrain.pace_of(again.actor(lb)["extra"]) == BotBrain.PACE_CALM,
+		"left on calm, where she left it")
+	gs_again.free()
+	live.done()

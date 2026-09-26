@@ -959,6 +959,91 @@ builds or edits (item 8's editor); a test ground that scores the robot without t
 (`14` §5's trial ground). Each practice is one recipe and one catalogue row, so each of
 these is a later shelf item, not a rewrite.
 
+### Its pace: how hard its nights push (Q-129 a, ruled 2026-09-25; S-31)
+
+**The ruling.** Of the three new ways of training in Milo's sketch, Daniel chose the pace
+setting first. It is the first thing on the workbench's shelf (S-29; the card is `14` §11):
+she buys it once for a Mark III, 150 gold `[Playtest]`, and can then set that robot calm,
+normal or bold. The pace scales how far each night's update moves the robot's weights.
+
+**Normal is the night it already had, to the bit.** Every robot starts on normal, and normal
+is stored as nothing (`extra["pace"]` absent), so a robot she never set, a robot set bold and
+back, and every robot in every save and replay written before this are the same robot. The
+night multiplies by exactly 1.0 and divides by exactly the day-size charge it always divided
+by. Checked two ways: a unit test plays a robot never touched and one bought the setting and
+left on normal and compares every weight after the night (`test_workbench_shelf`); and four
+weeks of the demo (both arms, two farms each) end on byte-identical weights before and after
+this change.
+
+**The pace sits inside the day-size guard, not beside it.** S-26 fixed a night that pushed as
+hard on a sixty-point day as on a twenty-point one. A pace that simply multiplied the rate
+would bring that failure back through a menu, so the night's step is
+
+`rate × pace ÷ max(1, pace × score ÷ LEARN_DAY_REF)`, which equals `rate × min(pace, LEARN_DAY_REF ÷ score)`.
+
+At any pace, no night moves the robot further than a normal night does on a day of
+`LEARN_DAY_REF` (20) points. Bold (2) makes a quiet day count for as much as a reference day
+and no more; on a bigger day it is exactly normal. Calm (0.5) halves the step on any day under
+forty points. The steps are powers of two so that "exactly normal" is exact, not close: a
+bold night after a sixty-point day is the same array of weights as a normal one
+(`test_workbench_shelf`). Practice runs (above), when built, add their decisions into the same
+night, so the pace applies to them too.
+
+**The plain multiplier was measured and rejected.** A throwaway variant of the night, played
+through the demo's own `compare()` on the same 24 farms and not kept: on her squares, bold
+as a plain multiplier ended days 12-14 at 36.2 points a day against 51.7 at normal, behind
+on 22 of the 24 farms. Inside the guard it ends at 50.3.
+
+**Measured** (`tools/demo_learning_robot.gd`, which prints this every run; `--fortnight` for
+fourteen days). The demo's 24 farms, points a day:
+
+| Open ground | Days 1-3 | Days 4-7 | Days 5-7 | Days 12-14 | Farms ending week 1 below the night-off robot | Worst farm, days 5-7 | Day-to-day swing |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Calm | 15.3 | 19.0 | 19.2 | 32.3 | 9 of 24 | 15.6 | 5.4 |
+| Normal | 15.5 | 20.8 | 20.9 | 33.1 | 5 of 24 | 11.6 | 5.6 |
+| Bold | 15.7 | 22.1 | 22.1 | 31.6 | 5 of 24 | 14.6 | 7.0 |
+| Night off | 15.5 | 17.6 | 17.8 | 29.1 | — | 11.4 | 5.2 |
+
+| Given her squares (S-26) | Days 1-3 | Days 4-7 | Days 5-7 | Days 12-14 | Farms ending week 1 below the night-off robot | Worst farm, days 5-7 | Day-to-day swing |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| Calm | 15.9 | 61.3 | 60.2 | 51.4 | 11 of 24 | 46.0 | 14.4 |
+| Normal | 15.9 | 61.8 | 60.7 | 51.7 | 12 of 24 | 47.6 | 13.6 |
+| Bold | 15.9 | 60.1 | 58.4 | 50.3 | 15 of 24 | 43.0 | 14.1 |
+| Night off | 15.8 | 61.3 | 60.4 | 52.7 | — | 50.5 | 15.2 |
+
+What that says:
+
+- **Bold is a faster first week on open ground, and a less steady one.** 22.1 a day over days
+  5-7 against 20.9, and its score moves further from one day to the next (7.0 against 5.6).
+  By the second week it is no better than normal (31.6 against 33.1).
+  So bold is a head start, not a better robot.
+- **Calm is a slower first week and a steadier one.** 19.2 against 20.9, but its worst farm is
+  the best worst farm of the three (15.6 against 11.6), and by the second week it is level
+  with normal within a point (32.3 against 33.1).
+- **On her squares the pace barely matters, and bold is not the better choice there.** From
+  day 4 her crop reaches the bin and days run to sixty points, three times the reference, so
+  the guard holds every pace to the same night; the three differ only on the first three
+  nights. Bold's week ends 2.3 a day below normal there (ahead on 9 of 24 farms), within how
+  much one week varies but in the wrong direction, and by the second week it is 1.4 below.
+  (In the second week on her squares even the robot with its nights switched off is ahead,
+  52.7 a day: her crop has gone to the bin and every robot is farming its own resowing.
+  That is the learning gate's business, not the pace's.)
+- **No step is a trap in the sense S-26 fixed**: none ends a fortnight far below normal on
+  either arm, because the guard cannot be pushed past. Which step to show first, and whether
+  bold should say anything on a robot given squares, are questions for playtest, not for this
+  table.
+
+**The Actions.** `set_pace` with `machine` and `pace` (0 calm, 1 normal, 2 bold); refused on a
+machine that does not learn, on a robot not bought the setting, and for any other number.
+Buying the setting is the shelf's `buy_upgrade` (`14` §11). Both are her instructions, free
+and off the clock; a bot has no reason to emit either and no path that does. The pace is
+saved on the robot, recomputed into every night on replay, and carried in the crate when she
+picks it up (Q-98).
+
+**Not in this version:** a pace chosen per night or per job; a pace shown anywhere but the
+bench (the panel and the plate do not mention it); an explanation of what each step does
+beyond its picture.
+
 ### Its day
 
 It wakes at the day turn with a full meter (600 units — `ACTOR_MAX_ENERGY`, the same as
@@ -1166,6 +1251,7 @@ that reads as broken.
 | The two-farm learning-curve demo and its gate | `tools/demo_learning_robot.gd` + `test_learning_robot()` |
 | Her squares: the `assign_tiles` verb, the limit and walk back, the masked view (S-26) | `systems/sim/sim_world.gd`, `bot_brain.gd`, `observation.gd`; the tap in `systems/action_router.gd`; the mode in `main.gd`; the marks in `world/farm.gd`; tests `test_mark_three_assigned_tiles()` and Scenario BG; pictures `tools/capture_assign_tiles.tscn` |
 | A wider view keeping what it learned (S-30): the proposed mapping `widen` and the 24-farm measurement; not built | `tools/measure_wider_view.gd` + `test_wider_view()` |
+| Its pace (S-31): the three steps and the night's use of them; the `set_pace` verb; the shelf's `buy_upgrade` and catalogue; the bench card | `bot_brain.gd` (`PACE_SCALES`, `_sleep_on_it`), `sim_world.gd`, `systems/shelf_defs.gd`, `ui/workbench_shelf.gd`; tests `test_workbench_shelf()` and Scenario BL; the pace table in `tools/demo_learning_robot.gd`; pictures `tools/capture_workbench_shelf.tscn` |
 | Practice runs (Q-130): the run and the night's pooling, the practice list; not built | `systems/sim/practice.gd` and `systems/practice_defs.gd` (both new) |
 
 The build plan, with interfaces and acceptance criteria per work item, is

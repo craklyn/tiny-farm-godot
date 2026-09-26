@@ -602,6 +602,24 @@ against 26.7 for one that starts over. Full reasoning, the mapping and the table
 `design/06-bots-and-training.md` ("A wider view keeps what it learned"); the measurement
 is `tools/measure_wider_view.gd`, the identity is gated by `test_wider_view`. Not built.
 
+### S-31. A Mark III's first learning upgrade is a pace for its nights
+**Ruled 2026-09-25 (Q-129, option a).** Of the three new ways of training in Milo's sketch —
+a pace setting, a different learning method, learning by copying her own days — the pace
+setting is built first, as the first thing on the workbench's shelf (S-29). She buys it once
+for one Mark III, 150 gold `[Playtest]`, and can then set that robot calm, normal or bold,
+drawn as one, two and three chevrons; the step each night's learning takes is scaled by 0.5,
+1 or 2. Normal is the default and is the night every robot already had, to the bit. The pace
+sits inside the day-size guard (S-26): no night moves the robot further than a normal night
+on a 20-point day, so bold makes a quiet day count for more and cannot bring back the big-day
+overshoot the guard fixed. A plain multiplier was measured and rejected (on her squares, 36.2
+points a day against 51.7 in the second week). Measured on the demo's 24 farms: on open
+ground bold is a faster first week (22.1 against 20.9 a day over days 5-7) and less steady
+from day to day, calm is slower and steadier, and by the second week neither beats normal; on
+her squares the pace barely matters and bold is slightly behind. Buying and setting are
+recorded player Actions (`buy_upgrade`, `set_pace`), saved on the robot and kept when she
+picks it up (Q-98). Built 2026-09-26; design in `design/06-bots-and-training.md` ("Its pace")
+and `design/14-training-workbench.md` §11. Options (b) and (c) stay in the sketch.
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported

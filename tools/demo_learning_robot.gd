@@ -197,7 +197,15 @@ func _init() -> void:
 	code = maxi(code, _summarise(open_ground))
 	# ...and the same two dozen weeks again with the robot given two-thirds of her
 	# block to work (Q-124), against the weeks above. About as long again to run.
-	code = maxi(code, _summarise_assigned(many(SEEDS, 7, true), open_ground))
+	var assigned := many(SEEDS, 7, true)
+	code = maxi(code, _summarise_assigned(assigned, open_ground))
+	# ...and both of those again at the other two paces (Q-129 a), against the
+	# normal-pace weeks already played. `--fortnight` plays the pace table over
+	# fourteen days instead of seven, several minutes more.
+	if "--fortnight" in OS.get_cmdline_user_args():
+		code = maxi(code, _summarise_pace(many(SEEDS, 14), many(SEEDS, 14, true)))
+	else:
+		code = maxi(code, _summarise_pace(open_ground, assigned))
 	quit(code)
 
 
@@ -224,7 +232,8 @@ func _init() -> void:
 #
 # **`assign` gives it `MINE` before its first morning** (Q-124). Off by default, so
 # the week the gate is measured on is the week it always was.
-static func run(days := 7, farm_seed := SEED, learn := true, assign := false) -> Dictionary:
+static func run(days := 7, farm_seed := SEED, learn := true, assign := false,
+		pace := BotBrain.PACE_NORMAL) -> Dictionary:
 	var gs = load("res://systems/game_state.gd").new()
 	gs.reset()
 	SimRng.reseed(farm_seed)
@@ -247,6 +256,11 @@ static func run(days := 7, farm_seed := SEED, learn := true, assign := false) ->
 	var placed: Dictionary = world.apply_action({ "verb": "place", "target": SPOT,
 		"item": "bot_mk3", "actor": "player" }, gs)
 	var robot := String(placed.get("machine", ""))
+	# **Its pace** (Q-129 a), written straight onto the robot as the weights are
+	# put back for the control below: staging, not the measurement. In the game it
+	# is bought at a bench and set with `set_pace`; this farm has no bench, and a
+	# bench standing in the yard would be one more thing the week measured.
+	BotBrain.set_pace(world.actor(robot)["extra"], pace)
 	if assign:
 		var flat: Array = []
 		for y in range(MINE.position.y, MINE.end.y):
@@ -396,12 +410,13 @@ static func mean_rows(splits: Array, first: int, last: int) -> Array:
 # One record per farm per arm, and no averages — `summary()` below does the
 # arithmetic, so that a caller who wants the first eight farms of two dozen can
 # have them without playing them again.
-static func compare(seeds: Array, days := 7, assign := false) -> Dictionary:
-	var out := { "seeds": seeds.duplicate(), "days": days, "assign": assign }
-	for arm in ["learn", "control"]:
+static func compare(seeds: Array, days := 7, assign := false,
+		pace := BotBrain.PACE_NORMAL, arms := ["learn", "control"]) -> Dictionary:
+	var out := { "seeds": seeds.duplicate(), "days": days, "assign": assign, "pace": pace }
+	for arm in arms:
 		var rows: Array = []
 		for farm_seed in seeds:
-			var week: Dictionary = run(days, int(farm_seed), arm == "learn", assign)
+			var week: Dictionary = run(days, int(farm_seed), arm == "learn", assign, pace)
 			var scores: Array = week["scores"]
 			var late_first := maxi(1, days - 2)
 			rows.append({
@@ -414,6 +429,8 @@ static func compare(seeds: Array, days := 7, assign := false) -> Dictionary:
 				"crows": mean_of_days(week["crows"], late_first, days),
 				"hers_early": mean_of_days(week["hers"], 1, 3),
 				"hers_late": mean_of_days(week["hers"], late_first, days),
+				# The whole week, day by day, for the pace table's per-farm reads.
+				"scores": scores.duplicate(),
 			})
 		out[arm] = rows
 	return out
@@ -444,11 +461,12 @@ static func summary(cmp: Dictionary, arm: String, count := -1) -> Dictionary:
 
 # The two dozen farms under the one in the table: `SEED`, and the twenty-three
 # after it.
-static func many(count := SEEDS, days := 7, assign := false) -> Dictionary:
+static func many(count := SEEDS, days := 7, assign := false,
+		pace := BotBrain.PACE_NORMAL, arms := ["learn", "control"]) -> Dictionary:
 	var seeds: Array = []
 	for i in count:
 		seeds.append(SEED + i)
-	return compare(seeds, days, assign)
+	return compare(seeds, days, assign, pace, arms)
 
 
 # --- staging ------------------------------------------------------------------
@@ -668,3 +686,72 @@ func _summarise_assigned(cmp: Dictionary, open_ground: Dictionary) -> int:
 	print("A square counts as hers only while it carries the crop she sowed: once the")
 	print("robot cuts it and sows it again, it counts as the robot's.")
 	return 0
+
+
+# **The same weeks at each of the three paces** (Q-129 a, ruled 2026-09-25). She can
+# buy a Mark III a pace setting at the workbench and set it calm, normal or bold
+# (`BotBrain.PACE_SCALES`); normal is the robot every table above measured. So the
+# two dozen farms are played again, open ground and given her squares, at calm and
+# at bold, and read against the normal-pace weeks and the night-off control
+# already played. What the ruling needs to know is whether each step is a real
+# trade-off rather than a trap: whether bold buys a faster start, and what it costs
+# later.
+func _summarise_pace(open_ground: Dictionary, assigned: Dictionary) -> int:
+	var days: int = int(open_ground["days"])
+	var seeds: int = (open_ground["seeds"] as Array).size()
+	var late := "days %d-%d" % [maxi(1, days - 2), days]
+	print("")
+	print("=== The same %d farms at each pace (Q-129) ===" % seeds)
+	print("A pace scales how hard each night's learning pushes: calm by %.1f, bold by %.1f."
+		% [float(BotBrain.PACE_SCALES[BotBrain.PACE_CALM]),
+			float(BotBrain.PACE_SCALES[BotBrain.PACE_BOLD])])
+	print("It rides under the day-size guard, so no night pushes harder than a normal night")
+	print("on a %d-point day: bold only makes a quiet day count for more." % int(BotBrain.LEARN_DAY_REF))
+	for arm in [["open ground", open_ground, false], ["given her squares", assigned, true]]:
+		var cmp: Dictionary = arm[1]
+		var rows := {
+			"calm": many(seeds, days, bool(arm[2]), BotBrain.PACE_CALM, ["learn"])["learn"],
+			"normal": cmp["learn"],
+			"bold": many(seeds, days, bool(arm[2]), BotBrain.PACE_BOLD, ["learn"])["learn"],
+			"night off": cmp["control"],
+		}
+		print("")
+		print("%s, points a day:" % arm[0])
+		print("%10s %9s %9s %9s %16s %16s %11s %10s" % ["", "days 1-3", "days 4-7", late,
+			"ahead of normal", "below night off", "worst farm", "day swing"])
+		for pace in ["calm", "normal", "bold", "night off"]:
+			var r := pace_stats(rows[pace], rows["normal"], rows["night off"])
+			print("%10s %9.1f %9.1f %9.1f %13d/%d %13d/%d %11.1f %10.1f" % [pace,
+				float(r["early"]), float(r["mid"]), float(r["late"]), int(r["ahead"]), seeds,
+				int(r["below"]), seeds, float(r["worst"]), float(r["swing"])])
+	print("")
+	print("\"ahead of normal\" counts the farms whose last three days beat the same farm at")
+	print("normal pace; \"below night off\" counts the farms where that pace ended worse than")
+	print("the same robot never learning at all. \"worst farm\" is the lowest of the %d farms" % seeds)
+	print("over its last three days; \"day swing\" is how far the score moved from one day to")
+	print("the next, on average: how steady the robot is to watch.")
+	return 0
+
+
+# The pace table's arithmetic over one pace's rows, read against the normal-pace
+# and night-off rows of the same farms.
+static func pace_stats(rows: Array, normal: Array, control: Array) -> Dictionary:
+	var n := rows.size()
+	var out := { "early": 0.0, "mid": 0.0, "late": 0.0, "ahead": 0, "below": 0,
+		"worst": INF, "swing": 0.0 }
+	for i in n:
+		var r: Dictionary = rows[i]
+		var scores: Array = r["scores"]
+		out["early"] = float(out["early"]) + float(r["early"]) / float(n)
+		out["mid"] = float(out["mid"]) + mean_of_days(scores, 4, 7) / float(n)
+		out["late"] = float(out["late"]) + float(r["late"]) / float(n)
+		if float(r["late"]) > float(normal[i]["late"]):
+			out["ahead"] = int(out["ahead"]) + 1
+		if float(r["late"]) < float(control[i]["late"]):
+			out["below"] = int(out["below"]) + 1
+		out["worst"] = minf(float(out["worst"]), float(r["late"]))
+		var moved := 0.0
+		for d in range(1, scores.size()):
+			moved += absf(float(scores[d]) - float(scores[d - 1]))
+		out["swing"] = float(out["swing"]) + moved / float(maxi(1, scores.size() - 1)) / float(n)
+	return out
