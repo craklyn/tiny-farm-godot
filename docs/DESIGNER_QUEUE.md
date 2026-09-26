@@ -290,6 +290,16 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   further up the ladder — this is it). Design rewrite in `design/06`; build in
   `V0_2_1_PLAN.md` WI-9.
 
+- **Q-126 to Q-130 — The Mark III learning shop.** — **Ruling, open 2026-09-25.**
+  Milo's sketch (`docs/design/mockups/mk3_learning_shop/SKETCH.md`, 4f6ae2f) lays out
+  twelve options for buying new brains, training methods and training data for the
+  Mark III, and making your own. Its open questions are one card each, with no
+  recommendation because Daniel has ideas of his own: where learning upgrades are
+  bought (Q-126), what a wider view does to what the robot learned (Q-127), whether
+  a bigger brain waits for a pretrained base (Q-128), which new way of training
+  comes first (Q-129), and whether making your own training data starts with
+  picking your best day (Q-130). Cards: `hq/data/decisions/Q-126.json` to `Q-130.json`.
+
 - **Q-125 — Where should HQ keep its work cards?** — **Ruling, open 2026-09-25.**
   Every HQ card exists twice: the copy HQ reads and writes in the shared checkout, and
   the copy on main that sessions edit when they close work. Nothing copies changes

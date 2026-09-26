@@ -1,0 +1,26 @@
+{
+  "id": "Q-128",
+  "owner": "milo",
+  "title": "Should a bigger brain for the Mark III be built now, or wait for a pretrained starting brain?",
+  "question": "The Mark III is the robot that learns by trial and reward, and the one you asked Milo to sketch a shop for: new brains, new ways of training, special examples for the robot to learn from, and examples you make yourself. Milo's sketch lays out twelve options with Kenji's notes on what the game can already do; these cards carry its open questions, one per card. Nothing is recommended, because you said you have ideas of your own.\n\nA bigger brain can be built today, but Kenji's note is that it doesn't obviously help yet: the phone can only train so much each night, whatever the brain's size. The real payoff needs a starting brain trained in advance on many farms, which nobody has built.",
+  "why_now": "You asked Milo for this sketch in HQ's chat on 2026-09-25. It landed as commit 4f6ae2f; nothing gets built until you answer.",
+  "options": [
+    {
+      "key": "a",
+      "label": "Wait until the pretrained starting brain exists",
+      "detail": "Build the bigger brain only when there is a pretrained base for it to grow from."
+    },
+    {
+      "key": "b",
+      "label": "Build it now as its own rung",
+      "detail": "Sell a bigger brain as a step on the robot ladder even though its effect is small today."
+    }
+  ],
+  "links": [
+    {
+      "label": "Milo's sketch of the Mark III learning shop",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/mockups/mk3_learning_shop/SKETCH.md"
+    }
+  ],
+  "subject": "The Mark III learning shop"
+}

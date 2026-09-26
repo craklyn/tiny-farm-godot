@@ -1,0 +1,31 @@
+{
+  "id": "Q-127",
+  "owner": "milo",
+  "title": "What should happen to a Mark III's learning when it gets a wider view?",
+  "question": "The Mark III is the robot that learns by trial and reward, and the one you asked Milo to sketch a shop for: new brains, new ways of training, special examples for the robot to learn from, and examples you make yourself. Milo's sketch lays out twelve options with Kenji's notes on what the game can already do; these cards carry its open questions, one per card. Nothing is recommended, because you said you have ideas of your own.\n\nBuying a wider view is the simplest upgrade to sell: the robot notices work and crows farther away. But what the robot has learned is tied to the size of its view, so a wider view no longer fits what it knows.",
+  "why_now": "You asked Milo for this sketch in HQ's chat on 2026-09-25. It landed as commit 4f6ae2f; nothing gets built until you answer.",
+  "options": [
+    {
+      "key": "a",
+      "label": "Only a new Mark III can have the wider view",
+      "detail": "A robot you already own keeps everything it has learned; the upgrade applies to robots bought after it."
+    },
+    {
+      "key": "b",
+      "label": "The robot starts over, and the game visibly shows that reset",
+      "detail": "The robot you own gets the wider view and forgets what it learned, with a visible 'starting over' moment."
+    },
+    {
+      "key": "c",
+      "label": "The robot keeps the learning that still works with the wider view and relearns the rest",
+      "detail": "The squares it could already see keep their learning; the new outer ring starts from nothing."
+    }
+  ],
+  "links": [
+    {
+      "label": "Milo's sketch of the Mark III learning shop",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/mockups/mk3_learning_shop/SKETCH.md"
+    }
+  ],
+  "subject": "The Mark III learning shop"
+}

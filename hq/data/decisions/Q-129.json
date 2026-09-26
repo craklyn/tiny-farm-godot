@@ -1,0 +1,31 @@
+{
+  "id": "Q-129",
+  "owner": "milo",
+  "title": "Which new way of training the Mark III should be built first?",
+  "question": "The Mark III is the robot that learns by trial and reward, and the one you asked Milo to sketch a shop for: new brains, new ways of training, special examples for the robot to learn from, and examples you make yourself. Milo's sketch lays out twelve options with Kenji's notes on what the game can already do; these cards carry its open questions, one per card. Nothing is recommended, because you said you have ideas of your own.\n\nThree options, each a different amount of work: a pace setting for how hard each night's learning pushes (nearly free, as long as it works with the current rule that softens learning after an unusually big day); a different learning method that tries whole days and keeps the best (a tuning project); or learning by copying days you played yourself (the one that opens a new kind of play, 'watch me, then copy me').",
+  "why_now": "You asked Milo for this sketch in HQ's chat on 2026-09-25. It landed as commit 4f6ae2f; nothing gets built until you answer.",
+  "options": [
+    {
+      "key": "a",
+      "label": "A pace setting for each robot",
+      "detail": "Cheapest; the player sees the robot improve faster or more steadily over days."
+    },
+    {
+      "key": "b",
+      "label": "A different learning method",
+      "detail": "Shows only as a different learning curve on the robot's chart."
+    },
+    {
+      "key": "c",
+      "label": "Learning by copying days you played",
+      "detail": "The most visible to a child, and it unlocks picking your best day (Q-130)."
+    }
+  ],
+  "links": [
+    {
+      "label": "Milo's sketch of the Mark III learning shop",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/mockups/mk3_learning_shop/SKETCH.md"
+    }
+  ],
+  "subject": "The Mark III learning shop"
+}

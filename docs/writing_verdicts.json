@@ -70,6 +70,9 @@
   "02647fa7550fb1d88983": {
    "verdict": "ok"
   },
+  "02cba411cfabc0434476": {
+   "verdict": "ok"
+  },
   "02d1ac271cb62264c648": {
    "instead": "Keeps a little unpredictability; accepts that some players will misunderstand the hen's egg rule.",
    "quote": "misread it",
@@ -82,10 +85,16 @@
   "02dc6d2630c7d27dc041": {
    "verdict": "ok"
   },
+  "02e34f0b552bd4699609": {
+   "verdict": "ok"
+  },
   "0368530aab1f28a6192f": {
    "verdict": "ok"
   },
   "038f5c4db2c039a83d12": {
+   "verdict": "ok"
+  },
+  "03b2f07a5c490526dd83": {
    "verdict": "ok"
   },
   "03f15dd215b2ad25eebd": {
@@ -242,6 +251,9 @@
   "08e136d76f452f72b6ea": {
    "verdict": "ok"
   },
+  "09038201ce3f814b67ef": {
+   "verdict": "ok"
+  },
   "091e2703352b716df54d": {
    "verdict": "ok"
   },
@@ -310,6 +322,9 @@
    "why": "\"Jade\" is not named, and \"overnight-loop item\" and \"watering inset's loader\" are feature names not defined on this surface."
   },
   "0b6971c0be9c78f381ca": {
+   "verdict": "ok"
+  },
+  "0b906ac56d24b63490c0": {
    "verdict": "ok"
   },
   "0ba49642b9ce86f9eccb": {
@@ -695,6 +710,9 @@
   "180baea5f57f0ea18300": {
    "verdict": "ok"
   },
+  "182d78e7d3fc70fbc9d6": {
+   "verdict": "ok"
+  },
   "18428ccf099d387c856a": {
    "verdict": "ok"
   },
@@ -798,6 +816,9 @@
   "1b566635d87cc74bc23a": {
    "verdict": "ok"
   },
+  "1b78c9be3b5c23610486": {
+   "verdict": "ok"
+  },
   "1b86bc372fd989b7b2fe": {
    "verdict": "ok"
   },
@@ -872,6 +893,9 @@
    "verdict": "ok"
   },
   "1e2150b52ab2356baef0": {
+   "verdict": "ok"
+  },
+  "1e3764157013cc5a9b5f": {
    "verdict": "ok"
   },
   "1e6ac6d0661a735e8d23": {
@@ -1226,6 +1250,12 @@
   "2b1553174c7d2b9c191b": {
    "verdict": "ok"
   },
+  "2b2482965f6212e82c4a": {
+   "instead": "the robot must retrain because what it has learned only works with the smaller view",
+   "quote": "a wider view no longer fits what it knows",
+   "verdict": "second-look",
+   "why": "The metaphor makes the reader work out that the robot must retrain because its existing learning cannot handle the wider view."
+  },
   "2b2d3689d26528457b66": {
    "baselined": "2026-09-19",
    "instead": "the room mockups look sparse and would need furnishing",
@@ -1287,11 +1317,20 @@
   "2c3d2fdbb55c2bf31ea4": {
    "verdict": "ok"
   },
+  "2c4d6c0ec683aa57c9c0": {
+   "verdict": "ok"
+  },
   "2c6917bff93f9c0b2cf4": {
    "verdict": "ok"
   },
   "2ca31c0246b0d517295c": {
    "verdict": "ok"
+  },
+  "2cadfec046df9355fac2": {
+   "instead": "Treat picking a day and building a practice course as separate features.",
+   "quote": "Treat them as separate features",
+   "verdict": "decode",
+   "why": "The sentence does not say what “them” refers to."
   },
   "2cb3807bf0c884af657c": {
    "instead": "Let the machine say it has no work to do",
@@ -1628,10 +1667,25 @@
    "verdict": "second-look",
    "why": "This metaphor makes the reader translate “gate” into the fact that gold is the purchase requirement."
   },
+  "37fb76e9fd5ae082682a": {
+   "instead": "Should making your own examples for the robot to learn from start with picking your best day, or with a practice-course editor?",
+   "quote": "your own training data",
+   "verdict": "decode",
+   "why": "“Training data” is an internal technical term where the reader needs a plain description."
+  },
+  "384ac13af22c436975d1": {
+   "instead": "special examples for the robot to learn from, and examples you make yourself",
+   "quote": "special training data, and training data you make yourself",
+   "verdict": "decode",
+   "why": "The phrase names an engineering mechanism instead of explaining that these are examples the robot learns from."
+  },
   "38515d6ef103618a22bb": {
    "verdict": "ok"
   },
   "3865c6c35aa4e004a74a": {
+   "verdict": "ok"
+  },
+  "386a8b4a211629b6e122": {
    "verdict": "ok"
   },
   "38859f2fa206cd4718ac": {
@@ -1642,6 +1696,9 @@
    "quote": "It",
    "verdict": "decode",
    "why": "The pronoun has no referent in the same sentence, so the reader must work out what is under Closed."
+  },
+  "38e2b04805f17f8d3620": {
+   "verdict": "ok"
   },
   "38e6ceb52172fd3bd097": {
    "verdict": "ok"
@@ -1883,6 +1940,9 @@
    "verdict": "second-look",
    "why": "“In flight” is a metaphor for work that is currently underway."
   },
+  "450e0a92f81452280f6a": {
+   "verdict": "ok"
+  },
   "4514a9a8a6d4694f2a6c": {
    "verdict": "ok"
   },
@@ -1897,6 +1957,12 @@
   },
   "45cd8befab9d6764ae50": {
    "verdict": "ok"
+  },
+  "45e2521a37bc0ab3f22a": {
+   "instead": "The robot starts over, and the game visibly shows that reset",
+   "quote": "the game shows it",
+   "verdict": "decode",
+   "why": "The reader has to work out whether “it” means the robot or the act of starting over."
   },
   "4614b88fbdf0489e12a8": {
    "verdict": "ok"
@@ -1969,6 +2035,12 @@
   },
   "47c90f2f1f244842e774": {
    "verdict": "ok"
+  },
+  "47d1e6a427845ccab6bc": {
+   "instead": "This learning method lets the child pick their best day (Q-130).",
+   "quote": "it unlocks picking your best day",
+   "verdict": "second-look",
+   "why": "The reader has to infer what “it” refers to."
   },
   "483a649005fae5c90770": {
    "verdict": "ok"
@@ -2048,6 +2120,9 @@
    "quote": "Park it explicitly",
    "verdict": "decode",
    "why": "“Park it” is process shorthand, and “it” has no referent in the sentence."
+  },
+  "4aa824adaa6c4ef3654d": {
+   "verdict": "ok"
   },
   "4af71bd24aeef697b537": {
    "instead": "how much the shipping bin can hold",
@@ -2286,6 +2361,9 @@
   "51e3ada09d27ea3707a7": {
    "verdict": "ok"
   },
+  "5207ce5256a27017e348": {
+   "verdict": "ok"
+  },
   "525934f561fde09fea6b": {
    "instead": "Approve the reward and view design, change the numbers",
    "quote": "Approve the shape, change the numbers",
@@ -2379,6 +2457,9 @@
    "verdict": "ok"
   },
   "54ce6eb157bd8ec23752": {
+   "verdict": "ok"
+  },
+  "54e8169cd62b1f98154a": {
    "verdict": "ok"
   },
   "54ea7be720971a816022": {
@@ -2636,6 +2717,12 @@
   },
   "5db489ef4d43e51babf8": {
    "verdict": "ok"
+  },
+  "5de1e0320c0a972afc66": {
+   "instead": "the robot's existing learning was made for its old view and cannot be used unchanged with the wider view",
+   "quote": "no longer fits what it knows",
+   "verdict": "second-look",
+   "why": "This metaphor makes the reader infer that the robot's existing learning cannot be used unchanged with the wider view."
   },
   "5e0b2487dc47964e269c": {
    "verdict": "ok"
@@ -3418,6 +3505,9 @@
    "verdict": "second-look",
    "why": "What specific number is this—view count, player count, conversion rate? The reader has to infer from context."
   },
+  "782c091362bb75f2ef64": {
+   "verdict": "ok"
+  },
   "7852c361d0910e21d914": {
    "instead": "comparison using buttons sized for touch",
    "quote": "touch-size comparison",
@@ -3788,6 +3878,12 @@
   "83ea69aad2d36f79a9da": {
    "verdict": "ok"
   },
+  "83f6a463248e5f3916a9": {
+   "instead": "Build the bigger brain only when a pretrained starting brain exists",
+   "quote": "a pretrained base for it to grow from",
+   "verdict": "second-look",
+   "why": "The construction makes the reader translate a base and growth metaphor into a brain trained in advance."
+  },
   "83f81450c5bebcbc8f0b": {
    "verdict": "ok"
   },
@@ -3911,6 +4007,9 @@
    "verdict": "decode",
    "why": "This metaphor makes the reader work out what the farm is sensing or showing through the walls."
   },
+  "882b3f1d6bbffc8b0eb9": {
+   "verdict": "ok"
+  },
   "883b4fbf767249de4463": {
    "verdict": "ok"
   },
@@ -3944,10 +4043,16 @@
   "899b28ef39a9f578186f": {
    "verdict": "ok"
   },
+  "89b8df0c2eb60c8dda81": {
+   "verdict": "ok"
+  },
   "89bc724f52451ac2c81c": {
    "verdict": "ok"
   },
   "8a3bfaa44ab06bdb4d3a": {
+   "verdict": "ok"
+  },
+  "8a428481c76d409fab99": {
    "verdict": "ok"
   },
   "8a5fbaf607f0eafa842c": {
@@ -3999,6 +4104,9 @@
    "why": "The reader has to know that a worker session means an automated task is currently running."
   },
   "8cc5f324bd13d4e730d5": {
+   "verdict": "ok"
+  },
+  "8ccc3b75cc5b53d9ed43": {
    "verdict": "ok"
   },
   "8cd1287c4e553e7a3f91": {
@@ -4142,6 +4250,9 @@
   "91757e1af2c66a9d5097": {
    "verdict": "ok"
   },
+  "91843efd3adddf0614ae": {
+   "verdict": "ok"
+  },
   "9196638930bcb82a2b28": {
    "verdict": "ok"
   },
@@ -4235,7 +4346,13 @@
   "94b653533cb4746b6143": {
    "verdict": "ok"
   },
+  "94dec148a9f9dced46eb": {
+   "verdict": "ok"
+  },
   "94ef3a10f02aea25f467": {
+   "verdict": "ok"
+  },
+  "9521090f91260dd5636e": {
    "verdict": "ok"
   },
   "95216f05bb5b06216e7b": {
@@ -4293,6 +4410,9 @@
    "verdict": "ok"
   },
   "967842a805edf0ae02c8": {
+   "verdict": "ok"
+  },
+  "96786a3400594da1a8de": {
    "verdict": "ok"
   },
   "97060dde7f98f8f6ad51": {
@@ -4641,12 +4761,18 @@
    "verdict": "decode",
    "why": "The reader has to work out that this means the robot keeps what it learned but forgets its location."
   },
+  "a1f1d39223208f96815d": {
+   "verdict": "ok"
+  },
   "a21f77f1c3cf9588cbe5": {
    "baselined": "2026-09-25",
    "instead": "Lock the direction; the foley session and any music commissioning proceed against the approved direction.",
    "quote": "against it",
    "verdict": "decode",
    "why": "The reader cannot tell what “it” refers to from this sentence alone."
+  },
+  "a24288516b3c560e7d74": {
+   "verdict": "ok"
   },
   "a2428857b19d68a5d2ee": {
    "verdict": "ok"
@@ -4759,6 +4885,9 @@
   "a566564391f441fb4587": {
    "verdict": "ok"
   },
+  "a579ee5a9fd2f0bb10be": {
+   "verdict": "ok"
+  },
   "a57ea3741a5934bd1d31": {
    "verdict": "ok"
   },
@@ -4790,6 +4919,9 @@
   "a67ff8e7221a0cbb4289": {
    "verdict": "ok"
   },
+  "a689b509250c0726dd8d": {
+   "verdict": "ok"
+  },
   "a69c5f99e0262c1cdf56": {
    "instead": "pointing while seeing only a small part of the farm",
    "quote": "pointing through a keyhole",
@@ -4819,6 +4951,9 @@
    "verdict": "ok"
   },
   "a797d14b633d736b9068": {
+   "verdict": "ok"
+  },
+  "a79a0286b168e9e44812": {
    "verdict": "ok"
   },
   "a7b579ff21490b26ec4d": {
@@ -4979,6 +5114,9 @@
    "verdict": "ok"
   },
   "ac7f938c60eabe16850c": {
+   "verdict": "ok"
+  },
+  "aceabd3abb6bd059b19d": {
    "verdict": "ok"
   },
   "acfeaf8e96beb7537b4f": {
@@ -5172,6 +5310,12 @@
   "b3d76ececa7b123dcb6a": {
    "verdict": "ok"
   },
+  "b3dfb9f9523d0b161214": {
+   "instead": "The robot keeps the learning that works with the wider view and relearns the rest",
+   "quote": "It keeps what still applies and learns the rest",
+   "verdict": "decode",
+   "why": "The pronoun and “what still applies” leave the reader to infer what the robot keeps and relearns."
+  },
   "b4200a80213a58e6894c": {
    "verdict": "ok"
   },
@@ -5211,6 +5355,9 @@
    "quote": "The charts: what it earned, whether it beat its own expectations, whether it is still experimenting, how much it changed overnight, how much of its day it wasted",
    "verdict": "decode",
    "why": "\"It\" is a bare pronoun without a referent in this sentence; \"beat its own expectations,\" \"still experimenting,\" and \"wasted\" are vague without context."
+  },
+  "b63b9dda9eb223696b94": {
+   "verdict": "ok"
   },
   "b65428a78b9713fa7f0b": {
    "verdict": "ok"
@@ -5313,6 +5460,12 @@
   },
   "bb32f446076def86956e": {
    "verdict": "ok"
+  },
+  "bb3910fd7f3d5c184f7f": {
+   "instead": "Sell a bigger brain as a separate upgrade even though its effect is small today",
+   "quote": "as a step on the robot ladder",
+   "verdict": "second-look",
+   "why": "“Robot ladder” is a metaphor for an upgrade path where the plain fact would be clearer."
   },
   "bb93594a4efccb7deb39": {
    "instead": "whether the delay before harvests begin earning gold is appropriate for a first-time player",
@@ -5501,7 +5654,13 @@
   "c17fea87370dd377dac4": {
    "verdict": "ok"
   },
+  "c199a89f06dacb982a69": {
+   "verdict": "ok"
+  },
   "c1b158abd5284e200bed": {
+   "verdict": "ok"
+  },
+  "c1b2adecda5f3c13607a": {
    "verdict": "ok"
   },
   "c2304ace19355a93d7d8": {
@@ -5519,6 +5678,9 @@
    "quote": "Give the visual check a home, or stop claiming it",
    "verdict": "decode",
    "why": "\"The visual check\" is not named plainly, and \"give it a home\" is metaphorical for an unclear action."
+  },
+  "c25319c89445c6d67cac": {
+   "verdict": "ok"
   },
   "c2b9f194fcd3ffd53f95": {
    "verdict": "ok"
@@ -6117,6 +6279,9 @@
   "d55474ca41d67594e647": {
    "verdict": "ok"
   },
+  "d5aa160833fec025f0a4": {
+   "verdict": "ok"
+  },
   "d5b2bedabd8e4014f58e": {
    "verdict": "ok"
   },
@@ -6485,6 +6650,9 @@
   "e17e7055c441d4572de0": {
    "verdict": "ok"
   },
+  "e1ed9c04b95db5ebcead": {
+   "verdict": "ok"
+  },
   "e1ffb6ec9d0d7ab51c56": {
    "verdict": "ok"
   },
@@ -6607,6 +6775,9 @@
    "verdict": "second-look",
    "why": "Loose does not tell the reader whether this refers to unorganized, uncompiled, or unreferenced sprites."
   },
+  "e654b064ac738a022998": {
+   "verdict": "ok"
+  },
   "e658a4ed6637377e5e4a": {
    "instead": "A previous decision about movement controls requires us to list every interaction in the game, phase by phase, and match each one to its best input method — touch first, with desktop controls too. The first list was due before M3, with a review at the start of each phase. M3 planning is next, so approve this work now.",
    "quote": "movement-scheme ruling",
@@ -6694,6 +6865,12 @@
    "quote": "Remove background color the art's own shape was hiding it behind",
    "verdict": "second-look",
    "why": "The sentence makes the reader untangle what is hiding what before the request is clear."
+  },
+  "ea62b9f82cc1d0767881": {
+   "instead": "a pace setting for how hard each night's learning pushes (nearly free, as long as it works with the current fix for handling a full day's learning)",
+   "quote": "today's day-size fix",
+   "verdict": "decode",
+   "why": "“Day-size fix” is internal engineering shorthand that does not tell a cold reader what was fixed."
   },
   "ea6e38222336cc4283a3": {
    "verdict": "ok"
@@ -6999,6 +7176,12 @@
   },
   "f818ce7c647fc7736c48": {
    "verdict": "ok"
+  },
+  "f824e5319392dcd26d96": {
+   "instead": "a setting for how much the robot learns each night",
+   "quote": "how hard each night's learning pushes",
+   "verdict": "second-look",
+   "why": "This describes the learning mechanism indirectly instead of saying how much the robot learns each night."
   },
   "f82b2a93824d6d04bdb5": {
    "instead": "creating a new mailbox",
