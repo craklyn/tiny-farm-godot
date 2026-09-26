@@ -283,6 +283,24 @@ def validate_revision(item):
         return actual
 
 
+class UnknownState(ValueError):
+    def __init__(self, item_id, state):
+        self.item_id, self.state = item_id, state
+        super().__init__(f"Work card {item_id} cannot be saved in state {state!r}; "
+                         f"a card's state must be one of: {', '.join(STATES)}.")
+
+
+_NO_RECORD = object()
+
+
+def _stored_state(item_id):
+    try:
+        with open(_item_path(item_id), encoding="utf-8") as source:
+            return json.load(source).get("state")
+    except (OSError, ValueError, AttributeError):
+        return _NO_RECORD
+
+
 def save_item(item):
     """Compare-and-swap the durable revision; never merge a stale whole record."""
     with mutation_lock():
@@ -290,6 +308,13 @@ def save_item(item):
         # caller round-trips a record fetched from an API.
         item.pop("workflow_view", None)
         path = _item_path(item["id"])
+        # A state outside STATES sits in no lane: nothing runs it and nothing
+        # shows it to Daniel (2026-09-25: fourteen 'queued' and 'done' cards).
+        # Refuse to write one. A record already on disk in such a state may be
+        # saved unchanged in state, so an unrelated write to it cannot take the
+        # service down before hq/migrate_card_states.py has moved it.
+        if item.get("state") not in STATES and item.get("state") != _stored_state(item["id"]):
+            raise UnknownState(item["id"], item.get("state"))
         actual = validate_revision(item)
         # Repository work stays in the build lane even if a producer files it as doing.
         if int(item.get("tier") or 0) == 1 and item.get("state") == "doing":
@@ -727,7 +752,11 @@ def evidence_id(value):
 
 WORKFLOW_VERSION = 1
 ACTION_LEASE_SECONDS = 30 * 60
+# 'done' is not a state (it is not in STATES and save_item refuses to write it)
+# but hand-written records carried it until 2026-09-25, so readers still treat
+# it as closed rather than as open work. FINAL_STATES are the recognised ones.
 TERMINAL_STATES = frozenset(("landed", "accepted", "dropped", "done"))
+FINAL_STATES = ("landed", "accepted", "dropped")
 
 
 def _iso_seconds(value):
@@ -921,6 +950,11 @@ def work_view(item, repo_facts=None, now=None):
         blocker = {**persisted_open, **blocker}
     elif not blocker and persisted_open:
         blocker = dict(persisted_open)
+    if terminal:
+        # Nothing holds a closed card. A landed card keeps its old `started`,
+        # which read as a lost claim and put ~58 finished cards under
+        # "awaiting verification" (w134a7424547).
+        blocker = None
     stalled_transition = False
     if not terminal and not active_actions:
         if blocker and blocker["type"] in ("code_conflict", "stale_base", "missing_evidence", "dependency"):
@@ -1051,7 +1085,7 @@ def work_view(item, repo_facts=None, now=None):
     ci = workflow.get("ci") or {}
     shipped = {"landed_sha": landed_sha,
                "ci_confirmed": bool(landed_sha and ci.get("confirmed") and ci.get("commit_sha") == landed_sha)}
-    candidate_status = ("landed" if shipped["landed_sha"] else
+    candidate_status = ("landed" if shipped["landed_sha"] else "none" if terminal else
                         "stale" if candidate_base and facts.get("head") and candidate_base != facts["head"] else
                         "held" if blocker else "reviewed" if (item.get("check") or {}).get("verdict") == "pass" else
                         "unverified" if candidate else "none")
@@ -1299,6 +1333,105 @@ def work_ready_for_daniel(item, workflow_view=None, preparation=None):
     """Single readiness predicate shared by the Work page and verdict inbox."""
     prep = preparation if preparation is not None else work_preparation(item)
     return work_reviewable(item, workflow_view) and prep["ready"]
+
+
+# ---------------------------------------------------------------------------
+# Every card in exactly one lane (the guard filed as w134a7424547, 2026-09-25).
+#
+# On 2026-09-25 twenty for_review cards sat in no lane: the drain skipped them
+# because their next action was Daniel's verdict, and his page left them off
+# because their code had no commit on main. Fourteen more carried states HQ
+# does not know. Nothing said so. This projection names the lane each open
+# card is in, and the health check below fails when a card is in none, in two,
+# carries an unknown state, or is owned by nobody the org chart knows.
+# ---------------------------------------------------------------------------
+
+LANES = ("terminal", "running", "runner", "daniel", "held")
+LANE_LABELS = {
+    "terminal": "closed",
+    "running": "being worked now",
+    "runner": "next for a studio worker",
+    "daniel": "on Daniel's Work page",
+    "held": "held, with the reason shown on the task queue",
+}
+# The drain's scope (drain._queue_entries; 'doing' only on a --thinking run)
+# and the actions its dispatcher runs (action_dispatch.MODEL_ACTIONS and
+# RECOVERY_ACTIONS). Kept here so this module stays importable without drain.
+_RUNNER_SCOPE = ("waiting_session", "for_review", "doing")
+_DISPATCHED = ("build", "reconcile", "recover")
+
+
+def card_lanes(item, view, preparation=None):
+    """Every lane this card is in, given its workflow projection. Pure.
+
+    A healthy card is in exactly one. 'held' means the task queue lists the
+    card with a blocker's stated reason; a card whose next action is only
+    somebody's verdict is not held, it is in Daniel's lane or in none.
+    """
+    state = item.get("state")
+    if state in FINAL_STATES:
+        return ["terminal"]
+    view = view or {}
+    action = view.get("next_action") or {}
+    lanes = []
+    if view.get("availability") == "running":
+        lanes.append("running")
+    else:
+        in_scope = state in _RUNNER_SCOPE and action.get("type") not in (None, "decide")
+        # HQ's own worker (work.worker): unstarted tier-0 work, questions being
+        # prepared, and replies owed to him.
+        hq_worker = ((state == "doing" and not item.get("started"))
+                     or (state == "prepping" and not item.get("prep_stalled"))
+                     or state == "owed" or bool(item.get("awaiting_reply")))
+        if hq_worker or (in_scope and action.get("availability") == "runnable"
+                         and action.get("type") in _DISPATCHED):
+            lanes.append("runner")
+        elif in_scope and str((view.get("blocker") or {}).get("reason") or "").strip():
+            lanes.append("held")
+    if work_reviewable(item, view):
+        lanes.append("daniel")
+    return lanes
+
+
+def card_health(entries, org_ids):
+    """Check every card: a known state, exactly one lane, one owner the org knows.
+
+    `entries` is an iterable of (card, workflow projection) pairs; `org_ids`
+    the employee ids in org.json. Returns counts per lane and one row per card
+    that fails, each saying in plain words what is wrong. Reads only.
+    """
+    org_ids = set(org_ids)
+    counts = {lane: 0 for lane in LANES}
+    problems = []
+    total = 0
+    for item, view in entries:
+        total += 1
+        wrong = []
+        state = item.get("state")
+        if state not in STATES:
+            wrong.append(f"its state {state!r} is not one HQ knows, so nothing runs it "
+                         "and it never reaches Daniel")
+        lanes = card_lanes(item, view) if state in STATES else []
+        if state in STATES and not lanes:
+            wrong.append("it is in no lane: no worker will pick it up, it is not on "
+                         "Daniel's page, and nothing records why it is held")
+        elif len(lanes) > 1:
+            wrong.append("it is in two lanes at once: "
+                         + " and ".join(LANE_LABELS[lane] for lane in lanes))
+        if state not in FINAL_STATES:
+            owner = item.get("owner")
+            if not isinstance(owner, str) or not owner.strip():
+                wrong.append("it has no single owner")
+            elif owner not in org_ids:
+                wrong.append(f"its owner {owner!r} is not anyone in the org chart")
+        if len(lanes) == 1 and not wrong:
+            counts[lanes[0]] += 1
+        if wrong:
+            problems.append({"id": item.get("id"), "title": item.get("title") or "Untitled",
+                             "owner": item.get("owner") or "", "state": state,
+                             "lanes": lanes, "problem": "; ".join(wrong) + "."})
+    problems.sort(key=lambda row: str(row["id"]))
+    return {"ok": not problems, "checked": total, "counts": counts, "problems": problems}
 
 
 def _file_item(fields, cap, org):

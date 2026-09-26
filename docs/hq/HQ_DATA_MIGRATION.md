@@ -70,7 +70,7 @@ which the deploy step already requires for code.
 | `decisions/` | Sessions and `tools/record_sound_candidates.py`, committed | HQ never writes decision cards, and CI checks their wording. HQ records Daniel's answer as a ruling in the store. HQ's "cards filed" count already reads their Git history on main. |
 | `projects/` | Sessions, committed | HQ only reads them. Pillar feeds and "last touched" use their Git history on main. |
 | `looks/` | `tools/compose_look_sheets.py`, committed | Design material attached to decision cards. |
-| `completion_reconciliation.json`, `process_completion_reconciliation.json` | Reviewed once, committed | Inputs to one-off reconciliation commands. |
+| `completion_reconciliation.json`, `process_completion_reconciliation.json`, `card_state_migration.json` | Reviewed once, committed | Inputs to one-off reconciliation commands. |
 
 **A deviation from the ruling's wording.** Option (a) listed "decisions" and
 "projects" among the records to move. Neither has an HQ writer. Moving them would give
@@ -153,6 +153,43 @@ has no owner. His comment is quoted on it.
   not when a card exists or is dropped.
 - **A revision request:** it files no card of this kind. It keeps its existing
   hand-off.
+
+## Every card has a place
+
+Added 2026-09-25 (work card w134a7424547). On the day of the cut-over, 36 open cards
+were in no place at all, and nothing said so:
+
+- 20 finished cards waited for review. The runner skipped them, because their next
+  step was Daniel's verdict. His page left them off, because their code had no commit
+  on main.
+- 16 cards carried `queued` or `done`. HQ does not know either state, so nothing ran
+  them and none reached him.
+- About 60 closed cards were reported to him as still waiting for verification.
+
+What changed:
+
+- **Every card is checked.** `work.card_health` checks that every card:
+  - has a state HQ knows;
+  - is in exactly one place: closed, being worked, next for a worker, on Daniel's
+    Work page, or held with a stated reason on the task queue;
+  - if open, has one owner who is in `org.json`.
+- **Failures go to the Engineering page.** `/api/work-health` lists them there, under
+  "Work cards nobody will pick up". They are the studio's to fix, so Daniel's page
+  never counts them.
+- **An unknown state cannot be saved.** `work.save_item` refuses one. A legacy record
+  already in such a state can still be saved without changing its state, so the
+  service keeps running until the migration below has moved it.
+- **Closed cards read as closed.** Daniel's queue checks for a closed card before
+  anything else.
+- **A `done` card can be closed with evidence.** `hq/card.py close` accepts one, and
+  closing it makes it `landed`.
+- **A one-time migration moves the unknown states.** `hq/migrate_card_states.py`
+  applies the reviewed table in `hq/data/card_state_migration.json`. A card on main
+  becomes `landed`, through the same evidence checks as `hq/card.py close`. A card
+  whose ask later work already did becomes `dropped`, naming that work. A stranded
+  review card whose work never reached main goes back to its owner's queue, with a
+  brief saying what remains. An ask-first card becomes runnable only with Daniel's
+  recorded yes. Without `--apply` the command writes nothing.
 
 ## Cut-over
 

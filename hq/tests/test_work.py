@@ -580,8 +580,10 @@ def main():
         work.api_post("/api/work/accept", {"id": "w0000000e0005"})
         check(len([i for i in work.items() if i.get("parent") == "w0000000e0005"]) == 1,
               "a closed card is not a twin — work after a finished piece is new work")
-        work.save_item(card(id="w0000000e0007", owner="rin", state="done",
-                            title="Tune the rooster call", follow_ups=[]))
+        # Written as the hand-edited legacy record was: save_item refuses 'done'.
+        work._write_json(work._item_path("w0000000e0007"),
+                         card(id="w0000000e0007", owner="rin", state="done",
+                              title="Tune the rooster call", follow_ups=[]))
         work.save_item(card(id="w0000000e0008", recommend=REC, follow_ups=[
             {"title": "Tune the rooster call", "owner": "rin", "level": "task", "tier": 1,
              "first_action": "x", "why": "again"}]))

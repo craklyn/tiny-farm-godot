@@ -625,7 +625,12 @@ def _waiting_on_you_complete():
         held = item.get("state") == "for_review" and work._held_back(item)
         preparation = work_preparation(item)
         ready = work.work_ready_for_daniel(item, view, preparation)
-        if ready:
+        if item.get("state") in work.FINAL_STATES:
+            # A closed card is closed whatever its projection still says: a
+            # landed card keeps its old `started`, which reads as a lost claim,
+            # and ~58 finished cards were reported as awaiting verification.
+            status, reason = labels[item["state"]]
+        elif ready:
             status, reason = "ready", "A prepared result is ready for your verdict."
             finished.append(item)
         elif item.get("pending_landing"):
@@ -664,6 +669,25 @@ def _waiting_on_you_complete():
     return {"available": True, "count": counts["total"], "counts": counts,
             "ready": ready_rows, "items": projected,
             "decisions": decisions, "work": finished}
+
+
+def work_health():
+    """Every work card in exactly one lane, with a known state and an owner.
+
+    The guard for w134a7424547: its failures are the studio's to fix, so the
+    Engineering page shows them and Daniel's page never counts them."""
+    import drain
+    try:
+        items = work.items(strict=True)
+    except Exception as exc:
+        return {"available": False, "error": f"Work records could not be read: {exc}"[:300]}
+    head_result = drain.sh(["git", "rev-parse", "main"], cwd=drain.REPO, timeout=10)
+    head = head_result.stdout.strip() if head_result.returncode == 0 else ""
+    active = drain.server.drain_state()
+    org_ids = [e.get("id") for e in load_org().get("employees", [])]
+    entries = [(item, drain.project_work(item, head=head, active=active)) for item in items]
+    return {"available": True, **work.card_health(entries, org_ids),
+            "lanes": work.LANE_LABELS}
 
 
 def waiting_reading():
@@ -6950,6 +6974,8 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(200, queue_snapshot())
             if path == "/api/waiting-on-you":
                 return self._send(200, waiting_on_you())
+            if path == "/api/work-health":
+                return self._send(200, work_health())
             if path.startswith("/api/work/"):
                 return self._send(200, work_detail(unquote(path[len("/api/work/"):])) )
             if path.startswith("/api/work"):

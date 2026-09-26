@@ -674,6 +674,9 @@
    "verdict": "decode",
    "why": "The term \"program report\" is not defined or linked; a reader would not know what it is or how to find it."
   },
+  "16f7a0536e1d3c45ae40": {
+   "verdict": "ok"
+  },
   "16fb3ff7e27574b70855": {
    "verdict": "ok"
   },
@@ -2302,6 +2305,9 @@
   "5311b955c1dbe2fe8163": {
    "verdict": "ok"
   },
+  "5313c05bf6da3d027b9c": {
+   "verdict": "ok"
+  },
   "5336936821713c6b3ced": {
    "instead": "stops counting how long the work has been waiting",
    "quote": "stops the stuck clock",
@@ -2615,6 +2621,12 @@
    "quote": "her",
    "verdict": "second-look",
    "why": "The sentence does not say who “her” is, so the reader has to infer that it means the player."
+  },
+  "5d7e639c58d07cb01caa": {
+   "instead": "The chief of staff fixes each work card: close the card after its commit and CI run, return it to its owner's queue, or use the migration tool to move the card out of its unknown state.",
+   "quote": "close it with its commit and CI run ( hq/card.py close ), send it back to its owner's queue, or move an unknown state with hq/migrate_card_states.py",
+   "verdict": "decode",
+   "why": "The reader cannot tell what “it” refers to or what it means to move an unknown state."
   },
   "5db489ef4d43e51babf8": {
    "verdict": "ok"
@@ -3618,6 +3630,9 @@
    "verdict": "decode",
    "why": "“Store” leaves the reader to work out whether this means a folder, database, or something else."
   },
+  "7f375e76f83b63320f48": {
+   "verdict": "ok"
+  },
   "7f53ffabc3a1e4df7a86": {
    "verdict": "ok"
   },
@@ -4185,6 +4200,9 @@
    "verdict": "ok"
   },
   "93b8a5fc32cd65c7df18": {
+   "verdict": "ok"
+  },
+  "93e656181ceeb99c084b": {
    "verdict": "ok"
   },
   "93e7ccbab50d5ffb8971": {
@@ -6099,6 +6117,9 @@
   "d62cdfeb483891967665": {
    "verdict": "ok"
   },
+  "d658c049dc85ce80c137": {
+   "verdict": "ok"
+  },
   "d673cfd735742b23345d": {
    "instead": "Acknowledge that the recording is post-release polish and take the recording task off the active queue.",
    "quote": "it's",
@@ -6771,6 +6792,12 @@
    "quote": "Say it plainly at Continue",
    "verdict": "decode",
    "why": "The reader is not told what “it” is or what the Continue control should say."
+  },
+  "f07a313ebdc46321a927": {
+   "instead": "List work cards that no one has assigned on the Engineering page, and stop saving card statuses the system does not recognize",
+   "quote": "nobody will pick up on the Engineering page, and stop saving unknown card states",
+   "verdict": "decode",
+   "why": "“Pick up” and “unknown card states” describe internal assignment and status behavior rather than plainly stating what the reader should expect."
   },
   "f09d2dac476fb0bcb175": {
    "verdict": "ok"

@@ -647,7 +647,28 @@ async function instEngineering(root, below, sig, g) {
     <div class="card evcard">${strip.join("")}</div>
     <h2>Rules that keep replays reproducible <span class="small muted">— breaking one of these ruins the recorded games that phase 4 trains its robots on</span></h2>
     <div class="card invcard">${invRows || "<span class='muted'>No rules are recorded here yet.</span>"}</div>
+    <div id="work-health"></div>
     <div id="ci-strip"></div>`));
+
+  // Every work card must be somewhere: closed, being worked, next for a worker,
+  // on Daniel's Work page, or held with its reason on the task queue. A card in
+  // none of those waits forever and nobody sees it (w134a7424547). The fix is
+  // the studio's, so it is listed here and never counted on his page.
+  const healthEl = root.querySelector("#work-health");
+  try {
+    const wh = await api("/api/work-health");
+    if (healthEl.isConnected && wh && wh.available) {
+      const rows = (wh.problems || []).map(p => `<div class="inv-row">
+        <i class="dot d-attn"></i>
+        <span><a class="plain" href="#/work/${encodeURIComponent(p.id)}">${esc(p.title)}</a></span>
+        <span class="small muted">${esc(p.problem)}</span></div>`).join("");
+      healthEl.innerHTML = `<h2>Work cards nobody will pick up <span class="small muted">— every card must be closed, being worked, next for a worker, on Daniel's Work page, or held with a stated reason</span></h2>
+        <div class="card invcard">${rows ? rows + `<div class="small muted" style="margin-top:8px">The chief of staff fixes each work card listed here: close the card with the commit and CI run that finished its work (<code>hq/card.py close</code>), return the card to its owner's queue, or give the card a state HQ knows with the migration tool (<code>hq/migrate_card_states.py</code>).</div>`
+          : `<div class="inv-row"><i class="dot d-ok"></i><span>All ${wh.checked} work cards are in exactly one place, with an owner from the org chart.</span><span></span></div>`}</div>`;
+    } else if (healthEl.isConnected) {
+      healthEl.innerHTML = `<h2>Work cards nobody will pick up</h2><div class="card muted small">${esc((wh && wh.error) || "The work records could not be read.")}</div>`;
+    }
+  } catch { healthEl.innerHTML = ""; }
 
   // The 100-run strip patches in: it reads a file polled off the request path,
   // so the page never waits four seconds on GitHub to draw it.

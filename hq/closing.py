@@ -143,7 +143,9 @@ def close(item_id, *, sha, ci_run, result, by, note="", main_root, run=_run, fet
             item = work.load_item(item_id)
         except (OSError, ValueError):
             raise Refused(f"There is no work card {item_id}.")
-        if item.get("state") in CLOSED:
+        # 'done' was hand-written onto cards but is not a state HQ knows; closing
+        # one with evidence is how it becomes a recognised 'landed' card.
+        if item.get("state") in work.FINAL_STATES:
             raise Refused(f"Work card {item_id} is already {item['state']}.")
         at = work._now_iso()
         limitations = ("Closed from a session with commit and CI evidence; "
