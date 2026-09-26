@@ -22,5 +22,11 @@
       "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/mockups/mk3_learning_shop/SKETCH.md"
     }
   ],
-  "subject": "The Mark III learning shop"
+  "subject": "The Mark III learning shop",
+  "ruled": {
+    "date": "2026-09-26",
+    "option": "a",
+    "summary": "Ruled 2026-09-26: (a) a bigger brain waits for a brain trained in advance, and Daniel asked for that trained starting brain now as an upgrade. Kenji built it as the second card on the workbench shelf (S-32): trained on 96 practice farms, it gives a new Mark III a small head start, about a point a day in its first week on farms it never saw. How it is sold is Q-132.",
+    "written_up": "docs/design/06-bots-and-training.md"
+  }
 }

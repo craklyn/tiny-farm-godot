@@ -295,8 +295,16 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   bold allowed on a robot with squares, chevron pictures, 150 gold. Strawman: keep all
   four. Card: `hq/data/decisions/Q-131.json`.
 
+- **Q-132 — Keep the Mark III's starting brain on the shelf as built?** — **Ruling, open
+  2026-09-26.** Built under S-32 (Q-128): two placeholder choices — only a robot that has
+  not yet had a night can buy it, and 200 gold. Measured, it is a small head start (about
+  a point a day in the first week on farms it never saw). Alternatives on the card: let a
+  trained robot swap too, make it cheaper, or hide it until it clearly helps. Strawman:
+  keep both. Card: `hq/data/decisions/Q-132.json`.
+
 - **Q-126 to Q-130 — The Mark III learning shop.** — **Ruling, open 2026-09-25; Q-126
-  and Q-127 ruled the same day and Q-129 that night; Q-128 and Q-130 still open.**
+  and Q-127 ruled the same day, Q-129 that night and Q-128 on 2026-09-26; Q-130 still
+  open.**
   Milo's sketch (`docs/design/mockups/mk3_learning_shop/SKETCH.md`, 4f6ae2f) lays out
   twelve options for buying new brains, training methods and training data for the
   Mark III, and making your own. Its open questions are one card each, with no
@@ -323,6 +331,18 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
     widening averages 32.3 points a day kept against 26.7 started over (17 of 24 farms
     better). Reasoning and table in `design/06-bots-and-training.md` ("A wider view keeps
     what it learned"); `tools/measure_wider_view.gd`. Not built.
+  - **Q-128** ~~Should a bigger brain for the Mark III be built now, or wait for a
+    pretrained starting brain?~~ — ✅ **ruled 2026-09-26: (a), wait** — with his note
+    "Let's add an option now to upgrade to use a pretrained model." Recorded as S-32. The
+    bigger brain stays unbuilt; the starting brain was built as the shelf's second card
+    (200 gold, `[Playtest]`): the robot's own weights, averaged from 96 robots that each
+    learned a week on a generated farm, installed by the shelf's `buy_upgrade` with the
+    brain's hash in it, and only for a robot that has not yet had a night. Measured on 24
+    farms it never saw, it is a small head start, not a smarter robot: about one point a
+    day more in the first week on open ground (19.8 against 18.8), 0.5 to 1.1 on her
+    squares, better on 13 to 16 of 24 farms. Its two placeholder choices — only for a robot
+    that has not yet had a night, and 200 gold — are Q-132. Design in `design/06-bots-and-training.md`
+    ("A starting brain from the studio"); `tools/pretrain_mk3.gd`.
   - **Q-129** ~~Which new way of training the Mark III should be built first?~~ — ✅
     **ruled 2026-09-25: (a), a pace setting for each robot.** Recorded as S-31 and built
     2026-09-26 as the first thing on the workbench's shelf: bought once for a robot (150

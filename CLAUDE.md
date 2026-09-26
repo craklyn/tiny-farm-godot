@@ -70,6 +70,17 @@ godot --headless --path . --script res://tools/demo_learning_robot.gd
 # first morning chooses exactly as before (about three minutes)
 godot --headless --path . --script res://tools/measure_wider_view.gd
 
+# The Mark III's starting brain (S-32): train it on 96 generated farms and write it under
+# assets/brains/ (about two minutes); --evaluate plays it against a blank robot on 24
+# held-out farms four ways (about six minutes, or --only=<table> for one); --choose
+# --mode=average|rounds|sequential|blank reprints a row of the training-method table
+godot --headless --path . --script res://tools/pretrain_mk3.gd
+godot --headless --path . --script res://tools/pretrain_mk3.gd -- --evaluate
+
+# The starting brain's card on the workbench shelf, for sale, bought and dark, as PNGs
+# under docs/design/mockups/starter_brain/ — needs a display
+godot --path . res://tools/capture_starter_brain.tscn
+
 # Giving a Mark III its squares (S-26): its panel, the pointing mode, and the quiet
 # marks afterwards, as PNGs under docs/design/mockups/q124_assign/ — needs a display
 godot --path . res://tools/capture_assign_tiles.tscn

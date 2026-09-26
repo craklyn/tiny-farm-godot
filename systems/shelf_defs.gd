@@ -8,9 +8,9 @@
 # gateway's `buy_upgrade` verb, and by nothing else.
 #
 # **One row per thing for sale, and a later upgrade is one more row.** The first
-# is the pace setting (Q-129 a, ruled 2026-09-25). The candidates still waiting —
-# a pretrained starting brain (Q-128), practice scenarios (Q-130), a wider view
-# (S-30) — each arrive as a row here plus whatever the robot does with it, and the
+# is the pace setting (Q-129 a, ruled 2026-09-25); the second, the studio's
+# starting brain (Q-128). The candidates still waiting — practice scenarios
+# (Q-130), a wider view (S-30) — each arrive as a row here plus whatever the robot does with it, and the
 # shelf draws however many rows there are.
 #
 # **What a row says:**
@@ -43,11 +43,29 @@ static var TYPES: Dictionary = {
 		"scope": "robot",
 		"picture": "pace",
 	},
+	# --- the studio's starting brain (Q-128, ruled 2026-09-26; S-32) -----------
+	#
+	# Replaces a blank robot's weights with a brain trained before shipping on 96
+	# generated farms (`StarterBrains`, `tools/pretrain_mk3.gd`). The purchase is
+	# `buy_upgrade` with the brain's hash in it, and it is refused to a robot that
+	# has already had a night (`SimWorld._starter_refusal`), so the card goes dark
+	# after the robot's first night. Measured, it is a small head start — about a
+	# point a day in the first week on farms it never saw — not a smarter robot
+	# (design/06, "A starting brain from the studio").
+	#
+	# **Priced at 200** — a quarter of the robot it is for, because it buys a head
+	# start and nothing the robot could not learn on her farm. A strawman; the
+	# measured effect argues for less.  [Playtest]
+	"starter_brain": {
+		"price": 200,
+		"scope": "robot",
+		"picture": "starter",
+	},
 }
 
 # The shelf's order, and — as with `MachineDefs.ORDER` — the list of what is
 # actually for sale. A row missing from here exists and cannot be bought.
-static var ORDER: Array[String] = ["pace"]
+static var ORDER: Array[String] = ["pace", "starter_brain"]
 
 
 static func has(key: String) -> bool:

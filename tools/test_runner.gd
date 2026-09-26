@@ -8612,6 +8612,44 @@ func _scenario_bl_the_shelf_sells_a_pace() -> void:
 	_assert(BotBrain.pace_of(farm.sim.actor(mk3).get("extra", {})) == BotBrain.PACE_CALM,
 		"and a tap on one chevron sets it calm")
 
+	# --- the studio's starting brain, by tap (Q-128) -----------------------------
+	var starter_card := _find_button(shelf, "ShelfBuy1")
+	var mk3_extra: Dictionary = farm.sim.actor(mk3).get("extra", {})
+	_assert(starter_card != null and starter_card.visible and starter_card.size.y >= Workbench.TOUCH,
+		"the starting brain is the shelf's second card")
+	if starter_card == null:
+		menus.close_menu()
+		return
+	# This farm's Mark III may come out of a crate with nights behind it (Q-98), and
+	# a robot that has had a night keeps its own learning: the card is dark.
+	mk3_extra["days"] = 1
+	bench.refresh()
+	await get_tree().process_frame
+	_assert(starter_card.disabled, "a robot that has had a night: the card will not take a tap")
+	# ...and a robot with none behind it can take the brain.
+	mk3_extra["days"] = 0
+	bench.refresh()
+	await get_tree().process_frame
+	_assert(not starter_card.disabled, "one with no night behind it can")
+	var gold_then: int = GameState.gold
+	before = farm.replay.entries.size()
+	starter_card.pressed.emit()
+	await get_tree().process_frame
+	var sha := String(StarterBrains.CURRENT[StarterBrains.MK3])
+	mk3_extra = farm.sim.actor(mk3).get("extra", {})
+	_assert(GameState.gold == gold_then - ShelfDefs.price_of(StarterBrains.SHELF_KEY)
+			and String(mk3_extra.get("starter_sha", "")) == sha
+			and (mk3_extra.get("weights", []) as Array)
+				== (StarterBrains.current(StarterBrains.MK3)["weights"] as Array),
+		"a tap buys it, and the robot on the bench now has the studio's brain (%s)" % sha)
+	var brained: Dictionary = farm.replay.entries[farm.replay.entries.size() - 1]
+	_assert(farm.replay.entries.size() == before + 1
+			and String(brained.get("verb", "")) == "buy_upgrade"
+			and String(brained.get("item", "")) == StarterBrains.SHELF_KEY
+			and String(brained.get("sha", "")) == sha,
+		"recorded as one `buy_upgrade` naming the brain by its hash (%s)" % str(brained))
+	_assert(not starter_card.visible, "and its card no longer takes a tap as a purchase")
+
 	menus.close_menu()
 	await get_tree().process_frame
 	farm.apply_action({ "verb": "collect", "target": farm.sim.actor_pos(mk3),

@@ -2346,3 +2346,38 @@ func _wait(extra: Dictionary, tick: int) -> void:
 
 func _rest(extra: Dictionary, tick: int) -> void:
 	extra["wake"] = tick + ticks(SimRng.randf_range(float(PATROL_IDLE[0]), float(PATROL_IDLE[1])))
+
+
+# --- the studio's starting brain (Q-128) ------------------------------------------
+
+# **Put a starting brain into a Mark III** — the gateway's `buy_upgrade` for the
+# shelf's `starter_brain` row, once it has checked the brain fits
+# (`SimWorld._starter_refusal`) and been paid. `brain` is
+# `StarterBrains.load_brain`'s answer, already checked against its hash.
+#
+# **What changes is the weights, and only what has to change with them.** The
+# day's three running sums are emptied: they are credit for choices the old brain
+# made, and adding them to the new brain's weights tonight would push it in
+# directions it never took. What is left of today is learned from as usual, so the
+# first night of the new brain is its own. The baseline becomes the brain's own —
+# what a day from this brain was worth on the farms it was trained on — so that
+# first night measures it against what it usually earns, not against a blank
+# robot's days or zero.
+#
+# **What stays is everything that is hers**: its day count and draws, its record
+# and ledger, the dials she turned, the squares she gave it, what is in its hands.
+# The robot is the same robot with a different head start.
+#
+# `starter`, `starter_sha` and `starter_day` say which brain it started from and
+# when, so the workbench can show it and a later reader of a save can tell a
+# robot's learning from the studio's.
+static func install_brain(extra: Dictionary, brain: Dictionary, key: String, sha: String) -> void:
+	var weights: Array = (brain["weights"] as Array).duplicate()
+	extra["weights"] = weights
+	extra["trace"] = _scaled(weights, 0.0)
+	extra["acc"] = _scaled(weights, 0.0)
+	extra["base_trace"] = _scaled(weights, 0.0)
+	extra["baseline"] = float(brain.get("baseline", 0.0))
+	extra["starter"] = key
+	extra["starter_sha"] = sha
+	extra["starter_day"] = int(extra.get("days", 0))

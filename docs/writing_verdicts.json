@@ -849,6 +849,12 @@
    "verdict": "second-look",
    "why": "“Treatment” makes the reader translate a design term into the plain fact that Elena is preparing another picture design."
   },
+  "1b3d30b612881a652790": {
+   "instead": "Any Mark III can take the studio's brain. A trained robot loses what it learned on your farm, and the tests showed no improvement.",
+   "quote": "and measured, it gains nothing for it.",
+   "verdict": "decode",
+   "why": "The reader has to work out what “it” refers to and what was measured."
+  },
   "1b4cc5fa3bd15c1fbd3a": {
    "verdict": "ok"
   },
@@ -869,6 +875,9 @@
    "quote": "held from automatic work",
    "verdict": "second-look",
    "why": "The detached status uses “held” without saying plainly that the work is paused."
+  },
+  "1bd3472a2874be2828d9": {
+   "verdict": "ok"
   },
   "1bfca7e35a43a35da6f3": {
    "verdict": "ok"
@@ -1021,6 +1030,9 @@
   "216d3adfe0d9d5159558": {
    "verdict": "ok"
   },
+  "216d9016096efd5d0121": {
+   "verdict": "ok"
+  },
   "21c911d20f9c11d78c5e": {
    "verdict": "ok"
   },
@@ -1169,6 +1181,9 @@
    "quote": "the style pipeline that already exists",
    "verdict": "second-look",
    "why": "“Style pipeline” is internal process shorthand for the existing art process."
+  },
+  "26d00d2d11677759619e": {
+   "verdict": "ok"
   },
   "26ff79ab3fab0631dc7b": {
    "instead": "The robot keeps what it has learned, but its current score and starting reference reset",
@@ -1891,6 +1906,9 @@
   "3c1d89660519233dfc67": {
    "verdict": "ok"
   },
+  "3c24de42d748ae9aa1fc": {
+   "verdict": "ok"
+  },
   "3c48a204b77066e8f263": {
    "verdict": "ok"
   },
@@ -2526,6 +2544,9 @@
    "verdict": "ok"
   },
   "5480e51c2469982040d8": {
+   "verdict": "ok"
+  },
+  "54b490089ef2c77874dc": {
    "verdict": "ok"
   },
   "54bb9250f3c92adbfd6c": {
@@ -3744,6 +3765,9 @@
   "7b6206e1dba488a3822e": {
    "verdict": "ok"
   },
+  "7b7babaa085d5a6db52d": {
+   "verdict": "ok"
+  },
   "7bbdb17b73662853f5e6": {
    "verdict": "ok"
   },
@@ -4256,6 +4280,9 @@
   "8cee8626f6737c8952dd": {
    "verdict": "ok"
   },
+  "8d0a65fbbf5dbff622dc": {
+   "verdict": "ok"
+  },
   "8d19951ef604b7db7a96": {
    "verdict": "ok"
   },
@@ -4581,6 +4608,9 @@
    "verdict": "ok"
   },
   "97c68196fa26b45a43db": {
+   "verdict": "ok"
+  },
+  "97f051518ee6085552c6": {
    "verdict": "ok"
   },
   "97f9a67e1c1d094217ab": {
@@ -4936,6 +4966,12 @@
   },
   "a2d38abb19b40b3e83c2": {
    "verdict": "ok"
+  },
+  "a30f6bdbcb0b02d17901": {
+   "instead": "Any Mark III can use the studio's trained model. A robot that has already learned loses what it learned on your farm, and in testing it did slightly worse afterwards.",
+   "quote": "the studio's brain",
+   "verdict": "decode",
+   "why": "This metaphor does not tell a cold reader whether you mean the robot's software, its trained model, or something else."
   },
   "a333bf83ab724bb0169e": {
    "verdict": "ok"
@@ -6476,6 +6512,9 @@
    "verdict": "decode",
    "why": "Per rule 5, a number carries its denominator; 0.1 of what unit?"
   },
+  "d52fa3e848cbc9a3ee68": {
+   "verdict": "ok"
+  },
   "d530ca026ef32b72f039": {
    "baselined": "2026-09-25",
    "instead": "it changes what the square looks like, and what she has to clear before replanting",
@@ -6544,6 +6583,9 @@
    "verdict": "ok"
   },
   "d7bddaa628bea7d812dc": {
+   "verdict": "ok"
+  },
+  "d7e757ed24b9029bba1f": {
    "verdict": "ok"
   },
   "d845cf7cf8920c9d4e25": {
@@ -6943,6 +6985,9 @@
    "verdict": "ok"
   },
   "e4a1e4e35637a26a9d52": {
+   "verdict": "ok"
+  },
+  "e4a6b3a0b04676abecdc": {
    "verdict": "ok"
   },
   "e51823e913f6f3eb87a6": {
@@ -7483,6 +7528,9 @@
    "quote": "Build the robot's name plate",
    "verdict": "second-look",
    "why": "Three robots in scope (mark-1, mark-2, Mark III); which robot is this about?"
+  },
+  "f9b71dfab5a36e1db443": {
+   "verdict": "ok"
   },
   "f9d09a8ea41afb1bc545": {
    "instead": "GitHub CI is the one result someone outside the studio can check for themselves on the commit itself",

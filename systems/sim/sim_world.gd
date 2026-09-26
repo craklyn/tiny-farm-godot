@@ -3191,10 +3191,20 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			var shelf_key := String(action.get("item", ""))
 			if not shelf_key in ShelfDefs.ORDER: return _fail("not_offered")
 			if BotBrain.has_upgrade(upgraded_extra, shelf_key): return _fail("already_owned")
+			# The studio's starting brain (Q-128) is the one row whose purchase also
+			# changes the robot then and there; its checks come before the gold.
+			var starter := {}
+			if shelf_key == StarterBrains.SHELF_KEY:
+				var refused := _starter_refusal(upgraded_extra, String(action.get("sha", "")))
+				if refused != "": return _fail(refused)
+				starter = StarterBrains.load_brain(StarterBrains.MK3, String(action.get("sha", "")))
 			var cost := ShelfDefs.price_of(shelf_key)
 			if gs.gold < cost: return _fail("no_gold")
 			gs.set_gold(gs.gold - cost)
 			BotBrain.add_upgrade(upgraded_extra, shelf_key)
+			if not starter.is_empty():
+				BotBrain.install_brain(upgraded_extra, starter, StarterBrains.MK3,
+					String(action.get("sha", "")))
 			return { "ok": true, "machine": upgraded, "item": shelf_key, "price": cost }
 
 		# **Setting a Mark III's pace** (Q-129 a, ruled 2026-09-25). How hard the
@@ -3754,6 +3764,31 @@ func _empty_rooms(buildings: Array, gs) -> Array:
 
 func _fail(reason: String) -> Dictionary:
 	return { "ok": false, "reason": reason }
+
+
+# **Why a Mark III may not be given the studio's starting brain**, or "" if it may
+# (Q-128, ruled 2026-09-26; `buy_upgrade`'s `starter_brain` row). The brain is
+# named in the Action by the hash of its weights (`sha`), never "whatever the
+# shelf sells today", so a replay loads the identical weights even after a better
+# brain has shipped beside it — and a hash that names no file, or a file edited
+# since, is refused rather than quietly swapped for something else.
+#
+# It has to fit the robot (a robot with a wider view, S-30, would need a brain of
+# its own width, and none has been trained), and the robot must not yet have had a
+# night: one that has learned on her farm would lose that learning to the brain,
+# and measured on 24 farms it gains nothing for it — a week-old robot's next week
+# averaged 30.0 points a day kept and 29.5 given the brain (`tools/pretrain_mk3.gd`,
+# the swap table). Whether to allow it anyway is Q-132; one line here.
+func _starter_refusal(extra: Dictionary, sha: String) -> String:
+	if int(extra.get("days", 0)) > 0:
+		return "already_learning"
+	var brain := StarterBrains.load_brain(StarterBrains.MK3, sha)
+	if brain.is_empty():
+		return "no_such_brain"
+	if int(brain["n_in"]) != Observation.size(extra.get("spec", {})) \
+			or int(brain["n_out"]) != BotBrain.LEARN_ACTIONS:
+		return "brain_does_not_fit"
+	return ""
 
 
 # Rain falls all day, not only at dawn (2026-09-07). The day-turn pass wets

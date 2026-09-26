@@ -232,6 +232,15 @@ and stable than training from scratch.
 - **When to skip it:** at ≤~50k params, full fine-tuning is already trivial — no LoRA.
   Adapters earn their keep only once bases outgrow the on-device training budget; the
   ladder's early tiers stay small, fully-player-trained, and maximally legible.
+- **The first version exists, and it is small** (S-32, 2026-09-26). The Mark III's
+  starting brain is its own 1,664-weight linear policy trained offline on 96 generated
+  farms with randomised layouts (`tools/pretrain_mk3.gd`), shipped as a hash-named file
+  in `assets/brains/` and installed by one recorded Action. Nothing is frozen and nothing
+  new runs on the device. Measured on held-out farms it is a head start of about one
+  point a day in the first week, not a better robot: robots on different farms agree on
+  little, so the averaged brain is a sixth the size of one week's learning. The pipeline
+  (randomised farms, disjoint train/choose/held-out seeds, content-addressed weights) is
+  the part a larger base would reuse; the bigger brain itself stays deferred (Q-128 (a)).
 
 ### Runtime strategy
 

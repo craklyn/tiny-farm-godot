@@ -758,6 +758,124 @@ first step. `widen` lives in the tool, held to the identity above by
 `tests/test_runner.gd:test_wider_view`, until it moves into the sim with the verb that buys
 it.
 
+### A starting brain from the studio (Q-128, ruled 2026-09-26; S-32)
+
+**The ruling.** Q-128 asked whether a bigger brain for the Mark III should be built now or
+wait until a brain trained in advance on many farms exists. Daniel chose to wait (a), and
+added: *"Let's add an option now to upgrade to use a pretrained model."* So the bigger brain
+stays unbuilt, and the starting brain was built now, as the second card on the workbench's
+shelf (S-29).
+
+**What "pretrained" means in v1.** The same brain the robot already has, with its weights
+learned before the game ships instead of starting from zero. The Mark III's brain is a
+fixed-size linear softmax (`Policy`, 1,664 numbers), so a starting brain is a file of 1,664
+numbers. It is made on the desktop by `tools/pretrain_mk3.gd`: a blank robot plays a week on
+each of 96 generated farms, with the nightly update it runs on her farm (the S-26 day-size
+charge included), and the starting brain is the average of the 96 robots' weights. Every
+training farm has its own layout drawn from its seed — where the sown block is and how big,
+where the ripe row is, where the robot is set down — and on every second farm the robot is
+given squares (S-26), so the brain cannot memorise one field. Training takes about two
+minutes and is deterministic: the same farms give the same brain to the last digit.
+
+Buying it replaces the robot's weights with the brain's and sets what the robot expects a
+day to be worth to what the brain's training days were worth. Its record, dials, squares and
+day count stay. Nothing about the robot's shape changes and nothing extra runs on the
+tablet: the nights go on changing every weight exactly as they do for a robot that started
+blank. This is the first and weakest form of `ARCHITECTURE.md`'s pretrained base, with
+nothing frozen.
+
+**How it is shipped and replayed.** The brain is a file under `assets/brains/` named after
+the hash of its weights (`systems/starter_brains.gd`), exported with the game
+(`export_presets.cfg` includes `assets/brains/*.json`). The purchase is the shelf's own
+Action, `buy_upgrade` with item `starter_brain`, carrying that hash as `sha`. A replay loads
+the same file by the same hash, so a session recorded today rebuilds the same robot after the
+studio ships a better brain beside it; a brain that is missing or was edited is refused, not
+swapped in.
+
+**How the training method was chosen.** Three ways to train, each judged on 24 farms kept
+apart from both the training farms and the report's farms, by a robot's first week from the
+brain, learning. The rule was set before the runs: the best whole week wins. Points a day,
+on fields of the farms' own, open ground and her squares together:
+
+| Trained by | Days 1-3 | Days 5-7 | Week | Week, nights off |
+| --- | --- | --- | --- | --- |
+| Nothing: a blank robot | 13.2 | 34.0 | 26.6 | 25.6 |
+| The average of 96 robots, a week each (shipped) | 13.9 | 34.0 | 26.7 | 26.4 |
+| Rounds: 8 farms a week from the brain, averaged, 12 times | 15.2 | 30.3 | 26.3 | 26.7 |
+| Rounds, 24 times | 14.6 | 30.0 | 25.8 | 26.5 |
+| One robot carried across 48 farms, a week each | 5.3 | 13.4 | 11.5 | 11.6 |
+
+Every method but one lands within a point of a blank robot. Wiping the two weights about
+where on the map the robot stands made no difference to either the average or the rounds.
+The rounds make a robot that sows and waters more early and ships less late. The robot
+carried from farm to farm collapses: it ends up deciding every second of the day (300
+decisions where a blank robot makes about 110), never waits, and earns almost nothing on a
+new farm. Nothing like it showed on one farm — three robots played six weeks each on the
+demo's field kept earning — but it is why the shipped brain is an average rather than one
+long-trained robot.
+
+**Measured on farms it never saw** (`--evaluate`, 24 held-out farms per table, none of them
+the learning gate's). Each farm is played for a week three ways: a blank robot (today's Mark
+III), the starting brain bought at the bench and learning each night (the upgrade), and the
+starting brain with its nights switched off. "Beat blank" counts the farms whose week beat
+the same farm's blank week.
+
+| Farm | Robot | Days 1-3 | Days 5-7 | Week | Beat blank |
+| --- | --- | --- | --- | --- | --- |
+| The demo's field, open ground | blank | 15.7 | 21.7 | 18.8 | — |
+| | starting brain | 17.6 | 22.4 | **19.8** | 16 / 24 |
+| | starting brain, nights off | 17.1 | 19.6 | 18.5 | 12 / 24 |
+| The demo's field, her squares | blank | 15.9 | 58.1 | 40.9 | — |
+| | starting brain | 16.0 | 59.4 | **42.0** | 14 / 24 |
+| | starting brain, nights off | 15.7 | 59.8 | 42.4 | 13 / 24 |
+| A field of its own, open ground | blank | 17.2 | 24.0 | 20.3 | — |
+| | starting brain | 18.9 | 23.3 | **21.2** | 15 / 24 |
+| | starting brain, nights off | 17.8 | 23.0 | 20.3 | 11 / 24 |
+| A field of its own, her squares | blank | 9.5 | 38.3 | 29.3 | — |
+| | starting brain | 9.5 | 38.2 | **29.8** | 13 / 24 |
+| | starting brain, nights off | 9.5 | 39.2 | 30.4 | 15 / 24 |
+
+**The honest reading: a small head start, not a better robot.** On farms it never saw, the
+starting brain's first week is about one point a day better than a blank robot's on open
+ground (0.9 to 1.0, about 5%) and 0.5 to 1.1 better on her squares, and it wins on 13 to 16
+of every 24 farms — too close to call farm by farm. Most of the gain is in the first three
+days (about 1.8 points a day on open ground). On the farms the method was chosen on, the same
+brain was 0.1 better. The nights still improve it on open ground (1.3 and 0.9 points a day
+over the same brain with its nights off); on her squares the nights neither help nor hurt
+it, which is also true of a blank robot there. It should not be sold as a smarter robot.
+
+**Why so small.** One robot's week moves its weights by 0.26 (the length of the change); the
+average of 96 robots' weeks is 0.045, a sixth of that. Robots on different farms mostly learn
+different things, and what they agree on is a small nudge towards sowing and watering early.
+There is not much for a head start to give either: on these farms a blank robot's own week
+of nights is worth about one point a day over the same week without them. A bigger brain
+would not change either fact. What would is a learner that gets more out of a night, or
+training that transfers (practice runs, Q-130); then a larger pretrained base is worth
+building (option a's trigger).
+
+**Only a robot that has not yet had a night can take it.** A robot that learned for a week
+and was then given the brain did worse the next week than one left alone — 29.3 points a
+day against 30.1, better on 11 of 24 farms — and lost what it learned on her farm. So the
+gateway refuses a robot with a night behind it (`already_learning`), and its card on the
+shelf goes dark. That includes every Mark III already on a farm today, so in practice the
+card is for a new robot. Whether a trained robot should be allowed to swap anyway is
+Q-132 (below).
+
+**Built:** the training and measuring tool; the shipped brain
+(`assets/brains/mk3_starter-91d39ddc8512.json`, with its seeds, method, commit and Godot
+version inside it); its card on the shelf, the Mark III with a spark beside its head, 200
+gold, a strawman `[Playtest]` like every price (`14-training-workbench.md`, "The starting
+brain card"); the purchase's checks and the install; and tests for the file, the training's
+determinism, the checks, a save, a replay (`test_starter_brain`) and the tap on the card
+(the integration suite's shelf scenario). The robot keeps `starter_day`, which the bench's
+plate could read to say in words that it started from the studio's brain; that line is not
+drawn yet.
+
+**Open, Q-132:** whether a robot that has already learned may take the brain, whether the
+price should drop to fit a small head start, or whether the card comes off the shelf until a
+brain clearly beats a blank robot. Strawman: keep it as built. Pictures of the card in
+`mockups/starter_brain/`, taken from the game by `tools/capture_starter_brain.tscn`.
+
 ### Practice runs: it rehearses at night (Q-130, revised 2026-09-26)
 
 *Status: designed, not built. Owner: Milo (design); feasibility checked against the ML
@@ -1182,7 +1300,9 @@ A stall or home; vision beyond radius 2 (designed, not built: bought at the work
 S-29, and keeping what it learned, S-30 — "A wider view keeps what it learned"); choosing which seed to plant (it plants what she
 has most of); carrying more than one crop; practice runs at night (designed, not built:
 bought at the workbench, Q-130 — "Practice runs: it rehearses at night"); learning from her
-recorded days (the next rung, P-5 as amended); sharing weights between robots (P-7); any night surface beyond the panel
+recorded days (the next rung, P-5 as amended); a bigger brain (Q-128 (a): it waits for a
+pretrained base worth growing from, and the v1 starting brain is only a small head start —
+S-32, "A starting brain from the studio"); sharing weights between robots (P-7); any night surface beyond the panel
 itself (D-4). Each is a later mark or a later tier, on purpose. Known wart, filed: the
 game's own shipping bin bookkeeping (`gs.shipping_bin`, `process_shipping_bin`) is
 vestigial — `sell` pays at once — so "mailbox" here means the bin object at the yard's edge.
@@ -1252,6 +1372,7 @@ that reads as broken.
 | Her squares: the `assign_tiles` verb, the limit and walk back, the masked view (S-26) | `systems/sim/sim_world.gd`, `bot_brain.gd`, `observation.gd`; the tap in `systems/action_router.gd`; the mode in `main.gd`; the marks in `world/farm.gd`; tests `test_mark_three_assigned_tiles()` and Scenario BG; pictures `tools/capture_assign_tiles.tscn` |
 | A wider view keeping what it learned (S-30): the proposed mapping `widen` and the 24-farm measurement; not built | `tools/measure_wider_view.gd` + `test_wider_view()` |
 | Its pace (S-31): the three steps and the night's use of them; the `set_pace` verb; the shelf's `buy_upgrade` and catalogue; the bench card | `bot_brain.gd` (`PACE_SCALES`, `_sleep_on_it`), `sim_world.gd`, `systems/shelf_defs.gd`, `ui/workbench_shelf.gd`; tests `test_workbench_shelf()` and Scenario BL; the pace table in `tools/demo_learning_robot.gd`; pictures `tools/capture_workbench_shelf.tscn` |
+| The studio's starting brain (S-32): the brain file and its hash, the shelf row, the purchase's checks and the install, the training and held-out measurement | `systems/starter_brains.gd`, `assets/brains/`, `systems/shelf_defs.gd` (`starter_brain`), `sim_world.gd` (`buy_upgrade`, `_starter_refusal`), `bot_brain.gd` (`install_brain`), `ui/workbench_shelf.gd`; `tools/pretrain_mk3.gd` + `test_starter_brain()` |
 | Practice runs (Q-130): the run and the night's pooling, the practice list; not built | `systems/sim/practice.gd` and `systems/practice_defs.gd` (both new) |
 
 The build plan, with interfaces and acceptance criteria per work item, is

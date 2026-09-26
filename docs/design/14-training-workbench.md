@@ -280,6 +280,31 @@ set bold), taken from the game by `tools/capture_workbench_shelf.tscn`.
   belonged to the whole farm would need a home for it on the farm's own state; none exists
   yet, so none is written.
 
+### The starting brain card (Q-128, built 2026-09-26; S-32)
+
+The shelf's second row. What the brain is and how much it helps — a small head start, not
+a smarter robot — is `06-bots-and-training.md`, "A starting brain from the studio".
+Pictures (for sale, bought, and dark on a robot that has had a night):
+`mockups/starter_brain/`, taken from the game by `tools/capture_starter_brain.tscn`.
+
+- **The picture is the Mark III with a four-point spark beside its head**: the robot,
+  already switched on. Once bought the spark turns the bench's brass and stays, with the
+  card's brass edge, so the card goes on saying this robot started from the studio's brain.
+  It has no controls; bought, it is simply part of the robot.
+- **Bought with the same `buy_upgrade` Action**, item `starter_brain`, carrying one more
+  key: `sha`, the hash of the brain the shelf sells today (`StarterBrains.CURRENT`). The
+  gateway loads the brain by that hash, so a replay installs the identical weights even
+  after a better brain ships beside it. It refuses a hash that names no brain file
+  (`no_such_brain`), a robot with a view the brain was not trained for
+  (`brain_does_not_fit`), and a robot that has already had a night (`already_learning`).
+- **So the card goes dark after the robot's first night**, price dimmed rather than red,
+  because the reason is not gold. A robot that has learned on her farm keeps its own
+  learning; whether to allow the swap anyway is Q-132.
+- **The robot records it**: `starter`, `starter_sha` and `starter_day` on the robot, for
+  the plate to say so and for anyone reading a save to tell the studio's learning from hers.
+- **The price is 200**, a quarter of the robot. `[Playtest]`; the measured effect argues
+  for less.
+
 ### The practice cards (Q-130, revised 2026-09-26; not built)
 
 A practice is a shelf item of a second kind. The wider view and the pretrained starting

@@ -13,7 +13,9 @@
 # Bought, the price is gone and the card carries the control the upgrade gives
 # the robot on the bench. The first row is the pace setting (Q-129 a): three
 # picture buttons, one, two and three chevrons for calm, normal and bold, the lit
-# one in the bench's brass.
+# one in the bench's brass. The second is the studio's starting brain (Q-128):
+# no control once bought, only its spark turned brass, and dark for a robot that
+# has already had a night, because the gateway refuses it one.
 #
 # **It never writes the robot.** Buying is a `buy_upgrade` Action at the bench's
 # own square and a pace press is a `set_pace` Action, both through the gateway
@@ -150,13 +152,18 @@ func _style_controls() -> void:
 func buy(key: String) -> void:
 	if farm == null or actor_id == "" or not farm.sim.has_actor(actor_id):
 		return
-	var result: Dictionary = farm.apply_action({
+	var action := {
 		"verb": "buy_upgrade",
 		"actor": "player",
 		"target": _bench_tile(),
 		"machine": actor_id,
 		"item": key,
-	}, GameState)
+	}
+	# The starting brain is bought by the hash of the brain the shelf sells today,
+	# so the recorded Action names the exact weights it installed (Q-128).
+	if key == StarterBrains.SHELF_KEY:
+		action["sha"] = String(StarterBrains.CURRENT[StarterBrains.MK3])
+	var result: Dictionary = farm.apply_action(action, GameState)
 	AudioManager.play_sfx("jingle" if result.get("ok", false) else "nope")
 	_refresh()
 
@@ -203,7 +210,16 @@ func _extra() -> Dictionary:
 
 
 func _affordable(key: String) -> bool:
-	return GameState.gold >= ShelfDefs.price_of(key)
+	return GameState.gold >= ShelfDefs.price_of(key) and _offered(key)
+
+
+# Whether the robot on the bench can take `key` at all, gold aside. Only the
+# starting brain has a condition: a robot that has already had a night keeps its
+# own learning (the gateway's `_starter_refusal`), so its card goes dark.
+func _offered(key: String) -> bool:
+	if key == StarterBrains.SHELF_KEY:
+		return int(_extra().get("days", 0)) == 0
+	return true
 
 
 # --- the picture --------------------------------------------------------------
@@ -224,16 +240,23 @@ func _draw() -> void:
 		draw_picture(self, ShelfDefs.picture_of(key), pic,
 			Workbench.INK if can else Workbench.INK_DIM, owned)
 		if not owned:
-			_draw_price(r, ShelfDefs.price_of(key), _affordable(key))
+			_draw_price(r, ShelfDefs.price_of(key), _affordable(key), _offered(key))
 	_draw_purse()
 
 
-func _draw_price(r: Rect2, price: int, affordable: bool) -> void:
+# The coin and the numeral: gold when she can buy it, red when she is short, and
+# dimmed with the card when this robot cannot take it at all — a red price would
+# say "save up", which is not the reason.
+func _draw_price(r: Rect2, price: int, affordable: bool, offered := true) -> void:
 	var coin_at := Vector2(r.position.x + PRICE_X, r.position.y + (r.size.y - COIN_SIZE) / 2.0)
+	var dim := Color(1, 1, 1, 1.0 if offered else Workbench.INK_DIM.a)
 	draw_texture_rect_region(Workbench.SHEET_ICONS, Rect2(coin_at, Vector2(COIN_SIZE, COIN_SIZE)),
-		COIN_REGION)
+		COIN_REGION, dim)
+	var ink := PRICE_INK if affordable else PRICE_INK_SHORT
+	if not offered:
+		ink = Workbench.INK_DIM
 	_text(str(price), Vector2(coin_at.x + COIN_SIZE + 8.0, r.position.y + r.size.y / 2.0
-		+ PRICE_SIZE * 0.36), PRICE_SIZE, PRICE_INK if affordable else PRICE_INK_SHORT)
+		+ PRICE_SIZE * 0.36), PRICE_SIZE, ink)
 
 
 func _draw_purse() -> void:
@@ -277,6 +300,24 @@ static func draw_picture(canvas: CanvasItem, picture: String, r: Rect2, ink: Col
 			if not owned:
 				draw_chevrons(canvas, 2, Rect2(Vector2(body.end.x, r.position.y),
 					Vector2(r.end.x - body.end.x, r.size.y)), ink)
+		# The studio's starting brain (Q-128): the Mark III with a four-point spark
+		# beside its head — the robot, already switched on. Kept once bought, in the
+		# bench's brass, so the card goes on saying this robot started from it.
+		"starter":
+			var body := Rect2(r.position, MK3_BODY.size * 3.0)
+			canvas.draw_texture_rect_region(SHEET_MK3, body, MK3_BODY, Color(1, 1, 1, ink.a))
+			var spark := Workbench.BRASS_LIT if owned else ink
+			draw_spark(canvas, Vector2(body.end.x + 22.0, r.position.y + 18.0), 14.0, spark)
+
+
+## A four-point spark of radius `size` at `c`: the starting brain's mark.
+static func draw_spark(canvas: CanvasItem, c: Vector2, size: float, ink: Color) -> void:
+	var waist := size * 0.28
+	canvas.draw_colored_polygon(PackedVector2Array([
+		c + Vector2(0, -size), c + Vector2(waist, -waist), c + Vector2(size, 0),
+		c + Vector2(waist, waist), c + Vector2(0, size), c + Vector2(-waist, waist),
+		c + Vector2(-size, 0), c + Vector2(-waist, -waist),
+	]), ink)
 
 
 ## `count` chevrons pointing right, centred in `r` — one for calm, two for normal,

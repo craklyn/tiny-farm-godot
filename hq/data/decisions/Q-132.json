@@ -1,0 +1,52 @@
+{
+  "id": "Q-132",
+  "owner": "kenji",
+  "title": "Keep the Mark III's starting brain on the workbench shelf as built, or change how it is sold?",
+  "question": "You asked for an option to give the Mark III a brain trained in advance (Q-128). It is built as the second card on the workbench shelf, pictured below: for 200 gold, a new Mark III starts from a brain the studio trained on 96 practice farms instead of from nothing, and then keeps learning each night as before.\n\nIt helps a little, not a lot. On 24 farms it had never seen, a robot starting from it earned about one point a day more in its first week on open ground (19.8 against 18.8 for a robot starting from nothing), and 0.5 to 1.1 more on your squares. It did better on 13 to 16 of every 24 farms, so on any one farm it may not show. Most of the gain is in the first three days.\n\nKenji made two choices while building it. Only a robot that has not yet had a night can buy it, because a robot that had already learned for a week did slightly worse after the swap (29.3 points a day against 30.1) and lost what it had learned on your farm. That also means a Mark III already on a farm today cannot buy it. The price is 200 gold, a quarter of the robot. Pick (a) to keep both, or another option to change one.",
+  "why_now": "It is built and on the shelf now, with both test suites passing. The price is a placeholder for playtesting, so nothing is blocked while this waits.",
+  "options": [
+    {
+      "key": "a",
+      "label": "Keep it as built (Recommended)",
+      "detail": "Sold for 200 gold, only to a Mark III that has not yet had a night. A robot that has learned on your farm keeps its own learning.",
+      "recommended": true
+    },
+    {
+      "key": "b",
+      "label": "Let a robot that has already learned buy it too",
+      "detail": "Any Mark III can buy the trained starting brain. A robot that has already learned loses what it learned on your farm, and in testing it did slightly worse afterwards."
+    },
+    {
+      "key": "c",
+      "label": "Make it cheaper, since it only helps a little",
+      "detail": "Drop the price to 50 gold, closer to what about a point a day for a week is worth."
+    },
+    {
+      "key": "d",
+      "label": "Take it off the shelf until it clearly helps",
+      "detail": "Keep the training tool and the purchase, but hide the card until a starting brain beats a robot starting from nothing on most farms."
+    }
+  ],
+  "links": [
+    {
+      "type": "image",
+      "src": "docs/design/mockups/starter_brain/1_for_sale.png",
+      "caption": "The shelf: the pace setting, and below it the starting brain for sale, a Mark III with a spark beside its head."
+    },
+    {
+      "type": "image",
+      "src": "docs/design/mockups/starter_brain/2_bought.png",
+      "caption": "Bought: the price is gone and the spark turns brass, so the card keeps saying this robot started from the studio's brain."
+    },
+    {
+      "type": "image",
+      "src": "docs/design/mockups/starter_brain/3_after_a_night.png",
+      "caption": "A second robot that has already had a night: the card is dimmed and will not take a tap."
+    },
+    {
+      "label": "How the starting brain was trained and measured",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/06-bots-and-training.md#a-starting-brain-from-the-studio-q-128-ruled-2026-09-26-s-32"
+    }
+  ],
+  "subject": "The Mark III learning shop"
+}

@@ -106,6 +106,10 @@ const RaidRace := preload("res://tools/measure_raid_race.gd")
 # 24-farm comparison. Static functions only, as above.
 const WiderView := preload("res://tools/measure_wider_view.gd")
 
+# The studio's starting brain for the Mark III (Q-128), shared with the tool that
+# trains it and measures it on held-out farms. Static functions only, as above.
+const PretrainMk3 := preload("res://tools/pretrain_mk3.gd")
+
 
 func _init() -> void:
 	GameState = load("res://systems/game_state.gd").new()
@@ -222,6 +226,7 @@ func _init() -> void:
 	test_robot_story_night()
 	test_learning_robot()
 	test_wider_view()
+	test_starter_brain()
 	test_world_pages()
 	test_the_door()
 	test_the_window()
@@ -14335,6 +14340,173 @@ func test_wider_view() -> void:
 	f["gs"].free()
 
 
+# --- The studio's starting brain (Q-128, ruled 2026-09-26) ----------------------
+#
+# Daniel ruled that a bigger brain waits for a pretrained starting brain, and
+# asked for the starting brain now, as an upgrade. It is the Mark III's own
+# weights, trained before shipping on many generated farms (`tools/pretrain_mk3.gd`)
+# and bought from the workbench's shelf with one Action (`buy_upgrade`, row
+# `starter_brain`, the brain's hash in it). What this holds it to: the file that
+# ships is the file its name says; training is deterministic; the Action checks
+# what it is given, charges for it and replaces only what it should; and a robot
+# given the brain survives a save and a replay as the same robot.
+# Whether the brain is any *good* is the tool's report, not a gate — the numbers
+# are in `design/06` ("A starting brain from the studio").
+func test_starter_brain() -> void:
+	print("\n--- The studio's starting brain for the Mark III (Q-128) Tests ---")
+
+	# --- the file that ships -------------------------------------------------
+	var sha := String(StarterBrains.CURRENT[StarterBrains.MK3])
+	var shipped := StarterBrains.current(StarterBrains.MK3)
+	var width := Observation.size(Observation.spec_default())
+	_assert(sha.length() == StarterBrains.HASH_DIGITS and not shipped.is_empty(),
+		"the shelf names a starting brain (%s) and its file loads" % sha)
+	_assert(int(shipped.get("n_in", 0)) == width
+			and int(shipped.get("n_out", 0)) == BotBrain.LEARN_ACTIONS
+			and (shipped.get("weights", []) as Array).size() == BotBrain.LEARN_ACTIONS * (width + 1),
+		"shaped for the robot that ships: %d inputs, eight actions" % width)
+	var moved := 0
+	for w in shipped.get("weights", []):
+		if float(w) != 0.0:
+			moved += 1
+	_assert(moved > (shipped["weights"] as Array).size() / 2,
+		"and it has actually learned something: %d of its %d weights are not zero"
+			% [moved, (shipped["weights"] as Array).size()])
+	_assert(StarterBrains.hash_of(StarterBrains.MK3, width, BotBrain.LEARN_ACTIONS,
+			StarterBrains.to_micros(shipped["weights"])) == sha,
+		"its weights hash to the name it is shipped under")
+	_assert(StarterBrains.load_brain(StarterBrains.MK3, "000000000000").is_empty()
+			and StarterBrains.load_brain("mk9_starter", sha).is_empty(),
+		"and a hash or a key that names no file loads nothing")
+	# The hash is SHA-256 over text this code writes, so it may not move with the
+	# engine. Pinned on three numbers so a change to the text would be caught here
+	# rather than by every old replay failing to find its brain.
+	_assert(StarterBrains.hash_of("k", 1, 1, [1, -2]) == "k|1|1|1,-2".sha256_text().substr(0, 12)
+			and StarterBrains.from_micros(StarterBrains.to_micros([0.123456, -1.5]))
+				== [0.123456, -1.5],
+		"the hash is over the brain's own text, and a weight survives being stored as millionths")
+
+	# --- training is deterministic -------------------------------------------
+	# Two farms of two days, twice: the same weights, and so the same name.
+	var tiny := PretrainMk3.seeds_from(PretrainMk3.TRAIN_BASE, 2)
+	var first: Dictionary = PretrainMk3.train(PretrainMk3.MODE_AVERAGE, tiny, 2)
+	var second: Dictionary = PretrainMk3.train(PretrainMk3.MODE_AVERAGE, tiny, 2)
+	_assert((first["weights"] as Array) == (second["weights"] as Array)
+			and float(first["baseline"]) == float(second["baseline"])
+			and (first["weights"] as Array).size() == BotBrain.LEARN_ACTIONS * (width + 1),
+		"training the same farms twice gives the same brain, weight for weight")
+	var nonzero := false
+	for w in first["weights"]:
+		nonzero = nonzero or float(w) != 0.0
+	_assert(nonzero and int(first["days"]) == 2,
+		"and it did train: two nights on each of two farms moved its weights")
+	_assert(PretrainMk3.random_layout(PretrainMk3.TRAIN_BASE) \
+			== PretrainMk3.random_layout(PretrainMk3.TRAIN_BASE)
+			and PretrainMk3.random_layout(PretrainMk3.TRAIN_BASE) \
+				!= PretrainMk3.random_layout(PretrainMk3.TRAIN_BASE + 1),
+		"each training farm has a field of its own, the same one every time")
+
+	# --- buying it at the bench ----------------------------------------------------
+	# The shelf's second row, bought through the shelf's own Action with the brain's
+	# hash in it (`buy_upgrade`, item `starter_brain`).
+	var price := ShelfDefs.price_of(StarterBrains.SHELF_KEY)
+	_assert(ShelfDefs.ORDER.has(StarterBrains.SHELF_KEY) and price > 0
+			and ShelfDefs.scope_of(StarterBrains.SHELF_KEY) == "robot",
+		"the shelf sells the starting brain, for %d gold, to one robot at a time" % price)
+	var yard := _shelf_yard(12801)
+	var s: LiveSession = yard["s"]
+	var bot := String(yard["bot"])
+	var bench: Vector2i = yard["bench"]
+	var ask := func(changes: Dictionary) -> Dictionary:
+		var a := { "verb": "buy_upgrade", "actor": "player", "target": bench, "machine": bot,
+			"item": StarterBrains.SHELF_KEY, "sha": sha }
+		a.merge(changes, true)
+		return s.act(a)
+	_assert(String(ask.call({ "target": MK3_SPOT }).get("reason", "")) == "no_workbench",
+		"away from a bench it is refused, like every shelf row")
+	_assert(String(ask.call({ "sha": "000000000000" }).get("reason", "")) == "no_such_brain",
+		"a hash that names no brain file is refused, rather than installing whatever is current")
+	_assert(String(ask.call({ "sha": "" }).get("reason", "")) == "no_such_brain",
+		"and so is a purchase that names no hash at all")
+	var narrow := (s.world.actor(bot)["extra"]["spec"] as Dictionary).duplicate(true)
+	s.world.actor(bot)["extra"]["spec"]["vision"] = 3
+	_assert(String(ask.call({}).get("reason", "")) == "brain_does_not_fit",
+		"a robot with a wider view is refused a brain trained for the narrow one")
+	s.world.actor(bot)["extra"]["spec"] = narrow
+	s.gs.gold = price - 1
+	_assert(String(ask.call({}).get("reason", "")) == "no_gold" and int(s.gs.gold) == price - 1,
+		"and she cannot buy it one coin short")
+	s.gs.gold = 1000
+	var extra: Dictionary = s.world.actor(bot)["extra"]
+	_assert((extra["weights"] as Array).max() == 0.0 and (extra["weights"] as Array).min() == 0.0
+			and not BotBrain.has_upgrade(extra, StarterBrains.SHELF_KEY),
+		"none of those refusals touched the robot: it is still blank")
+	var clock_before := int(s.gs.actions_today)
+	var bought: Dictionary = ask.call({})
+	_assert(bool(bought.get("ok", false)) and String(bought.get("machine", "")) == bot,
+		"asked properly at the bench, the robot is given the brain")
+	_assert(int(s.gs.gold) == 1000 - price and int(s.gs.actions_today) == clock_before,
+		"for its price, and off the day's clock like any purchase")
+	extra = s.world.actor(bot)["extra"]
+	_assert((extra["weights"] as Array) == (shipped["weights"] as Array)
+			and float(extra["baseline"]) == float(shipped["baseline"]),
+		"its weights are now the brain's, and it expects a day to be worth what the brain's days were")
+	_assert(BotBrain.has_upgrade(extra, StarterBrains.SHELF_KEY)
+			and String(extra.get("starter", "")) == StarterBrains.MK3
+			and String(extra.get("starter_sha", "")) == sha and int(extra.get("starter_day", -1)) == 0,
+		"it owns the upgrade, and records which brain it started from and on which day")
+	_assert((extra["trace"] as Array).max() == 0.0 and (extra["acc"] as Array).min() == 0.0
+			and (extra["base_trace"] as Array).size() == (extra["weights"] as Array).size(),
+		"with today's running sums emptied, so tonight learns only from the new brain's choices")
+	_assert(String(ask.call({}).get("reason", "")) == "already_owned",
+		"bought once, it cannot be bought again for the same robot")
+	_assert(_json_plain(extra), "and everything on it is still plain JSON (ground rule 4)")
+	# A robot that has had a night is refused: it would lose what it learned on her
+	# farm, and the swap table in the tool measured no gain for it.
+	s.gs.gold = 2000
+	var older := _mk3_place(s, MK3_SPOT + Vector2i(2, 0))
+	s.world.actor(older)["extra"]["days"] = 1
+	var refused: Dictionary = ask.call({ "machine": older })
+	_assert(String(refused.get("reason", "")) == "already_learning"
+			and (s.world.actor(older)["extra"]["weights"] as Array).max() == 0.0,
+		"and a robot that has already had a night keeps its own learning: refused (%s)"
+			% String(refused.get("reason", "")))
+
+	# --- a save and a replay give back the same robot ------------------------------
+	var lyard := _shelf_yard(12802)
+	var live: LiveSession = lyard["s"]
+	var learner := String(lyard["bot"])
+	live.rebase()
+	live.tick(SimClock.RATE * 20)
+	live.act({ "verb": "buy_upgrade", "actor": "player", "target": lyard["bench"],
+		"machine": learner, "item": StarterBrains.SHELF_KEY, "sha": sha })
+	live.tick(SimClock.RATE * 30)
+	live.gs.weather = "sunny"
+	live.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	live.tick(SimClock.RATE * 20)
+	var lex: Dictionary = live.world.actor(learner)["extra"]
+	_assert(String(lex.get("starter_sha", "")) == sha and int(lex["days"]) == 1
+			and (lex["weights"] as Array) != (shipped["weights"] as Array),
+		"a robot given the brain mid-morning learned from the rest of the day that night")
+	var canonical := SaveGame.capture_canonical(live.world, live.gs)
+	var again := SimWorld.new()
+	live.log.apply_to(again, live.gs)
+	_assert(live.log.divergence == "",
+		"the session with the purchase in it replays cleanly (%s)" % live.log.divergence)
+	_assert(SaveGame.capture_canonical(again, live.gs) == canonical,
+		"into the same farm and, weight for weight, the same robot")
+	var saved = JSON.parse_string(JSON.stringify(SaveGame.capture(live.world, live.gs)))
+	var restored := SimWorld.new()
+	_assert(SaveGame.restore(saved, restored, live.gs)
+			and SaveGame.capture_canonical(restored, live.gs) == canonical,
+		"and a save taken after it loads back into that same robot")
+	var back: Dictionary = restored.actor(learner)["extra"]
+	_assert(String(back.get("starter_sha", "")) == sha,
+		"still knowing which brain it started from")
+	s.done()
+	live.done()
+
+
 # --- The door (2026-09-06) ----------------------------------------------------
 #
 # The CEO asked for three things and the first two are one feature: *"the player
@@ -17001,8 +17173,8 @@ func test_workbench_shelf() -> void:
 	print("\n--- The workbench's shelf and a Mark III's pace (S-29, Q-129) Tests ---")
 
 	# --- the catalogue ---------------------------------------------------------
-	_assert(ShelfDefs.ORDER == (["pace"] as Array[String]) and ShelfDefs.has("pace"),
-		"the shelf sells one thing so far, the pace setting (%s)" % str(ShelfDefs.ORDER))
+	_assert(ShelfDefs.ORDER.size() >= 1 and ShelfDefs.ORDER[0] == "pace" and ShelfDefs.has("pace"),
+		"the shelf's first row is the pace setting (%s)" % str(ShelfDefs.ORDER))
 	_assert(ShelfDefs.price_of("pace") == 150 and ShelfDefs.scope_of("pace") == "robot",
 		"for 150 gold, bought for one robot (S-29)")
 	_assert(not MachineDefs.has("pace") and not ("pace" in MachineDefs.ORDER),

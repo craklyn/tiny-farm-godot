@@ -620,6 +620,24 @@ recorded player Actions (`buy_upgrade`, `set_pace`), saved on the robot and kept
 picks it up (Q-98). Built 2026-09-26; design in `design/06-bots-and-training.md` ("Its pace")
 and `design/14-training-workbench.md` §11. Options (b) and (c) stay in the sketch.
 
+### S-32. A bigger Mark III brain waits; a starting brain trained in advance is sold now
+**Ruled 2026-09-26 (Q-128, option a), with Daniel's note: "Let's add an option now to
+upgrade to use a pretrained model."** A bigger brain is not built until there is a brain
+trained in advance for it to grow from. The starting brain was built now, as the second card
+on the workbench's shelf (S-29): the Mark III's own 1,664 weights, trained on the desktop by
+`tools/pretrain_mk3.gd` as the average of 96 robots that each learned a week on a generated
+farm with its own layout, shipped as `assets/brains/` files named by the hash of their
+weights. Buying it (`buy_upgrade`, item `starter_brain`, 200 gold `[Playtest]`, with the hash
+in the Action so a replay loads the same weights) replaces a robot's weights; its nights then
+go on as before. Only a robot that has not yet had a night can take it: a week-trained robot
+given the brain did slightly worse the next week (29.3 points a day against 30.1). Measured
+on 24 farms it never saw, per kind of farm, it is a small head start and not a smarter robot:
+about one point a day more in the first week on open ground (19.8 against 18.8, 21.2 against
+20.3), 0.5 to 1.1 on her squares, better on 13 to 16 of 24 farms. Whether the card stays on
+the shelf at that value, and whether a trained robot may swap, are Q-132.
+Reasoning and tables in `design/06-bots-and-training.md` ("A starting brain from the
+studio"); card in `design/14-training-workbench.md` §11; tests `test_starter_brain`.
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported
