@@ -126,16 +126,79 @@ without ripe crops. It walks every square of the page each frame, which is again
 project's own "no per-tile per-frame work" rule (`CLAUDE.md`), and it is the most likely
 reason the tablet sits near 35 frames a second.
 
+### 5.4 After: the baked texture ships (wb93d7634ff1) — COMPLETE (desktop, different renderer)
+
+This is the fix in 5.3 actually landed, not the tool's own prototype of it: the four
+`draw_circle` rings in `world/farm.gd`'s `_draw_ripe_glow` are gone, replaced by one
+texture baked once in `_ready` (`_bake_ripe_glow_texture`) and drawn per ripe square with
+`draw_texture_rect`, tinted by the crop's light (`CropPresentation.bloom_pool_variation`
+replaces the old per-ring `bloom_ring_alpha` — the one visible difference flagged in 5.3
+and §6 below).
+
+**Incident B — this run is not on the same renderer as the rest of this note.** The
+session that measured it had no physical display, so `godot` ran through Xvfb, which has
+no path to the real GPU and falls back to Mesa's own software rasterizer. The printed
+device string says so plainly: `llvmpipe (LLVM 19.1.5, 256 bits)`, against `AMD Radeon
+Graphics (radeonsi, ...)` for every number above. Software rendering is slower across the
+board — bare soil alone costs 14.3 ms here against 10.6 ms on 5.1's hardware — so **this
+table's absolute milliseconds are not comparable to 5.1–5.3's.** What still reads cleanly,
+because it is a same-run, same-renderer comparison, is the *shape*: ripe against unripe,
+and the light's own draw time on its own.
+
+Desktop, 5 passes, llvmpipe[^run54]:
+
+| Crops | Unripe frame ms | Ripe frame ms | Ripe adds | Light draw ms | Draw calls, unripe → ripe |
+| ---: | ---: | ---: | ---: | ---: | --- |
+| 0 (bare soil) | 14.30 | — | — | — | 360 |
+| 10 | 14.70 | 14.98 | +0.28 | 0.045 | 368 → 369 |
+| 25 | 14.94 | 15.26 | +0.32 | 0.073 | 379 → 380 |
+| 50 | 16.11 | 16.71 | +0.60 | 0.120 | 403 → 403 |
+| 100 | 17.26 | 18.31 | +1.06 | 0.214 | 447 → 448 |
+
+Fix rows, same run, same renderer:
+
+| Crops | Ripe, as shipped | light_sprite (tool's own prototype) | light_off |
+| ---: | ---: | ---: | ---: |
+| 50 | 16.71 ms | 16.18 ms | 15.80 ms |
+| 100 | 18.31 ms | 18.25 ms | 17.69 ms |
+
+Two things this confirms, both read from this run's own numbers rather than against
+5.1–5.3's hardware figures:
+
+- **The light's draw time collapsed the way 5.3 projected.** At 100 crops it was 4.46 ms
+  on hardware with the four rings (5.2); in this same software-rendered run the shipped
+  bake costs 0.214 ms — matching the tool's own `light_sprite` prototype (0.078–0.123 ms
+  across the two runs) to the same order of magnitude, on the renderer that actually
+  drew it this time. Ripe-minus-unripe at 100 crops fell from +6.15 ms (5.1, hardware,
+  four rings) to +1.06 ms (this run, software, one texture) — proportionally, from about
+  52% of the unripe frame to about 6% of it, in each run's own units.
+- **Draw calls barely moved, more than the fix alone promised.** 5.1 measured 450 → 854
+  (four extra calls a ripe crop) for the shipped rings at 100 crops; this run's 447 → 448
+  for the same 100-crop delta says Godot's own 2D batcher is folding every ripe pool's single
+  `draw_texture_rect` — same texture, same material, back to back — into essentially one
+  batched call for the whole field, something four separately-coloured circles per pool
+  could not do. Not claimed as a general rule past this one measurement; it is a bonus
+  the fix did not have to earn.
+
+> **Verdict:** shipped as designed. The ripe field's light draw is no longer the
+> expensive part of the frame, on this renderer as on the one 5.1–5.3 used; the tablet
+> question in §6 stands until it is actually measured there.
+
 ## 6. Conclusions
 
-- **Fix the light, cheaply.** Replace the four `draw_circle` rings in
-  `_draw_ripe_glow` with one texture of the same rings, baked once in `_ready` and drawn
-  once per ripe square, tinted by the crop's light. Measured: the ripe field then costs
-  what an unripe one does (5.3). About 20 lines in `world/farm.gd`. The one visible
-  difference to check is the square-to-square variation (`BLOOM_VARY`), which today
-  varies each ring separately; with one texture it would scale the whole pool. A capture
-  of the ripe cue before and after is the check. This is inference from the prototype in
-  the tool, which was timed, not compared by eye.
+- **Fix the light, cheaply — done (wb93d7634ff1, 5.4).** Replaced the four `draw_circle`
+  rings in `_draw_ripe_glow` with one texture of the same rings, baked once in `_ready`
+  and drawn once per ripe square, tinted by the crop's light. Measured (5.4, same run
+  as the prototype's numbers below, different renderer than 5.1–5.3): the light's own
+  draw collapsed the way the prototype projected, and the ripe field's frame is close to
+  the unripe field's again. The visible difference flagged below shipped as flagged: the
+  square-to-square variation (`BLOOM_VARY`) varied each ring separately before, and now
+  scales the whole pool (`CropPresentation.bloom_pool_variation`). Checked by eye, not
+  only inferred from the prototype's timing: before/after captures of a ripe field and an
+  enlarged single crop, `docs/design/mockups/ripe_glow/` — the two read the same at a
+  glance, and side by side under magnification, with the one difference being the pool
+  brightening and dimming as a whole rather than ring by ring, which is too fine a
+  distinction to catch without the two frames in hand at once.
 - **Leave the sway alone.** 4 µs a plant (5.2).
 - **Do not start on the full-farm redraw from this note.** It is the bigger cost, but
   the player and every animal are drawn inside the farm's own depth-sorted pass, so
@@ -152,8 +215,10 @@ reason the tablet sits near 35 frames a second.
    on wireless debugging, and fill in the tablet figures. It installs as
    `com.daniel.tinyfarm.ripeprofile` and uninstalls afterwards; the game's own package
    and saves are not touched.
-2. Replace the ripe light's four circles with one baked texture (owner: the farm
-   renderer's seat), with a before-and-after capture of the ripe cue.
+2. ~~Replace the ripe light's four circles with one baked texture, with a
+   before-and-after capture of the ripe cue.~~ Done (wb93d7634ff1, 5.4). Still open: a
+   hardware-desktop re-run of 5.4's table, so the fix's numbers sit on the same renderer
+   as 5.1–5.3 instead of only on their own relative shape.
 3. Measure how much of the farm page's every-frame redraw is the walk over every square,
    before anyone designs a cached farm.
 
@@ -189,3 +254,38 @@ rows draw one ripe plant a frame.
 2026-09-26 00:31–00:34, output above. The two earlier runs (three passes each,
 earlier the same hour) are quoted only for their ripe-minus-unripe deltas and bare-soil frame
 times; their no_redraw rows in the first run are the invalid ones in Incident A.
+
+## Raw output, 5.4 (after wb93d7634ff1)
+
+```text
+PROFILE ripe field window=(800.0, 600.0) renderer=gl_compatibility device=llvmpipe (LLVM 19.1.5, 256 bits) passes=5 frames=240
+PROFILE field                crops  frame_ms    fps    calls   gpu_ms  page_ms light_ms   ripe
+PROFILE bare soil                0    14.304     70      360    4.722    5.386    0.023    1.0
+PROFILE unripe                  10    14.703     68      368    4.823    5.665    0.023    1.0
+PROFILE ripe                    10    14.981     67      369    4.884    5.643    0.045   11.0
+PROFILE unripe                  25    14.942     67      379    4.916    5.752    0.023    1.0
+PROFILE ripe                    25    15.264     66      380    5.036    5.806    0.073   26.0
+PROFILE unripe                  50    16.112     62      403    6.029    5.837    0.023    1.0
+PROFILE ripe                    50    16.707     60      403    6.350    6.126    0.120   51.0
+PROFILE unripe                 100    17.258     58      447    6.910    6.249    0.023    1.0
+PROFILE ripe                   100    18.313     55      448    6.906    6.932    0.214  101.0
+PROFILE ripe, light_sprite      50    16.178     62      404    5.777    6.171    0.072   51.0
+PROFILE ripe, light_off         50    15.796     63      403    5.348    6.242    0.003   51.0
+PROFILE unripe, no_redraw       50     6.490    154      403    5.107    0.000    0.000    0.0
+PROFILE ripe, no_redraw         50     6.892    145      404    5.476    0.000    0.000    0.0
+PROFILE ripe, light_sprite     100    18.246     55      448    7.101    6.855    0.123  101.0
+PROFILE ripe, light_off        100    17.685     57      447    6.529    6.967    0.003  101.0
+PROFILE unripe, no_redraw      100     7.810    128      447    6.348    0.000    0.000    0.0
+PROFILE ripe, no_redraw        100     8.026    125      448    6.618    0.000    0.000    0.0
+PROFILE ripe field done
+```
+
+[^run54]: `godot --rendering-driver opengl3 --path . res://tools/profile_ripe_field.tscn
+-- --passes=5` under `xvfb-run -a` (no physical display in the session that ran this),
+2026-09-26, output above. `renderer=gl_compatibility device=llvmpipe` in the printed
+header is this run's own record of Incident B — it is not the radeonsi hardware every
+other table on this page was measured on. The "ripe" row is the shipped code
+(`world/farm.gd`, post-wb93d7634ff1) exercised through the tool's own wrapper, exactly as
+5.1–5.3's "ripe, as shipped" rows exercised the four rings before it; the `light_sprite`
+row alongside it is still the tool's unchanged local prototype, kept as the same
+same-renderer sanity check it was in 5.3.

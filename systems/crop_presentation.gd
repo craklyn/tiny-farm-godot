@@ -225,8 +225,22 @@ static func bloom_radius(i: int) -> float:
 	return BLOOM_INNER_R + BLOOM_RING_STEP * float(BLOOM_RINGS - 1 - i)
 
 
-## The i-th ring's alpha on this square.
+## The i-th ring's alpha on this square. Kept for anyone still drawing the
+## four rings live (the unit suite exercises it directly); the renderer's own
+## baked-texture path uses `bloom_pool_variation` below instead.
 static func bloom_ring_alpha(tile: Vector2i, i: int) -> float:
 	if i < 0 or i >= BLOOM_RINGS:
 		return 0.0
 	return maxf(0.0, BLOOM_RING_A * (1.0 + spread(tile, 4 + i, BLOOM_VARY)))
+
+
+## What a whole pool's brightness rolls to on this square, for a renderer that
+## draws the four rings as one pre-baked texture rather than four live circles
+## (docs/benchmarks/ripe-field-2026-09-26.md). A baked pool has one alpha to
+## scale, not four, so the per-ring rolls above collapse to the one this
+## function returns — the same roll `bloom_ring_alpha` gives ring 0, so a
+## square's pool sits at the same average brightness either way. The visible
+## difference is real and is the point of baking: the shipped rings vary
+## brightness ring over ring inside one pool; a baked pool varies as a whole.
+static func bloom_pool_variation(tile: Vector2i) -> float:
+	return maxf(0.0, 1.0 + spread(tile, 4, BLOOM_VARY))

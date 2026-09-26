@@ -111,6 +111,19 @@ var draw_queue_len_overlay: int = 0
 var _ripe_glow: Array[Dictionary] = []
 var _ripe_glow_node: Node2D = null
 
+# One pool's shape, baked once (docs/benchmarks/ripe-field-2026-09-26.md): the
+# four rings used to be drawn fresh every frame, four `draw_circle` calls per
+# ripe square that cost ~45 µs and four draw calls each. Baked to a texture and
+# tinted per pool in `_draw_ripe_glow`, the same field costs 0.08 ms at 100
+# ripe crops instead of 4.46 ms — the CPU work and the draw calls both move
+# from "every frame, every pool" to "once, ever". The one thing a shared
+# texture cannot keep is *which ring* varies: the shipped rings each roll
+# their own brightness (`CropPresentation.bloom_ring_alpha`), baking flattens
+# that to one roll for the whole pool (`CropPresentation.bloom_pool_variation`)
+# — the field still isn't a pegboard, but a pool no longer flickers ring over
+# ring against itself.
+var _ripe_glow_tex: Texture2D = null
+
 # T-27 (box 1), the ground's half: **the field she fell asleep in, held until the
 # screen is black.**
 #
@@ -216,6 +229,7 @@ func _ready() -> void:
 	_ripe_glow_node.material = glow_mat
 	_ripe_glow_node.draw.connect(_draw_ripe_glow)
 	add_child(_ripe_glow_node)
+	_ripe_glow_tex = _bake_ripe_glow_texture()
 	_build_views()
 	if generate_on_ready:
 		# gateway-ok: making a world is not changing one — there is nothing here
@@ -2147,11 +2161,42 @@ func _draw_backdrop_texture() -> void:
 
 
 func _draw_ripe_glow() -> void:
+	var r := CropPresentation.bloom_radius(0)
+	var extent := Vector2(r, r)
 	for pool in _ripe_glow:
 		var light: Color = pool["light"]
 		var centre: Vector2 = pool["at"]
 		var tile: Vector2i = pool["tile"]
-		for i in CropPresentation.BLOOM_RINGS:
-			_ripe_glow_node.draw_circle(centre, CropPresentation.bloom_radius(i),
-				Color(light.r, light.g, light.b,
-					CropPresentation.bloom_ring_alpha(tile, i)))
+		# One draw call per pool, not four: the texture already carries the four
+		# rings' falloff, so all that is left to place is where it sits and
+		# which colour and brightness this square's own light rolled.
+		_ripe_glow_node.draw_texture_rect(_ripe_glow_tex,
+			Rect2(centre - extent, extent * 2.0), false,
+			Color(light.r, light.g, light.b,
+				CropPresentation.bloom_pool_variation(tile)))
+
+
+# The four rings, pre-rendered once instead of drawn fresh every frame. White
+# with only alpha varying, so the pool's own colour comes from the `modulate`
+# tint in `_draw_ripe_glow` rather than from a separate texture per crop — one
+# image serves wheat, tomato and pea alike, which is also why this can be a
+# single bake in `_ready` rather than one per palette.
+#
+# Built from the same maths the rings drew with (`CropPresentation.bloom_radius`,
+# `BLOOM_RING_A`), so a pixel this many world-px from the centre gets exactly
+# the rings' own stacked alpha — a discrete step per ring, not a smooth
+# gradient, because that is what four flat, overlapping circles actually drew.
+func _bake_ripe_glow_texture() -> Texture2D:
+	var d: float = CropPresentation.bloom_radius(0) * 2.0
+	var size: int = ceili(d)
+	var img := Image.create(size, size, false, Image.FORMAT_RGBA8)
+	var centre := Vector2(size, size) / 2.0
+	for y in size:
+		for x in size:
+			var dist := (Vector2(x, y) + Vector2(0.5, 0.5) - centre).length()
+			var a := 0.0
+			for i in CropPresentation.BLOOM_RINGS:
+				if dist <= CropPresentation.bloom_radius(i):
+					a += CropPresentation.BLOOM_RING_A
+			img.set_pixel(x, y, Color(1.0, 1.0, 1.0, a))
+	return ImageTexture.create_from_image(img)

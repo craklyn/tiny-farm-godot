@@ -203,6 +203,12 @@
   "0769d71c8c398a38ba1b": {
    "verdict": "ok"
   },
+  "076a1238cf4f3f31fd82": {
+   "instead": "Draw each ripe crop's glow from one pre-made image instead of four circles",
+   "quote": "one baked image",
+   "verdict": "decode",
+   "why": "“Baked” is engineering shorthand for an image prepared in advance, so a cold reader may not know what changed."
+  },
   "07737466c653eaef9e4d": {
    "instead": "Name the thing and its owner: '… [tool name] waiting here — … [owner name]'s to handle' or similar",
    "quote": "… thing… open here — … mine to handle.",
@@ -1469,6 +1475,9 @@
    "why": "The sentence 'Who has opened the public build no source' is grammatically broken; it should read as a question or statement, not both."
   },
   "2fa6a055b9ae0a1f2713": {
+   "verdict": "ok"
+  },
+  "2fcfc4754127b61debdb": {
    "verdict": "ok"
   },
   "2fffcd88143c372eda7e": {
