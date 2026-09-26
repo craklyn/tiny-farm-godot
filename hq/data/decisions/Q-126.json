@@ -27,5 +27,11 @@
       "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/mockups/mk3_learning_shop/SKETCH.md"
     }
   ],
-  "subject": "The Mark III learning shop"
+  "subject": "The Mark III learning shop",
+  "ruled": {
+    "date": "2026-09-25",
+    "option": "b",
+    "summary": "Ruled 2026-09-25: (b) Mark III learning upgrades are bought from a small shelf at the training workbench, not the seed box. Recorded as S-29 (8d7366d); nothing is built yet.",
+    "written_up": "docs/design/14-training-workbench.md"
+  }
 }

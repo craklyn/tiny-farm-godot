@@ -27,5 +27,11 @@
       "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/mockups/mk3_learning_shop/SKETCH.md"
     }
   ],
-  "subject": "The Mark III learning shop"
+  "subject": "The Mark III learning shop",
+  "ruled": {
+    "date": "2026-09-25",
+    "option": "c",
+    "summary": "Ruled 2026-09-25: (c) a Mark III given a wider view keeps what it learned. Daniel asked whether that is mathematically sound; Kenji checked it against the code and measured it on 24 farms: it is, and keeping beat starting over (S-30, 8d7366d).",
+    "written_up": "docs/design/06-bots-and-training.md"
+  }
 }
