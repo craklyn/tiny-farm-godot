@@ -155,6 +155,7 @@ func _run_scenarios() -> void:
 	await _scenario_bg_the_mark_three_is_given_its_squares()
 	await _scenario_bi_teach_controls_clear_the_corner_cards()
 	await _scenario_bj_a_tap_on_the_tower_goes_inside()
+	await _scenario_bk_the_bin_hint_hides_on_touch()
 
 
 func _scenario_ba_crow_spook_stops_at_room_wall() -> void:
@@ -8395,3 +8396,77 @@ func _scenario_bj_a_tap_on_the_tower_goes_inside() -> void:
 func _in_room_or_door(id: String, door: Vector2i) -> bool:
 	var at: Vector2i = player.get_tile_pos()
 	return farm.sim.room_of_cell(at) == id or at == door
+
+
+# The shipping bin's "Press SPACE" hint, meaningless on the tablet a four-year-old
+# plays on (docs/design/11-ux-ui.md S-7 audit, HQ card wc55d6f42ccf). The bin was
+# already a `SPECIAL_OBJECTS` entry a tap opens from anywhere — the hint was the
+# one stray piece of keyboard wording sitting on top of an already-wordless tap.
+# This drives the real touch path end to end: a finger touch on the bin tile
+# (the same `InputEventScreenTouch` a tablet sends, as Scenario O's does) puts the
+# game in touch mode and opens the panel with no walk needed; a second tap
+# reopens it to withdraw. Both trips go through `farm.apply_action` (sell,
+# withdraw_seed) — the recorded gateway, same as every other verb.
+func _scenario_bk_the_bin_hint_hides_on_touch() -> void:
+	print("\n--- Scenario BK: the bin's Press SPACE hint hides on touch (docs/design/11 S-7) ---")
+	var menus = main_scene.menus
+	menus.close_menu()
+	main_scene.end_teaching()
+
+	var bin_t := Vector2i(4, 1)
+	GameState.pouch["wheat"] = 5
+	GameState.bin_reserve["wheat"] = 0
+
+	# Stand right where Scenario E's keyboard player stands, and confirm the
+	# keyboard wording is still there before any finger touches the glass.
+	player.path.clear()
+	player.pending_action = {}
+	player.pos = Vector2(4.5 * 16.0, 2.5 * 16.0)
+	player.facing = "up"
+	InputManager._set_mode(InputManager.Mode.KEYBOARD)
+	await get_tree().process_frame
+	_assert(main_scene.hud.hint_label.text.contains("SPACE"),
+		"standing by the bin with a keyboard still reads Press SPACE")
+
+	# A finger on the bin tile: mode flips to TOUCH and the tap is recorded in
+	# the same call, exactly as a tablet's touch does.
+	var touch := InputEventScreenTouch.new()
+	touch.pressed = true
+	touch.index = 0
+	touch.position = InputManager.tile_to_screen(bin_t)
+	InputManager._unhandled_input(touch)
+	_assert(InputManager.current_mode == InputManager.Mode.TOUCH,
+		"a tap on the bin puts the game in touch mode")
+
+	await get_tree().process_frame
+	_assert(not main_scene.hud.hint_label.text.contains("SPACE"),
+		"and the hint no longer names a key nobody on a tablet has")
+
+	var opened := await _wait_until(
+		func(): return menus.active_menu == "bin", 120)
+	_assert(opened, "the same tap still opens the bin's deposit and take menu")
+	if opened:
+		_press_row(menus.options_container, 0)   # "Deposit what I carry"
+		menus.close_menu()
+	_assert(int(GameState.pouch.get("wheat", 0)) == 0
+			and int(GameState.bin_reserve.get("wheat", 0)) == 5,
+		"a touch deposit moves the carried wheat into reserve")
+
+	# Take it back out the same way: a tap on the bin, a tap on its row.
+	InputManager.click_tile = bin_t
+	InputManager.has_click = true
+	var reopened := await _wait_until(
+		func(): return menus.active_menu == "bin", 120)
+	_assert(reopened, "a second tap reopens the bin")
+	if reopened:
+		_press_row(menus.options_container, 1)   # "Take Wheat (N stored)"
+		menus.close_menu()
+	_assert(int(GameState.pouch.get("wheat", 0)) == 5
+			and int(GameState.bin_reserve.get("wheat", 0)) == 0,
+		"a touch withdrawal moves it back to the pouch")
+
+	# Leave the suite in a known state (Scenario O's own rule): back to mouse.
+	InputManager._last_touch_ms = -100000
+	var real := InputEventMouseMotion.new()
+	real.position = Vector2(120, 90)
+	InputManager._unhandled_input(real)

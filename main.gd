@@ -960,10 +960,17 @@ func _process(delta: float) -> void:
 	var ft = player.get_facing_tile()
 	var obj: String = farm.get_object(pt.x, pt.y)
 	var adj_obj: String = farm.get_object(ft.x, ft.y)
-	
-	if obj == "shipping_bin" or adj_obj == "shipping_bin":
+
+	# **Touch reads none of this** (docs/design/11 S-7 audit). The bin is a
+	# `SPECIAL_OBJECTS` entry like the cot, the well and the seed box (S-7's own
+	# table, row 5) — a tap from anywhere already walks her to it and opens it,
+	# with no keyboard involved, and none of those other objects shows a word to
+	# say so. `Press SPACE` was only ever true for the keyboard/gamepad player,
+	# who still keeps it below.
+	if (obj == "shipping_bin" or adj_obj == "shipping_bin") \
+			and InputManager.current_mode != InputManager.Mode.TOUCH:
 		hint_text = "Press SPACE to open the shipping bin"
-				
+
 	hud.set_hint(hint_text)
 
 

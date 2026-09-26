@@ -126,13 +126,23 @@ and item count carry those choices. This claim is about the *seven verb path*;
 it does not prove a pre-reader understands every HUD readout. The `g` suffix is
 also visible in the HUD, while the shop pairs a coin picture with the price.
 
-One explicit instruction **does** intrude into that path: when standing by the
-bin, the touch HUD displays `Press SPACE to open the shipping bin`. It is stale
-keyboard wording on a touch surface. The bin still opens on tap and the menu
-still handles deposits, so removing the hint must not remove the bin action or
-its sleep-time legacy settlement. Engineering should correct this cue and give
-the bin's deposit/withdraw controls a usable pictorial treatment, then verify
-them on touch. The bottom bar's redundant tool/seed words are a separate
+**Fixed 2026-09-26 (HQ card wc55d6f42ccf).** One explicit instruction used to
+intrude into that path: when standing by the bin, the touch HUD displayed
+`Press SPACE to open the shipping bin` — stale keyboard wording on a touch
+surface. The bin was already a tap-from-anywhere object (row 5 above), so the
+fix was the proportionate one this audit asked for: `main.gd` now withholds
+the hint while `InputManager.current_mode == TOUCH`, the same way the cot, the
+well and the seed box show no hint at all. The keyboard/gamepad player keeps
+the words. `tools/test_runner.gd`'s Scenario BK drives a real
+`InputEventScreenTouch` on the bin tile and asserts the hint carries no
+`SPACE` text once touch mode is live, then deposits and withdraws through the
+panel via the same tap, checking both trips land in `bin_reserve`/`pouch`
+through `farm.apply_action`. A capture of the touch-mode HUD beside the bin
+lives at `docs/design/mockups/bin_touch/`.
+The panel's own deposit/withdraw row labels (`Deposit what I carry`, `Take
+Wheat (N stored)`) are unchanged and remain the **open S-7 gap** described
+above — a bigger, separate pictorial-treatment job this card did not take on.
+The bottom bar's redundant tool/seed words are a third, separate
 minimal-literacy review, not grounds to declare the existing HUD wordless.
 
 **The inventory pop-up (Q-119, ruled 2026-09-24; S-23; built 2026-09-25).** Daniel's
@@ -282,14 +292,16 @@ J's shop precedent), and that choosing an item adds nothing to the replay log
 (P-9). A PNG of the open picker on a real farm state lives at
 `docs/design/mockups/inventory_picker/open.png` (`tools/capture_inventory_picker.tscn`).
 
-The bin's own regression check is still open: reuse `_has_letters` and Scenario
-J's visible-menu walk for the shop, then exercise the bin with carried and
-reserved crops. Check that every required choice has a tested picture or other
-non-reading cue, that touch mode never shows the SPACE hint, and that
-deposit/withdraw plus the sleep settlement still produce the expected state.
-Record the HUD's actual words separately and assert the icon/count controls used
-by the loop; an assertion that *every* HUD label is empty or numeral-only would
-fail today and would test a stronger rule than S-7.
+**The SPACE-hint half of the bin's regression check is closed** (Scenario BK,
+above): a real touch on the bin tile is asserted to carry no `SPACE` text and
+to still deposit and withdraw through the gateway. **Still open:** reusing
+`_has_letters` and Scenario J's visible-menu walk to check that the panel's
+own choices (`Deposit what I carry`, `Take Wheat (N stored)`) have a tested
+picture or other non-reading cue, and that the sleep-time legacy settlement
+still produces the expected state. Record the HUD's actual words separately
+and assert the icon/count controls used by the loop; an assertion that
+*every* HUD label is empty or numeral-only would fail today and would test a
+stronger rule than S-7.
 
 **Forgiveness layer** (not interactions — properties of the tap language, all ✅):
 the cot halo rescues adjacent dead taps (T-27); far taps degrade to movement instead
