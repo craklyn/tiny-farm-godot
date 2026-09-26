@@ -242,3 +242,46 @@ view keeps what it learned" (S-30): it keeps what still applies and relearns the
 `tune` (§10), so a replay rebuilds the robot it bought for. It applies to the robot the
 bench is showing, not to every robot she owns, for the reason the dials are per robot.
 Prices and the shelf's look are for its build, `[Playtest]` like every other price.
+
+### The practice cards (Q-130, revised 2026-09-26; not built)
+
+A practice is a shelf item of a second kind. The wider view and the pretrained starting
+brain (Q-128) are bought once and are then simply part of the robot. A practice is bought
+once and then has two controls, because Daniel asked that each practice can be switched on
+or off and sized against the robot's own day. The sim side — what a run is and how it joins
+the night — is `06-bots-and-training.md`, "Practice runs: it rehearses at night". v1 has one
+practice, the crow.
+
+**One card per practice, on the shelf beside the other upgrades.** Unbought, it shows its
+picture and its price, like every other shelf item. Bought, the price is replaced by its
+controls, in the same place, so she finds the controls where she bought the practice:
+
+| Part of the card | What she sees | What a tap does |
+| --- | --- | --- |
+| The picture | the robot beside a crow over a sprout, composed from sprites the game already has (the paired-sprite vocabulary of Q-87) | nothing; it names the practice without a word |
+| The switch | a lamp above the picture: lit when the practice is on, dark when off; the picture itself dims with it | turns the practice on or off |
+| The size | three pips under the picture, one to three lit | sets how many runs a night: 2, 4 or 8 |
+| Last night | a row of small crows under the pips, one per run last night; a crow drawn flying away for each bird the robot shooed, a crow drawn eating for each it did not | nothing; it is the result |
+
+**How the size reads to a young child.** The row of crows under the pips is as long as the
+pips say: one pip, two crows; three pips, eight. So "more pips" is visibly "more crows to
+practise on", and the next morning the same row shows how many of them it chased off. She
+needs no number and no word, and the row changes as the robot improves. For the adult, the
+same card says "this much of its night is practice"; the plate (§4) gains one line when any
+practice is on, for example *"Practice: crow · 4 runs a night · 2 of 4 shooed"*, read from
+the robot's saved state like every other plate line.
+
+**Whether she sees the size in v1 is open on the revised Q-130 card.** The recommendation
+is to show it, because it is the control Daniel asked for and the crow row makes it readable.
+The alternative is to hold it at two pips and show only the switch until a second practice
+exists.
+
+**Each control is an Action.** A tap on the lamp or a pip is the player verb `practice`
+(`06`), recorded like a dial turn, taking effect at the next night. The ledger draws the
+same small tick on the day axis that a dial turn draws, so a change in a line has a visible
+cause.
+
+**What the bench does not do in v1:** show the runs being played (the night shows only the
+panel, Q-97); let her choose where the crow lands; run a practice on demand while she
+watches. Runs happen at night, only on robots with that practice switched on, and the bench
+only reports them.

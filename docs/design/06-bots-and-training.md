@@ -99,7 +99,9 @@ locked shop card after an update.
    mechanism; and the specialization↔generalization tradeoff becomes play — a bot
    over-trained on drills aces its exams but turns brittle on the messy real farm,
    teaching overfitting honestly (D-4's spirit). Feasibility probe at the D-2 spike;
-   full design at M5.
+   full design at M5. *First shape designed 2026-09-26 (Q-130, revised): practices bought
+   on the workbench shelf rather than built on the farm, one recipe each, with a switch and
+   a size — "Practice runs: it rehearses at night", below.*
 
 ## The scripted line, v1 (built: M2.5 WI-9, 2026-08-31)
 The bot chassis exists before any of the above does, because P-9 ("any entity may carry
@@ -756,6 +758,207 @@ first step. `widen` lives in the tool, held to the identity above by
 `tests/test_runner.gd:test_wider_view`, until it moves into the sim with the verb that buys
 it.
 
+### Practice runs: it rehearses at night (Q-130, revised 2026-09-26)
+
+*Status: designed, not built. Owner: Milo (design); feasibility checked against the ML
+seat's rules (P-14, the budgets in `ARCHITECTURE.md`). What is still open is on the revised
+Q-130 card.*
+
+**What Daniel asked for.** Q-130 asked whether making the robot's own training examples
+should start with picking her best day or with a practice-course editor. He chose neither
+and described a third thing: *"The robot should be able to simulate actions under certain
+conditions (e.g. bird shows up and approaches crops, and robot needs to learn to approach
+bird in this case to shoo it). And also able to build synthetic data containing other
+scenarios (each upgraded separately, and when training each synthetic data generation
+option should be enablable/disablable, and possibly dataset mix-in size specified versus
+the other datasets?"* This is item 8's "training grounds & synthetic scenarios" above,
+without the building on the farm and without an editor: the scenario is a thing the robot
+owns, not a thing she builds.
+
+**The shape, in one paragraph.** A **practice run** is a short stretch of play the sim
+makes up overnight: a copy of her farm as she went to bed, with one situation forced into
+it, played headless with the robot's own brain. A **practice** is the recipe that makes
+runs of one kind — v1 has one, the crow: *a crow arrives and heads for one of her crops,
+near the robot*. Each practice is its own upgrade, bought on the workbench shelf (S-29) for
+the robot the bench is showing. Once bought it has a switch (on or off) and a size (how
+many runs a night). At night the runs join the robot's own day in the one nightly update it
+already has: its day teaches it about her farm, its runs teach it about the crow.
+
+| Part | What it is | v1 |
+| --- | --- | --- |
+| A practice | a recipe for one kind of run; one shelf upgrade each | one: the crow |
+| A run | one made-up stretch of play from that recipe, on a copy of her farm | up to 40 seconds of play; ends when the bird has gone |
+| The switch | whether tonight's night includes that practice at all | per robot, per practice |
+| The size | how many runs a night: 1, 2 or 3 pips = 2, 4 or 8 runs | per robot, per practice (whether she sees it is Q-130) |
+
+**Why the crow first.** Its own farm days already teach it the jobs that pay most — the
+week's gap between learning and not learning is almost all the ten-point row, crops carried
+to the bin — but the two crow rows read 0.00 over a measured week ("Its day", above). One
+bird a day, sitting still for about five seconds, is too rare for a day-by-day learner to
+see the pay-off of walking to it. A night of runs hands it the bird several times over.
+
+#### One run, step by step
+
+1. **Copy her farm** as it stood when she went to bed, into a scratch world that nothing
+   outside the night can see. `SaveGame.capture` and `SaveGame.restore` already do this:
+   about 4 ms per copy on the desktop.
+2. **Empty it of everyone else.** The hen, the neighbour, visitors and any crow are removed;
+   only the robot remains (and her own figure, standing still, so the rules that ask where
+   she is still have an answer). Nothing else in the copy thinks, so nothing else in the
+   copy draws a random number.
+3. **Force the situation.** Pick one of her crops that is still growing — inside the
+   squares she gave it (S-26) when it has any, anywhere on her farm when it has none. If
+   there is no growing crop, one of her tilled squares is sown in the copy only. Set the
+   robot down within three squares of it, with a full meter and a clean day's sums. Send a
+   crow in from an edge, the way a real one arrives (`CrowBrain.entry_point`), heading for
+   that crop. It is an ordinary crow — not the dawdling first one — and the same rules
+   frighten it.
+4. **Play it** on the tick clock until the bird has gone, eaten or frightened, or 40
+   seconds have passed. The robot decides exactly as it does by day, earns its own reward
+   table (her dials, `14`), and keeps its own sums, in the copy.
+5. **Keep the sums, drop the copy.** What survives the run is the robot's three running
+   sums, its decision count and its score. The copy is thrown away. Her farm is never
+   touched.
+
+A growing crop rather than a ripe one because a ripe square beside the bird is worth 11
+points to the robot (cut and sold) against the bird's 3, so the run would teach the harvest
+instead. Real crows go for any crop, growing ones included (`choose_crow_target`), so the
+run is not a scene the farm could not produce.
+
+#### How the runs join the night
+
+The runs are played **with the weights the robot had all day**, before the night changes
+anything, so every run is the same robot that played the day and the update stays
+on-policy, just as the day is. Then the night adds each run into the day's sums as if it
+were more of the day:
+
+- the day's accumulator gains each run's accumulator, less the run's baseline times its
+  second trace (`acc − b × base_trace`, the same shape as the day's own charge);
+- the second trace and the decision count gain the run's;
+- the day's **score does not change**. The score is her farm's, and it feeds the baseline,
+  the day-size charge (`LEARN_DAY_REF`), the scorecard and the ledger, all of which are
+  about her farm. Practice points are not farm points.
+
+**The run's baseline is its own**: a running mean of past runs of the same practice, kept
+with the practice on the robot. A crow run scores 0 to 3; charging it the farm day's
+baseline of 20 or 60 would tell the robot that every run was a disaster.
+
+**Why the runs are added as more decisions, and not as a second update beside the day's —
+measured.** The first draft ran eight runs, averaged their steps, and blended that average
+with the day's step. Each run's step is divided by its own few decisions (a run is about
+fourteen seconds and a handful of choices), so per decision a run pushed the weights tens
+of times harder than her day did, and on a robot given her squares it did damage: over the
+gate's eight farms, across the variants tried, its late-week score fell from 62.7 a day to
+between 49.4 and 62.0, and it shooed fewer test birds than a robot with no practice at all
+(on growing-crop runs, 0 to 2 of 48 against 14). Added as more of the day's
+decisions, the same runs left the farm score where it was (the table below). This is the
+same lesson as the 2026-09-25 day-size fix: a short, low-scoring stretch must not be
+allowed to shout.
+
+**The size.** The pips set how many runs a night: one pip is 2 runs, two pips 4, three pips
+8. Each run counts exactly as much as the same stretch of her day would. So the size is
+what Daniel called "dataset mix-in size": the proportion of the night's lesson that is
+practice. A day is about ninety decisions; a run is a handful.
+
+**Measured with a scratch prototype, 2026-09-26** — a probe outside the repository, built
+only to answer whether this is worth building. Not the build and not tuned. The gate's
+eight farms (`GATE_SEEDS`), one week each; the probe played 8 runs a night counted at a
+quarter, half and full weight, which in expectation is the 2, 4 and 8 full-weight runs
+above. "Test runs" are 48 crow runs played after the week with learning switched off: how
+many birds it shooed.
+
+| Open ground | Score a day, days 5-7 | Test runs: birds shooed | Days a real bird was shooed |
+| --- | --- | --- | --- |
+| No practice | 20.6 | 4 of 48 | 0 of 56 |
+| 1 pip | 20.8 | 5 of 48 | 0 of 56 |
+| 2 pips | 20.9 | 11 of 48 | 0 of 56 |
+| 3 pips | 19.0 | 7 of 48 | 1 of 56 |
+
+| Given her squares (S-26) | Score a day, days 5-7 | Test runs: birds shooed | Days a real bird was shooed |
+| --- | --- | --- | --- |
+| No practice | 62.7 | 14 of 48 | 4 of 56 |
+| 1 pip | 62.3 | 17 of 48 | 3 of 56 |
+| 2 pips | 60.6 | 16 of 48 | 2 of 56 |
+| 3 pips | 63.2 | 16 of 48 | 3 of 56 |
+
+What that says, plainly:
+
+- **It does no harm to her farm.** Every row is within about two points a day of no
+  practice (the largest gap is 2.1), well inside how much one week varies.
+- **It helps the robot a little with a bird it can see.** More test birds shooed at every
+  size, most at two pips on open ground (11 of 48 against 4).
+- **You would barely see it on the farm in the first week.** One bird a day seldom lands
+  inside a 5×5 view, so real catches are as rare as before. The practice teaches what to do
+  when a bird is in view; the wider view (S-30) and her squares are what put a bird in view.
+  The two upgrades are worth more together than either alone, and the shelf should say so
+  by placing them side by side.
+
+This is deliberately a weak first version (P-13): one practice, a small effect, a clear
+story. The build must re-measure it with a committed tool and a gate on both arms before
+it ships.
+
+#### Determinism, replay and saves
+
+- **Every choice a run makes is keyed, not streamed.** Which crop, where the robot is set
+  down, which edge the bird comes from: each is `SimRng.stateless(salt, index)`, with the
+  salt from the robot's id and the practice's own constant, and the index from the day and
+  the run number. The robot's own choices in a run are `Policy.draw_u`, keyed the same way.
+  Nothing in a run reads the shared random stream. As a guard, the night records the
+  stream's state before the runs and puts it back after, and a test asserts it is unchanged.
+- **The runs are computed again on replay, never recorded.** They run inside the day turn,
+  which is inside the recorded `sleep` Action, so a replay re-applies the one `sleep` and
+  plays the identical runs (Q-53, the sprinkler's rule). The log gains nothing a night.
+  Cost: replaying a night now includes its runs, about a quarter of a second per robot
+  with practice on the desktop.
+- **What is recorded is only what she does.** Buying a practice is the shelf's buy Action.
+  Turning it on or off, and changing its size, is one new player verb, `practice`, with
+  flat keys like `tune`: `{actor: player, target: the robot's tile, machine, practice:
+  "crow", on: true|false, size: 1|2|3}`. It takes effect at the next night. A bot has no
+  reason to emit it and no path that does. A night with no change records nothing new.
+- **Where it runs in the day turn:** at the top of `advance_day`, before the growth pass and
+  before `Brains.on_new_day` runs the robot's night, so the runs see the farm she went to bed
+  on and the night that follows includes them. `advance_day` already holds the game state
+  the runs need (her seed box).
+- **Saved on the robot**, as `extra["practice"]`: one entry per practice it owns, holding
+  its switch, its size, its baseline, how many nights it has run and last night's result
+  (which runs shooed the bird). Additive keys, no save version change: a robot without the
+  key owns no practice. Picking the robot up keeps it (Q-98).
+
+#### The on-device budget
+
+`ARCHITECTURE.md` allows about 15 seconds of training a night on a mid-range phone, and 1,000
+to 50,000 trainable numbers. Practice adds no numbers: it trains the same 1,664. What it adds
+is sim time. Measured in the probe on the desktop: eight runs, with a farm copied for each,
+cost about 0.27 seconds per robot per night; runs lasted about 14 seconds of play on
+average. The tablet measured 2.36 times slower than the desktop (2026-09-24), so eight runs
+cost about 0.64 seconds there, and a farm could run full practice on about twenty robots
+inside the budget. The build caps the night's total runs across all robots, in a fixed order
+of robot id, so a large fleet shortens practice rather than the night running long.
+
+#### What exists and what must be built
+
+| Piece | Exists today | Must be built | Rough size |
+| --- | --- | --- | --- |
+| Copying her farm into a scratch world | `SaveGame.capture` / `restore` | nothing new | — |
+| Playing a stretch of the day headless | the tick clock, `advance_to_tick` | nothing new | — |
+| A crow arriving and heading for a crop | `CrowBrain.entry_point`, the crow's own brain | a way to send one at a chosen square outside the daily schedule | small |
+| The robot's day sums and nightly update | `_sleep_on_it`, `Policy` | adding runs into the sums before the night; a baseline per practice | 1 day with the run itself |
+| The run (copy, empty, force, play, keep sums) | — | `systems/sim/practice.gd`, pure sim; the practice list as data in `systems/practice_defs.gd` | 1.5 days (Tomás, sim) |
+| The `practice` verb, its router tap and its save keys | `tune` is the template | the verb, its checks, `extra["practice"]` | 0.5 day (Tomás) |
+| The shelf item | the shelf itself is being built with the pace setting (Q-129) | one catalogue row | small (Jade) |
+| The bench card: switch, pips, last night's crows | the bench screen (`14`) | the card and its three controls | 1 day (Jade / Sam) |
+| Art | robot, crow and crop sprites exist | the card's picture, composed from them | 0.25 day (Yuki), no generation |
+| Tests and the gate | `test_learning_robot`, the replay round trip | same seed gives same weights; replay through a night with practice; shared stream unchanged; the budget on the tablet; a committed version of the probe as a gate on both arms | 1 day (Grace) |
+
+About four and a half days in all.
+
+**Not in v1:** a second practice (candidates: a thirsty bed out of view, a ripe crop to
+carry to the bin, a raid of three birds); runs that she watches (the night shows only the
+panel, Q-97; a "dream" of the runs is D-4's surface and waits for it); a practice she
+builds or edits (item 8's editor); a test ground that scores the robot without teaching it
+(`14` §5's trial ground). Each practice is one recipe and one catalogue row, so each of
+these is a later shelf item, not a rewrite.
+
 ### Its day
 
 It wakes at the day turn with a full meter (600 units — `ACTOR_MAX_ENERGY`, the same as
@@ -892,8 +1095,9 @@ she would have made herself.
 
 A stall or home; vision beyond radius 2 (designed, not built: bought at the workbench,
 S-29, and keeping what it learned, S-30 — "A wider view keeps what it learned"); choosing which seed to plant (it plants what she
-has most of); carrying more than one crop; learning from her recorded days (the next rung,
-P-5 as amended); sharing weights between robots (P-7); any night surface beyond the panel
+has most of); carrying more than one crop; practice runs at night (designed, not built:
+bought at the workbench, Q-130 — "Practice runs: it rehearses at night"); learning from her
+recorded days (the next rung, P-5 as amended); sharing weights between robots (P-7); any night surface beyond the panel
 itself (D-4). Each is a later mark or a later tier, on purpose. Known wart, filed: the
 game's own shipping bin bookkeeping (`gs.shipping_bin`, `process_shipping_bin`) is
 vestigial — `sell` pays at once — so "mailbox" here means the bin object at the yard's edge.
@@ -962,6 +1166,7 @@ that reads as broken.
 | The two-farm learning-curve demo and its gate | `tools/demo_learning_robot.gd` + `test_learning_robot()` |
 | Her squares: the `assign_tiles` verb, the limit and walk back, the masked view (S-26) | `systems/sim/sim_world.gd`, `bot_brain.gd`, `observation.gd`; the tap in `systems/action_router.gd`; the mode in `main.gd`; the marks in `world/farm.gd`; tests `test_mark_three_assigned_tiles()` and Scenario BG; pictures `tools/capture_assign_tiles.tscn` |
 | A wider view keeping what it learned (S-30): the proposed mapping `widen` and the 24-farm measurement; not built | `tools/measure_wider_view.gd` + `test_wider_view()` |
+| Practice runs (Q-130): the run and the night's pooling, the practice list; not built | `systems/sim/practice.gd` and `systems/practice_defs.gd` (both new) |
 
 The build plan, with interfaces and acceptance criteria per work item, is
 `docs/V0_2_1_PLAN.md`.

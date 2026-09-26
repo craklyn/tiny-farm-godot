@@ -1,31 +1,52 @@
 {
   "id": "Q-130",
   "owner": "milo",
-  "title": "Should making your own examples for the robot to learn from start with picking your best day, or with a practice-course editor?",
-  "question": "The Mark III is the robot that learns by trial and reward, and the one you asked Milo to sketch a shop for: new brains, new ways of training, special examples for the robot to learn from, and examples you make yourself. Milo's sketch lays out twelve options with Kenji's notes on what the game can already do; these cards carry its open questions, one per card. Nothing is recommended, because you said you have ideas of your own.\n\nThe cheapest real option on the whole page is letting the player pick one of her own recorded days for the robot to learn from: the days are already saved, so it needs only a way to browse them. A full editor for building practice courses (placing the crow, the tiles and the layout) is the most expensive thing sketched, and hard to make wordless for a young child.",
-  "why_now": "You asked Milo for this sketch in HQ's chat on 2026-09-25. It landed as commit 4f6ae2f; nothing gets built until you answer.",
+  "title": "Nightly practice for the Mark III: should the crow practice come first, with a size the player sets and no energy cost?",
+  "question": "The Mark III is the robot that learns by trial and reward: it works the player's farm by day and its brain updates each night. Your comment on this card described practice runs, and Milo has designed them. Each night the game makes a copy of the player's farm, forces one situation into it — in the first version, a crow arriving and heading for one of the player's crops near the robot — and lets the robot play it a few times with its own brain. Those runs join the robot's own day in its nightly update. The real farm is never touched. Each kind of practice is its own upgrade on the workbench shelf, with an on/off switch and a size: three pips for 2, 4 or 8 runs a night.\n\nA rough prototype on the eight test farms the learning check uses, one week each, found three things. The farm's score stays where it was, within about two points a day at every size. The robot chases off more of the birds it can see: 11 of 48 test birds at two pips on open ground, against 4 of 48 with no practice. On the farm itself you would barely notice it in the first week, because one bird a day rarely lands close enough for the robot to see it. Practice teaches the robot what to do when a bird is in view; the wider-view upgrade and the squares you give it put more birds in view.\n\nThree details are still open: which practice comes first, whether the player sees the size, and whether practice costs the robot energy.",
+  "why_now": "You revised this card on 2026-09-25 with your own design. Milo has written it up in the design docs, and nothing gets built until these three details are settled. The workbench shelf and the per-robot pace setting are being built now, and this card decides whether a practice card is designed onto that shelf.",
   "options": [
     {
       "key": "a",
-      "label": "Start with picking your best day, and grow toward an editor",
-      "detail": "Picking a day is the first version; a course editor comes later if it earns its place."
+      "label": "Crow practice first; she sees the switch and the size; practice costs no energy",
+      "detail": "Builds the design as written, about four and a half days of work. The crow card on the shelf gets a lamp to switch it on or off and three pips for its size. Under the pips is a row of small crows, one per run, showing how many birds the robot chased off last night. Runs happen while the robot sleeps, so it still wakes with a full day's energy.",
+      "recommended": true
     },
     {
       "key": "b",
-      "label": "Treat picking a day and building a practice course as separate features",
-      "detail": "Picking a day and building a practice course are designed and built independently."
+      "label": "Crow practice first with no energy cost, but the size stays fixed at two pips until a second practice exists",
+      "detail": "The card shows only the on/off lamp and last night's row of four crows. There is one less control for a young child to wonder about. The size control returns when there are two practices to weigh against each other. It saves under half a day of work."
     },
     {
       "key": "c",
-      "label": "Start with the practice-course editor",
-      "detail": "Build the editor first, accepting it is the largest and hardest-to-make-wordless piece."
+      "label": "Crow practice first with the switch and size shown, but practice uses some of the robot's energy for the next day",
+      "detail": "Each night of practice takes a share of the next day's energy, for example a quarter of the day at three pips. Practice then competes with farm work, which makes the size a real trade-off. It also means a robot that practises harder does less farm work the next day, which a child may read as the upgrade making it worse."
+    },
+    {
+      "key": "d",
+      "label": "Start with a different practice instead of the crow",
+      "detail": "For example, a thirsty bed out of the robot's view, or a ripe crop to carry to the shipping bin. These are easier to see paying off on the farm. But the robot already learns these jobs from its normal farm days: carrying crops to the bin is where almost all of its learning shows up. A crow comes once a day and rarely near the robot, so its normal days almost never teach it about crows, and practice adds more there."
     }
   ],
   "links": [
     {
-      "label": "Milo's sketch of the Mark III learning shop",
+      "label": "How practice runs work, with the prototype's numbers (design doc 06)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/06-bots-and-training.md#practice-runs-it-rehearses-at-night-q-130-revised-2026-09-26"
+    },
+    {
+      "label": "The practice card on the workbench shelf (design doc 14)",
+      "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/14-training-workbench.md#the-practice-cards-q-130-revised-2026-09-26-not-built"
+    },
+    {
+      "label": "Milo's earlier sketch of the Mark III learning shop",
       "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/mockups/mk3_learning_shop/SKETCH.md"
     }
   ],
-  "subject": "The Mark III learning shop"
+  "subject": "The Mark III learning shop",
+  "replies": [
+    {
+      "by": "milo",
+      "at": "2026-09-26T00:40:00",
+      "text": "I built the design around your comment instead of any of the three options this card had. **What I took from it:** the robot practises a forced situation overnight — your example, a crow heading for the crops, is the first one. Each kind of practice is its own upgrade on the workbench shelf. Each has an on/off switch. And each has a size that sets how much of the robot's night is practice compared with its own day.\n\n**What I added:** every practice run happens on a copy of the player's farm with everyone else removed, so the real farm and its saves are never touched. A replay repeats the runs exactly without recording them, and only the player's taps on the switch and the size are recorded. The size is three pips, 2, 4 or 8 runs a night, shown as a row of that many small crows. That way a child can see how much practice the robot is getting and how many birds it chased off.\n\n**What the feasibility check changed:** in my first prototype the practice got its own separate update, and on a robot working the squares the player gave it, it cost up to 13 points a day. The fix is to count the runs as extra moments of the robot's own day. Measured that way, the farm's score stayed where it was at every size.\n\n**What I did not take yet:** picking the player's best day and a practice editor both wait. Neither is needed for this.\n\nThe card now asks only the three details still open."
+    }
+  ]
 }

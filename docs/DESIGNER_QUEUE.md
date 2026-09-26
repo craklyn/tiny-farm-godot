@@ -318,6 +318,25 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
     widening averages 32.3 points a day kept against 26.7 started over (17 of 24 farms
     better). Reasoning and table in `design/06-bots-and-training.md` ("A wider view keeps
     what it learned"); `tools/measure_wider_view.gd`. Not built.
+  - **Q-130** Nightly practice for the Mark III: should the crow practice come first, with
+    a size the player sets and no energy cost? — **revised 2026-09-26, open again.** Daniel
+    picked none of the three options (best day, separate features, editor) and described
+    his own design on 2026-09-25: the robot practises forced situations overnight (his
+    example: a bird approaches crops and the robot must learn to go and shoo it), each
+    kind of practice upgraded separately, each switchable on or off, with a size against
+    the robot's own day. Designed as **practice runs**: a copy of her farm with one
+    situation forced into it, played headless at night with the robot's own brain and
+    added to its day's decisions in the one nightly update. Each practice is a workbench
+    shelf upgrade (S-29) with a lamp switch and three pips (2, 4 or 8 runs). Replays
+    recompute the runs and record nothing new except her taps on the controls. A scratch
+    prototype on the gate's eight farms left the farm score within about two points a day,
+    raised birds shooed in 48 test runs from 4 to 11 at two pips on open ground, and
+    did not change how often a real bird on the farm was caught within a week. Still open: which practice
+    comes first, whether the size is shown in v1, whether practice costs energy.
+    **Strawman: crow first, size shown, no energy cost.** Design in
+    `design/06-bots-and-training.md` ("Practice runs: it rehearses at night") and
+    `design/14-training-workbench.md` ("The practice cards"). Card:
+    `hq/data/decisions/Q-130.json`. Not built.
 
 - **Q-125 — Where should HQ keep its work cards?** — **Ruling, open 2026-09-25.**
   Every HQ card exists twice: the copy HQ reads and writes in the shared checkout, and

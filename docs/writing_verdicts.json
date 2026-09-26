@@ -167,6 +167,9 @@
   "0652c547b89826d73456": {
    "verdict": "ok"
   },
+  "0658d51098526af00e06": {
+   "verdict": "ok"
+  },
   "066967e5f29da16e5c83": {
    "verdict": "ok"
   },
@@ -241,6 +244,12 @@
   },
   "0878f4d491c631be4354": {
    "verdict": "ok"
+  },
+  "08b18d1a1883861bd2ad": {
+   "instead": "These would make the robot's improvement easier to notice on the farm.",
+   "quote": "These are easier to see paying off on the farm.",
+   "verdict": "second-look",
+   "why": "The idiom makes the reader translate a benefit into the concrete result they would notice."
   },
   "08b6d824b71a4bf95832": {
    "verdict": "ok"
@@ -559,6 +568,12 @@
   "1357a324f01b4fb9378d": {
    "verdict": "ok"
   },
+  "136c9042a0cd094a3705": {
+   "instead": "does less farm work the next day",
+   "quote": "does less for her the next day",
+   "verdict": "decode",
+   "why": "The sentence does not identify who “her” is or what the robot does less of."
+  },
   "1375cc5990acdf27ca95": {
    "verdict": "ok"
   },
@@ -627,6 +642,9 @@
    "why": "Internal vocabulary for holding capacity that loses the plain meaning; the reader would not know what is being counted (items, weight, volume) or what mechanism applies to each phase."
   },
   "14b468815817b869fe6f": {
+   "verdict": "ok"
+  },
+  "14cecf78473c5960de1d": {
    "verdict": "ok"
   },
   "14e916bbe70b581f9093": {
@@ -988,6 +1006,9 @@
   "222fd497b1e1572dc238": {
    "verdict": "ok"
   },
+  "224dc61a62259284fbfe": {
+   "verdict": "ok"
+  },
   "2252c250bd84ec763ae5": {
    "verdict": "ok"
   },
@@ -1020,6 +1041,9 @@
    "why": "“These” points outside the sentence, leaving the reader to work out which actions the automated task can start."
   },
   "23c18e07153005d41cb2": {
+   "verdict": "ok"
+  },
+  "23c58a0988c5b3329000": {
    "verdict": "ok"
   },
   "23d13fee4ea4bfe98961": {
@@ -1429,6 +1453,12 @@
   "2fffcd88143c372eda7e": {
    "verdict": "ok"
   },
+  "3015b764fd710c0ffc14": {
+   "instead": "because the robot never encounters crows during its normal farm days",
+   "quote": "which its days never teach",
+   "verdict": "second-look",
+   "why": "The metaphor makes the reader pause to translate it into the fact that normal farm days do not expose the robot to crows."
+  },
   "302e151a03d80cb9dbac": {
    "verdict": "ok"
   },
@@ -1439,6 +1469,9 @@
    "why": "“Shipped sheets” makes the reader work out that this means image sheets included in the released game."
   },
   "305c97a1db9424a400ce": {
+   "verdict": "ok"
+  },
+  "30839ab880d1f7799f6b": {
    "verdict": "ok"
   },
   "30ca7dd3063fcc7a5f97": {
@@ -1618,6 +1651,12 @@
   },
   "36eaecc5e9f226af16b6": {
    "verdict": "ok"
+  },
+  "36ec1f148d65bfacdd0a": {
+   "instead": "Start with crow practice; the player sees the switch and size, and practice uses some of the robot's energy for the next day",
+   "quote": "As (a)",
+   "verdict": "decode",
+   "why": "The referenced option is not named here, so the reader must look elsewhere to know what this choice includes."
   },
   "36fc193ee175a30a3aa5": {
    "instead": "the more capable robot",
@@ -3296,6 +3335,9 @@
   "706fdcfb46aba855f0a9": {
    "verdict": "ok"
   },
+  "708b9b6727298d02e133": {
+   "verdict": "ok"
+  },
   "70a2c8ec5f1c2d26490b": {
    "verdict": "ok"
   },
@@ -4159,6 +4201,9 @@
    "verdict": "decode",
    "why": "“Foley” is production shorthand that does not tell a stranger what is being recorded."
   },
+  "8d63856735ed6dd5c6f7": {
+   "verdict": "ok"
+  },
   "8d79b443489ef35186ea": {
    "instead": "send this work back to the studio, or move Daniel to the next item",
    "quote": "hand the card back to the studio and move him on",
@@ -4335,6 +4380,9 @@
    "verdict": "ok"
   },
   "93201429f512b1bfe16b": {
+   "verdict": "ok"
+  },
+  "9343d6a27ac79043c629": {
    "verdict": "ok"
   },
   "938babe427cc8e760456": {
@@ -5334,6 +5382,9 @@
   "b3284ca76eb2d420c5f3": {
    "verdict": "ok"
   },
+  "b330d7c8fd4d1c145093": {
+   "verdict": "ok"
+  },
   "b34edef741d2cc06e010": {
    "instead": "An earlier design decision already made the can gauge permanent.",
    "quote": "Q-78 already made the can gauge permanent.",
@@ -5938,6 +5989,12 @@
   "c8db36099789bae92c50": {
    "verdict": "ok"
   },
+  "c8e2dd854fbe594a722d": {
+   "instead": "Start with crow practice; the player sees the switch and size, practice costs no energy, and the size stays fixed at two pips until a second practice exists",
+   "quote": "As (a)",
+   "verdict": "decode",
+   "why": "The referenced option is not named here, so the reader must look elsewhere to know what this choice includes."
+  },
   "c943200ba715deeec085": {
    "verdict": "ok"
   },
@@ -5974,6 +6031,9 @@
   "ca4b0d42ba56c38ef968": {
    "verdict": "ok"
   },
+  "ca66a313a5231cddd948": {
+   "verdict": "ok"
+  },
   "caf833e131f5e52ef4e1": {
    "verdict": "ok"
   },
@@ -6001,6 +6061,9 @@
    "verdict": "ok"
   },
   "cb3cf67cf1ceb7a6957d": {
+   "verdict": "ok"
+  },
+  "cb4d2090123dfd832219": {
    "verdict": "ok"
   },
   "cb5bb51e3575fccf9750": {
@@ -7087,6 +7150,12 @@
   },
   "f1bfe34e66f66b8e8569": {
    "verdict": "ok"
+  },
+  "f1c1d79cf773c8ca7b9c": {
+   "instead": "the player's farm",
+   "quote": "her farm",
+   "verdict": "decode",
+   "why": "The sentence does not identify who owns the farm, so the reader must infer who “her” means."
   },
   "f1d30f3e227abb23a373": {
    "verdict": "ok"
