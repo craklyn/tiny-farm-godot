@@ -909,6 +909,15 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   game never carries it). All four panels are now attached to Q-14 at
   `hq/data/looks/world_colour_station/sheet.png`. No look has been approved;
   this closes the "remaining work" named above, not the decision itself.
+  **2026-09-26 ground-contact question:** the guide also has no rule for where
+  a sprite ends and the ground begins. The designer's 2026-09-16 edits to the
+  neighbour, chicken and crow removed 84 pixels across 23 frames, all erasures,
+  83 of them the generator's cream backdrop, all in each figure's lowest rows.
+  The art director's proposal — nothing under the feet; a figure's lowest drawn
+  row is where it stands, and any shadow is drawn by the game — is written up
+  with two alternatives in `design/09-art-direction.md` §"Where a figure meets
+  the ground". On the look-session agenda beside the edge question — a pointer,
+  not a ruling.
 - **Q-113** ~~How much a player can carry before she has to sell~~ — ✅ ruled
   2026-09-21 and clarified 2026-09-23: **10 plantable units of each crop species
   on her person; 40 of each with a future grain silo.** Both limits are

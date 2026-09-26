@@ -2643,6 +2643,12 @@
   "5b996ac3d8c97635d040": {
    "verdict": "ok"
   },
+  "5ba9068ef13b5576a3c3": {
+   "instead": "The fourth visual style option",
+   "quote": "The fourth look",
+   "verdict": "second-look",
+   "why": "“Look” is being used as an unexplained name for a visual style option."
+  },
   "5bb7e38c145bee35ffb4": {
    "instead": "File the question: which farmer's field does the Mark III tend? (Q-124)",
    "quote": "whose field the Mark III tends",
@@ -3915,6 +3921,12 @@
    "quote": "picture HUD",
    "verdict": "decode",
    "why": "“HUD” is internal interface shorthand that a cold reader may not know."
+  },
+  "84bcad6c74a1d0243ea0": {
+   "instead": "Add the figure's feet and its contact with the ground to the art guide and the look-session agenda",
+   "quote": "where a figure meets the ground",
+   "verdict": "decode",
+   "why": "This indirect phrase makes the reader work out whether you mean the figure's feet, its contact shadow, or something else."
   },
   "84e487262995aac8a505": {
    "verdict": "ok"
@@ -5497,6 +5509,12 @@
    "verdict": "decode",
    "why": "The reader must work out what “it” is and what “the right shape” means."
   },
+  "bb9e7b6836eac57af7a0": {
+   "instead": "Propose a rule for what may appear beneath a character's feet during the art style session",
+   "quote": "what a character sprite may draw under its feet",
+   "verdict": "decode",
+   "why": "“Sprite” is internal art shorthand, and “draw under its feet” does not say what the reader should expect to see there."
+  },
   "bbcb48de7f161c274c31": {
    "verdict": "ok"
   },
@@ -6180,6 +6198,12 @@
   },
   "d16d31aef1a129f9fdce": {
    "verdict": "ok"
+  },
+  "d18dadac6ade117cd7c2": {
+   "instead": "a character or object image ends",
+   "quote": "a sprite ends",
+   "verdict": "decode",
+   "why": "“Sprite” is an internal game-art term that may not tell a cold reader this means a character or object image."
   },
   "d1d6bd65fb08be5c5eb2": {
    "baselined": "2026-09-25",
@@ -6976,6 +7000,9 @@
    "verdict": "ok"
   },
   "eea6b8865b26e7f0c73c": {
+   "verdict": "ok"
+  },
+  "eea9e290b425a31db629": {
    "verdict": "ok"
   },
   "eeba39eac4cf71c455d9": {

@@ -80,6 +80,91 @@ and for one more: the fourth look below, more detail per surface, is described a
 or must be another step of the ramp is the same question. Answering it in the
 session settles both at once.
 
+### Where a figure meets the ground (the 2026-09-16 edits)
+
+**What this records:** the three sheets the designer edited on the evening of
+2026-09-16 all changed in one place — where the figure meets the ground — and the
+guide has no rule for that place. The evidence is below; a proposed rule, for the
+look session to rule on, follows it.
+
+Between 22:50 and 22:55 he edited the neighbour, the chicken and the crow in HQ's
+sprite editor and left the "what were you fixing?" line empty on all three, so
+what follows is read off the pixels in the edit ledger (`sprite_edits/` in HQ's
+record store) and the three commits that saved them (`f4d1250`, `00ed9f7`,
+`8fc292d`). No later commit has changed these sheets.
+
+- **Only erasures.** 84 pixels removed across 23 frames — 53 on the neighbour in
+  13 of her 16 frames, 24 on the chicken in all 8, 7 on the crow in 2 of 3.
+  Nothing was drawn and no remaining pixel changed colour.
+- **One colour, almost always.** 83 of the 84 were cream `#f8f4e6`: the flat
+  backdrop the image generator paints behind every figure, and also the lightest
+  colour on all three sheets. The 84th was one skin-tone pixel (`#f6ddc4`)
+  beside six cream ones under the neighbour. On the crow the edit took out the
+  last cream on the sheet; the chicken still carries 326 cream pixels and the
+  neighbour 176, all of them above the rows he cleaned, as the body's highlight.
+- **All at the bottom of the figure.** The chicken's erasures sit in its lowest 2
+  of 15 rows, under its feet. The neighbour's sit in her lowest 6 of 24 rows, in
+  the gap between her legs and under her feet. The crow's sit in its lowest 2
+  rows — but 6 of its 7 are on the "flying 2" frame, under a bird in the air,
+  so for the crow this is the bottom edge of the figure rather than a point of
+  contact. No figure's lowest row moved; the contact only narrowed (the
+  chicken's bottom row went from 4–6 pixels wide to 2–4).
+- **The outline changed on every edited frame.** The ledger flags a silhouette
+  change on all 23. That is true but automatic: the editor raises it for any
+  change in transparency, so an erasure always sets it. No frame had its
+  interior shading touched.
+
+**He has done this before.** Before this batch he had removed leftover backdrop
+by hand on four other sheets — the farmer, the chicken's previous sheet, the
+fence and the tomato — and wrote a reason on each. The one on the chicken, on
+2026-09-03, reads: "Removed white pixels that should be transparent to see
+background." Those edits were erasures apart from three recoloured tomato
+pixels. Not every hand edit is about backdrop: a 2026-09-07 edit to the field
+recoloured 107 pixels, and a 2026-09-24 edit reshaped two tomato growth stages.
+
+**What the image pipeline now covers, and what it does not.** Commit `8f2fce1`
+(2026-09-24) added a pass to the pipeline's clean-up script
+(`tools/asset_pipeline/postprocess.py`): it clears the pale fringe the generator
+leaves around a figure and backdrop sealed inside it, such as the gap between
+two feet, and a check the sheet builders call refuses a sheet with near-white
+pixels left at its edge.
+That removes the cause of this batch for sheets built from now on. It does not
+say what may stand at the feet on purpose, and it cannot tell a pale figure's
+own edge from leftover backdrop: run over today's chicken, the new pass would
+clear 560 of its 826 pixels, because a white hen's edge is the same near-white as
+the backdrop, and the check fails on the chicken, the neighbour, the farmer and
+the first robot. The pipeline also already strips the perch bars the generator
+draws under birds and the shadow rows it draws under characters
+(`styles/tiny-farm.md`), and the game draws no shadow under any figure. So the
+studio already behaves as if a sprite ends at the figure's feet; the guide just
+never says so.
+
+**The proposed rule, for the look session — not a ruling.** Where does a sprite
+end and the ground begin?
+
+1. **Nothing under the feet (recommended).** A sprite contains only the figure:
+   no ground, no shadow, no perch, no backdrop. Its lowest drawn row is where it
+   touches the ground, and if figures later need a shadow to look planted, the
+   game draws one the same way for every figure, so it can follow the light and
+   the time of day. A figure's colours near its feet stay clear of the backdrop
+   cream, which is what lets a check tell leftover backdrop from a highlight.
+   This is what every one of his edits has enforced, and the three sheets pass
+   it today.
+2. **A shadow drawn into each sprite.** One darker step of the figure's own
+   colours under its feet, part of the sheet. Figures look planted with no game
+   change, but every sheet carries its own shadow shape, a flying or hopping
+   frame has to drop it, and the generator's own shadow rows have so far come
+   out as the peach or pink bands the pipeline strips.
+3. **No rule; the pipeline handles it.** Leave the guide silent and trust the
+   clean-up script. Costs nothing now, but the chicken shows its limit: without a
+   rule saying which pale pixels belong to the figure, the script either leaves
+   the backdrop in or eats the bird.
+
+Settling this sits beside the edge question above on the Q-14 look-session
+agenda (`docs/DESIGNER_QUEUE.md`, Q-14). Whatever he rules, the pipeline's
+near-white pass needs a way to leave a pale figure's own edge alone before the
+chicken or anything like it is regenerated.
+
 ---
 
 ## The look session — the four looks (2026-09-04)
