@@ -898,6 +898,12 @@
   "1f850a586fd9871c5cb1": {
    "verdict": "ok"
   },
+  "1f9f32024902de1d0036": {
+   "instead": "Design a shop where the Mark III learns from training data",
+   "quote": "Sketch a learning shop for the Mark III's minds, training and data",
+   "verdict": "decode",
+   "why": "“Learning shop” and “minds” do not clearly say what is being designed or how training data is used."
+  },
   "1fc52226a1f41f0700bd": {
    "verdict": "ok"
   },
@@ -3052,6 +3058,12 @@
   "6c13aa0b35c289294801": {
    "verdict": "ok"
   },
+  "6c390576714d729df775": {
+   "instead": "Sketch how a player buys new robot brains and training data for the Mark III",
+   "quote": "new minds",
+   "verdict": "decode",
+   "why": "“New minds” is a metaphor whose meaning the reader has to work out."
+  },
   "6c8806bfbd4d8e5d0869": {
    "verdict": "ok"
   },
@@ -4400,6 +4412,9 @@
    "quote": "fits in a frame",
    "verdict": "decode",
    "why": "'Fits in a frame' is house vocabulary for rendering performance; the reader cannot tell what actually fits."
+  },
+  "9b30cc2e073faed01c6a": {
+   "verdict": "ok"
   },
   "9b453732edd82c8436b0": {
    "verdict": "ok"
