@@ -1,0 +1,164 @@
+{
+  "note": "Reviewed 2026-09-26 against origin/main at 0d67f35. Twenty-eight landed cards were closed by hand before HQ required evidence, so none named its commit and the queue page counted them as the studio's. Each commit below was found through the card's own history on main (hq/data/work/<id>.json was tracked until dfef34a) and paired with the earliest green tests run on main that contains it. The six readings changed no code and are only reported. Applied once by hq/confirm_landed_commits.py.",
+  "by": "Claude chief-of-staff session (landed commit backfill)",
+  "cards": [
+    {
+      "id": "w465c8b3be01",
+      "sha": "b302c4d7bbcf",
+      "ci_run": "36042802003",
+      "reason": "The card names b302c4d as the repair of the failed run (Chrome startup retry)."
+    },
+    {
+      "id": "wbaa17e2c5c5",
+      "sha": "832984717b96",
+      "ci_run": "35958631118",
+      "reason": "The card's record turned landed in 8329847, which added the seam check's evidence under docs/evidence/."
+    },
+    {
+      "id": "w1e498ecc2a0",
+      "sha": "64bb9795cfbe",
+      "ci_run": "35689450521",
+      "reason": "The card's record turned landed in 64bb979, which made the demo check repeatable and files failed builds."
+    },
+    {
+      "id": "w70b55f9f6eb",
+      "sha": "c1d5a6104c51",
+      "ci_run": "35658949637",
+      "reason": "The card's record turned landed in c1d5a61, which links every result to its session record."
+    },
+    {
+      "id": "w6c6856d0a7a",
+      "sha": "c1d5a6104c51",
+      "ci_run": "35658949637",
+      "reason": "The card's record turned landed in c1d5a61, which groups the queue page's questions by topic."
+    },
+    {
+      "id": "w7f16fcfe9c8",
+      "sha": "c1d5a6104c51",
+      "ci_run": "35658949637",
+      "reason": "The card's record turned landed in c1d5a61, which fixed both queue page faults the card names."
+    },
+    {
+      "id": "wd4f0dd0caa7",
+      "sha": "241a7848cb31",
+      "ci_run": "35659455337",
+      "reason": "The card's record turned landed in 241a784, the thirty-second hand-back fix in hq/work.py with its test."
+    },
+    {
+      "id": "w3eb1eef4105",
+      "sha": "263d6eec9ab5",
+      "ci_run": "35659787924",
+      "reason": "The card's record turned landed in 263d6ee, which hands a retried worker its earlier attempt's record."
+    },
+    {
+      "id": "w40147e1305f",
+      "sha": "5efe20461d67",
+      "ci_run": "35661792166",
+      "reason": "The card's record turned landed in 5efe204, which puts the waiting-on-you goal on the dashboard."
+    },
+    {
+      "id": "w4a183a63692",
+      "sha": "b4f2a3feec37",
+      "ci_run": "35661540709",
+      "reason": "The card's record turned landed in b4f2a3f, which sends follow-ups to Daniel only as prepared questions."
+    },
+    {
+      "id": "we49bc7771da",
+      "sha": "cc440b651090",
+      "ci_run": "35902919514",
+      "reason": "The card's result names cc440b6 (replant harvests, bin reserve); 1cb5f01 followed it and the run tested both."
+    },
+    {
+      "id": "w0cfbed3146e",
+      "sha": "cc440b651090",
+      "ci_run": "35902919514",
+      "reason": "Delivered by the same seed-economy commit as we49bc7771da, cc440b6, per the card's result."
+    },
+    {
+      "id": "w59c6ab05678",
+      "sha": "c566477fbe0f",
+      "ci_run": "35689450521",
+      "reason": "The sprite-edge paragraph the card asked for entered docs/design/09-art-direction.md in c566477."
+    },
+    {
+      "id": "wd3ce6b6f4db",
+      "sha": "459e9c58cf66",
+      "ci_run": "35765619673",
+      "reason": "The card names 459e9c5, which gives each headless check its own data folder."
+    },
+    {
+      "id": "w41fdcfcaf59",
+      "sha": "ba68a694735e",
+      "ci_run": "35766513932",
+      "reason": "The card's evidence names ba68a69, which makes release-plan saves keep each story's fields."
+    },
+    {
+      "id": "w559bf20d689",
+      "sha": "ba68a694735e",
+      "ci_run": "35766513932",
+      "reason": "The card's evidence names ba68a69, which binds work records before checking references."
+    },
+    {
+      "id": "w4b88f3a33dc8",
+      "sha": "43bfa810f8b4",
+      "ci_run": "35915740271",
+      "reason": "The card's record turned landed in 43bfa81, the tools/test_runner.gd waits the result describes."
+    },
+    {
+      "id": "wbbbcc2086a1f",
+      "sha": "64399ce820f7",
+      "ci_run": "35769196640",
+      "reason": "The card's evidence names 64399ce, which keeps lessons from accepted work."
+    },
+    {
+      "id": "w9b453fb70c7",
+      "sha": "c09a2c0fdbfc",
+      "ci_run": "35959125711",
+      "reason": "The card's record turned landed one minute after c09a2c0, the server wording change the result describes."
+    },
+    {
+      "id": "wc1886486f14",
+      "sha": "760019c37724",
+      "ci_run": "33899431973",
+      "reason": "tools/check_gateway.py and its CI step entered main in 760019c, the commit that took this card to review."
+    },
+    {
+      "id": "w5a4005536e1",
+      "sha": "760019c37724",
+      "ci_run": "33899431973",
+      "reason": "The whole-sheet sprite editor (hq/static/sprite.js) entered main in 760019c, the commit that took this card to review."
+    },
+    {
+      "id": "wf1b3b951813",
+      "sha": "760019c37724",
+      "ci_run": "33899431973",
+      "reason": "The four treatments entered docs/design/09-art-direction.md and the queue in 760019c, the commit that took this card to review."
+    }
+  ],
+  "no_code": [
+    {
+      "id": "w8fd8d88b290",
+      "reason": "A reading: judged whether old replays keep value; no code changed."
+    },
+    {
+      "id": "w37ca945abca2",
+      "reason": "Closed as already supported by the current test runners; no code changed."
+    },
+    {
+      "id": "w554baab1271",
+      "reason": "A reading of Daniel's hand edit to the obstacle sheet; no code changed."
+    },
+    {
+      "id": "w56a634c94f6",
+      "reason": "A reading of Daniel's hand edit to the field grassland; no code changed."
+    },
+    {
+      "id": "wae35fb20cb7",
+      "reason": "A reading of Daniel's two hand edits to the obstacle sheet; no code changed."
+    },
+    {
+      "id": "w6ff2240c1fb",
+      "reason": "An analysis of harvest-as-seed economics; no code changed."
+    }
+  ]
+}

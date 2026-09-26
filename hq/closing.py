@@ -30,6 +30,7 @@ import re
 import subprocess
 import time
 
+import action_dispatch
 import work
 
 CI_WORKFLOW = "tests"
@@ -166,6 +167,10 @@ def close(item_id, *, sha, ci_run, result, by, note="", main_root, run=_run, fet
         item.pop("outside_claim", None)
         work.save_item(item)
         landed = work.land_item(item, by, sha=full_sha, note=summary)
+        # The run was read from GitHub above; record it where the page reads
+        # CI, or a verified close shows "automated checks are not confirmed".
+        if action_dispatch.record_verified_ci(work, landed["id"], full_sha, ci):
+            landed = work.load_item(landed["id"])
         _mark_ruling_integrated(landed, full_sha)
         return landed
 

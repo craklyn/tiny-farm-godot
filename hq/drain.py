@@ -2771,7 +2771,8 @@ def main():
         print(f"Recovered {recovered} interrupted attempt(s).")
         return 0
     if lock:
-        action_dispatch.poll_ci(work, work.items(), action_dispatch.fetch_tests_runs)
+        action_dispatch.poll_ci(work, work.items(), action_dispatch.fetch_tests_runs,
+                                contains=action_dispatch.repo_contains(REPO))
 
     if args.repair:
         n = 0

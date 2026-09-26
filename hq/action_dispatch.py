@@ -114,35 +114,26 @@ def finish(work, item, action, claim_id, *, progressed, reason=""):
     return fresh
 
 
-def record_ci(work, item, run, *, now=None, provider_available=True):
-    """Accept only a completed tests run whose head SHA is this landed commit."""
-    sha = ((item.get("completion") or {}).get("sha") or
-           (item.get("landed") or {}).get("sha") or "")
-    if not sha:
-        return False
-    if run and (run.get("headSha") != sha or run.get("status") != "completed"):
-        return False
-    instant = time.time() if now is None else now
+def landed_sha(item):
+    """The commit a landed card records, or ''."""
+    return ((item.get("completion") or {}).get("sha") or
+            (item.get("landed") or {}).get("sha") or "")
+
+
+def _store_ci(work, item_id, sha, ci, instant):
+    """Write one CI reading and its poll action; False when nothing changed."""
     with work.mutation_lock():
-        fresh = work.load_item(item["id"])
+        fresh = work.load_item(item_id)
+        if landed_sha(fresh) != sha:
+            return False
         workflow = work._workflow(fresh)
         old = workflow.get("ci") or {}
-        if run:
-            ci = {"status": "confirmed" if run.get("conclusion") == "success" else "failed",
-                  "confirmed": run.get("conclusion") == "success", "commit_sha": sha,
-                  "run_id": run.get("databaseId"), "url": run.get("url", ""),
-                  "conclusion": run.get("conclusion"), "observed_at": work._now_iso()}
-            if not ci["confirmed"]:
-                ci["next_poll_after"] = instant + 20 * 60
-        else:
-            ci = {"status": "unavailable", "confirmed": False, "commit_sha": sha,
-                  "reason": ("No completed tests workflow run matches this local commit."
-                             if provider_available else "The tests workflow could not be read."),
-                  "next_poll_after": instant + 20 * 60}
         if old.get("commit_sha") == sha and old.get("status") == ci["status"] and \
                 old.get("reason") == ci.get("reason") and \
-                (not run or old.get("run_id") == ci.get("run_id")):
+                (ci["status"] == "unavailable" or old.get("run_id") == ci.get("run_id")):
             return False
+        if not ci["confirmed"]:
+            ci["next_poll_after"] = instant + 20 * 60
         workflow["ci"] = ci
         poll_id = work.action_key(fresh["id"], "poll_ci", sha)
         poll = next((a for a in workflow["actions"] if a.get("id") == poll_id), None)
@@ -162,33 +153,103 @@ def record_ci(work, item, run, *, now=None, provider_available=True):
         return True
 
 
-def poll_ci(work, items, fetch_runs, *, now=None):
-    """One bounded batch poll, with exact-SHA matching and no guessed green."""
-    pending = [i for i in items if i.get("state") == "landed" and
-               ((i.get("completion") or {}).get("sha") or (i.get("landed") or {}).get("sha"))]
+def record_ci(work, item, run, *, now=None, provider_available=True, contains=None):
+    """Accept only a completed tests run on this landed commit.
+
+    The run's head must be the commit itself, or, when ``contains`` is given,
+    a later main that the repository shows contains it: a green run there
+    tested this change too, which is the bar ``hq/card.py close`` already holds
+    a close to."""
+    sha = landed_sha(item)
+    if not sha:
+        return False
+    head = (run or {}).get("headSha") or ""
+    if run and (run.get("status") != "completed" or
+                (head != sha and not (contains and head and contains(sha, head)))):
+        return False
+    instant = time.time() if now is None else now
+    if run:
+        ci = {"status": "confirmed" if run.get("conclusion") == "success" else "failed",
+              "confirmed": run.get("conclusion") == "success", "commit_sha": sha,
+              "run_id": run.get("databaseId"), "url": run.get("url", ""),
+              "conclusion": run.get("conclusion"), "observed_at": work._now_iso()}
+        if head != sha:
+            ci["head_sha"] = head
+    else:
+        ci = {"status": "unavailable", "confirmed": False, "commit_sha": sha,
+              "reason": ("No completed tests workflow run matches this local commit."
+                         if provider_available else "The tests workflow could not be read.")}
+    return _store_ci(work, item["id"], sha, ci, instant)
+
+
+def record_verified_ci(work, item_id, sha, verified, *, now=None):
+    """Record a run that ``closing.verify_ci`` already read from GitHub and accepted.
+
+    A session close and the one-time backfill of landed commits write the
+    card's CI record through here, so the page reads their green run the same
+    way it reads one the poller found."""
+    if verified.get("conclusion") != "success" or verified.get("status") != "completed":
+        return False
+    ci = {"status": "confirmed", "confirmed": True, "commit_sha": sha,
+          "run_id": int(verified["id"]), "url": verified.get("url", ""),
+          "conclusion": "success", "observed_at": work._now_iso()}
+    if verified.get("head_sha") and verified["head_sha"] != sha:
+        ci["head_sha"] = verified["head_sha"]
+    return _store_ci(work, item_id, sha, ci, time.time() if now is None else now)
+
+
+def poll_ci(work, items, fetch_runs, *, now=None, contains=None):
+    """One bounded batch poll, with commit matching and no guessed green.
+
+    A green run on the exact commit is preferred. With ``contains``, the
+    earliest green run on a later main that contains the commit confirms it
+    too: a push of several commits runs the tests once, on the last of them,
+    so the commits under it never get a run of their own."""
+    pending = [i for i in items if i.get("state") == "landed" and landed_sha(i)]
     if not pending:
         return 0
     runs = fetch_runs()
     provider_available = runs is not None
-    runs = runs or []
+    completed = [r for r in runs or [] if r.get("status") == "completed"]
+    order = lambda r: (str(r.get("updatedAt") or ""), int(r.get("databaseId") or 0))
+    green_oldest_first = sorted((r for r in completed if r.get("conclusion") == "success"),
+                                key=order)
     changed = 0
     instant = time.time() if now is None else now
     for item in pending:
-        sha = ((item.get("completion") or {}).get("sha") or
-               (item.get("landed") or {}).get("sha"))
+        sha = landed_sha(item)
         ci = (item.get("workflow") or {}).get("ci") or {}
         if ci.get("commit_sha") == sha and ci.get("status") == "confirmed":
             continue
         if ci.get("commit_sha") == sha and ci.get("status") in ("unavailable", "failed") \
                 and ci.get("next_poll_after", 0) > instant:
             continue
-        matching = [r for r in runs if r.get("headSha") == sha and
-                    r.get("status") == "completed"]
-        matched = max(matching, key=lambda r: (str(r.get("updatedAt") or ""),
-                                               int(r.get("databaseId") or 0)), default=None)
+        exact = [r for r in completed if r.get("headSha") == sha]
+        matched = max((r for r in exact if r.get("conclusion") == "success"), key=order, default=None)
+        if matched is None and contains:
+            matched = next((r for r in green_oldest_first if r.get("headSha") != sha
+                            and contains(sha, r.get("headSha") or "")), None)
+        if matched is None:
+            matched = max(exact, key=order, default=None)
         changed += bool(record_ci(work, item, matched, now=instant,
-                                  provider_available=provider_available))
+                                  provider_available=provider_available, contains=contains))
     return changed
+
+
+def repo_contains(repo):
+    """``contains(sha, head)`` for poll_ci: True when ``head`` has ``sha`` in its history.
+
+    A head this checkout has not fetched reads as not containing it, so an
+    unknown run never confirms anything."""
+    def contains(sha, head):
+        if not sha or not head:
+            return False
+        try:
+            return subprocess.run(["git", "merge-base", "--is-ancestor", sha, head],
+                                  cwd=repo, capture_output=True, timeout=20).returncode == 0
+        except (OSError, subprocess.TimeoutExpired):
+            return False
+    return contains
 
 
 def fetch_tests_runs():

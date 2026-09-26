@@ -70,7 +70,7 @@ which the deploy step already requires for code.
 | `decisions/` | Sessions and `tools/record_sound_candidates.py`, committed | HQ never writes decision cards, and CI checks their wording. HQ records Daniel's answer as a ruling in the store. HQ's "cards filed" count already reads their Git history on main. |
 | `projects/` | Sessions, committed | HQ only reads them. Pillar feeds and "last touched" use their Git history on main. |
 | `looks/` | `tools/compose_look_sheets.py`, committed | Design material attached to decision cards. |
-| `completion_reconciliation.json`, `process_completion_reconciliation.json`, `card_state_migration.json` | Reviewed once, committed | Inputs to one-off reconciliation commands. |
+| `completion_reconciliation.json`, `process_completion_reconciliation.json`, `card_state_migration.json`, `landed_commit_backfill.json` | Reviewed once, committed | Inputs to one-off reconciliation commands. |
 
 **A deviation from the ruling's wording.** Option (a) listed "decisions" and
 "projects" among the records to move. Neither has an HQ writer. Moving them would give
@@ -190,6 +190,32 @@ What changed:
   review card whose work never reached main goes back to its owner's queue, with a
   brief saying what remains. An ask-first card becomes runnable only with Daniel's
   recorded yes. Without `--apply` the command writes nothing.
+
+### Landed cards were counted as the studio's (2026-09-26)
+
+The Engineering page's check counted 28 landed cards as closed. Daniel's queue page
+listed the same 28 under "Back with the studio", marked "automated checks are not
+confirmed". The page put a landed card under "Landed without you" only when the card
+named its commit. These 28 had been closed by hand before HQ required evidence, so none
+named one.
+
+- **The page sorts closed cards by the check's own verdict.** `/api/work` now sends
+  each card's lanes from `work.card_lanes`. A card in the closed lane never counts as
+  the studio's. A landed card goes under "Landed without you" whatever evidence it
+  carries, and its status line says what is missing. A reading says it changed no
+  code. Any other card closed without a commit says that no commit is recorded.
+- **A green run on a later main confirms a commit.** A push of several commits runs the
+  tests once, on the last one, so most landed commits never got a run of their own.
+  The CI poller now takes the earliest green run on main that contains the commit.
+  `hq/card.py close` already accepted that run, and a close now records it where the
+  page reads CI.
+- **A one-time command adds the missing commits.** `hq/confirm_landed_commits.py` reads
+  the reviewed table in `hq/data/landed_commit_backfill.json`. For each of 22 cards, it
+  gives the commit that landed the card's work, found through the card's own history on
+  main. It also gives a green `tests` run that contains that commit. The command checks
+  both against Git and GitHub, then records them on the card. The table lists the six
+  readings, which changed no code, and the command writes nothing to them. Without
+  `--apply` it writes nothing.
 
 ## Cut-over
 

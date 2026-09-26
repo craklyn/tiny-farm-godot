@@ -87,10 +87,17 @@ function workflowStatus(item) {
     return `Blocked${reason ? ` — ${reason}` : ""}${recovery ? `; ${recovery}` : ""}`;
   }
   if (view.availability === "running") return "An automated task is running now";
-  if (view.candidate_status === "landed" || view.phase === "landed")
-    return view.shipped_evidence && view.shipped_evidence.ci_confirmed
+  if (view.candidate_status === "landed" || view.phase === "landed") {
+    const shipped = view.shipped_evidence || {};
+    // Never say "merged" without a commit to point at: a reading changes no
+    // code, and a card closed without its commit has nothing to confirm.
+    if (!shipped.landed_sha) return shipped.no_code
+      ? "Finished; this work was a review or analysis, so there was no code to merge"
+      : "Closed as complete, but no commit was recorded on the main code branch";
+    return shipped.ci_confirmed
       ? "Merged into the main code branch; automated checks confirmed"
       : "Merged into the main code branch; automated checks are not confirmed";
+  }
   if (view.candidate_status === "reviewed") return "Reviewed; waiting to be merged";
   if (view.candidate_status === "stale") return "Earlier checks no longer apply; check this version again";
   if (view.candidate_status === "held") return "The proposed version is on hold; the studio must resolve what stopped it";

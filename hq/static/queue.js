@@ -295,6 +295,18 @@ async function qLoadData() {
     const row = statuses.get(card.id) || { status: "unknown", reason: "Current work status is unavailable." };
     const entry = { card, reason: row.reason };
     const view = workflowView(card);
+    // A closed card is never the studio's to move. The server sends the lanes
+    // its health check counts (work.card_lanes); "terminal" there is closed
+    // here, whatever else the card still carries. A landed card goes under
+    // "Landed without you" even without a commit or confirmed checks — its
+    // status line says which — rather than falling through to "Back with the
+    // studio", as 28 of them did on 2026-09-25.
+    const lanes = Array.isArray(card.lanes) ? card.lanes : [];
+    if (lanes.includes("terminal") || view.availability === "terminal") {
+      if (card.state === "landed") wentIn.push(card);
+      else closed.push(entry);
+      return;
+    }
     if (view.canonical) {
       // This is the same projection the scheduler puts on its queue rows.
       // Waiting-on-you still decides which genuine CEO questions are ready;

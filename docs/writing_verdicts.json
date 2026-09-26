@@ -3962,6 +3962,12 @@
   "86dffa30dda5f3b8a6b2": {
    "verdict": "ok"
   },
+  "86e89fc0b9c475ee3d88": {
+   "instead": "Show completed work cards under “Landed without you” on the queue page, with their commits and passing test runs",
+   "quote": "landed work cards",
+   "verdict": "second-look",
+   "why": "“Landed” is internal shorthand for completed, so a cold reader may need to infer the status."
+  },
   "8705e70efe563015ce09": {
    "instead": "Build new animation images from pixels already in the game",
    "quote": "derived sprite frames from shipped pixels",
@@ -4085,6 +4091,9 @@
   "8b87fad8dac778e5d1f2": {
    "verdict": "ok"
   },
+  "8bac951db3e2e6876976": {
+   "verdict": "ok"
+  },
   "8c2bf178750c8689b83e": {
    "verdict": "ok"
   },
@@ -4111,6 +4120,12 @@
   },
   "8cd1287c4e553e7a3f91": {
    "verdict": "ok"
+  },
+  "8cdd7fc4a37361788277": {
+   "instead": "Finished; this was a review, so there was no code to merge",
+   "quote": "a reading",
+   "verdict": "decode",
+   "why": "The reader has to work out what kind of reading this was."
   },
   "8cee8626f6737c8952dd": {
    "verdict": "ok"
@@ -5200,6 +5215,12 @@
   "aea8d5f0c6715d4957a0": {
    "verdict": "ok"
   },
+  "aecbeab1f13f395f22c9": {
+   "instead": "Closed as complete, but no commit was recorded on the main code branch",
+   "quote": "Closed as landed",
+   "verdict": "decode",
+   "why": "“Landed” is internal shorthand whose meaning the reader must infer."
+  },
   "aee6253f6a8183fb2e59": {
    "verdict": "ok"
   },
@@ -5748,6 +5769,9 @@
    "verdict": "ok"
   },
   "c439f09f5fdccade0e06": {
+   "verdict": "ok"
+  },
+  "c44aca0d57a84e3d04d8": {
    "verdict": "ok"
   },
   "c45427c9aa6b32b983d2": {

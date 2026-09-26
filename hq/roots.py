@@ -28,7 +28,7 @@ REPO_OWNED = (
     "org.json", "seats.json", "pillars.json", "platforms.json", "surface.json",
     "entities.json", "releases.json", "work_policy.json", "spend.json",
     "completion_reconciliation.json", "process_completion_reconciliation.json",
-    "card_state_migration.json",
+    "card_state_migration.json", "landed_commit_backfill.json",
     "decisions", "projects", "looks",
 )
 # Live records: HQ writes them while it runs, so they live only in the data

@@ -307,6 +307,7 @@ def save_item(item):
         # A response projection is not durable workflow state, even if a
         # caller round-trips a record fetched from an API.
         item.pop("workflow_view", None)
+        item.pop("lanes", None)
         path = _item_path(item["id"])
         # A state outside STATES sits in no lane: nothing runs it and nothing
         # shows it to Daniel (2026-09-25: fourteen 'queued' and 'done' cards).
@@ -1085,6 +1086,11 @@ def work_view(item, repo_facts=None, now=None):
     ci = workflow.get("ci") or {}
     shipped = {"landed_sha": landed_sha,
                "ci_confirmed": bool(landed_sha and ci.get("confirmed") and ci.get("commit_sha") == landed_sha)}
+    if item.get("state") == "landed" and not landed_sha:
+        # Landed with no commit: a reading changes no code, so there is no CI
+        # to wait for. Anything else closed without its commit says so.
+        shipped["no_code"] = (str(item.get("tier") or 0) == "0"
+                              or completed.get("kind") == "reading")
     candidate_status = ("landed" if shipped["landed_sha"] else "none" if terminal else
                         "stale" if candidate_base and facts.get("head") and candidate_base != facts["head"] else
                         "held" if blocker else "reviewed" if (item.get("check") or {}).get("verdict") == "pass" else
@@ -2724,6 +2730,9 @@ def snapshot():
     active = HOST.drain_state() if hasattr(HOST, "drain_state") else None
     for item in got:
         item["workflow_view"] = drain.project_work(item, head=head, active=active)
+        # The lanes the health check counts (card_lanes), so the queue page
+        # sorts a card by the same verdict instead of re-deriving it.
+        item["lanes"] = card_lanes(item, item["workflow_view"])
     return {
         "policy": policy(),
         "items": got,
