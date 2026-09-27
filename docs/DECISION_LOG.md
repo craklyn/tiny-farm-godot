@@ -638,6 +638,19 @@ the shelf at that value, and whether a trained robot may swap, are Q-132.
 Reasoning and tables in `design/06-bots-and-training.md` ("A starting brain from the
 studio"); card in `design/14-training-workbench.md` §11; tests `test_starter_brain`.
 
+### S-33. The work queue works several items at once and lands them one at a time
+**Ruled 2026-09-26, in a Claude Code session**, after Daniel asked to "start them all
+running" and found the queue only ever works one item. Up to a few items are worked,
+reviewed and tested side by side, each from the main it started on. They still land
+strictly one at a time. An item whose starting point went out of date while it was
+worked lands anyway **when none of the files it changes were changed on main in the
+meantime**: its exact reviewed patch is rebuilt on the current main as a new candidate,
+and both suites run on that exact combined tree before it is committed, so the old test
+results are never reused. Only when its files did change on main does it go back for a
+fresh attempt, as before. This implements the merge-queue shape already described in
+`docs/hq/CONVERGENCE_QUEUE_DESIGN.md` and narrows the drain's earlier rule that a changed
+base is never rebuilt. Code: `hq/drain.py` (`run_verified_batch`, the landing path).
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported

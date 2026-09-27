@@ -2441,6 +2441,9 @@
   "508fde3e87b72dacf93a": {
    "verdict": "ok"
   },
+  "5098a62b38ab5e799913": {
+   "verdict": "ok"
+  },
   "50b727a253159e02d41c": {
    "verdict": "ok"
   },
@@ -2729,6 +2732,12 @@
    "quote": "'she'",
    "verdict": "decode",
    "why": "The sentence uses a pronoun without saying who it refers to, so a cold reader must look elsewhere to identify her."
+  },
+  "5a2f046150ad62cd9c56": {
+   "instead": "Record Daniel's ruling that the work queue processes several items simultaneously and completes them one at a time",
+   "quote": "works several items at once and lands them one at a time",
+   "verdict": "second-look",
+   "why": "“Works” and “lands” make the reader infer that items are processed concurrently and completed individually."
   },
   "5a518d956d4889435aed": {
    "verdict": "ok"
