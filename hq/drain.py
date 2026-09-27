@@ -806,6 +806,65 @@ def auto_resume_reason(item, rec):
     return rec["error"]
 
 
+# The sandbox refusing a write, as the OS, Rust and libc word it.
+_READ_ONLY_REFUSAL = re.compile(r"read-only file system|os error 30|\bEROFS\b", re.I)
+
+
+def read_only_refusal(item, rec, outcome):
+    """The command a read-only attempt could not run because its sandbox
+    refused a write, or "".
+
+    2026-09-26, the visual-check card: filed by hand at tier 0, it asked the
+    owner to run tools/check_visuals.sh and save the diff image. The read-only
+    sandbox made mktemp fail and left Godot unable to write .godot; the owner
+    rightly answered "blocked", but the card stayed tier 0, so every retry was
+    read-only again and failed the same way. A card is a build task filed as a
+    reading only when the owner says blocked *and* a finished command's own
+    output shows the refused write — the owner's prose alone never moves it.
+    Once per card, and never one already filed to build."""
+    if int(item.get("tier") or 0) != 0 or item.get("tier_raised") or outcome.get("status") != "blocked":
+        return ""
+    for run in (rec.get("execution_evidence") or {}).get("other_commands") or []:
+        code = run.get("exit_code")
+        if (run.get("status") in ("completed", "failed") and type(code) is int and code != 0
+                and _READ_ONLY_REFUSAL.search(str(run.get("output_tail") or ""))):
+            return str(run.get("command") or "a command")
+    return ""
+
+
+def raise_to_build(item, rec, command, body):
+    """Send a card whose read-only attempt hit the sandbox to the build queue.
+
+    It lands where tier-1 work waits — `waiting_session`, unclaimed — with an
+    open build action keyed on this attempt, so the next drain run picks it up
+    with write tools (do_item reads the tier). The attempt is billed but not
+    counted, and nothing reaches Daniel: the tier was wrong, not the work."""
+    item["tier"] = 1
+    item["tier_reason"] = (f"A read-only attempt showed this needs a writable copy of the "
+                           f"repository: `{command[:160]}` failed on a read-only file system.")
+    item["tier_raised"] = {"from": 0, "attempt_id": rec.get("attempt_id"),
+                           "command": command[:300], "at": work._now_iso()}
+    item["result"] = ("This attempt could only read the repository, and the work needs to "
+                      "write to it, so the build queue tries it next with a writable copy. "
+                      "Nothing has landed yet.")
+    if body:
+        item["result"] += "\n\nWhat it said:\n\n" + body
+    item["state"] = "waiting_session"
+    item["started"] = ""
+    # Keyed on this attempt: the build action that just finished may share
+    # the empty-patch input of an earlier read-only retry, and a done action's
+    # key projects as a recovery, not a build.
+    actions = work._workflow(item)["actions"]
+    ident = work.action_key(item["id"], "build", rec.get("attempt_id") or "")
+    if not any(a.get("id") == ident for a in actions):
+        actions.append({"id": ident, "type": "build", "input_id": rec.get("attempt_id") or "",
+                        "owner": item.get("owner") or "claude",
+                        "summary": item.get("first_action") or "Continue the work.",
+                        "priority": "ordinary", "created_at": work._now_iso(), "state": "open"})
+    work.save_item(item)
+    return item
+
+
 # ---------------------------------------------------------------------------
 # worktrees
 # ---------------------------------------------------------------------------
@@ -2083,6 +2142,9 @@ def _write_back(item, rec, applied, why_not, suites, org):
     # do_item decides this before the patch is held; a record that skipped
     # do_item gets the same answer here. Edits that landed are never retried.
     resume = "" if applied or item.get("automatic_repairs") else (rec.get("resume") or auto_resume_reason(item, rec))
+    # A reading the sandbox stopped from writing is re-filed, not counted.
+    widen = read_only_refusal(item, rec, work.attempt_outcome(
+        visible_result, rec.get("error"), rec.get("limited")))
     previous_check = item.get("check") or {}
     previous_id = previous_check.get("attempt_id") or (item.get("attempt_outcome") or {}).get("id")
     if previous_check and previous_id and previous_id != rec.get("attempt_id"):
@@ -2090,7 +2152,7 @@ def _write_back(item, rec, applied, why_not, suites, org):
         if not any(row.get("attempt_id") == previous_id for row in prior):
             prior.append({**previous_check, "attempt_id": previous_id})
     item["last_recorded_attempt"] = rec.get("attempt_id")
-    item["attempts"] = item.get("attempts", 0) + 1
+    item["attempts"] = item.get("attempts", 0) + (0 if widen else 1)
     item["done_by"] = {"seat": rec["seat"], "model": rec["model"], "lane": "drain"}
     # Whether this goes in on its own or comes to Daniel. Work he would only
     # rubber-stamp is work he should never have been shown, so the default is
@@ -2123,7 +2185,7 @@ def _write_back(item, rec, applied, why_not, suites, org):
     # number that answers whether it was worth having.
     prev = item.get("spent") or {}
     item["spent"] = {
-        "attempts": int(prev.get("attempts") or 0) + 1,
+        "attempts": int(prev.get("attempts") or 0) + (0 if widen else 1),
         "tokens": int(prev.get("tokens") or 0) + this["tokens"],
         "fresh": int(prev.get("fresh") or 0) + this["fresh"],
         "list_usd": round(float(prev.get("list_usd") or 0.0) + this["list_usd"], 4),
@@ -2140,6 +2202,8 @@ def _write_back(item, rec, applied, why_not, suites, org):
         item["started"] = ""
         work.save_item(item)
         return item
+    if widen:
+        return raise_to_build(item, rec, widen, body)
     item.pop("resume", None)
     if ran_out_of_turns(rec["error"]):
         item["result"] = _turns_result(item, rec, applied, body)

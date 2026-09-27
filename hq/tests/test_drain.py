@@ -182,6 +182,62 @@ def main():
         check(it["result"].startswith("This attempt did not finish")
               and it["result"].rstrip().endswith("I opened the sheet and"),
               "the failure leads and what the worker said follows")
+
+        # 2026-09-26: a reading asked to run tools/check_visuals.sh, the
+        # read-only sandbox refused its writes, and every retry was read-only.
+        print("a reading the sandbox stopped from writing goes to the build queue, once")
+        blocked = ("I could not run the visual check: the sandbox is read-only.\n"
+                   + work.FOLLOW_MARK + "\n"
+                   + json.dumps({"outcome": {"status": "blocked",
+                                             "reason": "the checkout is read-only"}, "items": []}))
+        refused = {"call_id": "c1", "exit_code": 1, "status": "failed",
+                   "command": "bash -lc tools/check_visuals.sh",
+                   "output_tail": "mktemp: failed to create file via template "
+                                  "'/tmp/x.XXXX': Read-only file system (os error 30)"}
+        harmless = dict(refused, output_tail="diff: 3 pixels differ")
+
+        def reading(item_id, evidence, **over):
+            it = card(id=item_id, tier=0, tier_reason="filed by hand", state="doing",
+                      started="2026-09-26T01:00", **over)
+            r = rec(id=item_id, patch="", stat="", files=[], error="", result=blocked,
+                    attempt_id="a-" + item_id,
+                    execution_evidence={"other_commands": evidence})
+            return drain.write_back(it, r, False, "nothing changed", None, org)
+
+        it = reading("w0000000000f7", [refused])
+        check(it["tier"] == 1 and "read-only" in it["tier_reason"]
+              and "tools/check_visuals.sh" in it["tier_reason"],
+              "the card is re-filed as a build task and says which command showed it")
+        check(it["state"] == "waiting_session" and not it["started"],
+              "it waits unclaimed where build work waits, not in his review")
+        check(it["attempts"] == 0 and it["spent"]["attempts"] == 0 and "resume" not in it,
+              "the read-only attempt is not counted against the card's retries")
+        actions = drain.classified_actions()
+        check(any(item["id"] == "w0000000000f7" and action["type"] == "build"
+                  for item, action in actions),
+              "the next drain run offers it as a build")
+        check("w0000000000f7" in [i["id"] for i in drain.queued()],
+              "and the build worker, which runs with write tools, picks it up")
+
+        it["tier"], it["state"] = 0, "doing"
+        again = drain.write_back(work.save_item(it), rec(
+            id="w0000000000f7", patch="", stat="", files=[], error="", result=blocked,
+            attempt_id="a-second", execution_evidence={"other_commands": [refused]}),
+            False, "nothing changed", None, org)
+        check(again["state"] == "for_review" and again["tier"] == 0,
+              "a card is moved at most once")
+
+        it = reading("w0000000000f8", [harmless])
+        check(it["tier"] == 0 and it["state"] == "for_review" and it["attempts"] == 1,
+              "a blocked reading whose commands show no refused write is left as it was")
+
+        it = card(id="w0000000000f9", started="2026-09-26T01:00")
+        it = drain.write_back(it, rec(id="w0000000000f9", patch="", stat="", files=[], error="",
+                                      result=blocked, attempt_id="a-f9",
+                                      execution_evidence={"other_commands": [refused]}),
+                              False, "nothing changed", None, org)
+        check(it["tier"] == 1 and it["state"] == "for_review" and "tier_raised" not in it,
+              "a card already filed to build is never touched")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 

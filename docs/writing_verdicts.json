@@ -345,6 +345,9 @@
   "0b906ac56d24b63490c0": {
    "verdict": "ok"
   },
+  "0b9c7531017062a26b82": {
+   "verdict": "ok"
+  },
   "0ba49642b9ce86f9eccb": {
    "instead": "Name what has been open: '[Something] has been open … days' or establish the referent in the prior line",
    "quote": "It has been open … day….",
