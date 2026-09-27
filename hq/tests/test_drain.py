@@ -121,9 +121,13 @@ def main():
         check([row["id"] for row in view["eligible"] if row["action_type"] == "build"]
               == [i["id"] for i in drain.queued()],
               "visible build positions are the build worker's positions")
-        held = next(row for row in view["held"] if row["id"] == "w0000000000f6")
-        check(held["reason"] == "the checker needs a smaller repair",
-              "excluded work carries the reason it cannot start")
+        repair = next(row for row in view["eligible"] if row["work_id"] == "w0000000000f6")
+        check(repair["action_type"] == "reconcile"
+              and repair["supersedes"]["reason"] == "the checker needs a smaller repair"
+              and "replaces the earlier attempt" in repair["why"],
+              "a held attempt shows once, under the step that repairs it, with its reason")
+        check("w0000000000f6" not in [row["id"] for row in view["held"]],
+              "the card is not listed again as held beside its repair")
         card(id="w0000000000a1", created_ts=14.0, started="2026-09-21T23:00")
         view = drain.queue_view()
         check("w0000000000a1" not in [row["id"] for row in view["eligible"]],

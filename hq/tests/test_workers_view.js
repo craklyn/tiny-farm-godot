@@ -62,4 +62,32 @@ for (const kind of ["warning", "command-failure", "recovered", "finding", "termi
   const line = vm.runInContext("wkLine(lineForTest)", context);
   assert.ok(line.includes(`l ${kind}`), `${kind} keeps its distinct visual class`);
 }
-console.log("workers view tests passed");
+
+// The queue page re-reads itself while the task queue runs, and redraws only
+// when a row moved: a card that starts moves from Next to Working now.
+(async () => {
+  let payload = {working: [], eligible: [{action_id: "a1", position: 1, title: "Alpha", age_seconds: 1}], held: []};
+  let fetches = 0, tick = null;
+  Object.assign(context, {
+    location: {hash: "#/work/queue"},
+    fetch: async () => { fetches++; return {json: async () => JSON.parse(JSON.stringify(payload))}; },
+    api: async () => ({employees: []}),
+    $view: {innerHTML: "", querySelectorAll: () => []},
+    setInterval: fn => { tick = fn; return 1; }, clearInterval: () => {},
+  });
+  await vm.runInContext("renderExecutionQueue()", context);
+  assert.ok(context.$view.innerHTML.includes("Alpha") && tick, "the page renders and schedules a re-read");
+  payload.eligible[0].age_seconds = 99;
+  context.$view.innerHTML = "unchanged";
+  await tick();
+  assert.equal(context.$view.innerHTML, "unchanged", "a re-read that moves nothing does not redraw");
+  payload = {working: [{action_id: "a1", title: "Alpha"}], eligible: [], held: []};
+  await tick();
+  assert.ok(context.$view.innerHTML.includes("Working now <span class=\"w-count\">1</span>"),
+    "a card that started is redrawn under Working now");
+  context.location.hash = "#/";
+  const before = fetches;
+  await tick();
+  assert.equal(fetches, before, "leaving the page stops the re-reads");
+  console.log("workers view tests passed");
+})().catch(e => { console.error(e); process.exit(1); });

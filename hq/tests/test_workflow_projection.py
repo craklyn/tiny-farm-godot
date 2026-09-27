@@ -79,8 +79,15 @@ class WorkflowProjection(unittest.TestCase):
         self.assertEqual(snap["items"][0]["workflow_view"], first["eligible"][0]["workflow_view"])
         self.assertEqual(first["eligible"][0]["action_type"], "reconcile")
         self.assertEqual(first["eligible"][0]["work_id"], item["id"])
-        self.assertEqual(first["held"][0]["id"], item["id"])
-        self.assertEqual(first["held"][0]["workflow_view"]["blocker"]["type"], "code_conflict")
+        # One row per card: the blocked build is folded into its repair's row
+        # instead of also being listed under Held.
+        self.assertEqual(first["held"], [])
+        self.assertEqual(len([row for row in first["eligible"] if row["work_id"] == item["id"]]), 1)
+        self.assertEqual(first["eligible"][0]["workflow_view"]["blocker"]["type"], "code_conflict")
+        self.assertEqual(first["eligible"][0]["supersedes"]["action_type"], "build")
+        self.assertEqual(first["eligible"][0]["supersedes"]["reason"],
+                         first["eligible"][0]["workflow_view"]["blocker"]["reason"])
+        self.assertIn("replaces the earlier attempt", first["eligible"][0]["why"])
 
     def test_review_hold_has_reconciliation_not_daniel_decision(self):
         item = self.card(state="for_review", repair_hold="Candidate needs fresh verification")

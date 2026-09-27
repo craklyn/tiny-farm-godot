@@ -11,6 +11,7 @@ routes["/chat/bullpen"] = renderWorkers;
 routes["/work/queue"] = renderExecutionQueue;
 
 let wkPoll = null;
+let wkQueuePoll = null;
 const WK_VIEW_KEY = "hq-bullpen-view";
 
 function wkKey(s) { return s.run + "/" + s.name; }
@@ -381,13 +382,28 @@ async function renderExecutionQueue() {
   catch (e) { $view.innerHTML = `<div class="card">HQ could not read the task queue: ${esc(e.message)}</div>`; return; }
   const next = (queue.eligible || []).slice(0, 10), later = (queue.eligible || []).slice(10);
   $view.innerHTML = `<h1>Task queue</h1>
-    <p class="sub">The order the scheduler will actually use. A reviewed fix for overlapping changes can start ahead of new work; older work gains priority over newer work. A blocked change can have a separate fix ready to start.</p>
+    <p class="sub">The order the scheduler will actually use. A reviewed fix for overlapping changes can start ahead of new work; older work gains priority over newer work. A change that cannot land as it stands is listed once, under the fix that replaces it.</p>
     <p><a class="plain" href="#/chat/bullpen">← Back to the bullpen</a></p>
     ${wkRulingsWaiting(queue.rulings_waiting || [], org)}
     <section class="exec-queue-section"><h2>Working now <span class="w-count">${(queue.working || []).length}</span></h2>${wkQueueRows(queue.working || [], org)}</section>
     <section class="exec-queue-section"><h2>Next <span class="w-count">${next.length}</span></h2>${wkQueueRows(next, org)}</section>
     ${later.length ? `<details class="exec-queue-section"><summary>Later (${later.length})</summary>${wkQueueRows(later, org)}</details>` : ""}
     <details class="exec-queue-section"><summary>Held (${(queue.held || []).length})</summary>${wkQueueRows(queue.held || [], org, true)}</details>`;
+  // While the task queue runs, items move between these lists on their own;
+  // re-read every 15 seconds and redraw only when a row moved or changed.
+  const shape = doc => ["working", "eligible", "held"].map(k => (doc[k] || [])
+    .map(r => [r.action_id, r.position, r.reason].join(":")).join(",")).join("|");
+  const shown = shape(queue);
+  if (wkQueuePoll) clearInterval(wkQueuePoll);
+  wkQueuePoll = setInterval(async () => {
+    if (!(location.hash.slice(1) || "/").startsWith("/work/queue")) { clearInterval(wkQueuePoll); wkQueuePoll = null; return; }
+    let fresh;
+    try { fresh = await fetch("/api/execution/queue").then(r => r.json()); } catch (e) { return; }
+    if (shape(fresh) === shown) return;
+    const open = [...$view.querySelectorAll("details.exec-queue-section")].map(d => d.open);
+    await renderExecutionQueue();
+    $view.querySelectorAll("details.exec-queue-section").forEach((d, i) => { if (open[i]) d.open = true; });
+  }, 15000);
 }
 
 // On a direct page-load app.js has already routed before this file ran, and

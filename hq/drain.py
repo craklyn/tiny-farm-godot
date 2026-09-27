@@ -2529,6 +2529,14 @@ def queue_view():
                 "action_id": action["id"], "action_type": action["type"],
                 "priority": action.get("priority"), "why": action.get("priority_reason"),
                 "age_seconds": action.get("age_seconds"), "workflow_view": view}
+        # A card appears once, under its next step. When that step repairs a
+        # blocked earlier attempt, the attempt it replaces is folded into the
+        # row rather than listed again as held: the same card under both Next
+        # and Held read as two contradictory facts.
+        if view["blocker"] and action["type"] in SUPERSEDING and action["availability"] in ("runnable", "running"):
+            base["supersedes"] = {"action_id": work.action_key(item["id"], "build", action.get("input_id", "")),
+                                  "action_type": "build", "reason": view["blocker"]["reason"]}
+            base["why"] = " ".join(filter(None, (base["why"], SUPERSEDING[action["type"]])))
         if action["availability"] == "running":
             working.append({**base, "position": None, "reason": ""})
         elif action["availability"] == "runnable":
@@ -2536,13 +2544,16 @@ def queue_view():
         else:
             held.append({**base, "id": item["id"], "position": None,
                          "reason": (view["blocker"] or {}).get("reason") or action.get("summary") or "held"})
-        # A blocked implementation and its runnable reconciliation are two
-        # distinct actions. Show both without offering the old build again.
-        if view["blocker"] and action["type"] in ("reconcile", "recover", "rebrief") and action["availability"] == "runnable":
-            held.append({**base, "id": item["id"], "action_id": work.action_key(item["id"], "build", action.get("input_id", "")),
-                         "action_type": "build", "position": None,
-                         "reason": view["blocker"]["reason"]})
     return {"working": working, "eligible": eligible, "held": held}
+
+
+# What a repairing step does to the earlier attempt it replaces, in the words
+# the queue page shows beside it.
+SUPERSEDING = {
+    "reconcile": "It replaces the earlier attempt, which cannot land as it stands.",
+    "recover": "It finishes recording the earlier attempt before anything new starts.",
+    "rebrief": "It rescopes the earlier attempt before more is spent on it.",
+}
 
 
 def cost_summary(bill):
