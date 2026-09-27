@@ -1,7 +1,8 @@
 """Dispatch durable workflow actions through the existing verified drain lane.
 
-The drain process lock is the single writer and limits model work to one card at
-a time. The action claim survives a process crash; a later tick may reclaim it
+The drain process lock makes one drain the single writer of local main. Within
+it, up to --jobs cards are claimed and worked at once and land one at a time
+(S-33). The action claim survives a process crash; a later tick may reclaim it
 only after its lease expires and transaction recovery has run.
 """
 import time

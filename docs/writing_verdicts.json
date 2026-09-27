@@ -2624,6 +2624,9 @@
    "verdict": "second-look",
    "why": "“Carry” is a metaphor for paying for the purchases."
   },
+  "566f9fd5cc1cc257e8b7": {
+   "verdict": "ok"
+  },
   "56d39b0b2580191c4493": {
    "baselined": "2026-09-19",
    "instead": "Give the Mark III access to tap-based actions, and track how many distinct actions it learns in a week",
@@ -5201,6 +5204,12 @@
   },
   "a7e2570d73f5801899a5": {
    "verdict": "ok"
+  },
+  "a7e77a20569271b2c726": {
+   "instead": "The task queue works on up to three items at once and completes them one at a time",
+   "quote": "lands them one at a time",
+   "verdict": "second-look",
+   "why": "“Lands” is an internal metaphor for what happens when a task finishes, so the reader has to infer the intended meaning."
   },
   "a7f45eee1ab99b87bd33": {
    "verdict": "ok"

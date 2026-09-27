@@ -441,10 +441,15 @@ tie to a build.
   org record, its own notes, the card — on that seat's default `model` from
   `org.json`, in its own git worktree, so several seats can be wrong at once
   without standing on each other. The chief of staff then reads the diff against
-  the brief; patches that survive land on the working tree one at a time, and
-  both suites run once if any of them touched the game. Nothing is committed:
-  the item goes back to `for_review` with the diff, the check, the suites and the
-  bill, and Daniel approves the result. A worker that finds the item needs *him*
+  the brief, and the candidate runs both suites in its worktree. Up to three items
+  (`--jobs`) are worked, checked and tested side by side, each from the main it
+  started on; they land on local main strictly one at a time, each only after both
+  suites pass on the exact tree being committed (S-33). One whose main moved while
+  it was worked is rebuilt on the new main when none of its files changed there, and
+  the suites run again on that tree; if its files did change, it goes back for a
+  fresh attempt. Work that is not cleanly revertable, or that the check or the
+  suites stopped, goes to `for_review` for Daniel with the diff, the check, the
+  suites and the bill. A worker that finds the item needs *him*
   stops and says what it needs, which is how the queue produces escalations
   rather than swallowing them. Since 2026-09-26 a run that landed anything on local
   main also pushes it: a fast-forward of origin/main, never forced, and only after

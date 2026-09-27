@@ -4,6 +4,11 @@ Tier-1 workers edit only private Git worktrees. The checker reads the diff.
 The integration lane rebuilds the reviewed candidate in a detached worktree
 at local main, tests that exact prospective tree, and atomically advances
 local main from the expected parent. It never edits the user's checkout.
+Since S-33 (2026-09-26) up to --jobs items are worked, checked and tested side
+by side, each from the main it started on, and they land strictly one at a
+time. One whose main moved meanwhile is rebuilt on the new main, and both
+suites rerun on that exact tree, when none of its files changed there;
+otherwise it goes back for a fresh attempt.
 After a run that landed something, push_landed fast-forwards origin/main to it
 once tools/check_secrets.py passes, and never forces. A candidate that cannot pass receives an owned recovery
 action; the shared-checkout --apply path is retired.
@@ -40,7 +45,7 @@ Since 2026-09-11 the drain also runs on a timer (hq/systemd/tiny-farm-drain.*),
 because a queue a human has to remember to run is the bottleneck this whole
 file exists to remove: a revision Daniel asked for on a card sat behind
 forty-three items until somebody typed the command. `--unattended` is the shape
-the timer runs — a handful of items, two seats, and it does nothing at all when
+the timer runs — a handful of items, three seats at once, and it does nothing at all when
 the token window is dry or when the studio's own work has already spent most of
 the last measured ceiling. Only one drain runs at a time; a manual run and the
 timer take the same lock.
@@ -94,16 +99,46 @@ def _set_run(run_id):
     RUN_ID = run_id
 
 
-def record_phase(run_id, item=None, phase="idle", detail=""):
-    """One live fact for the parts of a drain run that are not model sessions."""
+# Every item the current run is working, keyed by id (S-33: several at once).
+_PHASES = {}
+_PHASE_LOCK = threading.Lock()
+
+
+def _write_phases(run_id, top):
+    """drain.json: the latest fact at the top level, as HQ has always read it,
+    plus `items`, one entry per item this run is working right now."""
     os.makedirs(os.path.dirname(DRAIN_STATE), exist_ok=True)
-    doc = {"run": run_id, "pid": os.getpid(), "item": (item or {}).get("id", ""),
-           "title": (item or {}).get("title", ""), "phase": phase,
-           "detail": detail, "at": work._now_iso()}
-    tmp = DRAIN_STATE + ".tmp"
+    doc = {"run": run_id, "pid": os.getpid(), **top, "items": list(_PHASES.values())}
+    tmp = f"{DRAIN_STATE}.{os.getpid()}.{threading.get_ident()}.tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump(doc, f)
     os.replace(tmp, DRAIN_STATE)
+
+
+def record_phase(run_id, item=None, phase="idle", detail=""):
+    """One live fact for the parts of a drain run that are not model sessions.
+
+    Several items can be worked at once (S-33), so each thread's fact is kept
+    under its item and the whole set is written together, under one lock."""
+    entry = {"item": (item or {}).get("id", ""), "title": (item or {}).get("title", ""),
+             "phase": phase, "detail": detail, "at": work._now_iso()}
+    with _PHASE_LOCK:
+        if entry["item"]:
+            _PHASES[entry["item"]] = entry
+        elif phase == "finished":
+            _PHASES.clear()
+        _write_phases(run_id, entry)
+
+
+def release_phase(run_id, item):
+    """The run has finished with this item: it is no longer being worked."""
+    with _PHASE_LOCK:
+        if _PHASES.pop((item or {}).get("id", ""), None) is None:
+            return
+        latest = max(_PHASES.values(), key=lambda e: e["at"], default=None)
+        _write_phases(run_id, latest or {"item": "", "title": "", "phase": "between_items",
+                                         "detail": "The task queue is moving to its next item.",
+                                         "at": work._now_iso()})
 
 
 def checkpoint(item, rec, phase):
@@ -676,8 +711,17 @@ def enforce_execution_claims(check, result, evidence):
     return check
 
 
+def reviewed_candidate(candidate):
+    """The candidate the checker actually read.
+
+    A candidate rebuilt on a newer main (S-33) keeps the reviewed one under
+    `rebuilt_from`; the review describes that one, and carries over only
+    because every changed file is byte-identical in both (meets_landing_bar)."""
+    return (candidate or {}).get("rebuilt_from") or candidate
+
+
 def check_evidence_id(rec):
-    parts = [rec.get("result"), rec.get("patch", ""), rec.get("candidate")]
+    parts = [rec.get("result"), rec.get("patch", ""), reviewed_candidate(rec.get("candidate"))]
     if rec.get("execution_evidence") is not None:
         parts.append(rec["execution_evidence"])
     if rec.get("external_verification") is not None:
@@ -870,7 +914,10 @@ def raise_to_build(item, rec, command, body):
 # worktrees
 # ---------------------------------------------------------------------------
 
-_WT_LOCK = __import__("threading").Lock()
+# Reentrant: Git's own worktree bookkeeping under .git/worktrees is written by
+# every add and remove, and since S-33 seats start and finish side by side
+# while the landing lane makes its own checkouts.
+_WT_LOCK = threading.RLock()
 
 
 def make_worktree(run_id, item_id):
@@ -884,8 +931,14 @@ def make_worktree(run_id, item_id):
 
 
 def drop_worktree(path):
-    sh(["git", "worktree", "remove", "--force", path], timeout=120)
+    with _WT_LOCK:
+        sh(["git", "worktree", "remove", "--force", path], timeout=120)
     shutil.rmtree(path, ignore_errors=True)
+
+
+def _remove_candidate(path):
+    with _WT_LOCK:
+        integration.remove_candidate(server.REPO, path, WORKTREES)
 
 
 def worktree_patch(path):
@@ -1465,6 +1518,10 @@ def recheck_held_candidate(item, org, run_id, source):
         if kind:
             rec["held"], rec["error"] = True, why
             return rec
+        # This fresh review reads the reconstructed tree itself, so a
+        # candidate rebuilt on a newer main (S-33) stops pointing back.
+        rec["candidate"] = {key: value for key, value in rec["candidate"].items()
+                            if key != "rebuilt_from"}
         if touches_game(rec.get("files") or []):
             preflight_godot_import(tree)
         record_phase(run_id, item, "reviewing", "The chief of staff is re-reading the unchanged candidate and new test evidence.")
@@ -1500,7 +1557,7 @@ def recheck_held_candidate(item, org, run_id, source):
         rec["held"], rec["error"] = True, f"{type(exc).__name__}: {exc}"[:400]
     finally:
         if tree:
-            integration.remove_candidate(server.REPO, tree, WORKTREES)
+            _remove_candidate(tree)
     return rec
 
 
@@ -1880,7 +1937,7 @@ def recover_pending_landing(item):
         item.pop("pending_landing", None)
         work.save_item(item)
         if tx.get("version") == 2 and checkout and os.path.isdir(checkout):
-            integration.remove_candidate(server.REPO, checkout, WORKTREES)
+            _remove_candidate(checkout)
         return True
     item["state"] = "for_review"
     item["attempt_outcome"]["landing_verified"] = False
@@ -1954,9 +2011,20 @@ def meets_landing_bar(item, rec, applied, suites, *, repo=None):
     candidate = rec.get("candidate") or {}
     if not candidate.get("tree") or rec.get("candidate_unchanged") is not True:
         return False, "the checked candidate changed before verification finished"
-    if rec.get("candidate_test_evidence") != work.evidence_id([candidate, rec.get("candidate_suites")]):
+    reviewed = candidate.get("rebuilt_from")
+    if reviewed:
+        # S-33: rebuilt on a newer main. The review carries over only because
+        # every changed file, and what it replaced, is byte-identical to the
+        # reviewed candidate. The old tree's suites describe a different tree
+        # and count for nothing: the landing suites below are the evidence.
+        if (not files or candidate.get("files") != reviewed.get("files")
+                or candidate.get("base_files") != reviewed.get("base_files")):
+            return False, "the rebuilt candidate's files differ from the ones that were reviewed"
+        if git_blobs(repo, "", files) != candidate.get("files"):
+            return False, "the applied files differ from the checked candidate"
+    elif rec.get("candidate_test_evidence") != work.evidence_id([candidate, rec.get("candidate_suites")]):
         return False, "the test record does not identify the checked candidate"
-    if files:
+    elif files:
         candidate_suites = rec.get("candidate_suites") or {}
         if any(not (candidate_suites.get(name) or {}).get("ok") for name in ("unit", "integration")):
             return False, "the checked candidate did not pass both test suites"
@@ -2247,11 +2315,16 @@ def _write_back(item, rec, applied, why_not, suites, org):
         workflow = work._workflow(item)
         ident = work.evidence_id([rec["patch_artifact"]["id"], rec["candidate"]])
         if not any(c.get("id") == ident for c in workflow["candidates"]):
-            workflow["candidates"].append({"id": ident, "attempt_id": item["attempt_outcome"]["id"],
-                                            "base": rec["candidate"].get("base"),
-                                            "tree": rec["candidate"].get("tree"),
-                                            "files": list(rec.get("files") or []),
-                                            "patch": rec["patch_artifact"]})
+            row = {"id": ident, "attempt_id": item["attempt_outcome"]["id"],
+                   "base": rec["candidate"].get("base"),
+                   "tree": rec["candidate"].get("tree"),
+                   "files": list(rec.get("files") or []),
+                   "patch": rec["patch_artifact"]}
+            origin = rec["candidate"].get("rebuilt_from")
+            if origin:
+                # S-33: the same reviewed patch, rebuilt on a newer main.
+                row["rebuilt_from"] = {"base": origin.get("base"), "tree": origin.get("tree")}
+            workflow["candidates"].append(row)
     if item.get("check"):
         item["check"]["attempt_id"] = item["attempt_outcome"]["id"]
     proposals = [{"source": "owner", "text": note} for note in owner_notes]
@@ -2286,7 +2359,7 @@ def _write_back(item, rec, applied, why_not, suites, org):
 # worth of results without ever being the reason a window ran dry; the window
 # guard is what actually protects Daniel's own use of the allotment.
 UNATTENDED_LIMIT = 3
-UNATTENDED_JOBS = 2
+UNATTENDED_JOBS = 3
 # Skip a run when the studio's unattended work has already spent this share of
 # what had been spent the last time a window ran dry.
 UNATTENDED_WINDOW_SHARE = 0.6
@@ -2486,11 +2559,31 @@ def cost_summary(bill):
             "is a size, not a bill")
 
 
-def prepare_integration(rec):
+def rebuildable(rec, head):
+    """Whether a stale candidate can be rebuilt on `head` without a new review
+    (S-33): none of the files it changes was changed on main since its base,
+    so its reviewed patch produces byte-identical files there."""
+    candidate = rec.get("candidate") or {}
+    files = list(rec.get("files") or [])
+    if not files or not candidate.get("base_files"):
+        return False
+    try:
+        return git_blobs(server.REPO, head, files) == candidate["base_files"]
+    except (subprocess.SubprocessError, OSError, RuntimeError):
+        return False
+
+
+def prepare_integration(rec, *, rebuild=False):
     """Reconstruct the reviewed candidate on local main, without user-tree writes.
 
-    A changed base is not automatically rebased: that would produce a new tree
-    whose old checker verdict and candidate tests do not describe it.
+    A changed base is rebuilt only when `rebuild` is asked for and none of the
+    candidate's files changed on main since its base (S-33, `rebuildable`).
+    The exact reviewed patch is then applied to current main as a new
+    candidate — new tree, new base, the same file blobs — which replaces
+    rec["candidate"] and records the reviewed one under `rebuilt_from`. Its
+    old candidate suites are dropped: they describe a different tree, and only
+    the landing suites run on this exact tree may count. When any of its files
+    did change on main, it is stale and goes back for a fresh attempt.
     """
     candidate = rec.get("candidate") or {}
     try:
@@ -2498,11 +2591,13 @@ def prepare_integration(rec):
     except (ValueError, OSError) as exc:
         return "", "missing_evidence", str(exc)
     parent = integration.main_head(server.REPO)
-    if candidate.get("base") != parent:
+    rebuilding = candidate.get("base") != parent
+    if rebuilding and not (rebuild and rebuildable(rec, parent)):
         return "", "stale_base", "Local main changed; obtain a new candidate, review, and tests."
     try:
-        tree = integration.candidate_checkout(server.REPO, WORKTREES,
-                                              rec.get("attempt_id") or "", parent)
+        with _WT_LOCK:
+            tree = integration.candidate_checkout(server.REPO, WORKTREES,
+                                                  rec.get("attempt_id") or "", parent)
     except (RuntimeError, ValueError) as exc:
         return "", "tooling", str(exc)
     applied = subprocess.run(["git", "apply", "--check"], cwd=tree,
@@ -2524,10 +2619,17 @@ def prepare_integration(rec):
                                            "The candidate paths could not be staged.").strip()[:500]
     actual_tree = sh(["git", "write-tree"], cwd=tree).stdout.strip()
     actual_files = set(sh(["git", "diff", "--cached", "--name-only"], cwd=tree).stdout.splitlines())
-    if actual_tree != candidate.get("tree") or actual_files != set(files):
+    if actual_files != set(files) or (not rebuilding and actual_tree != candidate.get("tree")):
         return tree, "missing_evidence", "The reconstructed tree differs from the reviewed candidate."
     if git_blobs(tree, "", files) != candidate.get("files"):
         return tree, "missing_evidence", "The reconstructed file blobs differ from the reviewed candidate."
+    if rebuilding:
+        rec["candidate"] = {**{key: value for key, value in candidate.items() if key != "rebuilt_from"},
+                            "tree": actual_tree, "base": parent,
+                            "rebuilt_from": reviewed_candidate(candidate)}
+        rec["superseded_candidate_suites"] = rec.get("candidate_suites")
+        rec["candidate_suites"] = None
+        rec["candidate_test_evidence"] = work.evidence_id([rec["candidate"], None])
     return tree, "", ""
 
 
@@ -2590,147 +2692,242 @@ def resolve_handoff_action(item):
         item.clear(); item.update(fresh)
 
 
-def run_verified_batch(pool, org, run_id, log, *, no_suites=False, actions=None):
-    """Finish one candidate before creating the next, retaining exact parent identity."""
-    records, done = {}, []
-    for selected in pool:
-        item = work.load_item(selected["id"])
-        action = (actions or {}).get(item["id"])
-        claim_id = ""
-        if action:
-            claim_id = action_dispatch.claim(work, item, action, run_id)
-            if not claim_id:
-                records[item["id"]] = {"id": item["id"], "held": True,
-                                       "error": "Action was already claimed", "usage": [],
-                                       "check": None, "applied": False}
-                continue
-            if action["type"] == "recover":
-                progressed = bool(item.get("pending_landing") and recover_pending_landing(item))
-                action_dispatch.finish(work, item, action, claim_id,
-                                       progressed=progressed,
-                                       reason="No recoverable landing transaction remains.")
-                records[item["id"]] = {"id": item["id"], "usage": [], "check": None,
-                                       "applied": progressed}
-                if progressed:
-                    done.append(work.load_item(item["id"]))
-                continue
-        if int(item.get("tier") or 0) >= 1:
-            ready, reason = integration.handoff_status(server.REPO)
-            if not ready:
-                rec = {"id": item["id"], "held": True, "error": reason,
-                       "usage": [], "check": None, "applied": False}
-                records[item["id"]] = rec
-                record_handoff_blocker(item, reason)
-                if claim_id:
-                    action_dispatch.finish(work, item, action, claim_id,
-                                           progressed=False, reason=reason)
-                continue
-            resolve_handoff_action(item)
-        record_phase(run_id, item, "starting", "The task queue is preparing its isolated checkout.")
-        source = (held_recheck_source(item) if action and action.get("type") == "reconcile"
-                  else None)
-        if source:
-            rec = recheck_held_candidate(item, org, run_id, source)
-        elif (item["id"] in FINISH_VERIFIED_IDS or action and action.get("type") == "reconcile") \
-                and (previous := verified_landing_source(item)):
-            rec = resume_verified_landing(item, run_id, previous)
-        elif item["id"] in FINISH_VERIFIED_IDS:
-            rec = {"id": item["id"], "held": True, "error": "The verified landing source changed before retry.",
+def _claim_item(selected, actions, run_id, records, done):
+    """The serial start of one item: claim its action and pass the landing
+    lane's gate. Returns the context its work needs, or None when the item was
+    settled here (already claimed, a recovery, or local main is not handed off)."""
+    item = work.load_item(selected["id"])
+    action = (actions or {}).get(item["id"])
+    claim_id = ""
+    if action:
+        claim_id = action_dispatch.claim(work, item, action, run_id)
+        if not claim_id:
+            records[item["id"]] = {"id": item["id"], "held": True,
+                                   "error": "Action was already claimed", "usage": [],
+                                   "check": None, "applied": False}
+            return None
+        if action["type"] == "recover":
+            progressed = bool(item.get("pending_landing") and recover_pending_landing(item))
+            action_dispatch.finish(work, item, action, claim_id,
+                                   progressed=progressed,
+                                   reason="No recoverable landing transaction remains.")
+            records[item["id"]] = {"id": item["id"], "usage": [], "check": None,
+                                   "applied": progressed}
+            if progressed:
+                done.append(work.load_item(item["id"]))
+            return None
+    if int(item.get("tier") or 0) >= 1:
+        ready, reason = integration.handoff_status(server.REPO)
+        if not ready:
+            rec = {"id": item["id"], "held": True, "error": reason,
                    "usage": [], "check": None, "applied": False}
-        else:
-            rec = do_item(item, org, run_id, log, action=action) if action else \
-                do_item(item, org, run_id, log)
-        records[item["id"]] = rec
-        if rec.get("held") or rec.get("limited"):
+            records[item["id"]] = rec
+            record_handoff_blocker(item, reason)
             if claim_id:
-                # Paused or out of allowance is "not now", not a failure.
-                deferred = bool(rec.get("limited") or
-                                (rec.get("held") and rec.get("error") in ("", "HELD")))
                 action_dispatch.finish(work, item, action, claim_id,
-                                       progressed=False, deferred=deferred,
-                                       reason=rec.get("error") or "The owner session did not finish.")
-            elif rec.get("tooling_hold"):
-                work.ensure_blocker(item, "tooling", input_id=rec["attempt_id"],
-                                    owner="claude", reason=rec["error"],
-                                    wake="Inspect the failed Godot import before retrying this build.")
-            continue
-        ok, why = False, "the check said it should not land as it stands"
-        blocker_kind = ""
-        integration_repo = ""
-        fresh = work.load_item(item["id"])
-        if fresh.get("_revision", 0) != item.get("_revision", 0):
-            rec["held"], rec["error"] = True, "the work card changed during execution; the result needs reassessment"
-            continue
-        candidate = rec.get("candidate") or {}
-        head = integration.main_head(server.REPO)
-        # A candidate that changes no files has nothing to rebuild on a newer main.
-        if candidate and rec.get("files") and candidate.get("base") != head:
-            why = "the candidate is stale; repository history changed before application"
-            blocker_kind = "stale_base"
-        elif rec.get("resume"):
-            why = "held for another attempt — " + rec["resume"]
-        elif not rec.get("patch", "").strip():
-            why = rec.get("error") or "nothing changed"
-        elif (not rec.get("error") and work.attempt_outcome(rec["result"])["status"] == "complete"
+                                       progressed=False, reason=reason)
+            return None
+        resolve_handoff_action(item)
+    return {"item": item, "action": action, "claim_id": claim_id}
+
+
+def _work_item(ctx, org, run_id, log):
+    """The model, check and candidate-test phase of one item. Since S-33 up to
+    `jobs` of these run side by side, each in its own worktree; nothing here
+    touches local main."""
+    item, action = ctx["item"], ctx["action"]
+    record_phase(run_id, item, "starting", "The task queue is preparing its isolated checkout.")
+    source = (held_recheck_source(item) if action and action.get("type") == "reconcile"
+              else None)
+    if source:
+        return recheck_held_candidate(item, org, run_id, source)
+    if (item["id"] in FINISH_VERIFIED_IDS or action and action.get("type") == "reconcile") \
+            and (previous := verified_landing_source(item)):
+        return resume_verified_landing(item, run_id, previous)
+    if item["id"] in FINISH_VERIFIED_IDS:
+        return {"id": item["id"], "held": True, "error": "The verified landing source changed before retry.",
+                "usage": [], "check": None, "applied": False}
+    return do_item(item, org, run_id, log, action=action) if action else \
+        do_item(item, org, run_id, log)
+
+
+def _land_item(ctx, rec, org, run_id, log, done, no_suites):
+    """Everything after the work phase, one item at a time: land it on the
+    current main, or record why not. The only writer of local main."""
+    item, action, claim_id = ctx["item"], ctx["action"], ctx["claim_id"]
+    if rec.get("held") or rec.get("limited"):
+        if claim_id:
+            # Paused or out of allowance is "not now", not a failure.
+            deferred = bool(rec.get("limited") or
+                            (rec.get("held") and rec.get("error") in ("", "HELD")))
+            action_dispatch.finish(work, item, action, claim_id,
+                                   progressed=False, deferred=deferred,
+                                   reason=rec.get("error") or "The owner session did not finish.")
+        elif rec.get("tooling_hold"):
+            work.ensure_blocker(item, "tooling", input_id=rec["attempt_id"],
+                                owner="claude", reason=rec["error"],
+                                wake="Inspect the failed Godot import before retrying this build.")
+        return
+    ok, why = False, "the check said it should not land as it stands"
+    blocker_kind = ""
+    integration_repo = ""
+    fresh = work.load_item(item["id"])
+    if fresh.get("_revision", 0) != item.get("_revision", 0):
+        rec["held"], rec["error"] = True, "the work card changed during execution; the result needs reassessment"
+        return
+    candidate = rec.get("candidate") or {}
+    head = integration.main_head(server.REPO)
+    passed = (not rec.get("error") and work.attempt_outcome(rec["result"])["status"] == "complete"
               and (rec.get("check") or {}).get("verdict") == "pass"
               and (rec.get("check") or {}).get("complete") is True
               and not (rec.get("check") or {}).get("findings")
-              and rec.get("candidate_unchanged") is True):
-            record_phase(run_id, item, "applying", "The reviewed change is being prepared on local main.")
-            integration_repo, blocker_kind, why = prepare_integration(rec)
-            ok = not blocker_kind
-            if ok:
-                rec["integration_checkout"] = integration_repo
-        rec["applied"], rec["why_not"] = ok, "" if ok else why
-        checkpoint(item, rec, "applied" if ok else "reviewed")
-        suites = None
-        if ok and not no_suites:
-            rec["tree_evidence"] = tree_evidence(rec["files"], repo=integration_repo)
-            record_phase(run_id, item, "verifying", "The exact prospective main tree is running both game test suites.")
-            try:
-                if touches_game(rec.get("files") or []):
-                    preflight_godot_import(integration_repo)
-                suites = run_suites(cwd=integration_repo)
-                rec["suites"] = suites
-                restore_test_generated(integration_repo, rec["candidate"]["tree"])
-                # A test or hook that changed tracked files invalidates the tested
-                # tree, even if the named candidate files still happen to match.
-                if not prospective_tree_intact(rec):
-                    ok, blocker_kind = False, "missing_evidence"
-                    why = "The prospective tree changed while its tests ran."
-                    rec["applied"], rec["why_not"] = False, why
-            except GodotImportHold as exc:
-                ok, blocker_kind, why = False, "tooling", str(exc)
-                rec["applied"], rec["why_not"] = False, why
-            checkpoint(item, rec, "verified")
-        rec["test_evidence"] = work.evidence_id([rec.get("patch", ""), suites])
-        fresh = work.load_item(item["id"])
-        if fresh.get("_revision", 0) != item.get("_revision", 0):
-            rec["held"], rec["error"] = True, "the work card changed during validation; reassessment is required"
-            if integration_repo:
-                integration.remove_candidate(server.REPO, integration_repo, WORKTREES)
-            continue
+              and rec.get("candidate_unchanged") is True)
+    # A candidate that changes no files has nothing to rebuild on a newer main.
+    stale = bool(candidate and rec.get("files") and candidate.get("base") != head)
+    # S-33: a stale candidate that would otherwise land, none of whose files
+    # changed on main since its base, is rebuilt on main by prepare_integration
+    # and tested there; every other stale candidate goes back as before.
+    if stale and not (passed and not rec.get("resume") and rec.get("patch", "").strip()
+                      and rebuildable(rec, head)):
+        why = "the candidate is stale; repository history changed before application"
+        blocker_kind = "stale_base"
+    elif rec.get("resume"):
+        why = "held for another attempt — " + rec["resume"]
+    elif not rec.get("patch", "").strip():
+        why = rec.get("error") or "nothing changed"
+    elif passed:
+        record_phase(run_id, item, "applying",
+                     "The reviewed change is being rebuilt on the newer local main." if stale else
+                     "The reviewed change is being prepared on local main.")
+        integration_repo, blocker_kind, why = prepare_integration(rec, rebuild=True)
+        ok = not blocker_kind
+        if ok:
+            rec["integration_checkout"] = integration_repo
+            if stale:
+                log(f"{item['id']} · rebuilt on current main; none of its files changed "
+                    f"there since {candidate['base'][:8]}")
+    rec["applied"], rec["why_not"] = ok, "" if ok else why
+    checkpoint(item, rec, "applied" if ok else "reviewed")
+    suites = None
+    if ok and not no_suites:
+        rec["tree_evidence"] = tree_evidence(rec["files"], repo=integration_repo)
+        record_phase(run_id, item, "verifying", "The exact prospective main tree is running both game test suites.")
         try:
-            record_phase(run_id, item, "recording", "The result and its evidence are being recorded.")
-            done.append(write_back(fresh, rec, ok, rec["why_not"], suites, org))
-            checkpoint(item, rec, "written_back")
-            if blocker_kind:
-                record_integration_blocker(done[-1], rec, blocker_kind, why)
-            elif done[-1].get("state") != "landed" and rec.get("files") and ok:
-                record_integration_blocker(done[-1], rec, "missing_evidence",
-                                           (done[-1].get("diff") or {}).get("why_not_landed") or
-                                           "The candidate needs new landing evidence.")
-            if integration_repo and os.path.isdir(integration_repo) and not done[-1].get("pending_landing"):
-                integration.remove_candidate(server.REPO, integration_repo, WORKTREES)
-        except work.RecordConflict:
-            rec["held"], rec["error"] = True, "the work card changed before completion was saved; reassessment is required"
-            if integration_repo and not work.load_item(item["id"]).get("pending_landing"):
-                integration.remove_candidate(server.REPO, integration_repo, WORKTREES)
-            continue
-        if claim_id:
-            action_dispatch.finish(work, item, action, claim_id,
-                                   progressed=True)
-        log(f"finished {item['id']} · {done[-1]['state']}")
+            if touches_game(rec.get("files") or []):
+                preflight_godot_import(integration_repo)
+            suites = run_suites(cwd=integration_repo)
+            rec["suites"] = suites
+            restore_test_generated(integration_repo, rec["candidate"]["tree"])
+            # A test or hook that changed tracked files invalidates the tested
+            # tree, even if the named candidate files still happen to match.
+            if not prospective_tree_intact(rec):
+                ok, blocker_kind = False, "missing_evidence"
+                why = "The prospective tree changed while its tests ran."
+                rec["applied"], rec["why_not"] = False, why
+        except GodotImportHold as exc:
+            ok, blocker_kind, why = False, "tooling", str(exc)
+            rec["applied"], rec["why_not"] = False, why
+        checkpoint(item, rec, "verified")
+    rec["test_evidence"] = work.evidence_id([rec.get("patch", ""), suites])
+    fresh = work.load_item(item["id"])
+    if fresh.get("_revision", 0) != item.get("_revision", 0):
+        rec["held"], rec["error"] = True, "the work card changed during validation; reassessment is required"
+        if integration_repo:
+            _remove_candidate(integration_repo)
+        return
+    try:
+        record_phase(run_id, item, "recording", "The result and its evidence are being recorded.")
+        done.append(write_back(fresh, rec, ok, rec["why_not"], suites, org))
+        checkpoint(item, rec, "written_back")
+        if blocker_kind:
+            record_integration_blocker(done[-1], rec, blocker_kind, why)
+        elif done[-1].get("state") != "landed" and rec.get("files") and ok:
+            record_integration_blocker(done[-1], rec, "missing_evidence",
+                                       (done[-1].get("diff") or {}).get("why_not_landed") or
+                                       "The candidate needs new landing evidence.")
+        if integration_repo and os.path.isdir(integration_repo) and not done[-1].get("pending_landing"):
+            _remove_candidate(integration_repo)
+    except work.RecordConflict:
+        rec["held"], rec["error"] = True, "the work card changed before completion was saved; reassessment is required"
+        if integration_repo and not work.load_item(item["id"]).get("pending_landing"):
+            _remove_candidate(integration_repo)
+        return
+    if claim_id:
+        action_dispatch.finish(work, item, action, claim_id,
+                               progressed=True)
+    log(f"finished {item['id']} · {done[-1]['state']}")
+
+
+def run_verified_batch(pool, org, run_id, log, *, no_suites=False, actions=None, jobs=1):
+    """Work up to `jobs` items at once; land them one at a time (S-33).
+
+    Each item's model, check and candidate tests run in its own thread and its
+    own worktree, from whatever main was when it started. Landing stays serial,
+    on this thread, in the order results come back: a finished item is not
+    kept waiting behind a slower one, and the order cannot matter, because
+    every landing is checked against main as it is at that moment. A result
+    whose main moved meanwhile is rebuilt on the new main when none of its files
+    changed there, and otherwise goes back for a fresh attempt. A result that
+    comes back limited (the token window ran dry) starts nothing further.
+    jobs=1 is the old sequential drain: claim, work and land each item in turn.
+    """
+    records, done = {}, []
+    jobs = max(1, int(jobs or 1))
+    waiting = list(pool)
+    running = {}
+    dry = False
+    executor = concurrent.futures.ThreadPoolExecutor(max_workers=jobs) if jobs > 1 else None
+
+    def settle(ctx, rec):
+        nonlocal dry
+        records[ctx["item"]["id"]] = rec
+        dry = dry or bool(rec.get("limited"))
+        try:
+            _land_item(ctx, rec, org, run_id, log, done, no_suites)
+        finally:
+            release_phase(run_id, ctx["item"])
+
+    def worked(ctx, work_phase):
+        try:
+            return work_phase()
+        except BaseException:
+            release_phase(run_id, ctx["item"])
+            raise
+
+    def fill_seats():
+        while waiting and len(running) < jobs and not dry:
+            ctx = _claim_item(waiting.pop(0), actions, run_id, records, done)
+            if ctx is None:
+                continue
+            if executor is None:
+                settle(ctx, worked(ctx, lambda: _work_item(ctx, org, run_id, log)))
+            else:
+                running[executor.submit(_work_item, ctx, org, run_id, log)] = ctx
+
+    try:
+        fill_seats()
+        while running:
+            finished, _ = concurrent.futures.wait(
+                running, return_when=concurrent.futures.FIRST_COMPLETED)
+            results = []
+            for future in finished:
+                ctx = running.pop(future)
+                rec = worked(ctx, future.result)
+                dry = dry or bool(rec.get("limited"))
+                if not rec.get("held") and not rec.get("limited"):
+                    record_phase(run_id, ctx["item"], "landing_queue",
+                                 "Its work is finished; it is waiting its turn to land on main.")
+                results.append((ctx, rec))
+            # Keep the seats busy while this thread lands what came back.
+            fill_seats()
+            for ctx, rec in results:
+                settle(ctx, rec)
+            fill_seats()
+        if dry and waiting:
+            log(f"the token window ran dry; {len(waiting)} item(s) left for the next run")
+    finally:
+        if executor is not None:
+            executor.shutdown(wait=True)
     return records, done
 
 
@@ -2819,7 +3016,9 @@ def main():
     ap.add_argument("--thinking", action="store_true",
                     help="also run tier-0 items (analysis and drafting, read-only)")
     ap.add_argument("--limit", type=int, default=0, help="stop after N items")
-    ap.add_argument("--jobs", type=int, default=3, help="retained for compatibility; verified items run sequentially")
+    ap.add_argument("--jobs", type=int, default=3,
+                    help="how many items are worked, reviewed and tested at once; "
+                         "they still land on main one at a time (S-33). 1 works them in turn")
     ap.add_argument("--list", action="store_true", help="what is queued, and nothing else")
     ap.add_argument("--list-json", action="store_true", help=argparse.SUPPRESS)
     ap.add_argument("--brief", metavar="ID",
@@ -2973,13 +3172,14 @@ def main():
     run_id = time.strftime("%Y%m%d-%H%M%S") + "-" + uuid.uuid4().hex[:4]
     _set_run(run_id)
     started = time.time()
-    print(f"Draining {len(pool)} item(s), one verified item at a time. Run {run_id}.\n", flush=True)
+    print(f"Draining {len(pool)} item(s), up to {max(1, args.jobs)} at a time, landing one at a time. "
+          f"Run {run_id}.\n", flush=True)
 
     def log(msg):
         print(f"  [{time.strftime('%H:%M:%S')}] {msg}", flush=True)
 
-    records, done = run_verified_batch(pool, org, run_id, log,
-                                       no_suites=args.no_suites, actions=action_map)
+    records, done = run_verified_batch(pool, org, run_id, log, no_suites=args.no_suites,
+                                       actions=action_map, jobs=args.jobs)
     record_phase(run_id, None, "finished", "The selected batch finished.")
     shutil.rmtree(os.path.join(WORKTREES, run_id), ignore_errors=True)
 
