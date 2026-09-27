@@ -65,7 +65,9 @@ class SuiteTests(unittest.TestCase):
         def fake_sh(cmd, cwd=None, timeout=None):
             seen.append(cmd)
             return subprocess.CompletedProcess(cmd, 0, "noise only\n", "")
-        with patch.object(drain, "sh", fake_sh):
+        # The import an unimported checkout gets first is tested on its own
+        # (test_godot_import_preflight); here only the suite commands count.
+        with patch.object(drain, "sh", fake_sh), patch.object(drain, "preflight_godot_import"):
             result = drain.run_suites("/fake")
         self.assertFalse(result["unit"]["ok"])
         self.assertFalse(result["integration"]["ok"])
@@ -73,7 +75,8 @@ class SuiteTests(unittest.TestCase):
 
     def test_failed_result_is_not_success(self):
         result_line = "Results: 3 PASSED, 1 FAILED\n"
-        with patch.object(drain, "sh", return_value=subprocess.CompletedProcess([], 0, result_line, "")):
+        with patch.object(drain, "sh", return_value=subprocess.CompletedProcess([], 0, result_line, "")), \
+             patch.object(drain, "preflight_godot_import"):
             self.assertFalse(drain.run_suites("/fake")["integration"]["ok"])
 
 

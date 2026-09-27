@@ -6124,6 +6124,9 @@
   "c8d3977241bf43ec2287": {
    "verdict": "ok"
   },
+  "c8d8ccef33c7dbfc3c73": {
+   "verdict": "ok"
+  },
   "c8db36099789bae92c50": {
    "verdict": "ok"
   },
@@ -7387,6 +7390,12 @@
    "quote": "keeps nothing worth keeping",
    "verdict": "second-look",
    "why": "The phrase makes the reader translate a value judgment into whether the robot retains learned behavior."
+  },
+  "f44f2a87f511694a147c": {
+   "instead": "Stop the work queue's game tests from stalling for fourteen minutes on every work item that only changes documents",
+   "quote": "every card that only changes documents",
+   "verdict": "second-look",
+   "why": "“Card” is internal work-queue shorthand, so a cold reader may need to infer that it means a work item."
   },
   "f4de393165d1a7f7a375": {
    "verdict": "ok"

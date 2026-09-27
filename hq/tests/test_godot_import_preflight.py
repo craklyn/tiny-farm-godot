@@ -138,5 +138,35 @@ class GodotImportPreflight(unittest.TestCase):
             self.assertEqual(calls, ["import", "owner"] if expected else ["owner"])
 
 
+    def test_suites_import_a_checkout_that_was_never_imported(self):
+        # 2026-09-26: docs-only revisions skipped the owner's import, then their
+        # suites idled on an unimported worktree until the 14-minute timeout.
+        calls = []
+        suite = subprocess.CompletedProcess([], 0, "Results: 3 PASSED, 0 FAILED\n", "")
+
+        def imported(tree):
+            calls.append("import")
+            (Path(tree) / ".godot" / "imported").mkdir(parents=True)
+
+        def ran(args, **_kwargs):
+            calls.append("suite")
+            return suite
+
+        with patch.object(drain, "preflight_godot_import", side_effect=imported), \
+             patch.object(drain, "sh", side_effect=ran):
+            first = drain.run_suites(cwd=str(self.repo))
+            again = drain.run_suites(cwd=str(self.repo))
+        self.assertEqual(calls, ["import", "suite", "suite", "suite", "suite"])
+        self.assertTrue(first["unit"]["ok"] and again["integration"]["ok"])
+
+    def test_suites_report_a_failed_import_instead_of_hanging(self):
+        hold = drain.GodotImportHold("Godot import tooling hold: Godot exited 1.")
+        with patch.object(drain, "preflight_godot_import", side_effect=hold), \
+             patch.object(drain, "sh") as ran:
+            out = drain.run_suites(cwd=str(self.repo))
+        ran.assert_not_called()
+        self.assertFalse(out["unit"]["ok"] or out["integration"]["ok"])
+        self.assertIn("import tooling hold", out["integration"]["tail"])
+
 if __name__ == "__main__":
     unittest.main()

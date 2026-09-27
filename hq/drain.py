@@ -1689,8 +1689,20 @@ def apply_patch(patch, files):
 
 
 def run_suites(cwd=REPO):
-    """Both headless suites, once, with private Godot user data."""
+    """Both headless suites, once, with private Godot user data.
+
+    A checkout Godot has never imported is imported first, whatever the card
+    says. 2026-09-26: the import ran only for cards whose wording named game
+    code, so three decision revisions that touched only docs had their suites
+    run on a fresh worktree with no .godot; the integration suite idled at the
+    frame limiter (2s of CPU in 3.5 minutes) until its 14-minute timeout, three
+    times in one run. CI imports before its suites for the same reason."""
     out = {}
+    if not os.path.isdir(os.path.join(cwd, ".godot", "imported")):
+        try:
+            preflight_godot_import(cwd)
+        except GodotImportHold as e:
+            return {name: {"ok": False, "tail": str(e)[:600]} for name in ("unit", "integration")}
     for name, cmd in (
         ("unit", ["godot", "--headless", "--path", ".", "--script",
                   "res://tests/test_runner.gd"]),
