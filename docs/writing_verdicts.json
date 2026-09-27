@@ -1948,6 +1948,9 @@
   "3d5c4584a23e7b602199": {
    "verdict": "ok"
   },
+  "3dd93dda22336a94bcaa": {
+   "verdict": "ok"
+  },
   "3e0aeb9cdb9c615e3bca": {
    "verdict": "ok"
   },
@@ -4222,6 +4225,12 @@
   },
   "89bc724f52451ac2c81c": {
    "verdict": "ok"
+  },
+  "8a079f4d0a273d703a2e": {
+   "instead": "Pausing automatic work no longer leaves work items waiting for someone to review them",
+   "quote": "strands work items",
+   "verdict": "second-look",
+   "why": "“Strands” is a metaphor for leaving work items stuck, so the reader has to translate the phrase."
   },
   "8a3bfaa44ab06bdb4d3a": {
    "verdict": "ok"

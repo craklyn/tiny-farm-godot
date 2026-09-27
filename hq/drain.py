@@ -2643,8 +2643,11 @@ def run_verified_batch(pool, org, run_id, log, *, no_suites=False, actions=None)
         records[item["id"]] = rec
         if rec.get("held") or rec.get("limited"):
             if claim_id:
+                # Paused or out of allowance is "not now", not a failure.
+                deferred = bool(rec.get("limited") or
+                                (rec.get("held") and rec.get("error") in ("", "HELD")))
                 action_dispatch.finish(work, item, action, claim_id,
-                                       progressed=False,
+                                       progressed=False, deferred=deferred,
                                        reason=rec.get("error") or "The owner session did not finish.")
             elif rec.get("tooling_hold"):
                 work.ensure_blocker(item, "tooling", input_id=rec["attempt_id"],

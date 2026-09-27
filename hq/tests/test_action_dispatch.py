@@ -107,6 +107,25 @@ class ActionDispatch(unittest.TestCase):
             self.assertEqual(selected, [])
             owner_lane.assert_not_called()
 
+    def test_a_paused_or_dry_skip_reopens_instead_of_blocking(self):
+        # 2026-09-26: pausing to land fixes left three cards "blocked, operator
+        # review". Not starting because of a pause or a dry window is not a failure.
+        item = self.card()
+        action = action_dispatch.choose(drain)[0][1]
+        claim = action_dispatch.claim(work, item, action, "run-1")
+        action_dispatch.finish(work, item, action, claim, progressed=False,
+                               deferred=True, reason="HELD")
+        fresh = work.load_item(item["id"])
+        self.assertEqual(fresh["workflow"]["actions"][0]["state"], "open")
+        self.assertFalse([b for b in fresh["workflow"].get("blockers", [])
+                          if b.get("type") == "tooling" and b.get("state") == "open"])
+        self.assertEqual([i["id"] for i, _a in action_dispatch.choose(drain)], [item["id"]])
+        # A launch that genuinely failed still waits for review rather than spinning.
+        claim = action_dispatch.claim(work, fresh, action, "run-2")
+        action_dispatch.finish(work, fresh, action, claim, progressed=False,
+                               reason="The owner session did not finish.")
+        self.assertEqual(work.load_item(item["id"])["workflow"]["actions"][0]["state"], "blocked")
+
     def test_interrupted_claim_reopens_and_completed_result_closes(self):
         item = self.card()
         action = action_dispatch.choose(drain)[0][1]

@@ -96,12 +96,20 @@ def reconcile_brief(action, blocker):
             "a fresh checker verdict and run tests on the new candidate.\n")
 
 
-def finish(work, item, action, claim_id, *, progressed, reason=""):
-    """Close only a progressed action; leave a concrete wake for failed dispatch."""
+def finish(work, item, action, claim_id, *, progressed, reason="", deferred=False):
+    """Close only a progressed action; leave a concrete wake for failed dispatch.
+
+    A deferred action — not started because Daniel paused automatic work or the
+    model allowance ran dry — goes back to open. Nothing failed, and the timer
+    starts nothing while either holds, so it cannot spin; 2026-09-26, a pause to
+    land fixes left three cards blocked for "operator review" instead."""
     fresh = work.load_item(item["id"])
     current = next((a for a in (fresh.get("workflow") or {}).get("actions", [])
                     if a.get("id") == action["id"]), None)
     if current is None or current.get("state") == "done":
+        return fresh
+    if deferred:
+        work.finish_action(fresh, action["id"], claim_id, state="open")
         return fresh
     if not progressed:
         # A failed launch must not immediately spin on the next timer tick.
