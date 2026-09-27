@@ -1,35 +1,35 @@
 {
   "id": "Q-130",
   "owner": "milo",
-  "title": "Nightly practice for the Mark III: should the crow practice come first, with a size the player sets and no energy cost?",
-  "question": "The Mark III is the robot that learns by trial and reward: it works the player's farm by day and its brain updates each night. Your comment on this card described practice runs, and Milo has designed them. Each night the game makes a copy of the player's farm, forces one situation into it — in the first version, a crow arriving and heading for one of the player's crops near the robot — and lets the robot play it a few times with its own brain. Those runs join the robot's own day in its nightly update. The real farm is never touched. Each kind of practice is its own upgrade on the workbench shelf, with an on/off switch and a size: three pips for 2, 4 or 8 runs a night.\n\nA rough prototype on the eight test farms the learning check uses, one week each, found three things. The farm's score stays where it was, within about two points a day at every size. The robot chases off more of the birds it can see: 11 of 48 test birds at two pips on open ground, against 4 of 48 with no practice. On the farm itself you would barely notice it in the first week, because one bird a day rarely lands close enough for the robot to see it. Practice teaches the robot what to do when a bird is in view; the wider-view upgrade and the squares you give it put more birds in view.\n\nThree details are still open: which practice comes first, whether the player sees the size, and whether practice costs the robot energy.",
-  "why_now": "You revised this card on 2026-09-25 with your own design. Milo has written it up in the design docs, and nothing gets built until these three details are settled. The workbench shelf and the per-robot pace setting are being built now, and this card decides whether a practice card is designed onto that shelf.",
+  "title": "Nightly practice for the Mark III: should rare worms be the first lesson, with the number of practice runs set by the player and no energy cost?",
+  "question": "The Mark III is the robot that learns by trial and reward: it works the player's farm by day and its brain updates each night. You rejected crows as the first lesson because they do not ask the robot to manage the farm actively. The existing worm can become that lesson: it is a rare crop-eating pest, ignores scarecrows, and the mark-2 cannot target it. The player can still tap any part of its body to stomp it. A Mark III instead has to learn to walk to the worm and shoo it back under the soil before it eats another crop.\n\nThe worm is deliberately uncommon on the real farm, so ordinary days do not give the robot enough chances to learn this response. Each night, the game can make a copy of the farm, place one worm beside a growing crop near the robot, and let the robot try the response a few times. These offline reinforcement-learning runs join the robot's normal day in its one nightly update. The real farm is never touched. Each kind of practice is its own workbench upgrade, with an on/off switch and a size: three pips for 2, 4, or 8 runs a night.\n\nThis is a new use for the worm, which is currently built only as a movement test that is not yet available in the game. The crow measurements on the earlier version do not show whether worm practice works. The build must measure whether the robot shoos worms in separate test runs, protects more crops on real farms, and still finishes overnight without making the device too slow or using too much power before it ships.\n\nThree details are still open: whether worms replace crows as the first practice, whether the player sees the size, and whether practice costs the robot energy.",
+  "why_now": "Your feedback changes the first practice from a rare bird response into the first learned answer to a pest that needs active management. The workbench shelf's per-robot pace setting is built, but the separate practice card is still only designed. This ruling lets the team replace the crow prototype with a worm prototype and test the new lesson before anyone builds the player-facing card.",
   "options": [
     {
       "key": "a",
-      "label": "Crow practice first; she sees the switch and the size; practice costs no energy",
-      "detail": "Builds the design as written, about four and a half days of work. The crow card on the shelf gets a lamp to switch it on or off and three pips for its size. Under the pips is a row of small crows, one per run, showing how many birds the robot chased off last night. Runs happen while the robot sleeps, so it still wakes with a full day's energy.",
+      "label": "Worm practice first; the player sees the switch and the number of practice runs; practice costs no energy",
+      "detail": "Makes the worm a rare crop-eating pest that ignores scarecrows and cannot be targeted by a mark-2. The workbench card shows a Mark III beside a worm, a lamp to switch practice on or off, and three pips for 2, 4, or 8 practice runs each night while the player is away. The Mark III learns to shoo a worm underground; the player can still stomp it. Practice happens while the robot sleeps, so it wakes with a full day of energy.",
       "recommended": true
     },
     {
       "key": "b",
-      "label": "Crow practice first with no energy cost, but the size stays fixed at two pips until a second practice exists",
-      "detail": "The card shows only the on/off lamp and last night's row of four crows. There is one less control for a young child to wonder about. The size control returns when there are two practices to weigh against each other. It saves under half a day of work."
+      "label": "Worm practice first with no energy cost, but the size stays fixed at two pips until a second practice exists",
+      "detail": "The card shows only the on/off lamp and last night's worm results. There is one less control for a young child to wonder about. The size control returns when there are two practices to weigh against each other. It saves under half a day of work."
     },
     {
       "key": "c",
-      "label": "Crow practice first with the switch and size shown, but practice uses some of the robot's energy for the next day",
+      "label": "Worm practice first with the switch and size shown, but practice uses some of the robot's energy for the next day",
       "detail": "Each night of practice takes a share of the next day's energy, for example a quarter of the day at three pips. Practice then competes with farm work, which makes the size a real trade-off. It also means a robot that practises harder does less farm work the next day, which a child may read as the upgrade making it worse."
     },
     {
       "key": "d",
-      "label": "Start with a different practice instead of the crow",
-      "detail": "For example, a thirsty bed out of the robot's view, or a ripe crop to carry to the shipping bin. These are easier to see paying off on the farm. But the robot already learns these jobs from its normal farm days: carrying crops to the bin is where almost all of its learning shows up. A crow comes once a day and rarely near the robot, so its normal days almost never teach it about crows, and practice adds more there."
+      "label": "Keep the crow as the first practice",
+      "detail": "This reuses the completed crow prototype and does not change the worm's current status as a movement test that is not yet available in the game. This proposal does not answer your concern: crows are too infrequent and passive to teach the Mark III how to manage a farm actively."
     }
   ],
   "links": [
     {
-      "label": "How practice runs work, with the prototype's numbers (design doc 06)",
+      "label": "How worm practice runs work (design doc 06)",
       "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/06-bots-and-training.md#practice-runs-it-rehearses-at-night-q-130-revised-2026-09-26"
     },
     {
@@ -47,6 +47,11 @@
       "by": "milo",
       "at": "2026-09-26T00:40:00",
       "text": "I built the design around your comment instead of any of the three options this card had. **What I took from it:** the robot practises a forced situation overnight — your example, a crow heading for the crops, is the first one. Each kind of practice is its own upgrade on the workbench shelf. Each has an on/off switch. And each has a size that sets how much of the robot's night is practice compared with its own day.\n\n**What I added:** every practice run happens on a copy of the player's farm with everyone else removed, so the real farm and its saves are never touched. A replay repeats the runs exactly without recording them, and only the player's taps on the switch and the size are recorded. The size is three pips, 2, 4 or 8 runs a night, shown as a row of that many small crows. That way a child can see how much practice the robot is getting and how many birds it chased off.\n\n**What the feasibility check changed:** in my first prototype the practice got its own separate update, and on a robot working the squares the player gave it, it cost up to 13 points a day. The fix is to count the runs as extra moments of the robot's own day. Measured that way, the farm's score stayed where it was at every size.\n\n**What I did not take yet:** picking the player's best day and a practice editor both wait. Neither is needed for this.\n\nThe card now asks only the three details still open."
+    },
+    {
+      "by": "milo",
+      "at": "2026-09-26T22:10:00",
+      "text": "I revised the choices and returned this card to your queue. The decision is now whether rare-worm practice replaces crow practice as the first lesson, while keeping the visible size and no energy cost. The worm is a rare crop-eating pest that ignores scarecrows and cannot be targeted by a mark-2; the player can still stomp it, while the Mark III learns to shoo it underground. The completed crow prototype is retained only as evidence for the nightly-run mechanism; it is not evidence that a worm lesson works. The next build must test held-out worm runs, crop protection on real farms, replay identity, and the device budget."
     }
   ]
 }

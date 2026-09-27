@@ -143,6 +143,9 @@
   "057cd7e77dc8b3b5bbe1": {
    "verdict": "ok"
   },
+  "05b1fa71d0aa78c9af67": {
+   "verdict": "ok"
+  },
   "05b8419c04fd4a217e9d": {
    "verdict": "ok"
   },
@@ -291,6 +294,9 @@
    "verdict": "ok"
   },
   "0a4ad953a30ab13e49de": {
+   "verdict": "ok"
+  },
+  "0a69cb9fdd2b0e92380b": {
    "verdict": "ok"
   },
   "0a8dd8cd42692675bddb": {
@@ -506,6 +512,9 @@
    "why": "{unassured} and {total} are unfilled template placeholders that leave the reader unable to understand the status being reported."
   },
   "10c3248cf73ee478dd4e": {
+   "verdict": "ok"
+  },
+  "10e0b01c76ef4e16de93": {
    "verdict": "ok"
   },
   "1102434d38b6d0d0d0eb": {
@@ -849,6 +858,9 @@
   "1a701751d0da4afaa9ba": {
    "verdict": "ok"
   },
+  "1aaa782245d8cec81517": {
+   "verdict": "ok"
+  },
   "1ac3d5b5654857e58b90": {
    "verdict": "ok"
   },
@@ -1097,6 +1109,12 @@
    "verdict": "second-look",
    "why": "“These” points outside the sentence, leaving the reader to work out which actions the automated task can start."
   },
+  "2312a1c40aa085082c5f": {
+   "instead": "separate test runs",
+   "quote": "held-out runs",
+   "verdict": "decode",
+   "why": "The reader has to know that this means separate test runs the robot has not practiced on."
+  },
   "23c18e07153005d41cb2": {
    "verdict": "ok"
   },
@@ -1132,6 +1150,12 @@
   },
   "24a55c838265368ba00b": {
    "verdict": "ok"
+  },
+  "24e1610d462b1086e22f": {
+   "instead": "allows the robot to use the bold pace setting when it has assigned squares",
+   "quote": "allows bold when the robot has assigned squares",
+   "verdict": "decode",
+   "why": "The sentence makes the reader infer that “bold” is a pace setting the robot can use on assigned squares."
   },
   "24e58d573d94f15c98f0": {
    "verdict": "ok"
@@ -1202,6 +1226,12 @@
   },
   "26d00d2d11677759619e": {
    "verdict": "ok"
+  },
+  "26e8bdd5da89b3215cc6": {
+   "instead": "card shown to the player",
+   "quote": "player-facing card",
+   "verdict": "second-look",
+   "why": "This internal term makes the reader translate it into a card shown to the player."
   },
   "26ff79ab3fab0631dc7b": {
    "instead": "The robot keeps what it has learned, but its current score and starting reference reset",
@@ -1500,6 +1530,12 @@
    "verdict": "decode",
    "why": "“Code landing” is engineering shorthand for merging a change."
   },
+  "2fa20741ffdd87cef978": {
+   "instead": "Keep the starting brain for a new Mark III only",
+   "quote": "Keep it for a new Mark III only",
+   "verdict": "decode",
+   "why": "“It” refers to the starting brain in the preceding question instead of naming it."
+  },
   "2fa365f1a8f75b7c8b90": {
    "baselined": "2026-09-19",
    "instead": "No one has opened the public build. One public build has been live for weeks and nobody in this studio can say whether anyone has opened it",
@@ -1566,11 +1602,17 @@
   "31981f22e9a436b86278": {
    "verdict": "ok"
   },
+  "31afd6682d8af98c8d40": {
+   "verdict": "ok"
+  },
   "31cf704be3b0787e53f1": {
    "instead": "Show the web-play history on the inactive Sales page",
    "quote": "Show web play record on parked Sales page",
    "verdict": "decode",
    "why": "A stranger cannot tell what a “web play record” is or what “parked” means here."
+  },
+  "31dd146c5d7f5c2b57fd": {
+   "verdict": "ok"
   },
   "31e27b02c0b907d75086": {
    "instead": "The last time the studio spent its monthly budget, it had used [number] on [what cost it that much].",
@@ -1637,6 +1679,9 @@
    "why": "“Sorting” describes an internal rendering step, while the reader needs the plain result of that work."
   },
   "345a775a2fccb2867d12": {
+   "verdict": "ok"
+  },
+  "347e8c0eafe3fc39caec": {
    "verdict": "ok"
   },
   "3480e0b12a8d994464ed": {
@@ -1996,6 +2041,12 @@
   "40c681ef91bb815c04f6": {
    "verdict": "ok"
   },
+  "412ccb9cc444c6809cef": {
+   "instead": "buy the starting brain now",
+   "quote": "buy it now",
+   "verdict": "decode",
+   "why": "“It” refers to the starting brain in the preceding question instead of naming what is being bought."
+  },
   "415f0d720bcb3ddc00d5": {
    "verdict": "ok"
   },
@@ -2086,6 +2137,12 @@
   },
   "462305a3ff86c0d597ee": {
    "verdict": "ok"
+  },
+  "4630215182aeba5c75f3": {
+   "instead": "a movement test that is not yet available in the game",
+   "quote": "an unspawned movement test",
+   "verdict": "decode",
+   "why": "The reader has to work out that the worm is not yet available in the game and is only being used to test movement."
   },
   "46411488592e90caf0e1": {
    "verdict": "ok"
@@ -2245,6 +2302,9 @@
    "why": "“Park it” is process shorthand, and “it” has no referent in the sentence."
   },
   "4aa824adaa6c4ef3654d": {
+   "verdict": "ok"
+  },
+  "4ab430e006c6ea97860b": {
    "verdict": "ok"
   },
   "4af71bd24aeef697b537": {
@@ -2679,6 +2739,12 @@
   "582134e95da4d2551a4d": {
    "verdict": "ok"
   },
+  "585324ad3ad07680da1e": {
+   "instead": "Show Daniel the revised Mark III decisions again: rare-worm practice, what the pace row tells the player, and who may buy the starting brain",
+   "quote": "the pace row's signal",
+   "verdict": "decode",
+   "why": "This internal shorthand does not tell a cold reader what the signal indicates."
+  },
   "5857e4f15d1c28a95929": {
    "instead": "raised now instead of being left unexamined",
    "quote": "filed now rather than assumed away",
@@ -2927,6 +2993,9 @@
    "quote": "game feels dead",
    "verdict": "second-look",
    "why": "This metaphor makes the reader infer that the game lacks enough movement or animation."
+  },
+  "5eefbd77c325f4ef331d": {
+   "verdict": "ok"
   },
   "5f40e1bfefcee5e73870": {
    "verdict": "ok"
@@ -3807,6 +3876,9 @@
   "7b7babaa085d5a6db52d": {
    "verdict": "ok"
   },
+  "7b9068a18f4ab57c0c56": {
+   "verdict": "ok"
+  },
   "7bbdb17b73662853f5e6": {
    "verdict": "ok"
   },
@@ -4004,6 +4076,12 @@
    "verdict": "decode",
    "why": "This names the engineering mechanism instead of plainly saying what happens to an old farm."
   },
+  "81e84f9efd33a97939a8": {
+   "instead": "2, 4, or 8 practice runs each night while the player is away",
+   "quote": "2, 4, or 8 offline runs a night",
+   "verdict": "second-look",
+   "why": "“Offline runs” describes the mechanism rather than plainly saying when and how the practice happens."
+  },
   "81ee2f74d1f733717964": {
    "verdict": "ok"
   },
@@ -4076,6 +4154,12 @@
    "quote": "derived from pixels we already ship",
    "verdict": "second-look",
    "why": "\"Derived from\" is vague—upscaled, extracted, composited, or something else?"
+  },
+  "8433519999ae5f055d19": {
+   "instead": "the player sees the switch and the number of practice runs",
+   "quote": "she sees the switch and the size",
+   "verdict": "decode",
+   "why": "“She” has no referent in this sentence, and “size” does not say what is being sized."
   },
   "843823b86d10502f8c83": {
    "verdict": "ok"
@@ -4533,6 +4617,9 @@
    "verdict": "ok"
   },
   "939a668ca79269d651a7": {
+   "verdict": "ok"
+  },
+  "93a374ee8bf9b419f06f": {
    "verdict": "ok"
   },
   "93a675e862120f74ab5d": {
@@ -5134,6 +5221,12 @@
   "a5876e857b5d5b176eec": {
    "verdict": "ok"
   },
+  "a5a9a905a46fef21e594": {
+   "instead": "These practice runs",
+   "quote": "offline reinforcement-learning runs",
+   "verdict": "second-look",
+   "why": "The technical label makes the reader translate the phrase before the proposal's plain meaning becomes clear."
+  },
   "a5bf340e266550d43d5f": {
    "baselined": "2026-09-19",
    "instead": "Confirm the four visual designs for the Mark III that will be tested against Q-110",
@@ -5277,6 +5370,9 @@
    "quote": "her sprite",
    "verdict": "second-look",
    "why": "The sentence does not identify who “her” is."
+  },
+  "aa0d8b7730b7970fcb83": {
+   "verdict": "ok"
   },
   "aa0fa0c42a9921feeb9c": {
    "instead": "Automated checks confirmed this proposed version",
@@ -5562,11 +5658,20 @@
   "b330d7c8fd4d1c145093": {
    "verdict": "ok"
   },
+  "b34305df33b1873fb878": {
+   "verdict": "ok"
+  },
   "b34edef741d2cc06e010": {
    "instead": "An earlier design decision already made the can gauge permanent.",
    "quote": "Q-78 already made the can gauge permanent.",
    "verdict": "decode",
    "why": "Q-78 is an unexplained internal reference, so the reader cannot know which earlier decision made the gauge permanent."
+  },
+  "b354d3b65ffe0e710d6e": {
+   "instead": "buy the starting brain",
+   "quote": "buy it",
+   "verdict": "decode",
+   "why": "“It” refers to the starting brain from the previous sentence rather than naming it here."
   },
   "b3685853aa102f694a4a": {
    "verdict": "ok"
@@ -5581,6 +5686,9 @@
    "why": "The pronoun and “what still applies” leave the reader to infer what the robot keeps and relearns."
   },
   "b4200a80213a58e6894c": {
+   "verdict": "ok"
+  },
+  "b4205b5a3979930a3cc8": {
    "verdict": "ok"
   },
   "b449661b5686cbc7ec97": {
@@ -5642,6 +5750,9 @@
    "verdict": "ok"
   },
   "b7f22097fc28097f2953": {
+   "verdict": "ok"
+  },
+  "b810c892d9a1494311b6": {
    "verdict": "ok"
   },
   "b81c7adf051af84411ca": {
@@ -5733,6 +5844,9 @@
    "quote": "as a step on the robot ladder",
    "verdict": "second-look",
    "why": "“Robot ladder” is a metaphor for an upgrade path where the plain fact would be clearer."
+  },
+  "bb4f582bce554ca0f692": {
+   "verdict": "ok"
   },
   "bb93594a4efccb7deb39": {
    "instead": "whether the delay before harvests begin earning gold is appropriate for a first-time player",
@@ -5964,6 +6078,9 @@
   "c2d3a3d55d4f5ef1246f": {
    "verdict": "ok"
   },
+  "c30054d4fb124a55fc61": {
+   "verdict": "ok"
+  },
   "c3288f7b45ed871aef1e": {
    "baselined": "2026-09-19",
    "instead": "Wire up the 'nothing loaded' error sound, or delete it if it's not being used",
@@ -6128,6 +6245,12 @@
   },
   "c75bc8074ec54d4db1e9": {
    "verdict": "ok"
+  },
+  "c7e132e2c2e67bc7b3c7": {
+   "instead": "without making the device too slow or using too much power",
+   "quote": "within the device budget",
+   "verdict": "decode",
+   "why": "“Device budget” names an internal limit without saying what the player would notice."
   },
   "c7f662b8012a64666552": {
    "instead": "[Word] own note says its ramps were measured from a sprite pack",
@@ -6609,6 +6732,12 @@
   "d62cdfeb483891967665": {
    "verdict": "ok"
   },
+  "d631aec8c5f076a98bea": {
+   "instead": "Show Daniel the revised Mark III decisions again: rare-worm practice, the pace row's signal, and who may buy the starting brain",
+   "quote": "put the revised Mark III decisions back in front of Daniel",
+   "verdict": "second-look",
+   "why": "“Back in front of Daniel” makes the reader translate an idiom into “show Daniel again.”"
+  },
   "d658c049dc85ce80c137": {
    "verdict": "ok"
   },
@@ -6889,6 +7018,12 @@
    "quote": "Block API keys from every commit and push",
    "verdict": "decode",
    "why": "“API keys,” “commit,” and “push” are engineering terms that do not tell a cold reader what is being blocked or where the work goes."
+  },
+  "deb7d93f7bc6b5255dc3": {
+   "instead": "This proposal does not answer your concern",
+   "quote": "It does not answer your concern",
+   "verdict": "second-look",
+   "why": "The reader must look back to identify what “It” refers to."
   },
   "dee117497447474bed4d": {
    "verdict": "ok"
@@ -7358,6 +7493,9 @@
   "f14709a22e81601886b8": {
    "verdict": "ok"
   },
+  "f1544d3920c551b68906": {
+   "verdict": "ok"
+  },
   "f1987d9b6db08586618c": {
    "verdict": "ok"
   },
@@ -7482,6 +7620,9 @@
    "verdict": "decode",
    "why": "The reader has to work out that this means the demonstration used to estimate the Mark I's cost."
   },
+  "f656f679c1edcb214665": {
+   "verdict": "ok"
+  },
   "f659de2c294b0d66d7dd": {
    "verdict": "ok"
   },
@@ -7508,6 +7649,12 @@
    "quote": "she",
    "verdict": "decode",
    "why": "The sentence does not say who “she” is."
+  },
+  "f730ef0861677f20278d": {
+   "instead": "with the number of practice runs set by the player",
+   "quote": "with a size the player sets",
+   "verdict": "second-look",
+   "why": "“Size” does not say what the player is choosing."
   },
   "f73d0ca511d156accb3d": {
    "baselined": "2026-09-19",

@@ -290,17 +290,26 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   further up the ladder — this is it). Design rewrite in `design/06`; build in
   `V0_2_1_PLAN.md` WI-9.
 
-- **Q-131 — Keep the workbench shelf's first pace setting as built?** — **Ruling, open
-  2026-09-26.** Built in 82ca583 (S-31): four placeholder choices — per-robot purchase,
-  bold allowed on a robot with squares, chevron pictures, 150 gold. Strawman: keep all
-  four. Card: `hq/data/decisions/Q-131.json`.
+- **Q-131 — How should the workbench shelf show that its first row controls pace?** —
+  **Ruling, revised 2026-09-26 after Daniel's feedback.** Keep the chevrons: one, two and
+  three remain a universal three-step control. The row itself must still say pace after
+  purchase, when its original chevrons disappear. Recommended: redraw the Mark III in the
+  row's permanent picture leaning into motion, with two short trails behind it; keep that
+  picture beside the chevron buttons. This keeps the subject and the meaning in one picture.
+  A snail, the Mark III and a hare as three custom buttons are the fallback if the moving
+  robot does not read at shelf size; they introduce two animals that are not the thing being
+  changed and make the middle step less obvious. The other built choices remain in the
+  decision: each robot buys its own setting for 150 gold, and bold remains available when
+  the robot has assigned squares. Card: `hq/data/decisions/Q-131.json`.
 
-- **Q-132 — Keep the Mark III's starting brain on the shelf as built?** — **Ruling, open
-  2026-09-26.** Built under S-32 (Q-128): two placeholder choices — only a robot that has
-  not yet had a night can buy it, and 200 gold. Measured, it is a small head start (about
-  a point a day in the first week on farms it never saw). Alternatives on the card: let a
-  trained robot swap too, make it cheaper, or hide it until it clearly helps. Strawman:
-  keep both. Card: `hq/data/decisions/Q-132.json`.
+- **Q-132 — Should every Mark III be allowed to buy the starting brain?** — **Revised
+  2026-09-26, open.** Built under S-32 (Q-128): the current shelf sells a small head start
+  for 200 gold only to a robot that has not yet had a night. The card now recommends that
+  every Mark III may buy it now, accepting that a robot which has learned loses its
+  farm-specific learning and did slightly worse in the follow-up measurement. The game can
+  replay a recorded day and rebuild the robot's view at each action, but whether saved days
+  can effectively refit a replacement brain is untested. That is a separate future
+  improvement, not a condition of this sale. Card: `hq/data/decisions/Q-132.json`.
 
 - **Q-126 to Q-130 — The Mark III learning shop.** — **Ruling, open 2026-09-25; Q-126
   and Q-127 ruled the same day, Q-129 that night and Q-128 on 2026-09-26; Q-130 still
@@ -353,7 +362,7 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
     calm is slower and steadier. Design in `design/06-bots-and-training.md` ("Its pace")
     and `design/14-training-workbench.md` §11; pictures in
     `design/mockups/workbench_shelf/`.
-  - **Q-130** Nightly practice for the Mark III: should the crow practice come first, with
+  - **Q-130** Nightly practice for the Mark III: should rare worms be the first lesson, with
     a size the player sets and no energy cost? — **revised 2026-09-26, open again.** Daniel
     picked none of the three options (best day, separate features, editor) and described
     his own design on 2026-09-25: the robot practises forced situations overnight (his
@@ -364,11 +373,15 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
     added to its day's decisions in the one nightly update. Each practice is a workbench
     shelf upgrade (S-29) with a lamp switch and three pips (2, 4 or 8 runs). Replays
     recompute the runs and record nothing new except her taps on the controls. A scratch
-    prototype on the gate's eight farms left the farm score within about two points a day,
-    raised birds shooed in 48 test runs from 4 to 11 at two pips on open ground, and
-    did not change how often a real bird on the farm was caught within a week. Still open: which practice
-    comes first, whether the size is shown in v1, whether practice costs energy.
-    **Strawman: crow first, size shown, no energy cost.** Design in
+    crow prototype on the gate's eight farms established that the nightly mechanism can
+    preserve the farm score, but it did not make real birds meaningfully more common. Daniel
+    asked for the first lesson to be the worm instead: a rare crop-eating pest that ignores
+    scarecrows and cannot be targeted by mark-2 robots. A Mark III must learn to shoo it
+    underground. The player keeps the direct stomp response. The crow evidence does not show
+    whether the worm lesson works, so the build must test held-out worm runs, crop protection
+    on real farms, replay identity and the device budget. Still open: whether worms are first,
+    whether the size is shown in v1, whether practice costs energy.
+    **Strawman: worm first, size shown, no energy cost.** Design in
     `design/06-bots-and-training.md` ("Practice runs: it rehearses at night") and
     `design/14-training-workbench.md` ("The practice cards"). Card:
     `hq/data/decisions/Q-130.json`. Not built.
@@ -1916,11 +1929,11 @@ fit "scarecrow", and a collapse toggle for the playtest readout).*
   is the first critter in the game whose answer is a reaction rather than a decision, and
   the two numbers are the whole difficulty.* Nothing is blocked: no mole spawns in the live
   game.
-- **Q-65** — ⏸️ **parked unruled 2026-08-31, by the designer's explicit choice.** Neither (a)
-  nor (b) is answered: the worm stays exactly what it is, a zero-dial proof that the movement
-  engine carries a body, and the question of what it *means* is left for a phase that wants
-  it. Recorded here as parked rather than struck, so it is picked up as an open question and
-  not as a settled one. The item, unchanged:
+- **Q-65** — **partly reopened 2026-09-26 by Daniel's worm-practice feedback.** The first
+  question now has a proposed answer: the worm is a rare crop-eating pest that the Mark III
+  learns to shoo, because scarecrows and mark-2 robots do not answer it. It remains unspawned
+  until Q-130 is ruled and the learning check shows that this response works. The second
+  question remains parked. Original item:
   **A worm that eats crops, and gets longer for no reason.** Raised by M2.5 WI-8e.
   Two questions, both about what the animal *is* rather than how it works. (a) **Should a
   worm be a pest at all?** In the cozy-farming tradition a worm is good soil, not a thief;
