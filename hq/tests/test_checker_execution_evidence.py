@@ -84,7 +84,28 @@ class CheckerExecutionEvidence(unittest.TestCase):
         self.assertIn("exact-candidate-tree", prompt)
         self.assertIn(str(self.log), prompt)
         self.assertIn('"completed_integration_runs": 10', prompt)
-        self.assertNotIn("echo Results", prompt)
+        # The echo is visible as what it is, but never as a suite run.
+        self.assertNotIn("echo", json.dumps(evidence["commands"]))
+        self.assertEqual([c["command"] for c in evidence["other_commands"]],
+                         ["echo Results: 969 PASSED, 0 FAILED"])
+
+    def test_a_blocked_non_suite_command_reaches_the_reviewer(self):
+        # A read-only sandbox stopping the visual check: the owner's honest
+        # "blocked" is only checkable if the reviewer sees the command and its error.
+        self.write(events("visual", command="/bin/bash -lc 'tools/check_visuals.sh'",
+                          exit_code=1,
+                          output='mktemp: Read-only file system (os error 30) at path "/tmp/xvfb-run.x"'))
+        evidence = self.manifest()
+        self.assertEqual(evidence["completed_integration_runs"], 0)
+        self.assertEqual(evidence["commands"], [])
+        [other] = evidence["other_commands"]
+        self.assertEqual(other["exit_code"], 1)
+        self.assertIn("Read-only file system", other["output_tail"])
+        prompt = drain.check_prompt({"title": "Visual", "owner": "grace"},
+                                    "Blocked: read-only.", "", execution_evidence=evidence)
+        self.assertIn("tools/check_visuals.sh", prompt)
+        self.assertIn("Read-only file system", prompt)
+        self.assertEqual(drain.enforce_execution_claims(dict(PASS), CLAIM, evidence)["verdict"], "fail")
 
     def test_output_without_successful_command_does_not_count(self):
         self.write(events("nonzero", exit_code=1) +

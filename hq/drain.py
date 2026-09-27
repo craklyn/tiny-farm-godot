@@ -506,6 +506,9 @@ evidence-only re-review may have a later review run for that same tree. A comman
 output proves only what that command reported at that point in the session;
 inspect the candidate diff and do not assume a later edit was tested. The full
 stream is at log_path. Claims need completed command results or validated external evidence.
+"other_commands" are the owner's non-suite commands with their exit codes and the
+end of their output: a reported blocker is supported when one of them shows it,
+and none of them ever counts as a test-suite run.
 
 THE DIFF THEY PRODUCED:
 {diff[:60000] if diff else '(no files changed)'}
@@ -561,7 +564,7 @@ def owner_execution_evidence(log_path, *, run, attempt_id, candidate):
                 "candidate_tree": (candidate or {}).get("tree", ""),
                 "log_path": os.path.abspath(log_path), "log_sha256": "",
                 "completed_integration_runs": 0, "scenario_w_passes": 0,
-                "commands": []}
+                "commands": [], "other_commands": []}
     try:
         digest = hashlib.sha256()
         starts = {}
@@ -589,6 +592,17 @@ def owner_execution_evidence(log_path, *, run, attempt_id, candidate):
                     seen.add(call_id)
                     command = str(block.get("command") or starts.get(call_id) or "")
                     if not all(part in command for part in _INTEGRATION_COMMAND):
+                        # Any other command the owner finished is still evidence of
+                        # what they tried — a blocked run is only checkable if the
+                        # reviewer can see the error. It never counts as a suite run.
+                        other = block.get("content")
+                        if (block.get("status") in ("completed", "failed")
+                                and len(evidence["other_commands"]) < 20):
+                            evidence["other_commands"].append({
+                                "call_id": call_id, "exit_code": block.get("exit_code"),
+                                "status": block.get("status"), "command": command[:300],
+                                "output_tail": other[-800:] if isinstance(other, str) else "",
+                            })
                         continue
                     output = block.get("content")
                     if not isinstance(output, str):
