@@ -2666,6 +2666,9 @@
    "verdict": "second-look",
    "why": "Technical jargon — milliseconds and frame budgets — replaces the symptom: whether gameplay stutters."
   },
+  "5536174f872dc06d9890": {
+   "verdict": "ok"
+  },
   "5536a3eb143b4c06b250": {
    "verdict": "ok"
   },

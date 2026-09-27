@@ -15,9 +15,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import drain
 
 CHECK = Path(__file__).resolve().parents[2] / "tools" / "check_secrets.py"
-# The desktop has gitleaks; GitHub's HQ test job does not (the secrets job
-# downloads its own). A push needs it, so these cases only run where it exists.
-needs_gitleaks = unittest.skipUnless(shutil.which("gitleaks"), "gitleaks is not installed")
+# Publishing needs gitleaks; the desktop has it and CI installs the same build
+# (tests.yml). HQ's runner fails a skipped test, so these never skip.
 
 
 def git(cwd, *args):
@@ -48,7 +47,6 @@ class PushLanded(unittest.TestCase):
     def origin_head(self):
         return git(self.origin, "rev-parse", "main")
 
-    @needs_gitleaks
     def test_a_landed_commit_is_pushed(self):
         self.commit(self.main, "b.txt", "landed work\n")
         self.assertEqual(drain.push_landed(str(self.main)), "")
@@ -57,7 +55,6 @@ class PushLanded(unittest.TestCase):
     def test_nothing_to_push_is_quiet(self):
         self.assertEqual(drain.push_landed(str(self.main)), "")
 
-    @needs_gitleaks
     def test_a_credential_shaped_line_is_never_pushed(self):
         before = self.origin_head()
         # A realistic GitHub token shape: gitleaks rightly ignores low-entropy repeats.
