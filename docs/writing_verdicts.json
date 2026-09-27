@@ -366,6 +366,9 @@
    "verdict": "second-look",
    "why": "“Sweep” is internal testing shorthand for checking the robot across 24 farms."
   },
+  "0c136146e5d0ef5b2de3": {
+   "verdict": "ok"
+  },
   "0c3b0d89c1dbaf5db958": {
    "verdict": "ok"
   },

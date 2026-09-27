@@ -2660,7 +2660,8 @@ def run_verified_batch(pool, org, run_id, log, *, no_suites=False, actions=None)
             continue
         candidate = rec.get("candidate") or {}
         head = integration.main_head(server.REPO)
-        if candidate and candidate.get("base") != head:
+        # A candidate that changes no files has nothing to rebuild on a newer main.
+        if candidate and rec.get("files") and candidate.get("base") != head:
             why = "the candidate is stale; repository history changed before application"
             blocker_kind = "stale_base"
         elif rec.get("resume"):
