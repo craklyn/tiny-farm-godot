@@ -2205,6 +2205,9 @@
    "verdict": "decode",
    "why": "The reader is not told who “she” is."
   },
+  "497161ee53878a206381": {
+   "verdict": "ok"
+  },
   "499570ea44df3f71f6eb": {
    "verdict": "ok"
   },

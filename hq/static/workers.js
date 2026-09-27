@@ -134,9 +134,22 @@ function wkPanel(s, showTitle=true) {
     : `<details><summary class="wk-files">Show what it did</summary><div class="wk-log"></div></details>`}</div>`;
 }
 
+// S-33: the drain works several items at once. drain.json keeps its latest
+// fact at the top level and one entry per item being worked under `items`.
+function wkActiveIds(active) {
+  if (!active) return [];
+  return [...new Set([active.item, ...(active.items || []).map(e => e.item)].filter(Boolean))];
+}
+
+function wkActiveFor(active, wanted) {
+  if (!active || !wanted) return active || null;
+  const entry = (active.items || []).find(e => e.item === wanted);
+  return entry ? { ...active, ...entry } : active.item === wanted ? active : null;
+}
+
 function wkGroup(group, activeItem, wanted, org = null) {
   const running = group.sessions.some(s => s.state === "running");
-  const isActive = running || (activeItem && group.item === activeItem);
+  const isActive = running || (activeItem && [].concat(activeItem).includes(group.item));
   const workers = group.sessions.filter(s => s.phase !== "checker").length;
   const reviews = group.sessions.filter(s => s.phase === "checker").length;
   const actions = wkRecordedActions(group.work);
@@ -210,7 +223,7 @@ async function renderWorkers() {
   const running = sessions.filter(s => s.state === "running");
   const earlier = sessions.filter(s => s.state !== "running");
   const rawActive = snap.active || execution.active || null;
-  const active = rawActive && (!wanted || rawActive.item === wanted) ? rawActive : null;
+  const active = wkActiveFor(rawActive, wanted);
   const activeKey = active ? [active.run, active.item, active.phase, active.at].join("/") : "";
   const view = wkView();
   const head = running.length
@@ -244,7 +257,7 @@ async function renderWorkers() {
       <button type="button" data-view="sessions" aria-pressed="${view === "sessions"}">Action timeline</button>
     </div>
     <div id="wk-sessions" data-active="${esc(activeKey)}">${view === "work"
-      ? wkGroups(sessions, workById, wanted).map(group => wkGroup(group, active && active.item, wanted, org)).join("")
+      ? wkGroups(sessions, workById, wanted).map(group => wkGroup(group, wkActiveIds(active), wanted, org)).join("")
       : wkActionTimeline(sessions, workById, wanted, org)
     }</div>`;
   $view.querySelectorAll(".wk-view-toggle button").forEach(button => button.addEventListener("click", () => {
@@ -288,7 +301,7 @@ async function renderWorkers() {
     let fresh;
     try { fresh = await fetch("/api/workers").then(r => r.json()); } catch (e) { return; }
     const now = (fresh.sessions || []).filter(s => s.state === "running" && (!wanted || s.item === wanted));
-    const freshActive = fresh.active && (!wanted || fresh.active.item === wanted) ? fresh.active : null;
+    const freshActive = wkActiveFor(fresh.active, wanted);
     const freshActiveKey = freshActive ? [freshActive.run, freshActive.item, freshActive.phase, freshActive.at].join("/") : "";
     const shown = [...$view.querySelectorAll('.wk-panel[data-state="running"]')].map(p => p.dataset.key);
     const same = now.length === shown.length && now.every(s => shown.includes(wkKey(s)))

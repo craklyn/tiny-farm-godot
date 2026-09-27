@@ -44,6 +44,19 @@ assert.strictEqual(vm.runInContext("wkAfter(emptyLog)", context), 0,
 context.filledLog = {querySelectorAll: () => [{dataset: {n: "7"}}, {dataset: {n: "19"}}]};
 assert.strictEqual(vm.runInContext("wkAfter(filledLog)", context), 19,
   "a mounted panel requests only events after its last rendered line");
+// S-33: the drain works several items at once; every one of them is shown as active.
+context.drainForTest = {run: "r", item: "B", phase: "worker", detail: "B is working",
+  items: [{item: "A", phase: "reviewing", detail: "A is being read"}, {item: "B", phase: "worker", detail: "B is working"}]};
+assert.deepStrictEqual(Array.from(vm.runInContext("wkActiveIds(drainForTest)", context)).sort(), ["A", "B"],
+  "every item the drain is working counts as active");
+assert.strictEqual(vm.runInContext("wkActiveFor(drainForTest, 'A').detail", context), "A is being read",
+  "a page filtered to one item shows that item's own phase, not the latest one");
+assert.strictEqual(vm.runInContext("wkActiveFor(drainForTest, 'C')", context), null,
+  "an item the drain is not working is not shown as active");
+assert.strictEqual(vm.runInContext("wkActiveFor({run: 'r', item: 'A'}, 'A').item", context), "A",
+  "a drain state written before S-33 still reads");
+assert.ok(vm.runInContext("wkGroup(groupForTest, wkActiveIds(drainForTest), '')", context).includes("<details class=\"wk-group\" data-item=\"A\" open"),
+  "each worked item's group opens, not only the latest one");
 for (const kind of ["warning", "command-failure", "recovered", "finding", "terminal-failure"]) {
   context.lineForTest = {kind, n: 1, text: kind};
   const line = vm.runInContext("wkLine(lineForTest)", context);

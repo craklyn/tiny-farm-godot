@@ -2391,7 +2391,7 @@ def project_work(item, *, head=None, active=None, now=None):
                          ("spent_usd" in waiting and not cost_reason))
     return work.work_view(item, {"blocked_files": blocked, "tree_reason": _tree_reason(blocked) if blocked else "",
                                  "cost_reason": cost_reason, "active_session":
-                                 (active or {}).get("run") if (active or {}).get("item") == item["id"] else None,
+                                 (active or {}).get("run") if server.drain_entry(active, item["id"]) else None,
                                  "head": head, "waiting_for_valid": waiting_valid,
                                  "supervised_retry": item["id"] in RETRY_ONCE_IDS}, now=now)
 

@@ -2304,6 +2304,20 @@ def drain_state():
     return doc if doc.get("phase") != "finished" and _pid_alive(doc.get("pid")) else None
 
 
+def drain_entry(state, item_id):
+    """This item's live phase in the running drain, or None.
+
+    Since S-33 the drain works several items at once: drain.json keeps the
+    latest fact at the top level, as before, and one entry per item being
+    worked under `items`."""
+    if not state or not item_id:
+        return None
+    for entry in state.get("items") or []:
+        if entry.get("item") == item_id:
+            return entry
+    return state if state.get("item") == item_id else None
+
+
 def execution_queue_snapshot():
     """Read fresh Git and card facts; dirty edits need not change card mtimes."""
     got = subprocess.run([sys.executable, os.path.join(HQ_DIR, "drain.py"), "--list-json"],
@@ -4954,8 +4968,9 @@ def _route_target(route):
                     if running:
                         human = ("being reviewed now" if running.get("phase") == "checker"
                                  else "being worked on now")
-                    elif live and live.get("item") == rid:
-                        human = live.get("detail") or live.get("phase", "").replace("_", " ")
+                    elif drain_entry(live, rid):
+                        entry = drain_entry(live, rid)
+                        human = entry.get("detail") or entry.get("phase", "").replace("_", " ")
                     human = human or {
                         "waiting_session": "queued for the next task-queue run",
                         "for_review": "finished, with a result to review",
