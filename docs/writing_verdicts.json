@@ -1488,6 +1488,9 @@
    "verdict": "decode",
    "why": "“Hold” can mean either delay the feature or keep it in place, so the title is ambiguous on its own."
   },
+  "2d822de10361af9901fa": {
+   "verdict": "ok"
+  },
   "2d9faee3751fb0486875": {
    "verdict": "ok"
   },

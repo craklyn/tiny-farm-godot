@@ -419,7 +419,11 @@ def file_decision_revision(decision, feedback, ruled_at, submission_id):
         "level": "task", "owner": owner, "tier": 1,
         "tier_reason": "Daniel asked for the decision to be revised before he chooses.",
         "ask": ("Revise this decision using Daniel's feedback, then add a reply to the "
-                f"decision card {decision_id} so it returns to his queue.\n\n"
+                f"decision card {decision_id} so it returns to his queue. Change only "
+                f"hq/data/decisions/{decision_id}.json and its entry in "
+                "docs/DESIGNER_QUEUE.md. Do not edit docs/design/: the design documents "
+                "change after he rules, and a revision that touches them is held back "
+                "instead of returning to his queue.\n\n"
                 f"Daniel's feedback:\n{feedback}")[:2400],
         "first_action": "Read the decision card and Daniel's feedback; revise the choices or evidence, then reply on the card.",
         "state": "waiting_session", "thread": owner, "source": "decision_revision",

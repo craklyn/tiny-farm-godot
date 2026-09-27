@@ -150,6 +150,9 @@ def main():
               "a retried revision creates exactly one linked work item")
         check("different decision content" in conflict.get("error", ""),
               "a reused submission id cannot silently accept edited content")
+        revision = next(i for i in children if i.get("id") == first.get("revision_work_id"))
+        check("hq/data/decisions/Q-900.json" in revision["ask"] and "Do not edit docs/design/" in revision["ask"],
+              "a revision is told to change only its card, so it can return to his queue (2026-09-26)")
         child = next(i for i in children if i.get("decision_id") == "Q-900")
         check(child["owner"] == "rin" and child["parent"] == "Q-900"
               and child["return_to_decision"]["id"] == "Q-900",
