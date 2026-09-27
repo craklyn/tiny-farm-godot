@@ -282,6 +282,28 @@ trace mislabelled its own categories and where the crow schedule desynced replay
 
 ---
 
+## If a key leaks
+
+The repository is public. A key that reaches GitHub is compromised the moment it
+lands — scrapers watch public pushes within minutes — and rewriting history afterwards
+does not un-leak it. **Revoke first, clean up second.** Three checks stand in front of
+this (the commit hook and the drain's push both run `tools/check_secrets.py`, and CI
+scans the whole history with gitleaks), so this section is for when they all missed.
+
+| Key | Lives in | What a leak could do | Revoke and reissue at |
+|---|---|---|---|
+| `ITCH_API_KEY` | `.env` | Change the game's itch.io page and uploads | itch.io → Settings → API keys (`https://itch.io/user/settings/api-keys`) |
+| `BUTLER_API_KEY` | GitHub → Settings → Secrets (release workflow) | Same as above; may be the same key | Same page; then replace the repository secret |
+| `RETRODIFFUSION_API_KEY` | `.env` | Spend the account's generation credit | The API key page of the Retro Diffusion account (`https://retrodiffusion.ai`) |
+| `FREESOUND_API_KEY` | `.env` | Use the studio's Freesound API quota | Freesound → API credentials (`https://freesound.org/apiv2/apply`) |
+
+After revoking: put the new key in `.env` (and the GitHub secret, for butler), remove
+the old value from the files that carried it in a normal commit, and note what happened
+in the commit message. A key added to `.env` later is covered by the same checks
+automatically; add its row here.
+
+---
+
 ## 4. iOS — not set up
 
 No preset, and none of it can be done from Linux. Needs a Mac for the build and signing;

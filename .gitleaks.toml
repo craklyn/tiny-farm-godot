@@ -1,0 +1,13 @@
+# gitleaks configuration for tools/check_secrets.py and the CI secrets job.
+# The default rules, plus one reviewed false positive.
+
+[extend]
+useDefault = true
+
+# HQ work cards committed before the Q-125 move carry "completion_key": a hash
+# of the card's own fields, not a credential. A full-history scan on 2026-09-26
+# found 16 of these and nothing else.
+[[allowlists]]
+description = "HQ work-card completion keys are hashes"
+regexTarget = "line"
+regexes = ['''"completion_key":\s*"[0-9a-f]+"''']

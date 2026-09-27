@@ -3,8 +3,9 @@
 Tier-1 workers edit only private Git worktrees. The checker reads the diff.
 The integration lane rebuilds the reviewed candidate in a detached worktree
 at local main, tests that exact prospective tree, and atomically advances
-local main from the expected parent. It never edits the user's checkout or
-pushes a remote ref. A candidate that cannot pass receives an owned recovery
+local main from the expected parent. It never edits the user's checkout.
+After a run that landed something, push_landed fast-forwards origin/main to it
+once tools/check_secrets.py passes, and never forces. A candidate that cannot pass receives an owned recovery
 action; the shared-checkout --apply path is retired.
 
     worker   the seat that owns the item, on that seat's default model from
@@ -2282,6 +2283,31 @@ UNATTENDED_WINDOW_SHARE = 0.6
 # item cap applies; only a window that has actually run dry stops the timer.
 UNSPARED_PROVIDERS = ("codex",)
 
+def push_landed(repo=None):
+    """Push what the drain landed on local main to origin, or say why not.
+
+    Daniel, 2026-09-26: work the drain verified was sitting on the desktop's
+    local main until a session happened to push it. Landing already proved both
+    suites on the exact tree, so the push is only a fast-forward of that, after
+    tools/check_secrets.py passes on exactly what it would publish — the repo is
+    public, so a key that reached origin would be compromised on arrival. It
+    never forces, rebases or merges: if origin moved, it leaves main for the
+    next run."""
+    repo = repo or REPO
+    if sh(["git", "fetch", "-q", "origin", "main"], cwd=repo, timeout=120).returncode:
+        return "could not fetch origin"
+    ahead = sh(["git", "rev-list", "--count", "origin/main..main"], cwd=repo).stdout.strip()
+    if ahead in ("", "0"):
+        return ""
+    if sh(["git", "merge-base", "--is-ancestor", "origin/main", "main"], cwd=repo).returncode:
+        return "origin/main has moved; local main is left for the next run"
+    scan = sh([sys.executable, os.path.join(os.path.dirname(roots.ROOTS["code"]), "tools", "check_secrets.py"),
+               "--range", "origin/main..main"], cwd=repo, timeout=300)
+    if scan.returncode:
+        return "the secrets check stopped it: " + (scan.stderr or scan.stdout or "").strip()[-300:]
+    pushed = sh(["git", "push", "-q", "origin", "main:main"], cwd=repo, timeout=180)
+    return "" if pushed.returncode == 0 else ("push failed: " + (pushed.stderr or "")[-200:])
+
 
 def take_lock():
     """One drain at a time. The timer and a person at the keyboard must never
@@ -2953,6 +2979,9 @@ def main():
     for i in done:
         if i.get("state") == "for_review":
             print(f"  held: {i['id']}  {(i.get('diff') or {}).get('why_not_landed') or '—'}")
+    if went_in:
+        why = push_landed()
+        print(f"Not pushed: {why}." if why else "Pushed to origin/main.")
     print(f"Cost: {bill['calls']} model calls, {bill['tokens']:,} tokens "
           f"({cost_summary(bill)}).")
     if esc:

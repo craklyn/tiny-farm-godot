@@ -798,6 +798,12 @@
    "verdict": "decode",
    "why": "The metaphor does not plainly say whether the meal duration changes with the planting location."
   },
+  "19bb2861be812127a75c": {
+   "instead": "Check every commit and push for credentials, then have the automated checker push the changes it approves",
+   "quote": "let the drain push what it lands",
+   "verdict": "decode",
+   "why": "“The drain” and “what it lands” are internal or figurative terms, so a reader cannot tell what system is acting or what it should push."
+  },
   "19dc1daff45c835321a3": {
    "verdict": "ok"
   },
@@ -6827,6 +6833,12 @@
    "verdict": "decode",
    "why": "The paragraph refers to an earlier discussion and several unnamed options, so a cold reader cannot tell what decision still needs to be made."
   },
+  "de3f6be7668f657b10d5": {
+   "instead": "Prevent secret access keys from being included in any code sent to GitHub, then publish the studio's approved work automatically",
+   "quote": "Block API keys from every commit and push",
+   "verdict": "decode",
+   "why": "“API keys,” “commit,” and “push” are engineering terms that do not tell a cold reader what is being blocked or where the work goes."
+  },
   "dee117497447474bed4d": {
    "verdict": "ok"
   },
@@ -7222,6 +7234,9 @@
    "verdict": "ok"
   },
   "eeba39eac4cf71c455d9": {
+   "verdict": "ok"
+  },
+  "eee8b96f8447e9d38fba": {
    "verdict": "ok"
   },
   "eeea616f8ed4b3530ea2": {

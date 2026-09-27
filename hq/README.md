@@ -446,7 +446,10 @@ tie to a build.
   the item goes back to `for_review` with the diff, the check, the suites and the
   bill, and Daniel approves the result. A worker that finds the item needs *him*
   stops and says what it needs, which is how the queue produces escalations
-  rather than swallowing them. `python3 hq/drain.py --list` to see the queue,
+  rather than swallowing them. Since 2026-09-26 a run that landed anything on local
+  main also pushes it: a fast-forward of origin/main, never forced, and only after
+  `tools/check_secrets.py` passes on exactly what would be published (the repository
+  is public). `python3 hq/drain.py --list` to see the queue,
   `--all` to drain it, `--unattended` for the shape the timer runs (a few items, a
   token guard, one drain at a time). A card the owner is revising starts from its
   earlier attempt, so what lands is only what changed. A worker that ran out of

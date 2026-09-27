@@ -53,6 +53,16 @@ PATTERNS="hq/data/work/*.json hq/data/goals/*.json hq/data/decisions/*.json
 
 ROOT=$(git rev-parse --show-toplevel 2>/dev/null) || exit 0
 
+# Credentials first, and the one place this hook fails CLOSED. The repository is
+# public, so a key that is committed is one push from compromised. Only a finding
+# blocks: no python3, or no checker in this tree, passes straight through.
+if command -v python3 >/dev/null 2>&1 && [ -f "$ROOT/tools/check_secrets.py" ]; then
+    python3 "$ROOT/tools/check_secrets.py" --staged || {
+        echo "Commit stopped: it would add a credential. Remove it from the staged files."
+        exit 1
+    }
+fi
+
 # Nothing staged that this check reads: the commit is code, art or docs, and the
 # judge has no opinion about any of it.
 git diff --cached --name-only --diff-filter=ACMR -- $PATTERNS 2>/dev/null \
