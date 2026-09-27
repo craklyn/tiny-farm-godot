@@ -4722,6 +4722,12 @@
   "9a9bd5358e89d587d46e": {
    "verdict": "ok"
   },
+  "9ac05324c35b0905cbfb": {
+   "instead": "Fix the failing build: the automatic-publishing tests no longer need the secret scanner on GitHub's test machine",
+   "quote": "red build",
+   "verdict": "decode",
+   "why": "“Red build” is engineering shorthand for a failing build, so a cold reader has to work out what is wrong."
+  },
   "9ad61b0d35013783226e": {
    "verdict": "ok"
   },
@@ -6787,6 +6793,9 @@
    "quote": "That is the one a player has to notice from across the plot.",
    "verdict": "decode",
    "why": "\"The one\" has no object — the one what? Needs the thing being described named."
+  },
+  "dcbdf47aa9365a4c4072": {
+   "verdict": "ok"
   },
   "dcbefc7812baf8bbe75c": {
    "verdict": "ok"

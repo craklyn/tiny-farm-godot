@@ -1,17 +1,23 @@
 #!/usr/bin/env python3
 """What the drain landed reaches origin/main on its own, and only safely."""
 from pathlib import Path
+import os
 import random
+import shutil
 import string
 import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import drain
 
 CHECK = Path(__file__).resolve().parents[2] / "tools" / "check_secrets.py"
+# The desktop has gitleaks; GitHub's HQ test job does not (the secrets job
+# downloads its own). A push needs it, so these cases only run where it exists.
+needs_gitleaks = unittest.skipUnless(shutil.which("gitleaks"), "gitleaks is not installed")
 
 
 def git(cwd, *args):
@@ -42,6 +48,7 @@ class PushLanded(unittest.TestCase):
     def origin_head(self):
         return git(self.origin, "rev-parse", "main")
 
+    @needs_gitleaks
     def test_a_landed_commit_is_pushed(self):
         self.commit(self.main, "b.txt", "landed work\n")
         self.assertEqual(drain.push_landed(str(self.main)), "")
@@ -50,6 +57,7 @@ class PushLanded(unittest.TestCase):
     def test_nothing_to_push_is_quiet(self):
         self.assertEqual(drain.push_landed(str(self.main)), "")
 
+    @needs_gitleaks
     def test_a_credential_shaped_line_is_never_pushed(self):
         before = self.origin_head()
         # A realistic GitHub token shape: gitleaks rightly ignores low-entropy repeats.
@@ -88,6 +96,18 @@ class PushLanded(unittest.TestCase):
         self.assertEqual(run.returncode, 1)
         self.assertIn("FREESOUND_API_KEY", run.stderr)
         self.assertNotIn(fake, run.stderr + run.stdout)
+
+    def test_without_gitleaks_nothing_is_pushed(self):
+        # Fails closed: a push the scanner could not check never happens.
+        bare = Path(self.main).parent / "bin"
+        bare.mkdir()
+        os.symlink(shutil.which("git"), bare / "git")
+        before = self.origin_head()
+        self.commit(self.main, "b.txt", "landed work\n")
+        with patch.dict(os.environ, {"PATH": str(bare)}):
+            why = drain.push_landed(str(self.main))
+        self.assertIn("gitleaks is not installed", why)
+        self.assertEqual(self.origin_head(), before)
 
     def test_origin_that_moved_is_left_alone(self):
         self.commit(self.other, "d.txt", "someone else\n")
