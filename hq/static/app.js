@@ -379,8 +379,9 @@ async function route() {
     else if (routes[hash.split("?")[0]]) await routes[hash.split("?")[0]]();
     else if (hash.startsWith("/chat/")) await renderChat(hash.slice("/chat/".length));
     else if (hash.startsWith("/person/")) await renderPerson(hash.slice("/person/".length));
-    else if (hash.startsWith("/work/")) await renderWork(hash.slice("/work/".length));
-    else if (hash.startsWith("/inbox/")) await renderWork(hash.slice("/inbox/".length));
+    // Work parses its own card ID and action query from the address.
+    else if (hash.startsWith("/work/")) await renderWork();
+    else if (hash.startsWith("/inbox/")) await renderWork();
     else if (hash.startsWith("/request/")) await renderRequest(hash.slice("/request/".length));
     // Guarded: on a direct page-load design.js hasn't registered yet; it
     // re-routes itself once loaded (same dance as its /design route).

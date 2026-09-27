@@ -28,7 +28,8 @@ const classes = new Set();
 const toggle = { textContent: '', attributes: {}, setAttribute(key, value) { this.attributes[key] = value; },
   addEventListener(type, handler) { this.click = handler; } };
 const saved = {};
-const document = { querySelectorAll: selector => selector.startsWith('.primary-nav') ? primaryLinks : links,
+const document = { querySelectorAll: selector => selector.startsWith('#sidebar') ? []
+    : selector.startsWith('.primary-nav') ? primaryLinks : links,
   getElementById: () => toggle,
   body: { classList: { toggle(name, on) { if (on) classes.add(name); else classes.delete(name); },
     contains: name => classes.has(name) } } };
@@ -75,3 +76,31 @@ ctx.initNavLayout();
 toggle.click();
 assert.equal(saved['hq-nav-layout'], 'sidebar');
 console.log('Navigation routes, parked tools, and layout switching pass.');
+
+// Exercise the real router: action queries must not override Work's parser.
+const work = fs.readFileSync(path.join(root, 'work.js'), 'utf8');
+vm.runInContext(work.slice(work.indexOf('function workFocusId()'),
+  work.indexOf('function advanceDirectDecision(')), ctx);
+const landings = [];
+Object.assign(ctx, {
+  clearAnimators() {}, hidePersonTip() {}, applyNavGroups() {}, routeSeq: 0, routeActive: 0,
+  location: { hash: '' }, $view: { innerHTML: '' }, surfaceReady: Promise.resolve(),
+  routes: {}, h: String, esc: String, surfaceMarkLinks() {},
+  renderWork(focusId = ctx.workFocusId()) {
+    landings.push([focusId, ctx.workActionId()]);
+  },
+});
+vm.runInContext(app.slice(app.indexOf('async function route()'),
+  app.indexOf('window.addEventListener("hashchange", route)')), ctx);
+(async () => {
+  const id = 'w1096c1cd319', action = 'act_3f648036f1c057d2721e';
+  for (const prefix of ['/work/', '/inbox/']) {
+    ctx.location.hash = '#' + prefix + id + '?action=' + action;
+    await ctx.route();
+    assert.deepEqual(landings.pop(), [id, action], 'card and action are separate');
+    ctx.location.hash = '#' + prefix + 'Q%2D123';
+    await ctx.route();
+    assert.deepEqual(landings.pop(), ['Q-123', ''], 'plain links decode their card ID');
+  }
+  console.log('Work and inbox links preserve card IDs and action queries.');
+})().catch(error => { console.error(error); process.exitCode = 1; });
