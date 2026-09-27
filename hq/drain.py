@@ -2217,6 +2217,9 @@ def _write_back(item, rec, applied, why_not, suites, org):
         if item.get("completion"):
             work.land_item(item, "drain", sha=item["completion"].get("sha", ""))
         return item
+    # A chief-of-staff ruling authorizes exactly one fresh landing check. The
+    # result of that check must earn its own next action.
+    item.pop("supervised_retry", None)
     visible_result, owner_notes = server.parse_remembered(rec["result"])
     body, follows, _amend, recommend, _move = work._split_result(visible_result, org, item["owner"])
     deliverable = work.result_deliverable(visible_result)
@@ -2466,7 +2469,8 @@ def project_work(item, *, head=None, active=None, now=None):
                                  "cost_reason": cost_reason, "active_session":
                                  (active or {}).get("run") if server.drain_entry(active, item["id"]) else None,
                                  "head": head, "waiting_for_valid": waiting_valid,
-                                 "supervised_retry": item["id"] in RETRY_ONCE_IDS}, now=now)
+                                 "supervised_retry": (item["id"] in RETRY_ONCE_IDS
+                                                      or bool(item.get("supervised_retry")))}, now=now)
 
 
 def _queue_entries(include_thinking=False):

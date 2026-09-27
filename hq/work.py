@@ -1160,10 +1160,25 @@ def queue_one_repair(item):
                                if check.get("read") is True and check.get("verdict") == "fail"
                                else None) or attempt.get("reason") or "The owner needs a dependency or decision before continuing."
         return False
-    if item.get("automatic_repairs", 0) >= 1:
+    repairs = int(item.get("automatic_repairs", 0) or 0)
+    if repairs >= 2:
+        if check.get("verdict") == "concerns":
+            # Two owner passes are enough. The chief of staff now turns the
+            # remaining concern into a prepared decision if Daniel is truly
+            # needed, or closes the handoff issue without spending his time.
+            item.pop("repair_hold", None)
+            item["state"] = "prepping"
+            item["started"] = ""
+            item["concern_review"] = {"owner": "claude", "attempts": 0}
+            item["first_action"] = (
+                "Read the remaining reviewer concern. Resolve it within the studio, or prepare "
+                "the result for Daniel with the exact question, recommendation, evidence, and "
+                "work his yes starts.")
+            save_item(item)
+            return True
         item["repair_hold"] = "The repair still needs verification; the owner must resolve the remaining findings."
         return False
-    item["automatic_repairs"] = 1
+    item["automatic_repairs"] = repairs + 1
     item["repair_brief"] = check.get("summary", "") + "\n" + json.dumps(check.get("findings") or [])
     item.setdefault("attempt_history", []).append(dict(attempt))
     requeue_for_revision(item)
@@ -2381,6 +2396,81 @@ def prep_question(item, org):
     return True
 
 
+def _concern_recommendation(item):
+    """A complete, conservative decision when the studio cannot clear a concern."""
+    check = item.get("check") or {}
+    concern = str(check.get("summary") or "The reviewer concern remains unresolved.").strip()
+    return {
+        "question": f"Accept this work with the unresolved concern: {concern}",
+        "answer": "Send it back for a supervised studio repair.",
+        "why": "The chief of staff could not establish that the concern is limited to internal handoff notes.",
+        "instead": "Accept the result with the reviewer concern still recorded.",
+    }
+
+
+def resolve_review_concern(item, org):
+    """Let the chief of staff clear an internal concern or send a real choice to Daniel."""
+    if not execution.launch_allowed():
+        return False
+    review = item.setdefault("concern_review", {"owner": "claude", "attempts": 0})
+    review["owner"] = "claude"
+    review["attempts"] = int(review.get("attempts", 0) or 0) + 1
+    save_item(item)
+    check = item.get("check") or {}
+    prompt = f"""You are Adam, Tiny Farm Studio's chief of staff. Two owner repairs left
+this reviewer concern. Decide whether it concerns only internal handoff notes, which you
+may clear, or whether Daniel must decide. Do not clear a concern about the deliverable,
+player experience, money, schedule, or technical correctness.
+
+WORK: {item.get('title', '')}
+RESULT: {(item.get('result') or '')[:6000]}
+CONCERN: {check.get('summary', '')}
+FINDINGS: {json.dumps(check.get('findings') or [])}
+
+Return JSON only. For an internal handoff issue:
+{{"outcome":"resolved","reason":"why Daniel is not needed"}}
+For anything Daniel must decide, include all four recommendation fields:
+{{"outcome":"daniel","reason":"why only he can decide","recommend":{{"question":"...","answer":"...","why":"...","instead":"..."}}}}
+"""
+    text, limited = _run_cli(prompt, HOST.build_system_prompt(org, "claude"),
+                             "Read,Glob,Grep", HOST.MAX_TURNS, 420,
+                             model=HOST.seat_model(org, "claude"), phase="concern-review",
+                             seat="claude", item=item["id"])
+    doc = None
+    if not limited:
+        try:
+            doc = json.loads((text or "").strip())
+        except (TypeError, ValueError):
+            doc = None
+    if isinstance(doc, dict) and doc.get("outcome") == "resolved" and str(doc.get("reason") or "").strip():
+        item["concern_resolution"] = {"by": "claude", "reason": str(doc["reason"]).strip()[:800]}
+        item["check"] = {**check, "verdict": "pass", "complete": True, "findings": []}
+        item["repair_hold"] = "The chief of staff cleared the remaining internal handoff concern; re-run the landing check."
+        item["supervised_retry"] = True
+        item["state"] = "for_review"
+        item.pop("concern_review", None)
+        save_item(item)
+        return True
+    draft = doc.get("recommend") if isinstance(doc, dict) else None
+    if not recommendation_gaps(draft):
+        item["recommend"] = {key: str(draft[key]).strip()[:400] for key in REC_PARTS}
+        item["concern_resolution"] = {"by": "claude", "reason": str(doc.get("reason") or "").strip()[:800]}
+        item["state"] = "needs_approval"
+        item.pop("concern_review", None)
+        save_item(item)
+        return True
+    if review["attempts"] < PREP_TRIES and limited:
+        save_item(item)
+        return False
+    item["recommend"] = _concern_recommendation(item)
+    item["concern_resolution"] = {"by": "claude", "reason": "The chief-of-staff review did not produce a safe internal ruling."}
+    item["state"] = "needs_approval"
+    item.pop("concern_review", None)
+    item.pop("prep_stalled", None)
+    save_item(item)
+    return True
+
+
 def _propose_follow_up(item, org):
     """Backfill for results that landed before the card showed consequences.
     New work answers this inside the call that does it and never reaches here."""
@@ -2463,8 +2553,14 @@ def worker():
             # A question waiting to be written is a piece of his queue that has
             # not arrived yet. Oldest first, and one that has already stopped
             # is left alone rather than rewritten forever.
+            concerns = [i for i in items() if i.get("state") == "prepping"
+                        and i.get("concern_review")]
+            concerns.sort(key=lambda i: i.get("created_ts", 0))
+            if concerns:
+                resolve_review_concern(concerns[0], org)
+                continue
             unprepped = [i for i in items() if i.get("state") == "prepping"
-                         and not i.get("prep_stalled")]
+                         and not i.get("prep_stalled") and not i.get("concern_review")]
             unprepped.sort(key=lambda i: i.get("created_ts", 0))
             if unprepped:
                 prep_question(unprepped[0], org)

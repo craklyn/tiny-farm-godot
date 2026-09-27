@@ -51,6 +51,8 @@ def fake_host(data_dir):
     host.load_json = lambda p: json.load(open(p, encoding="utf-8"))
     host.load_org = lambda: ORG
     host.seat_model = lambda org, who, override=None: ""
+    host.build_system_prompt = lambda org, who: ""
+    host.MAX_TURNS = 60
     return host
 
 
@@ -128,6 +130,67 @@ def main():
               "a held attempt shows once, under the step that repairs it, with its reason")
         check("w0000000000f6" not in [row["id"] for row in view["held"]],
               "the card is not listed again as held beside its repair")
+
+        print("a concern after the first repair returns to the visible build queue")
+        concern = card(
+            id="w0000000000f5", state="for_review", automatic_repairs=1,
+            check={"verdict": "concerns", "read": True, "complete": True,
+                   "summary": "The handoff still needs one correction.",
+                   "findings": [{"what": "Correct the handoff note."}]},
+            attempt_outcome={"status": "complete", "id": "attempt-two"})
+        check(work.queue_one_repair(concern),
+              "the first repaired result with concerns receives one more studio repair")
+        concern = work.load_item(concern["id"])
+        concern_view = drain.project_work(concern, head="", active={})
+        check(concern["state"] == "waiting_session" and concern["automatic_repairs"] == 2
+              and work.card_lanes(concern, concern_view) == ["runner"],
+              "the concerns-held card is runnable in the queue instead of hidden from both lanes")
+        concern["state"] = "for_review"
+        concern["check"] = {"verdict": "concerns", "read": True, "complete": True,
+                            "summary": "The remaining concern needs a studio call.",
+                            "findings": [{"what": "Settle who needs to see this."}]}
+        concern["attempt_outcome"] = {"status": "complete", "id": "attempt-three"}
+        work.save_item(concern)
+        check(work.queue_one_repair(concern),
+              "a concern that survives both owner repairs goes to the chief of staff")
+        concern = work.load_item(concern["id"])
+        concern_view = drain.project_work(concern, head="", active={})
+        check(concern["state"] == "prepping" and concern["concern_review"]["owner"] == "claude"
+              and work.card_lanes(concern, concern_view) == ["runner"],
+              "the capped concern stays visible as studio work until it is resolved or prepared for Daniel")
+
+        print("the chief of staff may clear an owner-only handoff concern")
+        original_cli = work._run_cli
+        original_launch = work.execution.launch_allowed
+        work.execution.launch_allowed = lambda: True
+        work._run_cli = lambda *args, **kwargs: (
+            '{"outcome":"resolved","reason":"Only the internal handoff note was at issue."}', False)
+        check(work.resolve_review_concern(concern, org), "the chief of staff records the internal ruling")
+        concern = work.load_item(concern["id"])
+        concern_view = drain.project_work(concern, head="", active={})
+        check(concern["state"] == "for_review" and concern["check"]["verdict"] == "pass"
+              and concern["concern_resolution"]["by"] == "claude"
+              and work.card_lanes(concern, concern_view) == ["runner"],
+              "the cleared candidate returns to the runnable landing check, not Daniel")
+
+        print("an unresolved chief-of-staff review reaches Daniel even when preparation fails")
+        escalated = card(
+            id="w0000000000f4", state="prepping", automatic_repairs=2,
+            concern_review={"owner": "claude", "attempts": work.PREP_TRIES - 1},
+            check={"verdict": "concerns", "read": True, "complete": True,
+                   "summary": "The player-facing choice may be wrong.", "findings": []},
+            deliverable={"name": "Choice review", "evidence": [{"path": "hq/work.py"}]},
+            follow_ups=[])
+        work._run_cli = lambda *args, **kwargs: ("not json", False)
+        check(work.resolve_review_concern(escalated, org), "an exhausted review records a safe decision")
+        escalated = work.load_item(escalated["id"])
+        escalated_view = drain.project_work(escalated, head="", active={})
+        check(escalated["state"] == "needs_approval" and work.has_recommendation(escalated)
+              and work.work_ready_for_daniel(escalated, escalated_view)
+              and work.card_lanes(escalated, escalated_view) == ["daniel"],
+              "the exhausted path is counted as waiting on Daniel with a complete recommendation")
+        work._run_cli = original_cli
+        work.execution.launch_allowed = original_launch
         card(id="w0000000000a1", created_ts=14.0, started="2026-09-21T23:00")
         view = drain.queue_view()
         check("w0000000000a1" not in [row["id"] for row in view["eligible"]],
