@@ -2213,6 +2213,10 @@ UNATTENDED_JOBS = 2
 # Skip a run when the studio's unattended work has already spent this share of
 # what had been spent the last time a window ran dry.
 UNATTENDED_WINDOW_SHARE = 0.6
+# Daniel, 2026-09-26: "I want to proactively use codex to always work on the queue
+# until it's out of tokens." On Codex neither the spend guard nor the per-run
+# item cap applies; only a window that has actually run dry stops the timer.
+UNSPARED_PROVIDERS = ("codex",)
 
 
 def take_lock():
@@ -2232,6 +2236,11 @@ def take_lock():
     return fh
 
 
+def unspared():
+    """True when the queue runs until the provider itself says it is out."""
+    return execution.resolve_model()["provider"] in UNSPARED_PROVIDERS
+
+
 def unattended_hold():
     """Why an unattended run should do nothing right now, or "" to go ahead.
     A dry window is the intake queue's own reading; the spend guard is the
@@ -2240,6 +2249,8 @@ def unattended_hold():
         return "automatic work is paused"
     if server.limited_until():
         return "the token window is dry"
+    if unspared():
+        return ""
     win = server.token_window()
     ceiling = win.get("dry_spend") or 0
     if ceiling and win.get("tokens", 0) >= UNATTENDED_WINDOW_SHARE * ceiling:
@@ -2764,7 +2775,7 @@ def main():
 
     if args.unattended:
         args.all = True
-        args.limit = args.limit or UNATTENDED_LIMIT
+        args.limit = args.limit or (0 if unspared() else UNATTENDED_LIMIT)
         args.jobs = min(args.jobs, UNATTENDED_JOBS)
         hold = unattended_hold()
         if hold:

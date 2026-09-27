@@ -370,6 +370,12 @@ cap, so a bar we invented would be fiction. Dollars are recorded as `list_usd`
 and are the API list-price equivalent of the same tokens: an order of magnitude,
 never a bill.
 
+On Claude the unattended drain skips a run once the trailing five hours reach 60%
+of that ceiling, and takes at most three items per run, because the same allotment
+carries Daniel's own sessions. On Codex neither applies (his call, 2026-09-26: "use
+codex to always work on the queue until it's out of tokens"): each run takes
+everything queued, and only his Pause or Codex actually running dry stops it.
+
 Nothing here is written by a request handler. A tracked file written on page
 render leaves the tree dirty, and `git describe --dirty` is where playtest build
 ids come from — which is exactly how two recorded sessions became impossible to

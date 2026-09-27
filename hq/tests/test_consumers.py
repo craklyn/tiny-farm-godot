@@ -18,6 +18,21 @@ import anim
 
 
 class Consumers(unittest.TestCase):
+    def test_codex_works_the_queue_until_it_is_out(self):
+        # Daniel, 2026-09-26: no spend ceiling on Codex — only a real dry window
+        # or his pause stops the timer. Claude keeps its guard.
+        window = {'tokens': 221_884, 'hours': 5.0, 'dry_spend': 247_870}
+        def hold(provider, limited=0, allowed=True):
+            with patch.object(execution, 'launch_allowed', return_value=allowed), \
+                 patch.object(execution, 'resolve_model', return_value={'provider': provider}), \
+                 patch.object(server, 'limited_until', return_value=limited), \
+                 patch.object(server, 'token_window', return_value=window):
+                return drain.unattended_hold()
+        self.assertEqual(hold('codex'), '')
+        self.assertIn('measured ceiling', hold('claude'))
+        self.assertEqual(hold('codex', limited=1790500000), 'the token window is dry')
+        self.assertEqual(hold('codex', allowed=False), 'automatic work is paused')
+
     def test_job_labels_use_the_visible_test_names(self):
         self.assertEqual(server.JOBS['unit']['label'], 'Unit tests')
         self.assertEqual(server.JOBS['integration']['label'], 'Integration tests')
