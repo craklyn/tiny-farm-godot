@@ -376,6 +376,19 @@ carries Daniel's own sessions. On Codex neither applies (his call, 2026-09-26: "
 codex to always work on the queue until it's out of tokens"): each run takes
 everything queued, and only his Pause or Codex actually running dry stops it.
 
+Each card also has its own spending limit (`drain.item_capacity_reason`: 1 million
+tokens, 150,000 of them new, or $20, unless the card sets its own). Daniel's rule
+(2026-09-28) is that this limit is a checkpoint, not a wall. When a card reaches it,
+HQ's background worker has the chief of staff review it (`work.review_spending_checkpoint`,
+one card every couple of minutes, never while he has paused the studio or the
+allowance is dry). If later attempts are getting closer, the review raises only the
+limit that was reached, by one step (1 million tokens, 150,000 new tokens, or $20),
+and the card runs on. If the same failure keeps repeating, the card goes to his
+list with what it has spent and a recommendation; his yes grants one step and puts
+it back in the queue. After three raises, or when a raise would pass 10 million
+tokens (1.5 million new, $200), no model is asked: the card goes straight to him.
+Every review is written on the card as `cap_reviews` and shown on the Work page.
+
 Nothing here is written by a request handler. A tracked file written on page
 render leaves the tree dirty, and `git describe --dirty` is where playtest build
 ids come from — which is exactly how two recorded sessions became impossible to

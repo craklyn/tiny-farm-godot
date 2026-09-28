@@ -169,6 +169,7 @@ function qWalkBack(row) {
    this only supplies the sentence above them. */
 function qYesCauses(row) {
   if (row.isDecision) return "Records your pick; the seat that opened the card works it into the design that day.";
+  if (row.spendingYes) return row.spendingYes;
   if (row.state === "needs_approval") return "Approves this work and queues it for a build session; the finished result comes back for review.";
   const fus = row.followUps;
   const merged = row.merge ? "The studio merges this exact change into the main code branch on its next run" : "";
@@ -206,6 +207,7 @@ function qWorkItem(card, org, reason) {
     title: card.state === "for_review" ? reviewTitle(card) : card.title,
     question, answer, why: rec.why || (merge ? (card.check || {}).summary || "" : ""), instead: rec.instead || "",
     owner, seconds: answer ? Q_PICK_SECONDS : Q_READ_SECONDS, state: card.state, merge,
+    spendingYes: card.state === "needs_approval" ? (card.spending_checkpoint || {}).yes_starts || "" : "",
     tier: card.tier ?? 2, reason: reason || "hard to walk back, or a matter of taste",
     diffApplied: !!(card.diff && card.diff.applied),
     options: [], followUps: followUps(card), conversation: convo,

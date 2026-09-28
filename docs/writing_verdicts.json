@@ -749,6 +749,12 @@
   "16fb3ff7e27574b70855": {
    "verdict": "ok"
   },
+  "171780b263a1778ecbb3": {
+   "instead": "Spending limit reached at …: … raised it to …",
+   "quote": "brought to you",
+   "verdict": "decode",
+   "why": "This phrase does not say what happened or who changed the spending limit."
+  },
   "177b4c15ba88b925d220": {
    "verdict": "ok"
   },
@@ -1123,6 +1129,9 @@
    "quote": "held-out runs",
    "verdict": "decode",
    "why": "The reader has to know that this means separate test runs the robot has not practiced on."
+  },
+  "233ca98376d75d9bb4fe": {
+   "verdict": "ok"
   },
   "23c18e07153005d41cb2": {
    "verdict": "ok"
@@ -4619,6 +4628,12 @@
   "9205899bb188fe0075c2": {
    "verdict": "ok"
   },
+  "9216b5ef939e4be58f1d": {
+   "instead": "Spending limit reached at …: the chief of staff left the limit unchanged and asked you to choose the new spending limit — …",
+   "quote": "asked you to decide",
+   "verdict": "decode",
+   "why": "It does not say what decision you need to make."
+  },
   "923f92114c1cf766da54": {
    "verdict": "ok"
   },
@@ -5430,6 +5445,9 @@
    "quote": "Automated checks confirmed it.",
    "verdict": "decode",
    "why": "The pronoun has no referent in the sentence, so the reader cannot tell what was confirmed."
+  },
+  "aa4b5cac10fb13ae3363": {
+   "verdict": "ok"
   },
   "aa55a3c25e810f4e64cd": {
    "verdict": "ok"
@@ -7257,6 +7275,9 @@
   "e4a6b3a0b04676abecdc": {
    "verdict": "ok"
   },
+  "e4cb8a71a2ad7e498bf3": {
+   "verdict": "ok"
+  },
   "e51823e913f6f3eb87a6": {
    "instead": "Save the player's longer tablet session after the game rejects an attempt to collect an eleventh crop because the pouch already holds ten",
    "quote": "eleven taps refused by the ten-crop pouch limit",
@@ -7774,6 +7795,9 @@
   "f8778746cd898e9371cf": {
    "verdict": "ok"
   },
+  "f8f59e03750a58510ec5": {
+   "verdict": "ok"
+  },
   "f90155f90d0e9ec8e01c": {
    "verdict": "ok"
   },
@@ -7969,6 +7993,9 @@
    "why": "Observation language about what the visual communicates, not what the player actually sees."
   },
   "ff37d599b91fed64eb7e": {
+   "verdict": "ok"
+  },
+  "ff41cf6d121e911c8c68": {
    "verdict": "ok"
   },
   "ff530cf8a1918fb03393": {

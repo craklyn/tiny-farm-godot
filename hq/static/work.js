@@ -315,6 +315,10 @@ function consequence(it, org) {
       <div class="w-conseq-h">Nothing needed from you</div>
       <div class="w-conseq-row"><b>What happens</b><span>${esc(workflowStatus(it))}. ${esc((view.next_action || {}).summary || "The studio is responsible for the next step.")}</span></div>
     </div>`;
+  } else if (it.state === "needs_approval" && it.spending_checkpoint) {
+    rows.push(["Approve this work", esc(it.spending_checkpoint.yes_starts || "Raises this card's spending limit by one step and puts it back in the queue.")]);
+    rows.push(["Decline and close request", `The card closes. Nothing more is spent on it.`]);
+    rows.push(commentRow(first));
   } else if (it.state === "needs_approval") {
     rows.push(["Approve this work", `Nothing runs on its own. It joins the build queue, and the next run — a session, or the studio's own scheduled one — carries out the step above and shows you the diff.`]);
     rows.push(["Decline and close request", `The request closes. Nothing is created and nothing changes.`]);
@@ -656,6 +660,25 @@ function costLine(it) {
     through the model, ${fresh.toLocaleString()} of them new.${tries}</div>`;
 }
 
+/* Each time the card reached its spending limit (work.review_spending_checkpoint):
+   who looked at it, what it had spent, and what they decided. */
+function checkpointLines(it) {
+  const reviews = Array.isArray(it.cap_reviews) ? it.cap_reviews : [];
+  if (!reviews.length) return "";
+  const m = n => (n >= 1e6 ? (n / 1e6).toFixed(1) + " million" : Number(n || 0).toLocaleString());
+  const who = r => (r.by === "daniel" ? "You" : "The chief of staff");
+  const line = r => {
+    const spent = `${m(r.spent_tokens)} tokens`;
+    if (r.decision === "daniel") return `Spending limit reached at ${spent}: the chief of staff left the limit unchanged and asked you whether to keep spending on this card — ${r.reason || ""}`;
+    const now = r.new_caps || {}, before = r.old_caps || {};
+    const raised = now.token_cap !== before.token_cap ? `${m(now.token_cap)} tokens`
+      : now.fresh_token_cap !== before.fresh_token_cap ? `${m(now.fresh_token_cap)} new tokens`
+      : `$${now.cost_cap_usd}`;
+    return `Spending limit reached at ${spent}: ${who(r)} raised it to ${raised} — ${r.reason || ""}`;
+  };
+  return `<div class="w-cost">${reviews.map(r => `<div>${esc(line(r))}</div>`).join("")}</div>`;
+}
+
 /* The Work page's own header line: what the company's unattended work has spent
    in the trailing five hours, against the only measured ceiling this machine
    has — what it had spent the last time a window actually ran dry. */
@@ -792,6 +815,7 @@ function workCard(it, org, pol) {
       ${result}
       ${drainBlock(it, org)}
       ${costLine(it)}
+      ${checkpointLines(it)}
       ${convoBlock(it, org)}
       ${childrenNote(it, org)}
       ${spawnedNote(it)}

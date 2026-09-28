@@ -936,8 +936,10 @@ def work_view(item, repo_facts=None, now=None):
     exhausted_repair = bool(repair and item.get("automatic_repairs", 0) >= 1)
     cost_reason = str(facts.get("cost_reason") or "")
     supervised_retry = exhausted_repair and not cost_reason and bool(facts.get("supervised_retry"))
-    # A saved rebrief is a capacity hold, not a coding job. Once a reviewed
-    # cap increase clears recorded spend, project the normal build again.
+    # A saved rebrief is a capacity hold, not a coding job. The chief of staff
+    # acts on it (review_spending_checkpoint): one bounded cap increase, or the
+    # card goes to Daniel. Once a raised cap clears recorded spend, project the
+    # normal build again.
     if not cost_reason:
         active_actions = [a for a in active_actions if a.get("type") != "rebrief"]
     waiting = item.get("waiting_for") or {}
@@ -2581,6 +2583,318 @@ For anything Daniel must decide, include all four recommendation fields:
     return True
 
 
+# ---------------------------------------------------------------------------
+# The per-card spending checkpoint (drain.item_capacity_reason).
+#
+# Daniel's policy, 2026-09-28: the cap is a checkpoint, not a wall. A card whose
+# spending is buying progress runs on past it; one that burned tokens repeating
+# the same failure needs a rethink and goes to him, saying what it spent. Before
+# this, the projected "rebrief" step had no runner and capped cards sat for days.
+# The chief of staff reviews one card per background pass; each extension is one
+# bounded step on the cap that was actually exceeded, recorded on the card.
+# ---------------------------------------------------------------------------
+
+CAP_FIELDS = {"tokens": "token_cap", "fresh": "fresh_token_cap", "usd": "cost_cap_usd"}
+CAP_STEPS = {"tokens": 1_000_000, "fresh": 150_000, "usd": 20.0}
+# Past these, or after CAP_AUTO_EXTENSIONS extensions, no model is asked: the
+# card goes straight to Daniel.
+CAP_CEILINGS = {"tokens": 10_000_000, "fresh": 1_500_000, "usd": 200.0}
+CAP_AUTO_EXTENSIONS = 3
+CAP_REVIEW_TRIES = 3
+CAP_REVIEW_STATES = ("waiting_session", "for_review")
+# How often the background worker looks for a card at its checkpoint.
+CAP_SCAN_SECONDS = 120
+_CAP_SCAN = {"at": 0.0}
+
+
+def _count_words(n):
+    n = int(n or 0)
+    if n >= 1_000_000:
+        return f"{n / 1_000_000:.1f} million"
+    return f"{n:,}"
+
+
+def spending_checkpoint_state(item):
+    """(spent, caps, exceeded) measured from the card's recorded model sessions."""
+    import drain
+    dollars, attempts, tokens, fresh = drain._item_spend(item["id"])
+    caps = {"tokens": int(item.get("token_cap") or drain.ITEM_TOKEN_CAP),
+            "fresh": int(item.get("fresh_token_cap") or drain.ITEM_FRESH_TOKEN_CAP),
+            "usd": float(item.get("cost_cap_usd") or drain.ITEM_COST_CAP_USD)}
+    spent = {"tokens": int(tokens), "fresh": int(fresh), "usd": round(float(dollars), 2),
+             "attempts": int(attempts or item.get("attempts") or 0)}
+    # The same comparisons drain.item_capacity_reason makes.
+    exceeded = [k for k in ("tokens", "fresh") if spent[k] >= caps[k]]
+    if dollars > caps["usd"]:
+        exceeded.insert(0, "usd")
+    return spent, caps, exceeded
+
+
+def raised_caps(spent, caps, exceeded):
+    """One bounded step above what was spent, on the exceeded caps only."""
+    new = dict(caps)
+    for key in exceeded:
+        step = max(caps[key], spent[key]) + CAP_STEPS[key]
+        new[key] = round(float(step), 2) if key == "usd" else int(step)
+    return new
+
+
+def _cap_record(caps):
+    return {CAP_FIELDS[k]: caps[k] for k in CAP_FIELDS}
+
+
+def _spend_sentence(spent):
+    tries = spent["attempts"]
+    dollars = f", about ${spent['usd']:.0f} at API list price," if spent["usd"] >= 1 else ""
+    return (f"This card has spent {_count_words(spent['tokens'])} tokens "
+            f"({_count_words(spent['fresh'])} of them new){dollars} over {tries} "
+            f"attempt{'' if tries == 1 else 's'}.")
+
+
+def _cap_review_entry(by, decision, spent, old, new, reason):
+    return {"at": _now_iso(), "by": by, "decision": decision,
+            "spent_tokens": spent["tokens"], "spent_fresh": spent["fresh"],
+            "spent_usd": spent["usd"], "attempts": spent["attempts"],
+            "old_caps": _cap_record(old), "new_caps": _cap_record(new),
+            "reason": str(reason or "").strip()[:800]}
+
+
+def _apply_caps(item, new, exceeded):
+    for key in exceeded:
+        item[CAP_FIELDS[key]] = new[key]
+
+
+def _cap_review_prompt(item, spent, caps, exceeded):
+    history = [{"status": a.get("status"), "reason": str(a.get("reason") or "")[:400]}
+               for a in (item.get("attempt_history") or [])[-4:]]
+    checks = [{"verdict": c.get("verdict"), "summary": str(c.get("summary") or "")[:400],
+               "findings": [str((f or {}).get("what") if isinstance(f, dict) else f)[:300]
+                            for f in (c.get("findings") or [])[:4]]}
+              for c in ((item.get("prior_checks") or []) + ([item["check"]] if item.get("check") else []))[-4:]]
+    over = ", ".join(f"{CAP_FIELDS[k]} {caps[k]:,} (spent {spent[k]:,})" for k in exceeded)
+    return f"""You are the chief of staff of Tiny Farm Studio. A work card has reached its
+per-card spending checkpoint. Daniel's policy: the cap is a checkpoint, not a wall. If the
+spending is buying progress, let it run one more bounded step. If the card burned tokens
+without converging (the same failure repeating), it needs a rethink and goes to Daniel.
+
+WORK: {item.get('title', '')}
+ASK: {str(item.get('ask') or '')[:1500]}
+ATTEMPTS: {spent['attempts']}
+SPENT: {spent['tokens']:,} tokens, {spent['fresh']:,} of them fresh, ${spent['usd']:.2f} list price
+CAPS NOW: token_cap {caps['tokens']:,}, fresh_token_cap {caps['fresh']:,}, cost_cap_usd {caps['usd']:.0f}
+EXCEEDED: {over}
+ATTEMPT HISTORY (oldest first): {json.dumps(history)}
+REVIEWER CHECKS (oldest first): {json.dumps(checks)}
+LATEST RESULT: {str(item.get('result') or '')[:3000]}
+
+Choose "extend" only if the attempts are converging: later checks narrower or closer
+than earlier ones, or the remaining work concrete and small. If the same failure
+repeats, or the checks show no convergence, choose "daniel".
+
+Return JSON only. To extend by one bounded step:
+{{"outcome":"extend","reason":"why the spending is buying progress and what concrete work remains"}}
+To bring it to Daniel, with all four recommendation fields in plain words. The question is
+printed after a sentence stating the spending, so do not repeat the numbers. "move" is
+"extend" when you recommend one more step as it stands, or "rethink" when the owner should
+rework the approach first; his yes grants one bounded step either way and, for "rethink",
+passes your answer to the owner as an instruction.
+{{"outcome":"daniel","reason":"...","recommend":{{"question":"...","answer":"...","why":"...","instead":"...","move":"rethink"}}}}
+"""
+
+
+def _json_reply(text):
+    raw = (text or "").strip()
+    if raw.startswith("```"):
+        raw = raw.strip("`")
+        raw = raw[raw.find("{"):] if "{" in raw else raw
+    try:
+        return json.loads(raw)
+    except (TypeError, ValueError):
+        pass
+    start, end = raw.find("{"), raw.rfind("}")
+    if start >= 0 and end > start:
+        try:
+            return json.loads(raw[start:end + 1])
+        except ValueError:
+            return None
+    return None
+
+
+def _cap_fallback_recommendation(spent, why):
+    return {
+        "question": f"{_spend_sentence(spent)} {why} Have its owner rework the approach "
+                    "before it spends more?",
+        "answer": "Rework the approach first, with one more bounded step of spending for it.",
+        "why": "Spending more on the same approach has not been shown to bring the card closer to done.",
+        "instead": "Close the card, or tell the owner in a comment what to change.",
+        "move": "rethink",
+    }
+
+
+def _cap_yes_starts(move, spent, caps, exceeded):
+    new = raised_caps(spent, caps, exceeded)
+    limit = (f"{_count_words(new['tokens'])} tokens" if "tokens" in exceeded else
+             f"{_count_words(new['fresh'])} new tokens" if "fresh" in exceeded else
+             f"${new['usd']:.0f}")
+    base = f"Raises this card's spending limit by one step, to {limit}, and puts it back in the queue"
+    if move == "extend":
+        return base + ". If it reaches the new limit, the chief of staff reviews it again."
+    return base + " with the recommended rework passed to its owner as an instruction."
+
+
+def _cap_to_daniel(item, spent, caps, exceeded, reason, rec):
+    """Put the checkpoint in his list with a complete recommendation his yes enacts."""
+    move = "extend" if str(rec.get("move") or "") == "extend" else "rethink"
+    question = str(rec.get("question") or "").strip()[:400]
+    if not question.startswith("This card has spent"):
+        question = f"{_spend_sentence(spent)} {question}"
+    recommend = {"question": question,
+                 **{k: str(rec.get(k) or "").strip()[:400] for k in ("answer", "why", "instead")}}
+    restore = {k: item[k] for k in ("recommend", "deliverable", "follow_ups") if k in item}
+    item["spending_checkpoint"] = {
+        "at": _now_iso(), "return_state": item.get("state"), "move": move,
+        "exceeded": list(exceeded), "restore": restore,
+        "yes_starts": _cap_yes_starts(move, spent, caps, exceeded)}
+    item["recommend"] = recommend
+    # His list asks for a named deliverable with inspectable evidence and for
+    # what his answer starts. The yes starts no follow-up work of its own.
+    deliverable = dict(item.get("deliverable") or {}) if isinstance(item.get("deliverable"), dict) else {}
+    deliverable["name"] = str(deliverable.get("name") or "").strip() or f"Spending checkpoint: {item.get('title', '')}"
+    evidence = [e for e in (deliverable.get("evidence") or []) if isinstance(e, dict)]
+    evidence.append({"label": "Open the task queue, which lists this card and its spending",
+                     "href": "#/work/queue"})
+    deliverable["evidence"] = evidence
+    item["deliverable"] = deliverable
+    item["follow_ups"] = []
+    item["state"] = "needs_approval"
+    item.setdefault("cap_reviews", []).append(
+        _cap_review_entry("claude", "daniel", spent, caps, caps, reason))
+    item.pop("cap_review_tries", None)
+    return save_item(item)
+
+
+def _cap_extend(item, spent, caps, exceeded, reason, by="claude"):
+    new = raised_caps(spent, caps, exceeded)
+    _apply_caps(item, new, exceeded)
+    item.setdefault("cap_reviews", []).append(
+        _cap_review_entry(by, "extend", spent, caps, new, reason))
+    item.pop("cap_review_tries", None)
+    return save_item(item)
+
+
+def _cap_reviewable(item):
+    return (item.get("state") in CAP_REVIEW_STATES and item.get("state") not in TERMINAL_STATES
+            and not item.get("spending_checkpoint") and not landing_awaits_approval(item))
+
+
+def review_spending_checkpoint(item, org):
+    """The chief of staff's review of one card stopped at its spending cap."""
+    if not execution.launch_allowed() or not _cap_reviewable(item):
+        return False
+    spent, caps, exceeded = spending_checkpoint_state(item)
+    if not exceeded:
+        return False
+    extensions = sum(1 for r in item.get("cap_reviews") or [] if r.get("decision") == "extend")
+    raised = raised_caps(spent, caps, exceeded)
+    past = [k for k in exceeded if raised[k] > CAP_CEILINGS[k]]
+    # Hard limits: decided here, with no model call.
+    if extensions >= CAP_AUTO_EXTENSIONS or past:
+        why = (f"It has already been given {extensions} extensions without finishing."
+               if extensions >= CAP_AUTO_EXTENSIONS else
+               "One more step would take it past the most the studio may allow a card on its own.")
+        _cap_to_daniel(item, spent, caps, exceeded, why, _cap_fallback_recommendation(spent, why))
+        return True
+    item["cap_review_tries"] = int(item.get("cap_review_tries") or 0) + 1
+    save_item(item)
+    text, limited = _run_cli(_cap_review_prompt(item, spent, caps, exceeded),
+                             HOST.build_system_prompt(org, "claude"), "Read,Glob,Grep", 8, 300,
+                             model=HOST.seat_model(org, "claude"), phase="cap-review",
+                             seat="claude", item=item["id"])
+    doc = None if limited else _json_reply(text)
+    doc = doc if isinstance(doc, dict) else {}
+    reason = str(doc.get("reason") or "").strip()
+    with mutation_lock():
+        # The call took minutes; decide on the card as it is now.
+        fresh = load_item(item["id"])
+        if not _cap_reviewable(fresh):
+            item.clear(); item.update(fresh)
+            return False
+        if doc.get("outcome") == "extend" and reason:
+            _cap_extend(fresh, spent, caps, exceeded, reason)
+        elif doc.get("outcome") == "daniel" and not recommendation_gaps(doc.get("recommend")):
+            _cap_to_daniel(fresh, spent, caps, exceeded, reason or "The chief of staff judged it needs Daniel.",
+                           doc["recommend"])
+        elif int(fresh.get("cap_review_tries") or 0) < CAP_REVIEW_TRIES:
+            item.clear(); item.update(fresh)
+            return False              # tried again on a later pass
+        else:
+            why = (f"The chief of staff's spending review did not come back with a usable "
+                   f"answer after {CAP_REVIEW_TRIES} tries.")
+            _cap_to_daniel(fresh, spent, caps, exceeded, why, _cap_fallback_recommendation(
+                spent, "Nobody has yet judged whether that spending is buying progress."))
+        item.clear(); item.update(fresh)
+    return True
+
+
+def spending_checkpoints_due():
+    """Cards whose projected next step is the capacity rebrief, oldest first.
+    The same projection the queue uses, so it names the cards the queue holds."""
+    import drain
+    candidates = [i for i in items() if _cap_reviewable(i) and drain.item_capacity_reason(i)]
+    if not candidates:
+        return []
+    got = drain.sh(["git", "rev-parse", "main"], cwd=drain.REPO, timeout=10)
+    head = got.stdout.strip() if got.returncode == 0 else ""
+    active = drain.server.drain_state()
+    due = []
+    for item in candidates:
+        action = drain.project_work(item, head=head, active=active).get("next_action") or {}
+        if action.get("type") == "rebrief" and action.get("availability") != "running":
+            due.append(item)
+    due.sort(key=lambda i: i.get("created_ts", 0))
+    return due
+
+
+def review_next_spending_checkpoint(org):
+    """One card per pass, and nothing while he has paused the studio or the
+    model allowance is dry."""
+    if not execution.launch_allowed() or HOST.limited_until():
+        return False
+    due = spending_checkpoints_due()
+    return review_spending_checkpoint(due[0], org) if due else False
+
+
+def grant_spending_checkpoint(item, said=""):
+    """His yes on a checkpoint card: one bounded step, then back to the queue.
+    The fields the question borrowed are put back as they were."""
+    pending = item.pop("spending_checkpoint")
+    spent, caps, exceeded = spending_checkpoint_state(item)
+    exceeded = exceeded or [k for k in pending.get("exceeded") or [] if k in CAP_FIELDS]
+    new = raised_caps(spent, caps, exceeded)
+    _apply_caps(item, new, exceeded)
+    rec = item.get("recommend") or {}
+    item["decided"] = {"question": rec.get("question", ""), "answer": rec.get("answer", ""),
+                       "at": _now_iso()}
+    item["cap_reviews"] = item.get("cap_reviews") or []
+    item["cap_reviews"].append(_cap_review_entry(
+        "daniel", "extend", spent, caps, new, "Daniel approved: " + str(rec.get("answer") or "keep going")))
+    for key in ("recommend", "deliverable", "follow_ups"):
+        item.pop(key, None)
+    item.update(pending.get("restore") or {})
+    notes = []
+    if pending.get("move") == "rethink" and rec.get("answer"):
+        notes.append("Daniel approved this at the spending checkpoint; do it before anything else:\n"
+                     + str(rec["answer"]))
+    if said:
+        notes.append("Daniel attached this when he approved it:\n" + said)
+    if notes:
+        item["ask"] = (item.get("ask", "").rstrip() + "\n\n" + "\n\n".join(notes))
+    item["state"] = pending.get("return_state") if pending.get("return_state") in CAP_REVIEW_STATES \
+        else "waiting_session"
+    item.pop("cap_review_tries", None)
+    return item
+
+
 def _propose_follow_up(item, org):
     """Backfill for results that landed before the card showed consequences.
     New work answers this inside the call that does it and never reaches here."""
@@ -2669,6 +2983,13 @@ def worker():
             if concerns:
                 resolve_review_concern(concerns[0], org)
                 continue
+            # A card stopped at its spending cap: the chief of staff extends it
+            # one bounded step or brings it to Daniel. Looked for every couple
+            # of minutes, not every tick, since it reads each card's sessions.
+            if time.time() - _CAP_SCAN["at"] >= CAP_SCAN_SECONDS:
+                _CAP_SCAN["at"] = time.time()
+                if review_next_spending_checkpoint(org):
+                    continue
             unprepped = [i for i in items() if i.get("state") == "prepping"
                          and not i.get("prep_stalled") and not i.get("concern_review")]
             unprepped.sort(key=lambda i: i.get("created_ts", 0))
@@ -2708,7 +3029,10 @@ def start():
 
 def _held_back(item):
     """True when a finished card's changes never reached the repository, so
-    there is nothing in the tree for Daniel to approve."""
+    there is nothing in the tree for Daniel to approve. A spending checkpoint
+    asks him about the spending, not the tree, so it is never held back."""
+    if item.get("spending_checkpoint") and item.get("state") == "needs_approval":
+        return False
     d = item.get("diff") or {}
     if not d or d.get("applied"):
         return False
@@ -3164,6 +3488,11 @@ def _api_post(path, payload):
         outcome = item.get("attempt_outcome") or {}
         item["landing_approved"] = {"patch_id": outcome.get("patch_id"),
                                     "attempt_id": outcome.get("id"), "at": _now_iso()}
+    elif path in ("/api/work/accept", "/api/work/approve") and item.get("state") == "needs_approval" \
+            and item.get("spending_checkpoint"):
+        # His yes at a spending checkpoint grants one bounded step and puts the
+        # card back where it was; it does not close it.
+        grant_spending_checkpoint(item, said)
     elif path == "/api/work/accept":
         commit_owner_memory(item)
         item["state"] = "accepted"
