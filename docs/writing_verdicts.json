@@ -7379,6 +7379,12 @@
   "e880fe84a581a86714a3": {
    "verdict": "ok"
   },
+  "e884e44182b929be123a": {
+   "instead": "A spending review that cannot be completed because there is no budget left is not sent to Daniel for a decision.",
+   "quote": "A spending review cut short by an empty allowance no longer counts toward bringing the card to Daniel",
+   "verdict": "decode",
+   "why": "The reader has to work out what an empty allowance means and what it means for a review to count toward bringing a card to Daniel."
+  },
   "e8b255859f919ffbdd49": {
    "verdict": "ok"
   },
@@ -7477,6 +7483,9 @@
    "verdict": "ok"
   },
   "ed6b6d90a76adfb6942c": {
+   "verdict": "ok"
+  },
+  "ed7cc3235c9e834d2919": {
    "verdict": "ok"
   },
   "edbb805c6cc7bd8de78f": {

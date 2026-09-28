@@ -2819,6 +2819,13 @@ def review_spending_checkpoint(item, org):
         if not _cap_reviewable(fresh):
             item.clear(); item.update(fresh)
             return False
+        if limited:
+            # The allowance ran dry mid-review: nothing was judged, so the try is
+            # given back. An empty window must never put a card in front of Daniel.
+            fresh["cap_review_tries"] = max(0, int(fresh.get("cap_review_tries") or 1) - 1)
+            save_item(fresh)
+            item.clear(); item.update(fresh)
+            return False
         if doc.get("outcome") == "extend" and reason:
             _cap_extend(fresh, spent, caps, exceeded, reason)
         elif doc.get("outcome") == "daniel" and not recommendation_gaps(doc.get("recommend")):

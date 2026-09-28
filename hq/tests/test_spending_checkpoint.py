@@ -190,15 +190,25 @@ class SpendingCheckpoint(unittest.TestCase):
         self.assertFalse(work.review_next_spending_checkpoint(ORG))
         self.assertEqual(self.calls, [])
 
-    def test_a_failing_review_retries_then_goes_to_daniel(self):
+    def test_a_dry_allowance_never_uses_up_a_try(self):
+        # Nothing was judged, so an empty window must not push the card toward Daniel.
         item = self.card()
         self.spend(item["id"], 1_200_000, 100_000)
         self.reply = ("", True)
+        for _ in range(5):
+            self.assertFalse(work.review_next_spending_checkpoint(ORG))
+        got = work.load_item(item["id"])
+        self.assertEqual((got["state"], got.get("cap_review_tries", 0)), ("waiting_session", 0))
+        self.assertEqual(len(self.calls), 5)
+
+    def test_a_failing_review_retries_then_goes_to_daniel(self):
+        item = self.card()
+        self.spend(item["id"], 1_200_000, 100_000)
+        self.reply = ("not json", False)
         for tries in (1, 2):
             self.assertFalse(work.review_next_spending_checkpoint(ORG))
             got = work.load_item(item["id"])
             self.assertEqual((got["state"], got["cap_review_tries"]), ("waiting_session", tries))
-        self.reply = ("not json", False)
         self.assertTrue(work.review_next_spending_checkpoint(ORG))
         got = work.load_item(item["id"])
         self.assertEqual(len(self.calls), 3)
