@@ -2672,6 +2672,13 @@ def _cap_review_prompt(item, spent, caps, exceeded):
                             for f in (c.get("findings") or [])[:4]]}
               for c in ((item.get("prior_checks") or []) + ([item["check"]] if item.get("check") else []))[-4:]]
     over = ", ".join(f"{CAP_FIELDS[k]} {caps[k]:,} (spent {spent[k]:,})" for k in exceeded)
+    # What the studio itself changed about the card. On 2026-09-28 the first review
+    # read four read-only failures as "not converging", though the card had just
+    # been moved to a writable copy and had never tried with one.
+    changed = [str(x) for x in (
+        item.get("tier_raised") and f"Moved to a build worker with write access at {item['tier_raised'].get('at')}: {item.get('tier_reason')}",
+        *[f"Earlier spending review ({r.get('by')}, {r.get('decision')}): {r.get('reason')}" for r in (item.get("cap_reviews") or [])[-2:]],
+    ) if x]
     return f"""You are the chief of staff of Tiny Farm Studio. A work card has reached its
 per-card spending checkpoint. Daniel's policy: the cap is a checkpoint, not a wall. If the
 spending is buying progress, let it run one more bounded step. If the card burned tokens
@@ -2686,7 +2693,10 @@ EXCEEDED: {over}
 ATTEMPT HISTORY (oldest first): {json.dumps(history)}
 REVIEWER CHECKS (oldest first): {json.dumps(checks)}
 LATEST RESULT: {str(item.get('result') or '')[:3000]}
+WHAT THE STUDIO CHANGED ABOUT THIS CARD: {json.dumps(changed) if changed else "nothing recorded"}
 
+A failure the studio has since fixed (for example a card moved to a writable copy after
+attempts that could only read) is not the owner failing to converge.
 Choose "extend" only if the attempts are converging: later checks narrower or closer
 than earlier ones, or the remaining work concrete and small. If the same failure
 repeats, or the checks show no convergence, choose "daniel".

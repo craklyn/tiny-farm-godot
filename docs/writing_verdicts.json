@@ -1762,6 +1762,12 @@
   "36307d0d76e02184a8a0": {
    "verdict": "ok"
   },
+  "36407a1890b068d68016": {
+   "instead": "The automatic spending review now records which problem on a work item the studio resolved, so it does not mistake a resolved item for one still waiting.",
+   "quote": "what the studio fixed about a card",
+   "verdict": "second-look",
+   "why": "The reader has to infer that the card is a work item and that the review records which problem was resolved."
+  },
   "369580575e0d8e800067": {
    "baselined": "2026-09-19",
    "instead": "The player walks out of the bloom",

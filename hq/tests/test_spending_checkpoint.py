@@ -103,6 +103,18 @@ class SpendingCheckpoint(unittest.TestCase):
         self.assertIn("Record the worm ruling", args[0])
         self.assertIn("One contradiction.", args[0])
 
+    def test_the_review_is_told_what_the_studio_fixed(self):
+        # 2026-09-28: the first live review read read-only failures as not
+        # converging, not knowing the card had just been given a writable copy.
+        item = self.card(tier_raised={"at": "2026-09-26T23:43", "from": 0},
+                         tier_reason="A read-only attempt showed this needs a writable copy")
+        self.spend(item["id"], 1_200_000, 100_000)
+        self.assertTrue(work.review_next_spending_checkpoint(ORG))
+        prompt = self.calls[0][0][0]
+        self.assertIn("WHAT THE STUDIO CHANGED ABOUT THIS CARD", prompt)
+        self.assertIn("writable copy", prompt)
+        self.assertIn("is not the owner failing to converge", prompt)
+
     def test_fresh_cap_is_raised_alone(self):
         item = self.card()
         self.spend(item["id"], 500_000, 200_000)
