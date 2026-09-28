@@ -896,6 +896,10 @@ def raise_to_build(item, rec, command, body):
         item["result"] += "\n\nWhat it said:\n\n" + body
     item["state"] = "waiting_session"
     item["started"] = ""
+    # The read-only attempt's "should not go in" is about the wrong tier, not
+    # the work; left in place, the queue kept offering a finished reconcile
+    # step for it instead of this build (2026-09-27).
+    item.pop("repair_hold", None)
     # Keyed on this attempt: the build action that just finished may share
     # the empty-patch input of an earlier read-only retry, and a done action's
     # key projects as a recovery, not a build.
@@ -1385,7 +1389,7 @@ def do_item(item, org, run_id, log, action=None):
         checkpoint(item, rec, "review_finished")
         if rec["files"] and rec["check"] and not cerr:
             record_phase(run_id, item, "checking_candidate", "The proposed change is running its tests.")
-            rec["candidate_suites"] = run_suites(cwd=tree)
+            rec["candidate_suites"] = run_suites(cwd=tree, files=rec.get("files") or [])
             restore_test_generated(tree, rec["candidate"]["tree"])
             checkpoint(item, rec, "candidate_tested")
         rec["candidate_unchanged"] = candidate_unchanged(tree, rec["candidate"]["tree"])
@@ -1542,7 +1546,7 @@ def recheck_held_candidate(item, org, run_id, source):
         checkpoint(item, rec, "review_finished")
         if rec["files"] and rec["check"]:
             record_phase(run_id, item, "checking_candidate", "The re-reviewed candidate is running both game suites.")
-            rec["candidate_suites"] = run_suites(cwd=tree)
+            rec["candidate_suites"] = run_suites(cwd=tree, files=rec.get("files") or [])
             restore_test_generated(tree, rec["candidate"]["tree"])
             checkpoint(item, rec, "candidate_tested")
         rec["candidate_unchanged"] = candidate_unchanged(tree, rec["candidate"]["tree"])
@@ -1745,7 +1749,31 @@ def apply_patch(patch, files):
     raise RuntimeError("Shared-checkout patch application is retired; use prepare_integration.")
 
 
-def run_suites(cwd=REPO):
+# Changes to these can break HQ itself, which the game suites never exercise.
+HQ_PATHS = ("hq/", ".githooks/", ".github/", "tools/check_secrets.py", "tools/check_writing.py")
+
+
+def _hq_suite(cwd):
+    """HQ's own regressions, isolated from the live store.
+
+    2026-09-27: a change to how held work is handled landed on local main with
+    both game suites green and one HQ test red, and main stayed red for a day.
+    The drain's service environment names the live data roots (HQ_*); they are
+    removed here so no test can reach the live records."""
+    env = {k: v for k, v in os.environ.items() if not k.startswith("HQ_")}
+    try:
+        p = subprocess.run([sys.executable, "hq/run_tests.py"], cwd=cwd, env=env,
+                           capture_output=True, text=True, timeout=1500)
+    except (OSError, subprocess.TimeoutExpired) as e:
+        return {"ok": False, "tail": f"{type(e).__name__}: {e}"[:300]}
+    found = re.findall(r"HQ tests: (\d+)/(\d+) files passed; (\d+) failed", p.stdout or "")
+    tail = ((p.stdout or "") + (p.stderr or "")).strip().splitlines()
+    failed = [line for line in tail if line.startswith("FAIL")][:6]
+    return {"ok": p.returncode == 0 and bool(found) and found[-1][2] == "0",
+            "tail": "\n".join(failed + tail[-2:])[-600:]}
+
+
+def run_suites(cwd=REPO, files=None):
     """Both headless suites, once, with private Godot user data.
 
     A checkout Godot has never imported is imported first, whatever the card
@@ -1775,6 +1803,8 @@ def run_suites(cwd=REPO):
                          "tail": "\n".join(tail)[-600:]}
         except Exception as e:
             out[name] = {"ok": False, "tail": f"{type(e).__name__}: {e}"[:300]}
+    if files and any(f.startswith(h) or f == h for f in files for h in HQ_PATHS):
+        out["hq"] = _hq_suite(cwd)
     return out
 
 
@@ -2717,6 +2747,10 @@ def _claim_item(selected, actions, run_id, records, done):
     if action:
         claim_id = action_dispatch.claim(work, item, action, run_id)
         if not claim_id:
+            # Said out loud: on 2026-09-27 one card was selected and dropped here
+            # every ten minutes for a day, and the log showed only "0 of 1".
+            print(f"  [{time.strftime('%H:%M:%S')}] {item['id']} · not started: its next step "
+                  f"({action['type']}) is already claimed or finished", flush=True)
             records[item["id"]] = {"id": item["id"], "held": True,
                                    "error": "Action was already claimed", "usage": [],
                                    "check": None, "applied": False}
@@ -2830,7 +2864,7 @@ def _land_item(ctx, rec, org, run_id, log, done, no_suites):
         try:
             if touches_game(rec.get("files") or []):
                 preflight_godot_import(integration_repo)
-            suites = run_suites(cwd=integration_repo)
+            suites = run_suites(cwd=integration_repo, files=rec.get("files") or [])
             rec["suites"] = suites
             restore_test_generated(integration_repo, rec["candidate"]["tree"])
             # A test or hook that changed tracked files invalidates the tested

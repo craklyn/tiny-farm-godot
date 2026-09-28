@@ -286,6 +286,7 @@ def main():
         check("w0000000000f7" in [i["id"] for i in drain.queued()],
               "and the build worker, which runs with write tools, picks it up")
 
+
         it["tier"], it["state"] = 0, "doing"
         again = drain.write_back(work.save_item(it), rec(
             id="w0000000000f7", patch="", stat="", files=[], error="", result=blocked,
@@ -305,6 +306,16 @@ def main():
                               False, "nothing changed", None, org)
         check(it["tier"] == 1 and it["state"] == "for_review" and "tier_raised" not in it,
               "a card already filed to build is never touched")
+
+        # 2026-09-27: Grace's card had an earlier "should not go in" hold; kept,
+        # it made the queue offer a finished reconcile step forever instead.
+        held = reading("w00000000fa1", [refused], automatic_repairs=1,
+                       repair_hold="the read of it says this should not go in as it stands")
+        check(held["tier"] == 1 and not held.get("repair_hold"),
+              "a card moved to the build queue drops the old read-only attempt's hold")
+        check(any(item["id"] == "w00000000fa1" and action["type"] == "build"
+                  for item, action in drain.classified_actions()),
+              "and its next step is the build, not a reconcile step that already finished")
     finally:
         shutil.rmtree(tmp, ignore_errors=True)
 

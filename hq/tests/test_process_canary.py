@@ -164,7 +164,7 @@ class ProcessCanary(unittest.TestCase):
         green = {"unit": {"ok": True, "tail": "canary unit boundary"},
                  "integration": {"ok": True, "tail": "canary integration boundary"}}
 
-        def fake_suites(cwd=None):
+        def fake_suites(cwd=None, files=None):
             suite_cwd = str(Path(cwd or drain.REPO).resolve())
             suite_calls.append(suite_cwd)
             if Path(suite_cwd).name.startswith("integration-"):

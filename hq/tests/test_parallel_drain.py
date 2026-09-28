@@ -185,7 +185,7 @@ class ParallelDrain(unittest.TestCase):
             both_in.wait()
             return self.candidate(item['id'], names[index], base, texts[index])
 
-        def suites(cwd=None):
+        def suites(cwd=None, files=None):
             tested.append((cwd, self.git('write-tree', cwd=cwd)))
             return GREEN
 

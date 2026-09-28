@@ -275,6 +275,9 @@
   "09038201ce3f814b67ef": {
    "verdict": "ok"
   },
+  "090878c90c1a3fc73b2b": {
+   "verdict": "ok"
+  },
   "091e2703352b716df54d": {
    "verdict": "ok"
   },
@@ -2129,6 +2132,9 @@
   "45cd8befab9d6764ae50": {
    "verdict": "ok"
   },
+  "45da016d7aea5353eb16": {
+   "verdict": "ok"
+  },
   "45e2521a37bc0ab3f22a": {
    "instead": "The robot starts over, and the game visibly shows that reset",
    "quote": "the game shows it",
@@ -2515,6 +2521,12 @@
   },
   "50b727a253159e02d41c": {
    "verdict": "ok"
+  },
+  "50c99980a106ae2a9c22": {
+   "instead": "Fix the day-long failing build, and make the work queue run HQ's own tests before it applies a change to HQ",
+   "quote": "before it lands a change to HQ",
+   "verdict": "decode",
+   "why": "“Lands a change” is engineering shorthand for applying or merging a change, so the reader has to work out what happens."
   },
   "50cadd8a4751a1cabe5f": {
    "verdict": "ok"

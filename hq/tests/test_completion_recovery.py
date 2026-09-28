@@ -278,7 +278,7 @@ class Recovery(unittest.TestCase):
     def test_untracked_test_output_invalidates_prospective_tree(self):
         integration.remove_candidate(str(self.repo),self.r['integration_checkout'],drain.WORKTREES)
         work.save_item(self.card)
-        def polluted(cwd=None):
+        def polluted(cwd=None, files=None):
             (Path(cwd)/'surprise.txt').write_text('not in candidate\n')
             return self.suites
         with patch.object(drain,'do_item',return_value=self.r), \

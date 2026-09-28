@@ -73,6 +73,25 @@ class SuiteTests(unittest.TestCase):
         self.assertFalse(result["integration"]["ok"])
         self.assertTrue(all(cmd[:2] == [sys.executable, "tools/run_godot_test.py"] for cmd in seen))
 
+    def test_a_change_to_hq_also_runs_hq_tests_away_from_the_live_store(self):
+        # 2026-09-27: an HQ change landed with the game suites green and an HQ
+        # test red; main stayed red for a day. HQ changes now need HQ's tests.
+        game = subprocess.CompletedProcess([], 0, "Results: 3 PASSED, 0 FAILED\n", "")
+        seen = {}
+        def fake_run(cmd, cwd=None, env=None, **_kw):
+            seen["cmd"], seen["env"] = cmd, env
+            return subprocess.CompletedProcess(cmd, 1, "FAIL 9/69 test_completion.py\nHQ tests: 68/69 files passed; 1 failed; 0 skipped.\n", "")
+        with patch.object(drain, "sh", return_value=game), patch.object(drain, "preflight_godot_import"), \
+             patch.object(drain.subprocess, "run", fake_run), \
+             patch.dict(os.environ, {"HQ_DATA_ROOT": "/live/store", "HQ_REQUIRE_EXPLICIT_ROOTS": "1"}):
+            game_only = drain.run_suites("/fake", files=["world/farm.gd"])
+            with_hq = drain.run_suites("/fake", files=["hq/work.py"])
+        self.assertNotIn("hq", game_only)
+        self.assertFalse(with_hq["hq"]["ok"])
+        self.assertIn("test_completion.py", with_hq["hq"]["tail"])
+        self.assertEqual(seen["cmd"][1:], ["hq/run_tests.py"])
+        self.assertFalse([k for k in seen["env"] if k.startswith("HQ_")])
+
     def test_failed_result_is_not_success(self):
         result_line = "Results: 3 PASSED, 1 FAILED\n"
         with patch.object(drain, "sh", return_value=subprocess.CompletedProcess([], 0, result_line, "")), \

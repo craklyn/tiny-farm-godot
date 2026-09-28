@@ -132,7 +132,10 @@ class Completion(unittest.TestCase):
         drain.write_back(got, second, False, '', None, ORG)
         self.assertEqual(len(got['prior_checks']), 1)
 
-    def test_one_repair_then_hold(self):
+    def test_two_repairs_then_the_chief_of_staff_reviews_the_concern(self):
+        # 2026-09-27 (3eb0985): a concern left after two owner repairs goes to the
+        # chief of staff, who clears it or prepares it for Daniel — it no longer
+        # parks in for_review, where nothing he reads counted it.
         r = record(check={'verdict':'concerns','read':True,'complete':False,'findings':[{'what':'missing answer'}]})
         got = drain.write_back(self.card, r, False, '', None, ORG)
         self.assertEqual(got['state'], 'waiting_session')
@@ -141,8 +144,13 @@ class Completion(unittest.TestCase):
         self.assertEqual(len(got['prior_checks']), 1)
         r['attempt_id'] = 'attempt2'
         got = drain.write_back(got, r, False, '', None, ORG)
-        self.assertEqual(got['state'], 'for_review')
-        self.assertTrue(got['repair_hold'])
+        self.assertEqual(got['state'], 'waiting_session')
+        self.assertEqual(got['automatic_repairs'], 2)
+        r['attempt_id'] = 'attempt3'
+        got = drain.write_back(got, r, False, '', None, ORG)
+        self.assertEqual(got['state'], 'prepping')
+        self.assertEqual(got['concern_review']['owner'], 'claude')
+        self.assertFalse(got.get('repair_hold'))
         with patch.object(work, 'items', return_value=[got]):
             self.assertEqual(drain.queued(), [])
         self.assertFalse(drain.auto_resume_reason(got, {'error':'it used all 60 of its turns','files':['x']}))
