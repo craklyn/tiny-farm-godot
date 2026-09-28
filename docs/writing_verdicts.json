@@ -2705,6 +2705,12 @@
    "verdict": "second-look",
    "why": "“Carry” is a metaphor for paying for the purchases."
   },
+  "560de566ed0572ab4550": {
+   "instead": "Your rulings are marked done as soon as the workers add the requested changes; they no longer wait for workers to mark them done.",
+   "quote": "Your rulings are marked done when their work is added, instead of waiting on a step the workers could never take",
+   "verdict": "decode",
+   "why": "The reader must infer what “their work” is and which impossible step is being avoided."
+  },
   "566f9fd5cc1cc257e8b7": {
    "verdict": "ok"
   },
@@ -4539,6 +4545,9 @@
    "verdict": "ok"
   },
   "8fe11165cd394f9d460d": {
+   "verdict": "ok"
+  },
+  "9034f0ed515c657b077f": {
    "verdict": "ok"
   },
   "903b6e445c46f317e64d": {

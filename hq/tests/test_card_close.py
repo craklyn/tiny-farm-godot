@@ -16,6 +16,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest.mock import patch
 
 HQ = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(HQ))
@@ -151,6 +152,26 @@ class CardClose(unittest.TestCase):
         ruling = json.loads((self.data / "rulings" / "Q-7.json").read_text())
         self.assertEqual(ruling["status"], "integrated")
         self.assertEqual(ruling["integrated"]["work_id"], "w0000000000b")
+
+    def test_the_queue_landing_a_ruling_card_integrates_the_ruling(self):
+        # 2026-09-27: only a hand close marked a ruling integrated, and ruling
+        # cards told their sandboxed workers to close themselves, which they
+        # never can; the queue's own landing now does it.
+        (self.data / "rulings" / "Q-8.json").write_text(
+            json.dumps({"id": "Q-8", "option": "b", "status": "pending_integration"}))
+        self.card("w0000000000c", ruling_id="Q-8")
+        item = work.load_item("w0000000000c")
+        item["attempt_outcome"] = {"version": 1, "id": "attempt-8", "status": "complete"}
+        with patch.object(work, "completion_assessment", return_value=("ready_to_apply", "")):
+            work.land_item(item, "drain", sha="abc1234")
+        ruling = json.loads((self.data / "rulings" / "Q-8.json").read_text())
+        self.assertEqual(ruling["status"], "integrated")
+        self.assertEqual(ruling["integrated"], {**ruling["integrated"], "work_id": "w0000000000c", "sha": "abc1234"})
+        ask = work.file_ruling_integration({"id": "Q-8", "title": "Pick b"},
+                                           {"id": "Q-8", "option": "b", "submission_id": "s-8",
+                                            "ruled_at": "2026-09-27T00:00:00"})["ask"]
+        self.assertIn("Do not close this card yourself", ask)
+        self.assertNotIn("card.py close", ask)
 
     def test_a_claim_is_a_lease_that_its_holder_renews_or_releases(self):
         first = closing.claim("w0000000000a", by="Codex session", seconds=600, now=1000)

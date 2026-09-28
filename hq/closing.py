@@ -115,20 +115,7 @@ def _attribution(by):
 
 def _mark_ruling_integrated(item, sha):
     """An 'integrate ruling' card closing is what integrates the ruling."""
-    ruling_id = item.get("ruling_id")
-    if not ruling_id:
-        return
-    path = os.path.join(work.HOST.DATA, "rulings", f"{ruling_id}.json")
-    try:
-        with open(path, encoding="utf-8") as fh:
-            ruling = json.load(fh)
-    except (OSError, ValueError):
-        return
-    if ruling.get("status") == "integrated":
-        return
-    ruling["status"] = "integrated"
-    ruling["integrated"] = {"at": work._now_iso(), "work_id": item["id"], "sha": sha}
-    work._write_json(path, ruling)
+    work.mark_ruling_integrated(item, sha)
 
 
 def close(item_id, *, sha, ci_run, result, by, note="", main_root, run=_run, fetch=True):

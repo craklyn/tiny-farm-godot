@@ -375,8 +375,9 @@ def _file_ruling_integration(decision, ruling):
                         "unblocks changes the repository; git can revert it."),
         "ask": (f"Daniel ruled on decision {decision_id}. Integrate the ruling: strike or annotate "
                 f"{decision_id} in docs/DESIGNER_QUEUE.md (and docs/DECISION_LOG.md if it settles a "
-                "decision), then do or file the work it unblocks. Close this card with "
-                "`python3 hq/card.py close`; that marks the ruling integrated.\n\n"
+                "decision), then do or file the work it unblocks. Do not close this card "
+                "yourself: when your change lands, HQ closes it and marks the ruling "
+                "integrated.\n\n"
                 f"{ruling_text}")[:2400],
         "first_action": (f"Read decision card {decision_id} and the ruling, then find its entry "
                          "in docs/DESIGNER_QUEUE.md."),
@@ -2635,7 +2636,31 @@ def land_item(item, by, sha="", note=""):
     if commit_owner_memory(item):
         save_item(item)
     finish_pending_followups(item)
+    mark_ruling_integrated(item, item["completion"].get("sha") or sha)
     return item
+
+
+def mark_ruling_integrated(item, sha):
+    """A ruling's own card landing is what integrates the ruling.
+
+    It used to happen only when a session closed the card by hand, and the card
+    told its worker to do that; a worker in a sandbox cannot reach HQ, and a
+    card closes only after its work is on main, so on 2026-09-27 three ruling
+    cards failed review for a step they could never take."""
+    ruling_id = item.get("ruling_id")
+    if not ruling_id:
+        return
+    path = os.path.join(HOST.DATA, "rulings", f"{ruling_id}.json")
+    try:
+        with open(path, encoding="utf-8") as fh:
+            ruling = json.load(fh)
+    except (OSError, ValueError):
+        return
+    if ruling.get("status") == "integrated":
+        return
+    ruling["status"] = "integrated"
+    ruling["integrated"] = {"at": _now_iso(), "work_id": item["id"], "sha": sha}
+    _write_json(path, ruling)
 
 
 def finish_pending_followups(item):
