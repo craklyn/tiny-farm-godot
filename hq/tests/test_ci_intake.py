@@ -83,6 +83,19 @@ def main():
                       "ci:https://github.example/runs/43"},
                   "the active brief keeps the run it was created to repair")
 
+            print("a stale page from GitHub files nothing and keeps the history")
+            # 2026-09-28: GitHub three times answered with runs ending 18 days
+            # earlier; each old failure became a repair card that cost 1-2M tokens.
+            before = json.loads(Path(server.CI_HISTORY_PATH).read_text())
+            stale = [{**runs[0], "updatedAt": "2026-09-10T05:00:00Z",
+                      "url": "https://github.example/runs/10", "displayTitle": "An old broken push"}]
+            with patch.object(server, "run_cmd", return_value=json.dumps(stale)):
+                server._refresh_ci_history()
+            check(len(work.items()) == 2 and not any(c["source_ref"].endswith("/10") for c in work.items()),
+                  "an answer older than what HQ already recorded files no repair")
+            check(json.loads(Path(server.CI_HISTORY_PATH).read_text()) == before,
+                  "and does not overwrite the recorded history")
+
             print("a filed repair makes the failing goal Engineering's move")
             old_eval, old_escalation = server.eval_measure, server._escalation
             old_route, old_sessions, old_drain = server._route_target, server.worker_sessions, server.drain_state

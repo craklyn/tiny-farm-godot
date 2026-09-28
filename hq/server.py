@@ -2948,6 +2948,18 @@ def _refresh_ci_history():
     except ValueError:
         return
     done = [r for r in runs if r.get("status") == "completed"]
+    # GitHub sometimes answers with a stale page. On 2026-09-28 it three times
+    # returned 100 runs ending on 2026-09-10, the poller took an 18-day-old
+    # failure for the newest run, and three repair cards spent 4.5 million
+    # tokens finding main already green. The newest run can never be older than
+    # one already recorded, so such an answer is ignored whole.
+    try:
+        seen = max((t.get("at") or "") for t in (load_json(CI_HISTORY_PATH).get("ticks") or [{}]))
+    except (OSError, ValueError, AttributeError):
+        seen = ""
+    newest = max(((r.get("updatedAt") or "")[:10] for r in done), default="")
+    if seen and newest and newest < seen:
+        return
     streak = 0
     for r in done:
         if r.get("conclusion") == "success":
