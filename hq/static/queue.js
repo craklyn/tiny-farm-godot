@@ -171,9 +171,11 @@ function qYesCauses(row) {
   if (row.isDecision) return "Records your pick; the seat that opened the card works it into the design that day.";
   if (row.state === "needs_approval") return "Approves this work and queues it for a build session; the finished result comes back for review.";
   const fus = row.followUps;
-  if (!fus.length) return "It closes. Nothing else starts.";
+  const merged = row.merge ? "The studio merges this exact change into the main code branch on its next run" : "";
+  if (!fus.length) return merged ? merged + "." : "It closes. Nothing else starts.";
   const risky = fus.filter(f => (f.tier ?? 1) === 2).length;
   let s = fus.length === 1 ? "One piece of work starts" : `${fus.length} pieces of work start`;
+  if (merged) s = `${merged}; then ${s.charAt(0).toLowerCase()}${s.slice(1)}`;
   if (risky) s += `; ${risky} of ${risky === 1 ? "it" : "them"} would come back to you as a question`;
   return s + ".";
 }
@@ -185,19 +187,25 @@ function qWorkItem(card, org, reason) {
   const owner = ownerOf(org, card.owner);
   const rec = card.recommend || {};
   const hasRec = !!rec.answer;
-  const question = rec.question || card.review_question || "Does this reviewed result stand?";
+  // A clean change held only for his yes asks its own question: whether to
+  // merge it (work.landing_awaits_approval). The clean review is the reason.
+  const merge = (card.workflow_view || {}).candidate_status === "awaiting_approval";
+  const held = String((card.diff || {}).why_not_landed || "");
+  const question = rec.question || card.review_question || (merge
+    ? `Merge this reviewed change into the main code branch? ${held.charAt(0).toUpperCase()}${held.slice(1)}.`
+    : "Does this reviewed result stand?");
   // A card whose only evidence is a change to the files is not prepped: nobody
   // has said what he should do about it, and pretending otherwise turns his
   // thirty-second pick into a rubber stamp (docs/QUEUE_TO_ZERO.md §7a).
-  const answer = hasRec ? rec.answer : "";
+  const answer = hasRec ? rec.answer : merge ? "Merge it" : "";
   const convo = (card.conversation || []).filter(m => m.text)
     .map(m => ({ who: m.role === "daniel" ? "You" : qFirst(owner.name), text: m.text, at: m.at || "" }));
   return {
     kind: card.state === "needs_approval" ? "approve" : "review",
     id: card.id, cardId: card.id, isDecision: false, subject: card.subject || "",
     title: card.state === "for_review" ? reviewTitle(card) : card.title,
-    question, answer, why: rec.why || "", instead: rec.instead || "",
-    owner, seconds: answer ? Q_PICK_SECONDS : Q_READ_SECONDS, state: card.state,
+    question, answer, why: rec.why || (merge ? (card.check || {}).summary || "" : ""), instead: rec.instead || "",
+    owner, seconds: answer ? Q_PICK_SECONDS : Q_READ_SECONDS, state: card.state, merge,
     tier: card.tier ?? 2, reason: reason || "hard to walk back, or a matter of taste",
     diffApplied: !!(card.diff && card.diff.applied),
     options: [], followUps: followUps(card), conversation: convo,
@@ -680,6 +688,7 @@ function qRender(state) {
     if (result && result.error) throw new Error(result.error);
     qNotice = r.state === "needs_approval"
       ? "Work approved and queued for the studio."
+      : r.merge ? "Approved. The studio merges this change on its next run."
       : `Result accepted${r.answer ? `; recorded answer: ${r.answer}` : ""}. ${r.followUps.length
         ? `Next work: ${r.followUps.map(f => f.title).join("; ")}.` : "No follow-up work starts."}`;
     if (comment) qNotice += " Your comment was sent to the owner.";

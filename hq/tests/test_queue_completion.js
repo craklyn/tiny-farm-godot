@@ -14,6 +14,16 @@ const items = [
   { id: 'running', title: 'Running build', state: 'waiting_session', owner: 'rin', started: '2026-09-21T21:00' },
   { id: 'weather', title: 'Weather reconciliation', state: 'waiting_session', tier: 1,
     owner: 'rin', workflow_view: blockedView },
+  // A clean design-document change held only for his yes (the Q-130 card,
+  // 2026-09-27): his to decide, not "Reviewed, waiting to be merged".
+  { id: 'design', title: 'Design change', state: 'for_review', tier: 1, owner: 'rin',
+    deliverable: { name: 'Worm practice ruling recorded' },
+    diff: { applied: false, why_not: '', why_not_landed: 'it changes docs/design/06-bots-and-training.md, which undoing a commit would not put back the way it was' },
+    check: { verdict: 'pass', summary: 'The ruling is consistently recorded.' },
+    follow_ups: [{ title: 'Measure worm practice energy costs', owner: 'rin', tier: 0 }],
+    workflow_view: { version: 1, phase: 'review', availability: 'waiting_event', blocker: null, actions: [],
+      next_action: { type: 'decide', owner: 'daniel', availability: 'waiting_event' },
+      candidate_status: 'awaiting_approval', shipped_evidence: { landed_sha: '', ci_confirmed: false } } },
 ];
 let rendered = '';
 const waiting = { available: true, count: 0, ready: [], items: [
@@ -25,6 +35,7 @@ const waiting = { available: true, count: 0, ready: [], items: [
   { source: 'work', source_id: 'accepted', status: 'preparing', reason: 'The work is still running.' },
   { source: 'work', source_id: 'running', status: 'preparing', reason: 'The work is running now.' },
   { source: 'work', source_id: 'weather', status: 'verification_pending', reason: 'The code must be reconciled.' },
+  { source: 'work', source_id: 'design', status: 'ready', reason: 'A prepared result is ready for your verdict.' },
 ] };
 const context = vm.createContext({
   routes: {}, location: { hash: '#/' }, cache: {}, noteVersion() {},
@@ -33,6 +44,8 @@ const context = vm.createContext({
     ? { eligible: [{ id: 'queued' }, { id: 'accepted' }], held: [] }
     : { items } }),
   ownerOf: () => ({ name: 'Rin' }), esc: String, mdi: String,
+  reviewTitle: item => item.title, followUps: item => item.follow_ups || [],
+  linkEvidenceAttachments: () => [], reviewEvidenceLinks: () => [],
   h: value => value, updateQueueBadge() {},
   document: { getElementById: () => ({ addEventListener() {} }), addEventListener() {} },
   $view: { replaceChildren: value => { rendered = value; }, addEventListener() {} },
@@ -47,8 +60,18 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/queue.js'), 'utf
   assert.deepEqual(Array.from(data.waitingToStart, x => x.card.id), ['queued', 'accepted']);
   assert.deepEqual(Array.from(data.studioWork, x => x.card.id), ['failed', 'running']);
   assert.deepEqual(Array.from(data.heldToStart, x => x.card.id), ['weather']);
+  assert.deepEqual(Array.from(data.hisWork, x => x.card.id), ['design']);
+  assert.equal(context.workflowStatus(items[7]), 'Reviewed; waiting for your yes to merge it');
+  const merge = context.qWorkItem(items[7], {}, '');
+  assert.equal(merge.merge, true);
+  assert.match(merge.question, /^Merge this reviewed change into the main code branch\? It changes docs\/design\/06/);
+  assert.equal(merge.answer, 'Merge it');
+  assert.equal(merge.why, 'The ruling is consistently recorded.');
+  assert.match(context.qYesCauses(merge), /merges this exact change .*; then one piece of work starts\.$/);
   assert.equal(context.workflowStatus(items[6]).startsWith('Blocked — Save-lineage edits'), true);
-  context.qRender(data);
+  // The folds below are what this test reads; the question pane's own
+  // renderers are exercised by test_waiting_on_you.py.
+  context.qRender({ ...data, hisWork: [] });
   const landed = rendered.split('Landed without you')[1].split('Reviewed, waiting to be merged')[0];
   assert.match(landed, /q-count">1</);
   assert.match(landed, /Recorded result/);

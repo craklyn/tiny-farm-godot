@@ -77,6 +77,7 @@ function workFirst(name) {
 
 function workDecisionLabel(it) {
   if (it.state === "needs_approval") return "Approve this work";
+  if (workflowView(it).candidate_status === "awaiting_approval") return "Approve and merge this change";
   const answer = String((it.recommend || {}).answer || "").trim();
   return answer ? `Accept result and record: ${answer}` : "Accept this result";
 }
@@ -199,7 +200,8 @@ function decidedNote(it) {
    blocked report is a real result with no diff, and it is accepted normally. */
 function heldReason(it) {
   const d = it.diff;
-  if (!d || d.applied) return "";
+  // Held for his yes on purpose, not stopped: the Work page offers the yes.
+  if (!d || d.applied || workflowView(it).candidate_status === "awaiting_approval") return "";
   if ((d.why_not || "") === "nothing changed") return "";
   return d.why_not || "nothing landed";
 }
@@ -326,6 +328,13 @@ function consequence(it, org) {
       <div class="w-conseq-h">Nothing landed, so there is nothing to accept</div>
       ${rows.map(([k, v]) => `<div class="w-conseq-r"><b>${esc(k)}</b><span>${v}</span></div>`).join("")}
     </div>`;
+  } else if (it.state === "for_review" && view.candidate_status === "awaiting_approval") {
+    const fus = followUps(it);
+    rows.push([workDecisionLabel(it), `The studio merges this exact reviewed change into the main code branch on its next run${fus.length
+      ? `, and then the studio starts the follow-up work listed below` : ""}.`]);
+    if (fus.length) extra = followUpBox(fus, org);
+    rows.push(["Reject and close review", `Rejects this version and closes its review. Nothing is merged and no follow-up work is filed.`]);
+    rows.push(commentRow(first));
   } else if (it.state === "for_review") {
     const fus = followUps(it);
     const rec = recommendOf(it);

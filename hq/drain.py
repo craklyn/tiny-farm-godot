@@ -1418,11 +1418,13 @@ def do_item(item, org, run_id, log, action=None):
     return rec
 
 
-def recorded_candidate_attempt(item):
-    """The last card attempt's immutable transaction, if it is still this patch."""
+def recorded_candidate_attempt(item, current_base=True):
+    """The last card attempt's immutable transaction, if it is still this patch.
+    `current_base=False` also finds one whose main has moved on; the landing
+    rebuilds it there when none of its files changed (S-33)."""
     outcome = item.get("attempt_outcome") or {}
     candidate = outcome.get("candidate") or {}
-    if not candidate or candidate.get("base") != integration.main_head(server.REPO):
+    if not candidate or (current_base and candidate.get("base") != integration.main_head(server.REPO)):
         return None
     attempt_id = item.get("last_recorded_attempt")
     try:
@@ -2103,9 +2105,10 @@ def meets_landing_bar(item, rec, applied, suites, *, repo=None):
 
     blocked = sorted({f for f in files
                       if any(f == n or f.startswith(n) for n in NEVER_LANDS)})
-    if blocked:
-        return False, (f"it changes {blocked[0]}, which undoing a commit would not put back "
-                       "the way it was")
+    # Daniel's yes (work.landing_approved) covers the exact patch he was shown.
+    approved = (item.get("landing_approved") or {}).get("patch_id") == work.evidence_id(rec.get("patch", ""))
+    if blocked and not approved:
+        return False, work.approval_hold_reason(blocked[0])
 
     return True, ""
 
@@ -2490,8 +2493,13 @@ def project_work(item, *, head=None, active=None, now=None):
     main_holder = integration.main_checkout(REPO)
     blocked = _held_by_tree(files) if patch and main_holder and \
         os.path.realpath(main_holder) == os.path.realpath(REPO) else []
+    # A cost cap gates the next model session. A result that passed review and
+    # waits only for Daniel's yes starts none, and neither does the merge his
+    # yes starts, so the cap must not hide it from him (2026-09-27: two
+    # reviewed ruling cards showed as "studio: review spending" instead of on
+    # his decisions page).
     cost_reason = (item_capacity_reason(item) if item.get("state") in
-                   ("waiting_session", "for_review") else "")
+                   ("waiting_session", "for_review") and not work.landing_awaits_approval(item) else "")
     waiting = item.get("waiting_for") or {}
     waiting_valid = not ((waiting.get("files") and not blocked) or
                          ("spent_usd" in waiting and not cost_reason))
@@ -2786,6 +2794,13 @@ def _work_item(ctx, org, run_id, log):
     touches local main."""
     item, action = ctx["item"], ctx["action"]
     record_phase(run_id, item, "starting", "The task queue is preparing its isolated checkout.")
+    if action and action.get("type") == "reconcile" and work.landing_approved(item):
+        # Daniel approved this exact reviewed patch: merge it with no model call.
+        approved = recorded_candidate_attempt(item, current_base=False)
+        if not approved:
+            return {"id": item["id"], "held": True, "usage": [], "check": None, "applied": False,
+                    "error": "The reviewed record of the change Daniel approved is missing."}
+        return resume_verified_landing(item, run_id, approved)
     source = (held_recheck_source(item) if action and action.get("type") == "reconcile"
               else None)
     if source:
@@ -2890,7 +2905,10 @@ def _land_item(ctx, rec, org, run_id, log, done, no_suites):
         checkpoint(item, rec, "written_back")
         if blocker_kind:
             record_integration_blocker(done[-1], rec, blocker_kind, why)
-        elif done[-1].get("state") != "landed" and rec.get("files") and ok:
+        elif (done[-1].get("state") != "landed" and rec.get("files") and ok
+              and not work.landing_awaits_approval(done[-1])):
+            # A clean change held only for Daniel's yes is his to decide, not
+            # a repair for its owner (2026-09-27, wbc6377da200).
             record_integration_blocker(done[-1], rec, "missing_evidence",
                                        (done[-1].get("diff") or {}).get("why_not_landed") or
                                        "The candidate needs new landing evidence.")

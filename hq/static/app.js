@@ -98,6 +98,7 @@ function workflowStatus(item) {
       ? "Merged into the main code branch; automated checks confirmed"
       : "Merged into the main code branch; automated checks are not confirmed";
   }
+  if (view.candidate_status === "awaiting_approval") return "Reviewed; waiting for your yes to merge it";
   if (view.candidate_status === "reviewed") return "Reviewed; waiting to be merged";
   if (view.candidate_status === "stale") return "Earlier checks no longer apply; check this version again";
   if (view.candidate_status === "held") return "The proposed version is on hold; the studio must resolve what stopped it";

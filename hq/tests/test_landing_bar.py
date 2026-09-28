@@ -126,6 +126,14 @@ def main():
         check(not ok and path in why, f"{what} goes to him whatever else is green")
     ok, why = bar(r=rec(files=["docs/QUEUE_TO_ZERO.md", "docs/WRITING.md"]))
     check(ok, "an ordinary document beside them is not one of them")
+    design = ["hq/work.py", "docs/design/06-robots.md"]
+    yes = {"patch_id": work.evidence_id("fixture diff")}
+    ok, why = bar(r=rec(files=design))
+    check(not ok and why.endswith(work.APPROVAL_HOLD), "the hold names itself so the queue can bring it to him")
+    ok, why = bar(it=item(landing_approved=yes), r=rec(files=design))
+    check(ok, "his yes on that exact patch lets it go in")
+    ok, why = bar(it=item(landing_approved=yes), r=rec(files=design, patch="another diff"))
+    check(not ok and "docs/design/" in why, "a yes given for one patch does not carry to another")
 
     if FAILS:
         print(f"\n{len(FAILS)} failed.")

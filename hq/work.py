@@ -779,6 +779,39 @@ def action_key(item_id, kind, input_id=""):
     return "act_" + hashlib.sha256(f"{item_id}\0{kind}\0{input_id}".encode()).hexdigest()[:20]
 
 
+# The landing bar's last gate (drain.NEVER_LANDS): a clean result that touches
+# something reverting a commit would not undo waits for Daniel's yes. The drain
+# writes this sentence and the projection recognises it, so both live here.
+APPROVAL_HOLD = "which undoing a commit would not put back the way it was"
+
+
+def approval_hold_reason(path):
+    return f"it changes {path}, {APPROVAL_HOLD}"
+
+
+def landing_awaits_approval(item):
+    """A finished, cleanly reviewed change whose only landing gate is Daniel's
+    yes. Pure. Its next step is his decision, whatever older actions, blockers,
+    run stamps or cost caps the card still carries (2026-09-28: the Q-130 and
+    Q-131 ruling cards were projected as studio repairs and never reached him)."""
+    if item.get("state") != "for_review" or item.get("completion") or item.get("pending_landing"):
+        return False
+    if item.get("repair_hold") or not str((item.get("diff") or {}).get("why_not_landed") or "").endswith(APPROVAL_HOLD):
+        return False
+    attempt = item.get("attempt_outcome") or {}
+    check = item.get("check") or {}
+    return (attempt.get("status") == "complete" and bool((attempt.get("candidate") or {}).get("files"))
+            and check.get("read") is True and check.get("verdict") == "pass"
+            and check.get("complete") is True and not check.get("findings")
+            and check.get("attempt_id") == attempt.get("id"))
+
+
+def landing_approved(item):
+    """Daniel's yes, bound to the exact reviewed patch it was given for."""
+    patch = (item.get("attempt_outcome") or {}).get("patch_id")
+    return bool(patch and (item.get("landing_approved") or {}).get("patch_id") == patch)
+
+
 def _workflow(item):
     workflow = item.setdefault("workflow", {"version": WORKFLOW_VERSION, "actions": [],
                                              "blockers": [], "candidates": [],
@@ -911,7 +944,14 @@ def work_view(item, repo_facts=None, now=None):
     pending = item.get("pending_landing") or item.get("pending_followups")
     patch = (item.get("attempt_outcome") or {}).get("patch_id") or ""
     candidate = (item.get("attempt_outcome") or {}).get("candidate") or {}
-    candidate_base = candidate.get("base") or ((workflow.get("candidates") or [{}])[-1].get("base"))
+    last_candidate = (workflow.get("candidates") or [{}])[-1]
+    candidate_base = candidate.get("base") or last_candidate.get("base")
+    # A candidate that changes no files has nothing to rebuild on a newer main,
+    # as the drain's landing path already says. Reading it as stale projected a
+    # reconcile whose id was already done, and a tier-0 reading raised to a
+    # build was skipped every ten minutes (2026-09-27, w4afc0d9982d).
+    stale = bool((candidate.get("files") if candidate else last_candidate.get("files"))
+                 and candidate_base and facts.get("head") and candidate_base != facts["head"])
     input_id = (patch or candidate.get("tree") or
                 ((workflow.get("candidates") or [{}])[-1].get("id")) or
                 ((actions or [{}])[-1].get("input_id")) or
@@ -922,12 +962,33 @@ def work_view(item, repo_facts=None, now=None):
         input_id = action_key(item["id"], "supervised_retry",
                               str(item.get("last_recorded_attempt") or input_id))
     terminal = item.get("state") in TERMINAL_STATES
+    # A clean result held only for Daniel's yes: earlier attempts' build and
+    # reconcile actions, their blockers, the finished run's `started`, a stale
+    # base (the merge rebuilds it) and the cost cap (his yes starts no model)
+    # are all moot. Before his yes the next step is his; after it, the merge.
+    awaiting_approval = not terminal and landing_awaits_approval(item)
+    if awaiting_approval:
+        # Kept: the approved merge itself, and a step a live session is running.
+        active_actions = [a for a in active_actions
+                          if (landing_approved(item) and a.get("input_id") == "approved:" + patch)
+                          or (facts.get("active_session") and a.get("state") == "running")]
+    elif item.get("state") in HIS_STATES:
+        # A new build is filed with the card back in the queue, so an open
+        # build on a card in review is a leftover from an earlier attempt and
+        # must not start model work again (2026-09-27, wbc6377da200).
+        active_actions = [a for a in active_actions if a.get("type") != "build"]
+    # A run that finished wrote its result; its `started` stamp is history,
+    # not a claim that was lost.
+    run_finished = (item.get("state") in HIS_STATES or
+                    _iso_seconds(item.get("finished")) >= _iso_seconds(item.get("started")) > 0)
     blocker = None
-    if blocked_files:
+    if awaiting_approval:
+        pass
+    elif blocked_files:
         blocker = {"type": "code_conflict", "reason": facts.get("tree_reason") or
                    "The candidate overlaps uncommitted repository files.",
                    "files": blocked_files, "owner": item.get("owner") or "claude"}
-    elif not terminal and candidate_base and facts.get("head") and candidate_base != facts["head"]:
+    elif not terminal and stale:
         reason = "Local main changed since this candidate was checked; it needs fresh review and tests."
         if repair:
             reason += " Earlier gate: " + repair
@@ -944,7 +1005,7 @@ def work_view(item, repo_facts=None, now=None):
     elif pending:
         blocker = {"type": "recovery", "reason": "An interrupted transaction needs recovery.",
                    "files": [], "owner": "claude"}
-    elif item.get("started") and not facts.get("active_session"):
+    elif item.get("started") and not facts.get("active_session") and not run_finished:
         blocker = {"type": "recovery", "reason": "The previous session no longer has a live claim.",
                    "files": [], "owner": "claude"}
     elif waiting.get("reason") and facts.get("waiting_for_valid", True):
@@ -952,7 +1013,12 @@ def work_view(item, repo_facts=None, now=None):
                    "files": waiting.get("files") or [], "owner": item.get("owner") or "claude"}
     persisted_open = next((b for b in reversed(workflow.get("blockers") or [])
                            if b.get("state") == "open"), None)
-    if blocker and persisted_open and persisted_open.get("type") == blocker["type"]:
+    if awaiting_approval:
+        # Only a blocker on the approved merge itself still holds the card.
+        blocker = next((dict(b) for b in reversed(workflow.get("blockers") or [])
+                        if b.get("state") == "open"
+                        and b.get("action_id") in {a.get("id") for a in active_actions}), None)
+    elif blocker and persisted_open and persisted_open.get("type") == blocker["type"]:
         blocker = {**persisted_open, **blocker}
     elif not blocker and persisted_open:
         blocker = dict(persisted_open)
@@ -971,6 +1037,12 @@ def work_view(item, repo_facts=None, now=None):
             kind, summary, priority = "recover", "Recover the interrupted transaction.", "reconciliation"
         elif blocker and blocker["type"] == "capacity":
             kind, summary, priority = "rebrief", "Review a bounded usage-cap increase before more work starts.", "reconciliation"
+        elif awaiting_approval and landing_approved(item):
+            kind, summary, priority = "reconcile", "Merge the change Daniel approved into main.", "reconciliation"
+            input_id = "approved:" + patch
+        elif awaiting_approval:
+            kind, summary, priority = "decide", "Approve merging this reviewed change: " + \
+                str(item["diff"]["why_not_landed"]) + ".", "decision"
         elif item.get("state") in ("for_review", "needs_approval"):
             kind, summary, priority = "decide", "Review the prepared result or decision.", "decision"
         elif item.get("state") == "prepping":
@@ -994,14 +1066,29 @@ def work_view(item, repo_facts=None, now=None):
                 stalled_transition = True
                 blocker = {"type": "recovery", "reason": "A completed recovery did not advance this card; inspect its transaction.",
                            "owner": "claude", "files": [], "wake": "operator review"}
+                # Held in plain sight: with no next action the card fell out of
+                # every queue row and lane and stalled silently.
+                active_actions = [{"id": action_key(item["id"], "recover", "stalled:" + proposed_id),
+                                   "type": "recover", "input_id": proposed_id, "owner": "claude",
+                                   "summary": "Inspect why a finished recovery did not move this card.",
+                                   "priority": "reconciliation", "wake": "operator review",
+                                   "created_at": item.get("finished") or item.get("created") or "",
+                                   "state": "blocked", "virtual": True}]
         if not stalled_transition:
             active_actions = [{"id": proposed_id, "type": kind,
-                           "input_id": input_id, "owner": ("daniel" if kind == "decide" else "claude" if kind == "rebrief" else item.get("owner") or "claude"),
+                           "input_id": input_id, "owner": ("daniel" if kind == "decide" else "claude" if kind == "rebrief"
+                                                           or (awaiting_approval and kind == "reconcile") else item.get("owner") or "claude"),
                            "summary": summary, "priority": priority,
                            "created_at": item.get("finished") or item.get("created") or "",
                            "state": "open", "virtual": True}]
+    # A repair step added beside an open action gets the same guard: an id
+    # already finished cannot be claimed, so offering it as runnable made the
+    # drain skip the card every tick (2026-09-27, w4afc0d9982d). Without it the
+    # card stays held with its blocker's reason.
+    finished_ids = {a.get("id") for a in actions if a.get("state") == "done"}
     if not terminal and not stalled_transition and blocker and blocker["type"] in ("code_conflict", "stale_base", "missing_evidence", "dependency") \
-            and not any(a.get("type") in ("reconcile", "recover") for a in active_actions):
+            and not any(a.get("type") in ("reconcile", "recover") for a in active_actions) \
+            and action_key(item["id"], "reconcile", input_id) not in finished_ids:
         active_actions.append({"id": action_key(item["id"], "reconcile", input_id),
                                "type": "reconcile", "input_id": input_id,
                                "owner": item.get("owner") or "claude",
@@ -1009,7 +1096,8 @@ def work_view(item, repo_facts=None, now=None):
                                "priority": "reconciliation", "created_at": item.get("finished") or item.get("created") or "",
                                "state": "open", "virtual": True})
     if not terminal and not stalled_transition and blocker and blocker["type"] == "recovery" \
-            and not any(a.get("type") == "recover" for a in active_actions):
+            and not any(a.get("type") == "recover" for a in active_actions) \
+            and action_key(item["id"], "recover", input_id) not in finished_ids:
         active_actions.append({"id": action_key(item["id"], "recover", input_id),
                                "type": "recover", "input_id": input_id, "owner": "claude",
                                "summary": "Recover the interrupted transaction before another build.",
@@ -1097,7 +1185,8 @@ def work_view(item, repo_facts=None, now=None):
         shipped["no_code"] = (str(item.get("tier") or 0) == "0"
                               or completed.get("kind") == "reading")
     candidate_status = ("landed" if shipped["landed_sha"] else "none" if terminal else
-                        "stale" if candidate_base and facts.get("head") and candidate_base != facts["head"] else
+                        ("reviewed" if landing_approved(item) else "awaiting_approval") if awaiting_approval else
+                        "stale" if stale else
                         "held" if blocker else "reviewed" if (item.get("check") or {}).get("verdict") == "pass" else
                         "unverified" if candidate else "none")
     return {"version": WORKFLOW_VERSION, "phase": phase, "availability": availability,
@@ -1302,20 +1391,25 @@ def has_recommendation(item):
 def work_preparation(item):
     """Return the recorded material Daniel needs before a work verdict."""
     missing = []
+    # A change held only for his yes carries its own question (merge it?),
+    # recommendation (the clean review) and evidence (the reviewed diff).
+    approval = landing_awaits_approval(item)
     deliverable = item.get("deliverable")
     if not isinstance(deliverable, dict) or not str(deliverable.get("name") or "").strip():
         missing.append("deliverable")
     evidence = deliverable.get("evidence") if isinstance(deliverable, dict) else None
-    if not isinstance(evidence, list) or not any(
+    if not approval and (not isinstance(evidence, list) or not any(
             isinstance(entry, dict) and str(entry.get("href") or entry.get("path") or "").strip()
-            for entry in evidence):
+            for entry in evidence)):
         missing.append("evidence")
     question = ((item.get("recommend") or {}).get("question")
                 if isinstance(item.get("recommend"), dict) else "")
     question = question or item.get("review_question")
-    if not str(question or "").strip():
+    if not str(question or "").strip() and not approval:
         missing.append("question")
-    if item.get("recommendation_required") is not False:
+    if approval:
+        pass
+    elif item.get("recommendation_required") is not False:
         if not has_recommendation(item):
             missing.append("recommendation")
     elif not str(item.get("recommendation_reason") or "").strip():
@@ -1361,6 +1455,9 @@ def work_reviewable(item, workflow_view=None):
     if (item.get("awaiting_reply") or item.get("repair_hold") or item.get("pending_landing")
             or item.get("pending_followups") or view.get("blocker")):
         return False
+    if landing_awaits_approval(item):
+        # Unlanded on purpose: the merge waits for exactly this verdict.
+        return not landing_approved(item)
     shipped = view.get("shipped_evidence") or {}
     unlanded_code = (item.get("state") == "for_review" and item.get("tier") in (1, 2)
                      and not shipped.get("landed_sha"))
@@ -3060,7 +3157,14 @@ def _api_post(path, payload):
     if path == "/api/work/undo":
         ok, why = undo_landing(item)
         return {"ok": ok, "why": why, "id": item["id"], "state": item["state"]}
-    if path == "/api/work/accept":
+    if path == "/api/work/accept" and landing_awaits_approval(item):
+        # His yes on a change held only for it is permission to merge that
+        # exact patch, not a close: closing it would leave the change unmerged.
+        # The drain merges it with no model call; landing files the follow-ups.
+        outcome = item.get("attempt_outcome") or {}
+        item["landing_approved"] = {"patch_id": outcome.get("patch_id"),
+                                    "attempt_id": outcome.get("id"), "at": _now_iso()}
+    elif path == "/api/work/accept":
         commit_owner_memory(item)
         item["state"] = "accepted"
         item["closed"] = _now_iso()
@@ -3117,7 +3221,7 @@ def instruction_fingerprint(item):
         "completion", "pending_landing", "pending_followups", "closed", "landed", "finished",
         "revising", "revisions", "spawned", "last_recorded_attempt", "repair_hold", "landing_recovery",
         "owner_memory", "workflow", "workflow_view", "waiting_for", "pending_undo",
-        "landing_undone"}
+        "landing_undone", "landing_approved"}
     return evidence_id({key: value for key, value in item.items() if key not in outcome_fields})
 
 

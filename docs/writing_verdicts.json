@@ -816,6 +816,9 @@
    "verdict": "decode",
    "why": "The metaphor does not plainly say whether the meal duration changes with the planting location."
   },
+  "19a9a5242dbded830be2": {
+   "verdict": "ok"
+  },
   "19bb2861be812127a75c": {
    "instead": "Check every commit and push for credentials, then have the automated checker push the changes it approves",
    "quote": "let the drain push what it lands",
@@ -2717,6 +2720,9 @@
    "verdict": "decode",
    "why": "The reader must infer what “their work” is and which impossible step is being avoided."
   },
+  "5642f0725d3269384f04": {
+   "verdict": "ok"
+  },
   "566f9fd5cc1cc257e8b7": {
    "verdict": "ok"
   },
@@ -4085,6 +4091,12 @@
   "8154afc11c1d890b1277": {
    "verdict": "ok"
   },
+  "8199a81cc29c4de32e45": {
+   "instead": "Then the system files the follow-up work shown below.",
+   "quote": ", then files the … below",
+   "verdict": "decode",
+   "why": "The sentence omits who files what, so the reader cannot tell what action will happen."
+  },
   "81a0e9dfdbc35698f800": {
    "verdict": "ok"
   },
@@ -4223,6 +4235,9 @@
    "verdict": "ok"
   },
   "8508aef2ce5d2017c17a": {
+   "verdict": "ok"
+  },
+  "857f8fda309a8d8a849f": {
    "verdict": "ok"
   },
   "8587db3f1db359ba72b2": {
@@ -5001,6 +5016,9 @@
    "verdict": "ok"
   },
   "9eebf305e14bbbb5df42": {
+   "verdict": "ok"
+  },
+  "9f06cb1be21468885474": {
    "verdict": "ok"
   },
   "9f3e1e286194f54bf593": {
@@ -7142,6 +7160,15 @@
   "e0f6fddadab6328c0b9c": {
    "verdict": "ok"
   },
+  "e0fbf174f3e58186e01e": {
+   "instead": "Design changes that need only your approval now appear in your approval list, and each delayed work item explains what is blocking it.",
+   "quote": "Design changes waiting only for your yes now reach your queue, and stuck cards show why",
+   "verdict": "decode",
+   "why": "“Queue” and “cards” are internal dashboard terms, so a cold reader must work out that these are approval items and what is blocking them."
+  },
+  "e0fdc1c14eed35b22a2e": {
+   "verdict": "ok"
+  },
   "e1568494f52e3efe34d5": {
    "verdict": "ok"
   },
@@ -7867,6 +7894,9 @@
    "verdict": "ok"
   },
   "fcec217e9e03b367cc49": {
+   "verdict": "ok"
+  },
+  "fcf803b34b02067d34ca": {
    "verdict": "ok"
   },
   "fd025797fc6dceb2a238": {

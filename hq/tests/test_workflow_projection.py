@@ -129,7 +129,8 @@ class WorkflowProjection(unittest.TestCase):
 
     def test_newly_stale_candidate_has_runnable_reconciliation(self):
         old_head = self.git("rev-parse", "HEAD")
-        item = self.card(attempt_outcome={"candidate": {"base": old_head, "tree": "candidate-tree"}})
+        item = self.card(attempt_outcome={"candidate": {"base": old_head, "tree": "candidate-tree",
+                                                        "files": {"sample.txt": "100644 blob fixture"}}})
         (self.repo / "second.txt").write_text("main moved\n")
         self.git("add", "second.txt")
         self.git("commit", "-qm", "move main")
@@ -250,6 +251,196 @@ class WorkflowProjection(unittest.TestCase):
         self.card("w222222222222", created_ts=2)
         self.assertEqual([row["work_id"] for row in drain.queue_view()["eligible"]],
                          ["w111111111111", "w222222222222"])
+
+    # -- Cards stranded 2026-09-26..28 by a wrong next step ----------------------
+
+    def move_main(self):
+        old_head = self.git("rev-parse", "HEAD")
+        (self.repo / "moved.txt").write_text("main moved\n")
+        self.git("add", "moved.txt")
+        self.git("commit", "-qm", "move main")
+        return old_head
+
+    def test_filesless_candidate_is_not_stale_and_its_open_build_runs(self):
+        # w4afc0d9982d: a tier-0 reading produced no files, was raised to a
+        # build, and its empty candidate read as stale — a reconcile whose id
+        # was already done, which the drain could never claim.
+        old_head = self.move_main()
+        empty = work.evidence_id("")
+        done_reconcile = work.action_key("w4afc0d9982d", "reconcile", empty)
+        item = self.card("w4afc0d9982d", tier=1, tier_raised={"from": 0}, attempts=2,
+                         last_recorded_attempt="6fff1f0d", finished="2026-09-26T22:11:23-07:00",
+                         attempt_outcome={"version": 1, "status": "blocked", "id": "6fff1f0d",
+                                          "patch_id": empty,
+                                          "candidate": {"tree": "c994c5fa", "base": old_head,
+                                                        "files": {}, "base_files": {}}},
+                         check={"read": True, "complete": False, "verdict": "fail", "findings": [{"what": "x"}]},
+                         workflow={"version": 1, "candidates": [], "verifications": [], "integrations": [],
+                                   "actions": [
+                                       {"id": done_reconcile, "type": "reconcile", "input_id": empty,
+                                        "state": "done", "created_at": "2026-09-26T21:51:36-07:00"},
+                                       {"id": work.action_key("w4afc0d9982d", "recover", done_reconcile),
+                                        "type": "recover", "input_id": done_reconcile, "state": "done",
+                                        "created_at": "2026-09-26T22:11:23-07:00"},
+                                       {"id": work.action_key("w4afc0d9982d", "build", "6fff1f0d"),
+                                        "type": "build", "input_id": "6fff1f0d", "owner": "grace",
+                                        "summary": "Run the visual check", "priority": "ordinary",
+                                        "state": "open", "created_at": "2026-09-26T23:43:06-07:00"}],
+                                   "blockers": [{"id": "blk_x", "type": "tooling", "state": "resolved",
+                                                 "reason": "No recoverable landing transaction remains."}]})
+        view = drain.project_work(item)
+        self.assertIsNone(view["blocker"])
+        self.assertNotEqual(view["candidate_status"], "stale")
+        self.assertEqual(view["next_action"]["type"], "build")
+        self.assertEqual(view["next_action"]["id"], work.action_key(item["id"], "build", "6fff1f0d"))
+        self.assertEqual(view["next_action"]["availability"], "runnable")
+        self.assertEqual([(card["id"], action["type"]) for card, action in drain.classified_actions()],
+                         [(item["id"], "build")])
+
+    def held_for_approval(self, ident="wbc6377da200", **over):
+        """The shape of Milo's Q-130 card: a clean, reviewed docs/design change
+        whose only landing gate is Daniel's yes, carrying an earlier attempt's
+        open repair build and reconcile, a finished run's `started`, a stale
+        base and a blown fresh-token cap."""
+        old_head = self.move_main()
+        files = ["docs/DECISION_LOG.md", "docs/design/06-bots-and-training.md"]
+        patch_id = work.evidence_id("reviewed docs patch")
+        stale_input = work.evidence_id(["e38fd850", old_head])
+        fields = dict(
+            state="for_review", owner="milo", tier=1, attempts=2, automatic_repairs=1,
+            started="2026-09-27T23:44:11-07:00", finished="2026-09-27T23:54:01-07:00",
+            last_recorded_attempt="e38fd850",
+            deliverable={"name": "Mark III worm practice ruling recorded"}, recommend={},
+            follow_ups=[{"title": "Measure worm practice energy costs", "owner": "milo",
+                         "level": "task", "tier": 0, "first_action": "Measure it."}],
+            diff={"files": files, "applied": False, "why_not": "",
+                  "why_not_landed": work.approval_hold_reason("docs/design/06-bots-and-training.md")},
+            check={"read": True, "complete": True, "verdict": "pass", "findings": [],
+                   "summary": "The ruling is consistently recorded.", "attempt_id": "e38fd850"},
+            attempt_outcome={"version": 1, "status": "complete", "id": "e38fd850", "patch_id": patch_id,
+                             "candidate": {"tree": "ed866174", "base": old_head,
+                                           "files": {f: "100644 blob new" for f in files},
+                                           "base_files": {f: "100644 blob old" for f in files}}},
+            workflow={"version": 1, "candidates": [], "verifications": [], "integrations": [],
+                      "actions": [
+                          {"id": work.action_key(ident, "build", "legacy"), "type": "build",
+                           "input_id": "legacy", "state": "done", "created_at": "2026-09-27T14:24:02-07:00"},
+                          {"id": work.action_key(ident, "reconcile", "older"), "type": "reconcile",
+                           "input_id": "older", "state": "done", "created_at": "2026-09-27T14:32:10-07:00"},
+                          {"id": work.action_key(ident, "build", "repair:40674322"), "type": "build",
+                           "input_id": "repair:40674322", "owner": "milo", "priority": "retry",
+                           "summary": "Repair the last attempt", "state": "open",
+                           "created_at": "2026-09-27T23:44:02-07:00"},
+                          {"id": work.action_key(ident, "reconcile", stale_input), "type": "reconcile",
+                           "input_id": stale_input, "owner": "milo", "priority": "reconciliation",
+                           "summary": "Rebuild this candidate on current main", "state": "open",
+                           "created_at": "2026-09-27T23:54:01-07:00"}],
+                      "blockers": [{"id": "blk_y", "type": "missing_evidence", "input_id": stale_input,
+                                    "state": "open", "owner": "milo",
+                                    "reason": work.approval_hold_reason("docs/design/06-bots-and-training.md"),
+                                    "action_id": work.action_key(ident, "reconcile", stale_input)}]})
+        fields.update(over)
+        return self.card(ident, **fields)
+
+    def test_clean_result_held_for_his_yes_is_his_decision(self):
+        item = self.held_for_approval()
+        over_cap = (0.0, 2, 1_539_006, 221_886)
+        with patch.object(drain, "_item_spend", return_value=over_cap):
+            view = drain.project_work(item)
+            self.assertIsNone(view["blocker"])
+            self.assertEqual(view["next_action"]["type"], "decide")
+            self.assertEqual(view["next_action"]["owner"], "daniel")
+            self.assertIn("docs/design/06-bots-and-training.md", view["next_action"]["summary"])
+            self.assertEqual(view["candidate_status"], "awaiting_approval")
+            # The leftovers from earlier attempts start no model work.
+            self.assertEqual(drain.classified_actions(), [])
+            self.assertEqual(drain.queued(), [])
+            queue = drain.queue_view()
+            self.assertEqual(queue["eligible"] + queue["held"] + queue["working"], [])
+            self.assertEqual(work.card_lanes(item, view), ["daniel"])
+            self.assertTrue(work.work_ready_for_daniel(item, view))
+            with patch.object(server, "api_queue", return_value={"curated": [], "decided": [], "rulings": {}}):
+                waiting = server.waiting_on_you()
+        self.assertEqual([row["source_id"] for row in waiting["ready"]], [item["id"]])
+        # A session already running an older step is shown as running, not as
+        # a decision nobody can make while it works.
+        running = item["workflow"]["actions"][3]["id"]
+        work.claim_action(item, running, "run:1")
+        live = work.work_view(item, {"active_session": "run"})
+        self.assertEqual((live["next_action"]["id"], live["availability"]), (running, "running"))
+
+    def test_his_yes_merges_that_patch_with_no_model_call(self):
+        item = self.held_for_approval()
+        before = item["_revision"]
+        saved = work.api_post("/api/work/accept", {"id": item["id"]})
+        self.assertEqual(saved["state"], "for_review", "a yes to merge is not a close")
+        self.assertEqual(saved["landing_approved"]["patch_id"], item["attempt_outcome"]["patch_id"])
+        self.assertGreater(saved["_revision"], before)
+        view = drain.project_work(saved)
+        self.assertEqual(view["next_action"]["type"], "reconcile")
+        self.assertEqual(view["next_action"]["owner"], "claude")
+        self.assertEqual(view["next_action"]["availability"], "runnable")
+        self.assertEqual(view["candidate_status"], "reviewed")
+        self.assertFalse(work.work_ready_for_daniel(saved, view))
+        self.assertEqual([(card["id"], action["type"]) for card, action in drain.classified_actions()],
+                         [(item["id"], "reconcile")])
+        ctx = {"item": saved, "action": view["next_action"], "claim_id": ""}
+        record = {"attempt_id": "e38fd850", "result": "Done.", "patch": "reviewed docs patch",
+                  "check": saved["check"], "candidate": saved["attempt_outcome"]["candidate"]}
+        with patch.object(drain, "recorded_candidate_attempt", return_value=record) as found, \
+                patch.object(drain, "do_item", side_effect=AssertionError("no model session")):
+            rec = drain._work_item(ctx, {}, "run", print)
+        found.assert_called_once_with(saved, current_base=False)
+        self.assertTrue(rec["verification_only"])
+        self.assertEqual(rec["usage"], [])
+        with patch.object(drain, "recorded_candidate_attempt", return_value=None), \
+                patch.object(drain, "do_item", side_effect=AssertionError("no model session")):
+            missing = drain._work_item(ctx, {}, "run", print)
+        self.assertTrue(missing["held"])
+        self.assertIn("approved", missing["error"])
+
+    def test_leftover_build_on_a_card_in_review_starts_nothing(self):
+        item = self.card(state="for_review", tier=0, started="2026-09-27T10:00:00+00:00",
+                         finished="2026-09-27T10:05:00+00:00",
+                         check={"read": True, "complete": True, "verdict": "pass", "findings": []},
+                         workflow={"version": 1, "candidates": [], "verifications": [], "integrations": [],
+                                   "blockers": [],
+                                   "actions": [{"id": work.action_key("w111111111111", "build", "repair:a"),
+                                                "type": "build", "input_id": "repair:a", "state": "open",
+                                                "priority": "retry", "created_at": "2026-09-27T09:00:00+00:00"}]})
+        view = drain.project_work(item)
+        self.assertIsNone(view["blocker"], "a finished run's start stamp is not a lost claim")
+        self.assertEqual(view["next_action"]["type"], "decide")
+        self.assertEqual(drain.classified_actions(), [])
+
+    def test_stalled_transition_is_held_with_a_reason(self):
+        item = self.card(last_recorded_attempt="a1", attempt_outcome={"patch_id": "a1"})
+        build = work.ensure_action(item, "build", input_id="a1")
+        work.claim_action(item, build["id"], "c1")
+        work.finish_action(item, build["id"], "c1")
+        recover = work.ensure_action(item, "recover", input_id=build["id"])
+        work.claim_action(item, recover["id"], "c2")
+        work.finish_action(item, recover["id"], "c2")
+        view = drain.project_work(item)
+        self.assertEqual(view["next_action"]["availability"], "blocked")
+        self.assertEqual(drain.classified_actions(), [])
+        held = drain.queue_view()["held"]
+        self.assertEqual([row["work_id"] for row in held], [item["id"]])
+        self.assertIn("did not advance this card", held[0]["reason"])
+        self.assertEqual(work.card_lanes(item, view), ["held"])
+
+    def test_repair_beside_an_open_build_is_never_an_already_finished_step(self):
+        old_head = self.move_main()
+        item = self.card(attempt_outcome={"patch_id": "p1", "candidate": {
+            "base": old_head, "tree": "t", "files": {"sample.txt": "100644 blob x"}}})
+        done = work.ensure_action(item, "reconcile", input_id="p1")
+        work.claim_action(item, done["id"], "c1")
+        work.finish_action(item, done["id"], "c1")
+        work.ensure_action(item, "build", input_id="retry")
+        view = drain.project_work(item)
+        self.assertNotEqual(view["next_action"]["id"], done["id"])
+        self.assertEqual(drain.classified_actions(), [])
+        self.assertIn("Local main changed", drain.queue_view()["held"][0]["reason"])
 
 
 if __name__ == "__main__":
