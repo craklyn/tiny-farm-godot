@@ -1185,6 +1185,18 @@ def queue_one_repair(item):
     requeue_for_revision(item)
     # The checked drain also handles read-only repairs; the intake worker must not claim them.
     item["state"] = "waiting_session"
+    # A repair is a new build, so it gets a step of its own. Without one the
+    # queue named the next build after the attempt just made, found that step
+    # already done, and offered a "recover" that did nothing, so a repaired card
+    # only moved again if main happened to change first (2026-09-27).
+    attempt_key = str(item.get("last_recorded_attempt") or attempt.get("id") or "")
+    ident = action_key(item["id"], "build", "repair:" + attempt_key)
+    actions = _workflow(item)["actions"]
+    if not any(a.get("id") == ident for a in actions):
+        actions.append({"id": ident, "type": "build", "input_id": "repair:" + attempt_key,
+                        "owner": item.get("owner") or "claude",
+                        "summary": "Repair the last attempt using the reviewer's findings.",
+                        "priority": "retry", "created_at": _now_iso(), "state": "open"})
     save_item(item)
     return True
 

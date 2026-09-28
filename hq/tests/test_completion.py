@@ -139,6 +139,18 @@ class Completion(unittest.TestCase):
         r = record(check={'verdict':'concerns','read':True,'complete':False,'findings':[{'what':'missing answer'}]})
         got = drain.write_back(self.card, r, False, '', None, ORG)
         self.assertEqual(got['state'], 'waiting_session')
+        # The repair is offered as a fresh build, not as a "recover" of the
+        # finished attempt that never runs (2026-09-27). Reproduce what the
+        # drain leaves behind: the attempt's own build step, finished.
+        view = work.work_view({**got, 'workflow': {'actions': []}})
+        done_input = (view.get('next_action') or {}).get('input_id', '')
+        finished = {'id': work.action_key(got['id'], 'build', done_input), 'type': 'build',
+                    'input_id': done_input, 'state': 'done'}
+        repair_steps = [a for a in got['workflow']['actions'] if a['type'] == 'build' and a['state'] == 'open']
+        self.assertEqual(len(repair_steps), 1)
+        self.assertTrue(repair_steps[0]['input_id'].startswith('repair:'))
+        with_done = {**got, 'workflow': {**got['workflow'], 'actions': [finished] + got['workflow']['actions']}}
+        self.assertEqual((work.work_view(with_done).get('next_action') or {}).get('type'), 'build')
         self.assertEqual(got['owner'], 'sam')
         self.assertEqual(len(got['prior_results']), 1)
         self.assertEqual(len(got['prior_checks']), 1)
