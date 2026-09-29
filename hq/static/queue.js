@@ -460,13 +460,13 @@ function qPaneHtml(row, org) {
     <div class="q-pane-src">${[
       // A decision's title is its question, already the heading above; saying
       // it twice is the first line he has to skip.
-      // The change itself is what he is deciding on, so its link sits under the
-      // question rather than inside an evidence fold (2026-09-28).
-      ((row.artifact || {}).approval || {}).changes_link
-        ? `<a class="review-heading-link" href="${esc(row.artifact.approval.changes_link)}" target="_blank" rel="noopener">Read the exact changes</a>` : "",
       row.title !== row.question ? esc(row.title) : "",
       row.kind === "review" ? reviewHeadingArtifact(row.artifact).trim() : "",
       esc(row.source), esc(ownerName)].filter(Boolean).join(" · ")}</div>
+    ${((row.artifact || {}).approval || {}).changes_link
+      // The change itself is what he is deciding on, so its link sits under the
+      // question at reading size, not in an evidence fold (2026-09-28).
+      ? `<p class="q-changes-link"><a class="plain" href="${esc(row.artifact.approval.changes_link)}" target="_blank" rel="noopener">Read the exact changes →</a></p>` : ""}
     ${sources.length ? `<div class="q-sec"><h3>Requests this answer serves</h3><ul>${sources.map(source =>
       `<li><a class="plain" href="#/work/${encodeURIComponent(source.id)}">${esc(source.title)}</a></li>`).join("")}</ul></div>` : ""}
     ${artifact.decision_id || artifact.decision ? `<p class="q-pane-src">Earlier decision: <a class="plain" href="#/inbox/${encodeURIComponent(artifact.decision_id || artifact.decision)}">${esc(artifact.decision_id || artifact.decision)}</a></p>` : ""}
