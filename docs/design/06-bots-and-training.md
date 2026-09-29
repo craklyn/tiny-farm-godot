@@ -1079,10 +1079,18 @@ these is a later shelf item, not a rewrite.
 
 ### Its pace: how hard its nights push (Q-129 a, ruled 2026-09-25; S-31)
 
+**Purchase direction revised 2026-09-27 (Q-131; S-34).** The one-, two- and
+three-chevron steps remain, but the second and third steps are separate purchases rather
+than controls opened by the first purchase. The permanent row picture is a Mark III leaning
+into motion with two short trails. The current build still has the earlier single purchase;
+the learning scales and the day-size guard below do not change.
+
 **The ruling.** Of the three new ways of training in Milo's sketch, Daniel chose the pace
-setting first. It is the first thing on the workbench's shelf (S-29; the card is `14` §11):
-she buys it once for a Mark III, 150 gold `[Playtest]`, and can then set that robot calm,
-normal or bold. The pace scales how far each night's update moves the robot's weights.
+setting first. It is the first thing on the workbench's shelf (S-29; the card is `14` §11).
+The one-, two- and three-chevron steps are three separate purchases for each Mark III. The
+first costs 150 gold `[Playtest]`; the second and third prices remain `[Playtest]` and must
+be set before the change is built. The pace scales how far each night's update moves the
+robot's weights.
 
 **Normal is the night it already had, to the bit.** Every robot starts on normal, and normal
 is stored as nothing (`extra["pace"]` absent), so a robot she never set, a robot set bold and

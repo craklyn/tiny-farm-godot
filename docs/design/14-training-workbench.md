@@ -243,7 +243,13 @@ keeps what it learned" (S-30): it keeps what still applies and relearns the rest
 bench is showing, not to every robot she owns, for the reason the dials are per robot.
 Prices and the shelf's look are for its build, `[Playtest]` like every other price.
 
-### What was built: the shelf and the pace card (Q-129 a, built 2026-09-26; S-31)
+**The pace row's finished direction (Q-131, ruled 2026-09-27; S-34).** Keep the universal
+one-, two- and three-chevron controls. Beside them, show the Mark III leaning into motion
+with two short trails; keep that picture in every state so the row continues to read as the
+robot's pace. The second and third steps are separate purchases. The first purchase no
+longer opens all three. Prices for those later purchases remain `[Playtest]`.
+
+### What is in the current build: the shelf and the pace card (Q-129 a, built 2026-09-26; S-31)
 
 Pictures of each moment: `mockups/workbench_shelf/` (shelf open, too little gold, bought,
 set bold), taken from the game by `tools/capture_workbench_shelf.tscn`.
@@ -279,6 +285,10 @@ set bold), taken from the game by `tools/capture_workbench_shelf.tscn`.
 - Every row so far belongs to one robot (`scope: "robot"` in the catalogue). A row that
   belonged to the whole farm would need a home for it on the farm's own state; none exists
   yet, so none is written.
+
+The current card predates S-34: its robot stands still, and its single 150-gold purchase
+opens all three controls. It must be replaced by the permanent moving picture and the
+separate second and third purchases above.
 
 ### The starting brain card (Q-128, built 2026-09-26; S-32)
 

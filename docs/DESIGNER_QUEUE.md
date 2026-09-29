@@ -290,17 +290,12 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   further up the ladder — this is it). Design rewrite in `design/06`; build in
   `V0_2_1_PLAN.md` WI-9.
 
-- **Q-131 — How should the workbench shelf show that its first row controls pace?** —
-  **Ruling, revised 2026-09-26 after Daniel's feedback.** Keep the chevrons: one, two and
-  three remain a universal three-step control. The row itself must still say pace after
-  purchase, when its original chevrons disappear. Recommended: redraw the Mark III in the
-  row's permanent picture leaning into motion, with two short trails behind it; keep that
-  picture beside the chevron buttons. This keeps the subject and the meaning in one picture.
-  A snail, the Mark III and a hare as three custom buttons are the fallback if the moving
-  robot does not read at shelf size; they introduce two animals that are not the thing being
-  changed and make the middle step less obvious. The other built choices remain in the
-  decision: each robot buys its own setting for 150 gold, and bold remains available when
-  the robot has assigned squares. Card: `hq/data/decisions/Q-131.json`.
+- **Q-131** ~~How should the workbench shelf show that its first row controls pace?~~ — ✅
+  **ruled 2026-09-27.** Show a Mark III leaning into motion with two short trails beside the
+  one-, two- and three-chevron controls. Keep the moving robot after a purchase so the row
+  continues to say whose pace it changes. Daniel also ruled that the second and third steps
+  are separate purchases, rather than controls unlocked by the first purchase. Recorded as
+  S-34. Card: `hq/data/decisions/Q-131.json`.
 
 - **Q-132 — Should every Mark III be allowed to buy the starting brain?** — **Revised
   2026-09-26, open.** Built under S-32 (Q-128): the current shelf sells a small head start

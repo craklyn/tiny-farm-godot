@@ -651,6 +651,15 @@ fresh attempt, as before. This implements the merge-queue shape already describe
 `docs/hq/CONVERGENCE_QUEUE_DESIGN.md` and narrows the drain's earlier rule that a changed
 base is never rebuilt. Code: `hq/drain.py` (`run_verified_batch`, the landing path).
 
+### S-34. The Mark III's pace row keeps a moving robot beside separately bought steps
+**Ruled 2026-09-27 (Q-131, option a).** The pace row's permanent picture is the Mark III
+leaning into motion with two short trails behind it. The one-, two- and three-chevron
+controls stay beside that picture, so the same row says both robot and pace before and after
+a purchase. The second and third steps are separate purchases; buying the first step no
+longer unlocks all three controls. This revises S-31's single 150-gold purchase. The exact
+prices of the later purchases remain `[Playtest]`. Design in `design/14-training-workbench.md`
+§11; the current build still has the earlier single purchase and stationary robot.
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported
