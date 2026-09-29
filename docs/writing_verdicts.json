@@ -2439,6 +2439,9 @@
   "499570ea44df3f71f6eb": {
    "verdict": "ok"
   },
+  "49983b1e0f25c09088a0": {
+   "verdict": "ok"
+  },
   "49aa355431716fcce71d": {
    "verdict": "ok"
   },
@@ -6855,6 +6858,12 @@
   },
   "c9797a3ce11a836525f7": {
    "verdict": "ok"
+  },
+  "c982e05afd14355b2339": {
+   "instead": "Tasks paused because the studio ran out of model capacity now show that they are paused.",
+   "quote": "Tasks put back because the studio's model allowance ran out are no longer left looking abandoned",
+   "verdict": "decode",
+   "why": "The reader must work out that tasks were paused because the model quota was exhausted and that their status now explains the pause."
   },
   "c989f2cdb1eb37569d50": {
    "verdict": "ok"

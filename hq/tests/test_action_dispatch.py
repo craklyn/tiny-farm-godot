@@ -159,6 +159,37 @@ class ActionDispatch(unittest.TestCase):
         self.assertTrue(all(b["state"] == "resolved" for b in fresh["workflow"]["blockers"]))
         self.assertIsNone(drain.project_work(fresh).get("blocker"))
 
+    def test_a_card_whose_session_died_a_second_time_is_still_released(self):
+        # 2026-09-29: Grace's and Tomás's cards were released at 09:31, started
+        # again at 09:33 and 09:44, and put back when the allowance ran dry. Their
+        # recovery step's id was already used, so no second recovery could run.
+        item = self.card(state="waiting_session", repair_hold="", attempts=0,
+                         started="2026-09-29T09:44:24-07:00")
+        step = work.ensure_action(item, "recover", input_id="legacy", owner="claude",
+                                  summary="Recover the interrupted transaction before another build.",
+                                  priority="reconciliation")
+        with work.mutation_lock():
+            fresh = work.load_item(item["id"])
+            for a in fresh["workflow"]["actions"]:
+                if a["id"] == step["id"]:
+                    a["state"] = "done"
+            work.save_item(fresh)
+        self.assertEqual(drain.project_work(work.load_item(item["id"]))["blocker"]["reason"],
+                         drain.LOST_CLAIM)
+        self.assertEqual(drain.settle_lost_claims(), [item["id"]])
+        self.assertEqual(drain.settle_lost_claims(), [])
+        fresh = work.load_item(item["id"])
+        self.assertEqual(fresh["started"], "")
+        self.assertIsNone(drain.project_work(fresh).get("blocker"))
+
+    def test_running_out_of_allowance_leaves_no_start_mark(self):
+        item = self.card(state="waiting_session", repair_hold="", attempts=0,
+                         started="2026-09-29T09:33:41-07:00")
+        drain._land_item({"item": work.load_item(item["id"]), "action": None, "claim_id": ""},
+                         {"id": item["id"], "limited": True, "held": False, "error": "LIMITED"},
+                         {"employees": []}, "run-1", lambda *_: None, [], True)
+        self.assertEqual(work.load_item(item["id"])["started"], "")
+
     def test_a_live_outside_claim_is_not_released(self):
         item = self.card(state="waiting_session", repair_hold="", started="2026-09-29T01:44:24-07:00",
                          outside_claim={"by": "a session", "expires_ts": time.time() + 600})

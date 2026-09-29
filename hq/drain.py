@@ -2785,6 +2785,7 @@ def settle_handoffs():
 
 
 NO_LANDING_TO_RECOVER = "No recoverable landing transaction remains."
+LOST_CLAIM = "The previous session no longer has a live claim."
 
 
 def release_lost_claim(item):
@@ -2823,12 +2824,21 @@ def settle_lost_claims():
     for item in work.items():
         if item.get("state") in work.FINAL_STATES or item.get("pending_landing"):
             continue
+        # Held because a session that is gone left its start mark. A card's
+        # recovery step has one id, so a card this happened to twice could
+        # never be recovered again: Grace's and Tomás's cards, put back when the
+        # allowance ran dry at 09:41 on 2026-09-29, the morning after their first.
+        lost = bool(item.get("started") and item.get("state") != "doing" and
+                    (project_work(item).get("blocker") or {}).get("reason") == LOST_CLAIM
+                    and release_lost_claim(item))
         workflow = item.get("workflow") or {}
         parked = {b.get("action_id") for b in workflow.get("blockers") or []
                   if b.get("state") == "open" and b.get("reason") == NO_LANDING_TO_RECOVER}
         steps = {a.get("id") for a in workflow.get("actions") or []
                  if a.get("id") in parked and a.get("type") == "recover" and a.get("state") == "blocked"}
         if not steps:
+            if lost:
+                released.append(item["id"])
             continue
         release_lost_claim(item)
         with work.mutation_lock():
@@ -2970,6 +2980,10 @@ def _land_item(ctx, rec, org, run_id, log, done, no_suites):
             action_dispatch.finish(work, item, action, claim_id,
                                    progressed=False, deferred=deferred,
                                    reason=rec.get("error") or "The owner session did not finish.")
+        if rec.get("limited") or (rec.get("held") and rec.get("error") in ("", "HELD")):
+            # "Not now" leaves no session behind, so it leaves no start mark:
+            # one left behind read as a dead session and held the card.
+            release_lost_claim(item)
         elif rec.get("tooling_hold"):
             work.ensure_blocker(item, "tooling", input_id=rec["attempt_id"],
                                 owner="claude", reason=rec["error"],
