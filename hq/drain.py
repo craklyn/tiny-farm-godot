@@ -76,6 +76,7 @@ sys.path.insert(0, HERE)
 import server                      # noqa: E402  (path set above)
 import work                        # noqa: E402
 import action_dispatch             # noqa: E402
+import art_requests                # noqa: E402
 
 TEST_SCRATCH = os.environ.get("HQ_TEST_SCRATCH", "")
 WORKTREES = (os.path.join(TEST_SCRATCH, "worktrees") if TEST_SCRATCH
@@ -474,7 +475,7 @@ def task_prompt(item, org, resumed="", continuing=False, turns=WORKER_TURNS,
 What Daniel asked for: {item.get('ask', '')}
 
 The next step, which is yours to take now: {item.get('first_action', '')}
-{said}{prior_checks(item)}{prior_session(item)}{verification_brief}{revising}{resume_brief(item, continuing, turns)}{action_dispatch.reconcile_brief(action or {}, blocker)}
+{said}{prior_checks(item)}{prior_session(item)}{verification_brief}{revising}{resume_brief(item, continuing, turns)}{action_dispatch.reconcile_brief(action or {}, blocker)}{"" if int(item.get("tier") or 0) == 0 else art_requests.WORKER_BRIEF}
 Include outcome: {{"status": "complete|blocked|unfinished", "reason": "concrete reason"}} in the final WHAT FOLLOWS JSON object. Use items: [] rather than NONE.
 Do the work in your worktree. Then reply with the deliverable Daniel reads: what
 you changed, what it now does, and anything you found that he should know.
@@ -734,13 +735,15 @@ def check_evidence_id(rec):
 # one CLI call
 # ---------------------------------------------------------------------------
 
-def _session_paths(phase, item_id):
+def _session_paths(phase, item_id, suffix=""):
     """Where one session is written as it runs: the event stream and the record
-    beside it, under hq/data/runs/workers/<run>/<item>-<phase>."""
+    beside it, under hq/data/runs/workers/<run>/<item>-<phase><suffix>. A second
+    session of the same phase in one run (the art round's) takes a suffix, or its
+    record would overwrite the first one's usage."""
     run = RUN_ID or (time.strftime("%Y%m%d-%H%M%S") + "-byhand")
     d = os.path.join(WORKERS, run)
     os.makedirs(d, exist_ok=True)
-    stem = os.path.join(d, f"{item_id or 'none'}-{phase}")
+    stem = os.path.join(d, f"{item_id or 'none'}-{phase}{suffix}")
     return stem + ".jsonl", stem + ".json"
 
 
@@ -762,7 +765,7 @@ def _last_assistant_text(lines):
 
 
 def run_cli(prompt, system, tools, model, cwd, timeout, turns, phase, seat, item_id,
-            attempt_id=""):
+            attempt_id="", suffix=""):
     """One model session, streamed to disk as it runs.
 
     Every event the CLI emits is appended to the session's file the moment it
@@ -774,7 +777,7 @@ def run_cli(prompt, system, tools, model, cwd, timeout, turns, phase, seat, item
     if not execution.launch_allowed(launch_context=context, item=item_id, phase=adapter_phase):
         return "", None, "HELD"
     started = time.time()
-    events_path, meta_path = _session_paths(phase, item_id)
+    events_path, meta_path = _session_paths(phase, item_id, suffix)
     meta = {"item": item_id, "attempt_id": attempt_id, "seat": seat, **execution.resolve_model(model),
             "phase": phase, "cwd": cwd, "turns": turns, "timeout": timeout,
             "run": RUN_ID, "started": time.strftime("%Y-%m-%dT%H:%M:%S"),
@@ -1271,6 +1274,35 @@ def preflight_godot_import(tree):
 # the phases
 # ---------------------------------------------------------------------------
 
+def art_round(item, org, run_id, log, tree, rec, text, err, model, turns, brief):
+    """S-37: after the owner's session, run the art it asked for and give it one
+    more session with the results. Returns the (text, error) that stand for the
+    attempt — the continuation's when there was one. At most one round a run;
+    requests written during the continuation are removed and said so."""
+    art = art_requests.run_round(item, tree, REPO)
+    if art is None:
+        return text, err
+    rec["art"] = art
+    log(f"{item['id']} · art round: {len(art['generated'])} generated for ${art['spent']:.2f}"
+        + (f", held — {art['hold']['kind']} limit" if art["hold"] else "")
+        + (f", {len(art['rejected'])} malformed" if art["rejected"] else ""))
+    record_phase(run_id, item, "worker", "The owner is using the art it asked for.")
+    seat = item["owner"]
+    ctext, cusage, cerr = run_cli(art_requests.continuation_brief(art, text) + brief,
+                                  seat_prompt(org, seat, False), WRITE_TOOLS, model, tree,
+                                  WORKER_TIMEOUT, turns, "drain-work", seat, item["id"],
+                                  rec["attempt_id"], suffix="-art")
+    if cusage:
+        rec["usage"].append(dict(cusage, phase="drain-work", seat=seat))
+    if art_requests.take_requests(tree):
+        art["second_round"] = True
+    if cerr in ("HELD", "LIMITED"):
+        # Paid raws and their spend record are in this worktree: keep them as the
+        # held patch the next attempt starts from, before the worktree goes.
+        save_patch(item["id"], worktree_patch(tree)[0])
+    return (ctext or text), cerr
+
+
 def do_item(item, org, run_id, log, action=None):
     """Worker then checker, both in the item's own worktree. Returns the record
     the session applies and writes back."""
@@ -1314,16 +1346,18 @@ def do_item(item, org, run_id, log, action=None):
             record_phase(run_id, item, "importing", "Godot is indexing the isolated game checkout.")
             preflight_godot_import(tree)
         record_phase(run_id, item, "worker", "The owner is repairing it.")
-        text, usage, err = run_cli(task_prompt(item, org, resumed=committed_prior,
-                                               continuing=bool(resumed), turns=turns,
-                                               action=action,
-                                               blocker=project_work(item).get("blocker") if action else None),
+        brief = task_prompt(item, org, resumed=committed_prior, continuing=bool(resumed),
+                            turns=turns, action=action,
+                            blocker=project_work(item).get("blocker") if action else None)
+        text, usage, err = run_cli(brief,
                                    seat_prompt(org, seat, thinking),
                                    READ_TOOLS if thinking else WRITE_TOOLS,
                                    model, tree, WORKER_TIMEOUT,
                                    turns, "drain-work", seat, item["id"], rec["attempt_id"])
         if usage:
             rec["usage"].append(dict(usage, phase="drain-work", seat=seat))
+        if err not in ("HELD", "LIMITED") and not thinking:
+            text, err = art_round(item, org, run_id, log, tree, rec, text, err, model, turns, brief)
         if err == "HELD":
             rec["held"] = True
             item["started"] = ""
@@ -1359,7 +1393,8 @@ def do_item(item, org, run_id, log, action=None):
             "base_files": git_blobs(tree, base, rec["files"]),
         }
         rec["execution_evidence"] = owner_execution_evidence(
-            os.path.join(WORKERS, RUN_ID or "byhand", f"{item['id']}-drain-work.jsonl"),
+            os.path.join(WORKERS, RUN_ID or "byhand",
+                         f"{item['id']}-drain-work{'-art' if rec.get('art') else ''}.jsonl"),
             run=RUN_ID or "byhand", attempt_id=rec["attempt_id"],
             candidate=rec["candidate"])
         external = verification_evidence.lookup(item, roots.ROOTS["data"])
@@ -3069,6 +3104,7 @@ def _land_item(ctx, rec, org, run_id, log, done, no_suites):
             record_integration_blocker(done[-1], rec, "missing_evidence",
                                        (done[-1].get("diff") or {}).get("why_not_landed") or
                                        "The candidate needs new landing evidence.")
+        art_requests.after_write_back(done[-1], rec)
         if integration_repo and os.path.isdir(integration_repo) and not done[-1].get("pending_landing"):
             _remove_candidate(integration_repo)
     except work.RecordConflict:
@@ -3325,6 +3361,10 @@ def main():
             print(f"Local main can take landings again; cleared the checkout handoff on "
                   f"{len(cleared)} card(s): {', '.join(cleared)}.")
         released = settle_lost_claims()
+        art_released = art_requests.settle_holds()
+        if art_released:
+            print(f"Released {len(art_released)} card(s) whose art limit no longer applies: "
+                  f"{', '.join(art_released)}.")
         if released:
             print(f"Released {len(released)} card(s) whose earlier session died with nothing "
                   f"to land: {', '.join(released)}.")

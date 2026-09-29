@@ -35,6 +35,44 @@ def clean(n):
     return None if n is None else (int(n) if float(n).is_integer() else n)
 
 
+def make_entry(purpose, dollars, *, credits=None, balance_after=None, work_item=None,
+               date=None, recorded_by="record_spend"):
+    """One ledger record. The work queue's drain builds its own with this
+    (hq/art_requests.py, recorded_by "drain") so both writers keep one shape."""
+    date = date or datetime.date.today().isoformat()
+    # Field names and order match the backfilled entries (the finance seat owns
+    # the shape); the id is the same date-slug form the backfill uses.
+    slug = re.sub(r"[^a-z0-9]+", "-", purpose.lower()).strip("-")[:40]
+    return {
+        "id": f"{date}-{slug}",
+        "date": date,
+        "vendor": "Retro Diffusion",
+        "kind": "generation",
+        "purpose": purpose,
+        "work_item": work_item,
+        "dollars": clean(dollars),
+        "credits": clean(credits),
+        "balance_after": clean(balance_after),
+        "reconciled": balance_after is not None,
+        "recorded_by": recorded_by,
+    }
+
+
+def append(entry, ledger=LEDGER):
+    """Append one record, leaving every other top-level key as it was."""
+    if os.path.isfile(ledger):
+        with open(ledger, encoding="utf-8") as f:
+            data = json.load(f)
+    else:
+        data = {"currency": "USD", "entries": []}
+    data.setdefault("entries", []).append(entry)
+    tmp = ledger + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(data, f, ensure_ascii=False, indent=2)
+        f.write("\n")
+    os.replace(tmp, ledger)
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     p.add_argument("--purpose", required=True)
@@ -55,36 +93,9 @@ def main():
         except ValueError:
             die(f"--date must be YYYY-MM-DD, got {args.date!r}")
 
-    # Field names and order match the backfilled entries (the finance seat owns
-    # the shape); the id is the same date-slug form the backfill uses.
-    slug = re.sub(r"[^a-z0-9]+", "-", args.purpose.lower()).strip("-")[:40]
-    entry = {
-        "id": f"{date}-{slug}",
-        "date": date,
-        "vendor": "Retro Diffusion",
-        "kind": "generation",
-        "purpose": args.purpose,
-        "work_item": args.work_item,
-        "dollars": clean(args.dollars),
-        "credits": clean(args.credits),
-        "balance_after": clean(args.balance_after),
-        "reconciled": args.balance_after is not None,
-        "recorded_by": "record_spend",
-    }
-
-    if os.path.isfile(LEDGER):
-        with open(LEDGER, encoding="utf-8") as f:
-            ledger = json.load(f)
-    else:
-        ledger = {"currency": "USD", "entries": []}
-
-    ledger.setdefault("entries", []).append(entry)
-
-    tmp = LEDGER + ".tmp"
-    with open(tmp, "w", encoding="utf-8") as f:
-        json.dump(ledger, f, ensure_ascii=False, indent=2)
-        f.write("\n")
-    os.replace(tmp, LEDGER)
+    entry = make_entry(args.purpose, args.dollars, credits=args.credits,
+                       balance_after=args.balance_after, work_item=args.work_item, date=date)
+    append(entry)
 
     print(f"recorded ${entry['dollars']} — {args.purpose} ({date})")
 

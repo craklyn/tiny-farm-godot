@@ -5093,6 +5093,12 @@
   "946a088ddc4bfffc5025": {
    "verdict": "ok"
   },
+  "9486caee0a136431d1a2": {
+   "instead": "Automated requests can generate pixel art for no more than $2 per request and $10 per day",
+   "quote": "Queue workers can ask for pixel art, and the drain generates it within $2 a card and $10 a day",
+   "verdict": "decode",
+   "why": "“Queue workers” and “the drain” are internal process terms, and the sentence does not plainly say who requests the art or what produces it."
+  },
   "948adcb64a2242bb7cdf": {
    "verdict": "ok"
   },

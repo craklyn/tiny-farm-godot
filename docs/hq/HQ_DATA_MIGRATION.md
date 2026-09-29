@@ -47,6 +47,7 @@ is what writes the file while the studio runs, per the reader/writer survey of
 | `maps/` | HQ: map editor (`save_map`) | HQ writes it. `tools/export_layout.gd` still writes into the repository path; copy an export into the store to use it. |
 | `release_plan.json` | HQ: product plan (POST /api/product/plan) | Edited on HQ's product page. |
 | `attestations.json` | HQ: web-play attestation (POST /api/web-play) | Written by HQ. |
+| `art_generations/` | Drain: `art_requests.run_round` (S-37) | The raw art the drain generated for cards, and the spend record the art limits are counted from. Added 2026-09-29. |
 
 ### Runtime output: the store only (already ignored on main before this change)
 

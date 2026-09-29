@@ -37,7 +37,7 @@ REPO_OWNED = (
 # fails the build if a commit adds one back.
 LIVE_RECORDS = (
     "work", "rulings", "goals", "staff", "sprite_edits", "anim_asks", "anim_runs",
-    "maps", "release_plan.json", "attestations.json",
+    "maps", "release_plan.json", "attestations.json", "art_generations",
 )
 # Tracked as the seed for a new store and for tools that run without a store
 # (the pre-commit writing check, CI, a fresh clone); the running HQ reads and

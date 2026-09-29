@@ -226,6 +226,10 @@ class Normalizer:
         return [{**base, 'type': 'system', 'subtype': kind}]
 
 
+# Keys the drain itself uses (hq/art_requests.py, S-37) never reach a model session.
+SECRET_ENV = ("RETRODIFFUSION_API_KEY",)
+
+
 def run_session(prompt, system, tools, model, cwd, timeout, turns, *, phase='', seat='',
                 item='', on_event=None, on_start=None, launch_context='automatic'):
     started = time.monotonic()
@@ -240,7 +244,9 @@ def run_session(prompt, system, tools, model, cwd, timeout, turns, *, phase='', 
         command = command_for(prompt, system, tools, route, turns)
         proc = subprocess.Popen(command, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                 text=True, start_new_session=True,
-                                env={**os.environ, 'CLAUDE_CODE_DISABLE_AUTOUPDATE': '1'})
+                                env={**{k: v for k, v in os.environ.items()
+                                        if k not in SECRET_ENV},
+                                     'CLAUDE_CODE_DISABLE_AUTOUPDATE': '1'})
     except (OSError, ValueError) as exc:
         return {**result, 'error': str(exc)}
     normalizer = Normalizer(route)

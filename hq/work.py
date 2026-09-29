@@ -1069,8 +1069,15 @@ def work_view(item, repo_facts=None, now=None):
     run_finished = (item.get("state") in HIS_STATES or
                     _iso_seconds(item.get("finished")) >= _iso_seconds(item.get("started")) > 0)
     blocker = None
+    # Art the drain refused to generate (hq/art_requests.py, S-37) holds the card
+    # for the chief of staff ahead of everything else: any other step would run
+    # the owner again, who would only ask for the same art.
+    art_hold = next((dict(b) for b in workflow.get("blockers") or []
+                     if b.get("type") == "art_budget" and b.get("state") == "open"), None)
     if awaiting_approval or checkpoint_pending:
         pass
+    elif art_hold and not terminal:
+        blocker = art_hold
     elif blocked_files:
         blocker = {"type": "code_conflict", "reason": facts.get("tree_reason") or
                    "The candidate overlaps uncommitted repository files.",
@@ -1220,7 +1227,8 @@ def work_view(item, repo_facts=None, now=None):
                                   action.get("type") in ("decide", "rebrief") else "blocked" if
                                   action.get("state") == "blocked" or
                                   (blocker and action.get("type") == "build") or
-                                  (blocker and blocker["type"] == "capacity" and action.get("type") != "rebrief") else
+                                  (blocker and blocker["type"] == "capacity" and action.get("type") != "rebrief") or
+                                  (blocker and blocker["type"] == "art_budget") else
                                   "waiting_event" if exhausted_repair and not supervised_retry else "runnable")
         if claim and not running:
             action["lease_expired"] = not lease_live
