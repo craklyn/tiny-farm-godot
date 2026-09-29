@@ -1,0 +1,42 @@
+{
+ "id": "Q-134",
+ "owner": "claude",
+ "title": "What should Codex work on when the work queue runs out?",
+ "question": "Codex works the studio's queue until its allowance for the five-hour window runs out, as you asked. But the queue usually runs out first. Since Codex took over on 21 September it has used about 30% of what it could have. Part of that was the queue being stuck on 23–24 September, which is fixed. From 27 September on, with the queue working, 245 of the drain's 283 checks found nothing they could start.\n\nI recommend that when the queue has nothing to start and the window still has room, the chief of staff refills it from what the studio already records, in this order:\n1. Findings from each new tablet play session, like the 24 squares that kept refusing your daughter on 28 September.\n2. Goals whose checks fail or measure nothing, as work for the goal's owner.\n3. The next unbuilt step of each project in progress, such as the public release.\n4. A regular list of checks for each role in the studio, drawn from what the org chart says that role watches. This source never runs out.\n\nOnly work the studio can finish and ship without you is filed this way. Anything that needs your taste waits as one prepared question at a time. At most six refill cards are open at once, and each card says where it came from and what it spent. The refill runs only on Codex, never on your Claude subscription. You would see one line a week on the Work page: how much of each five-hour allowance Codex used, and what the refill finished.",
+ "why_now": "Two-thirds of the Codex allowance is going unused, and the queue sits idle whenever nobody files work.",
+ "options": [
+  {
+   "key": "a",
+   "label": "Refill from the studio's own records, then from each role's regular list of checks (Recommended)",
+   "detail": "The studio builds the refill into the work queue, starting with play-session findings, goal checks and the role lists; projects are added after a week of results. It files only work the studio can finish and ship without you, keeps at most one question waiting for you, and reports weekly on the Work page.",
+   "recommended": true
+  },
+  {
+   "key": "b",
+   "label": "Refill from each role's regular list of checks only",
+   "detail": "Simpler: the queue takes from each role's list in turn. The lists are written ahead of time, so they drift away from what players actually run into."
+  },
+  {
+   "key": "c",
+   "label": "Put spare capacity into Kenji's learning research",
+   "detail": "Spare windows run long experiments on recorded play sessions for the phase-4 learning robots. The experiments can use any amount of capacity, but their results are research notes nobody acts on until phase 4."
+  },
+  {
+   "key": "d",
+   "label": "Leave spare capacity unused",
+   "detail": "The queue works only what people file. Nothing is built, and about two-thirds of the Codex allowance keeps going unused."
+  }
+ ],
+ "links": [
+  {
+   "type": "image",
+   "src": "docs/hq/queue_refill/codex_use_by_window.png",
+   "caption": "Codex tokens used in each five-hour stretch since 21 September, against the 17.5 million one window held when it ran out on 28 September."
+  },
+  {
+   "label": "The proposal in full: sources, guardrails, what a yes builds, and how the numbers were measured",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/hq/QUEUE_REFILL.md"
+  }
+ ],
+ "subject": "What Codex works on"
+}

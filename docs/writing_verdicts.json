@@ -176,6 +176,12 @@
   "0658d51098526af00e06": {
    "verdict": "ok"
   },
+  "065b952219f1d4c56a04": {
+   "instead": "each role's regular work list only",
+   "quote": "each seat's standing list only",
+   "verdict": "decode",
+   "why": "The reader has to infer that “seat” means a role and “standing list” means its regular work list."
+  },
   "066967e5f29da16e5c83": {
    "verdict": "ok"
   },
@@ -283,6 +289,12 @@
   },
   "0920bb7cf241f240d3f2": {
    "verdict": "ok"
+  },
+  "0921c769fc760c3f886e": {
+   "instead": "Only Codex creates these extra work items; your Claude subscription never does",
+   "quote": "The refill runs only on Codex, never on your Claude subscription",
+   "verdict": "second-look",
+   "why": "“The refill” does not say plainly what process is running or what it does."
   },
   "09321f12c3c3291c7a8c": {
    "verdict": "ok"
@@ -451,6 +463,12 @@
   "0dc54adc33f4a496c2fd": {
    "verdict": "ok"
   },
+  "0e11678b4c9301a5055a": {
+   "instead": "adds new work to the work list",
+   "quote": "builds the refill into the work queue",
+   "verdict": "second-look",
+   "why": "“Refill” and “work queue” name the process rather than plainly saying that new work is added to the list."
+  },
   "0e1f90dd11a51a20fedf": {
    "verdict": "ok"
   },
@@ -527,6 +545,9 @@
    "verdict": "ok"
   },
   "10e0b01c76ef4e16de93": {
+   "verdict": "ok"
+  },
+  "110115202a4dc807d0a2": {
    "verdict": "ok"
   },
   "1102434d38b6d0d0d0eb": {
@@ -794,6 +815,12 @@
   "1888ed16df471d1a6ac5": {
    "verdict": "ok"
   },
+  "18b0fd0119822c73f1b2": {
+   "instead": "the roles' regular work lists",
+   "quote": "the seats' lists",
+   "verdict": "decode",
+   "why": "The reader has to infer that “seats” means roles and that their lists are recurring work lists."
+  },
   "18f3ebc3c76357a29fba": {
    "instead": "the player's only gold would be the hen's egg",
    "quote": "her only gold would be the hen's egg",
@@ -1019,6 +1046,9 @@
    "verdict": "ok"
   },
   "1ec0101a17536c0b277a": {
+   "verdict": "ok"
+  },
+  "1f4bf984e3547637db91": {
    "verdict": "ok"
   },
   "1f619038daa0d71b1f46": {
@@ -1410,6 +1440,12 @@
    "verdict": "second-look",
    "why": "Panels is house vocabulary, and read as is observation language instead of stating what the mockups show."
   },
+  "2b39a32c223dc242109d": {
+   "instead": "The pace row shows the most energetic pose as a still picture, but it is not the robot the player sees on the farm.",
+   "quote": "C",
+   "verdict": "decode",
+   "why": "The letter is unexplained, so the reader cannot know which pose it names."
+  },
   "2b4b8c9594b8973e2d83": {
    "verdict": "ok"
   },
@@ -1558,6 +1594,9 @@
    "why": "The reader has to translate repository terms into the fact that two versions of the cards changed independently."
   },
   "2f069f431a500508f5b1": {
+   "verdict": "ok"
+  },
+  "2f37174fc4aff1746a29": {
    "verdict": "ok"
   },
   "2f388cd47075079f2fca": {
@@ -2344,6 +2383,9 @@
    "verdict": "ok"
   },
   "49aa355431716fcce71d": {
+   "verdict": "ok"
+  },
+  "49ce097bffbe26f935a6": {
    "verdict": "ok"
   },
   "49dac34f2dff340f1e8f": {
@@ -3542,6 +3584,9 @@
   "6daf856a37c3aa6c5857": {
    "verdict": "ok"
   },
+  "6dbf5facbc48046c6eea": {
+   "verdict": "ok"
+  },
   "6dc0765b6ad8c16132b7": {
    "baselined": "2026-09-19",
    "instead": "Requires the missing text to be supplied and the mechanism ('drawn with the numbers', 'over the game's tilled soil') clarified into a result the user cares about.",
@@ -3889,6 +3934,12 @@
    "verdict": "second-look",
    "why": "The reader has to infer that this means a comparison using controls large enough to tap comfortably."
   },
+  "78533460eefd02ae21db": {
+   "instead": "Codex's use compared with the allowance available in each five-hour window",
+   "quote": "Codex's use against what a window holds",
+   "verdict": "second-look",
+   "why": "The phrase makes the reader translate a window into the allowance available during that period."
+  },
   "7861d36d5a8af30ae07e": {
    "verdict": "ok"
   },
@@ -4235,6 +4286,12 @@
   "81ee2f74d1f733717964": {
    "verdict": "ok"
   },
+  "821064df16a04f7e9aba": {
+   "instead": "Adding these tasks does not use any of the five-hour work time assigned to Claude",
+   "quote": "The refill work uses none of your Claude allowance",
+   "verdict": "decode",
+   "why": "The reader has to work out what an allowance is and how this work relates to Claude's available work time."
+  },
   "821546048b445324bb1b": {
    "verdict": "ok"
   },
@@ -4310,6 +4367,9 @@
    "quote": "derived from pixels we already ship",
    "verdict": "second-look",
    "why": "\"Derived from\" is vague—upscaled, extracted, composited, or something else?"
+  },
+  "842e71d462935cea5274": {
+   "verdict": "ok"
   },
   "8433519999ae5f055d19": {
    "instead": "the player sees the switch and the number of practice runs",
@@ -4775,6 +4835,12 @@
    "verdict": "decode",
    "why": "This names an internal signal instead of saying what the player cannot see."
   },
+  "92747ee339398fca675a": {
+   "instead": "The refill work uses none of your Claude allowance.",
+   "quote": "none of it runs on your Claude allowance",
+   "verdict": "second-look",
+   "why": "“It” refers back to the refill cards in another sentence, making the scope of the statement needlessly indirect."
+  },
   "9289308481c74ae7306f": {
    "verdict": "ok"
   },
@@ -4789,6 +4855,12 @@
    "quote": "Style the questions returning to the studio",
    "verdict": "decode",
    "why": "The reader has to work out whether “style” means rewrite and who or what is returning to the studio."
+  },
+  "92d991480082017821ca": {
+   "instead": "work that can be completed without your input",
+   "quote": "work that lands without you",
+   "verdict": "decode",
+   "why": "“Lands” is internal shorthand for work completed without the CEO's involvement."
   },
   "92e546324dff0acbefd7": {
    "verdict": "ok"
@@ -5608,6 +5680,9 @@
    "verdict": "decode",
    "why": "The pronoun has no referent in the sentence, so the reader cannot tell what was confirmed."
   },
+  "aa41a1c39be6572008b2": {
+   "verdict": "ok"
+  },
   "aa4b5cac10fb13ae3363": {
    "verdict": "ok"
   },
@@ -5983,6 +6058,12 @@
   "b798094b925671e1070f": {
    "verdict": "ok"
   },
+  "b7ca3785b6d77784399c": {
+   "instead": "The experiments can use any amount of capacity",
+   "quote": "They can use any amount of capacity",
+   "verdict": "decode",
+   "why": "“They” could refer to the experiments or the learning robots, so the reader must resolve the actor."
+  },
   "b7f22097fc28097f2953": {
    "verdict": "ok"
   },
@@ -6050,6 +6131,9 @@
    "verdict": "ok"
   },
   "ba0ff73d588ecbd34e18": {
+   "verdict": "ok"
+  },
+  "ba7320a958907f89e8c0": {
    "verdict": "ok"
   },
   "bac3aaecc31e6abbc388": {
@@ -6492,6 +6576,9 @@
   "c6a6eeef4f43a7b8aae1": {
    "verdict": "ok"
   },
+  "c6b760767a28ea6f62f8": {
+   "verdict": "ok"
+  },
   "c732ddab6e09d1e54ea5": {
    "verdict": "ok"
   },
@@ -6906,6 +6993,9 @@
    "verdict": "ok"
   },
   "d43401afd293ee3f01ab": {
+   "verdict": "ok"
+  },
+  "d44a06ebfb4d7ecd2202": {
    "verdict": "ok"
   },
   "d46a4fd723fc4ff506c3": {
@@ -7883,6 +7973,9 @@
    "verdict": "second-look",
    "why": "“Card” is internal work-queue shorthand, so a cold reader may need to infer that it means a work item."
   },
+  "f4afc70762d173c57233": {
+   "verdict": "ok"
+  },
   "f4de393165d1a7f7a375": {
    "verdict": "ok"
   },
@@ -8231,6 +8324,12 @@
    "quote": "for the decision request changes",
    "verdict": "second-look",
    "why": "The reader has to parse whether the request itself changes or whether this means changes to the request."
+  },
+  "ff8803196c97ea5e1e5f": {
+   "instead": "each role's regular work list",
+   "quote": "each seat's standing list",
+   "verdict": "decode",
+   "why": "The reader has to infer that “seat” means a role and “standing list” means its regular work list."
   },
   "ff9ea705ba53e992bbc3": {
    "verdict": "ok"
