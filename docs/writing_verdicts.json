@@ -4415,6 +4415,12 @@
    "verdict": "second-look",
    "why": "“Strands” is a metaphor for leaving work items stuck, so the reader has to translate the phrase."
   },
+  "8a2d7802cdbd66d6cb17": {
+   "instead": "The link to how a result was produced now reads \"How this result was produced\", and links that open a new tab carry a new-tab icon",
+   "quote": "Execution session",
+   "verdict": "second-look",
+   "why": "This internal-sounding label makes the reader translate it into the plain meaning of how the result was produced."
+  },
   "8a3bfaa44ab06bdb4d3a": {
    "verdict": "ok"
   },

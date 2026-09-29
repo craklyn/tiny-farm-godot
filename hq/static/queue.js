@@ -120,6 +120,10 @@ function qNoRecommendation(row) {
 /* Evidence, folded, in the order §7 item 7 lists it: what came back, files
    changed, suites, the checker, the brief. Only what the card actually
    carries — an absent field is left out rather than shown empty. */
+/* The "opens in a new tab" mark: a box with an arrow leaving it (Daniel's
+   pick, 2026-09-28). Drawn in the text colour so it follows the theme. */
+const Q_NEW_TAB_ICON = `<svg class="q-newtab" viewBox="0 0 24 24" width="0.9em" height="0.9em" aria-hidden="true" style="vertical-align:-0.1em;margin-left:0.25em" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 4h6v6"/><path d="M20 4l-9 9"/><path d="M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5"/></svg>`;
+
 function qWorkEvidence(card, ownerName) {
   const items = [];
   // A change held for his yes leads with what it is and a way to read it
@@ -148,7 +152,7 @@ function qWorkEvidence(card, ownerName) {
   if (card.started || card.diff) {
     // A link, not a fold: there is nothing to read here but where it goes (2026-09-28).
     items.push({ label: "How it was done", link: `#/chat/bullpen?item=${encodeURIComponent(card.id)}`, linkOnly: true,
-                 linkText: "See how it was done", text: "every file it read, change it made and command it ran, and what it cost" });
+                 linkText: "Execution session" });
   }
   return items;
 }
@@ -471,7 +475,7 @@ function qPaneHtml(row, org) {
     ${((row.artifact || {}).approval || {}).changes_link
       // The change itself is what he is deciding on, so its link sits under the
       // question at reading size, not in an evidence fold (2026-09-28).
-      ? `<p class="q-changes-link"><a class="plain" href="${esc(row.artifact.approval.changes_link)}" target="_blank" rel="noopener">Read the exact changes →</a></p>` : ""}
+      ? `<p class="q-changes-link"><a class="plain" href="${esc(row.artifact.approval.changes_link)}" target="_blank" rel="noopener">Read the exact changes${Q_NEW_TAB_ICON}</a></p>` : ""}
     ${sources.length ? `<div class="q-sec"><h3>Requests this answer serves</h3><ul>${sources.map(source =>
       `<li><a class="plain" href="#/work/${encodeURIComponent(source.id)}">${esc(source.title)}</a></li>`).join("")}</ul></div>` : ""}
     ${artifact.decision_id || artifact.decision ? `<p class="q-pane-src">Earlier decision: <a class="plain" href="#/inbox/${encodeURIComponent(artifact.decision_id || artifact.decision)}">${esc(artifact.decision_id || artifact.decision)}</a></p>` : ""}
@@ -516,7 +520,7 @@ function qPaneHtml(row, org) {
         `<details><summary>${esc(e.label)}</summary><div>${mdi(e.text)}${
           e.link ? `<p><a class="plain" href="${e.link}"${e.link.startsWith("#") ? "" : ` target="_blank" rel="noopener"`}>${esc(e.linkText || "Open the session in the bullpen")}</a></p>` : ""}</div></details>`).join("")
         + row.evidence.filter(e => e.linkOnly).map(e =>
-        `<p class="q-evidence-link"><a class="plain" href="${e.link}"${e.link.startsWith("#") ? "" : ` target="_blank" rel="noopener"`}>${esc(e.linkText)} →</a>${e.text ? ` <span class="q-pane-muted">— ${esc(e.text)}</span>` : ""}</p>`).join("")
+        `<p class="q-evidence-link"><a class="plain" href="${e.link}" target="_blank" rel="noopener">${esc(e.linkText)}${Q_NEW_TAB_ICON}</a>${e.text ? ` <span class="q-pane-muted">— ${esc(e.text)}</span>` : ""}</p>`).join("")
         : `<p class="q-pane-muted">Nothing recorded yet.</p>`}
     </div>
 
