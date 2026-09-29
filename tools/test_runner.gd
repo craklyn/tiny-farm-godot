@@ -8616,6 +8616,8 @@ func _scenario_bl_the_shelf_sells_a_pace() -> void:
 	_assert(not normal.disabled and (normal.get_node("Price") as Label).text == "",
 		"normal is available from the start and has no purchase price")
 	_assert(calm.disabled, "with 100 gold, the 150 first step will not take a tap")
+	_assert(not shelf._pace_card_affordable(),
+		"and the pace card has the cannot-afford shade while that is its next purchase")
 	var before: int = farm.replay.entries.size()
 	calm.pressed.emit()
 	await get_tree().process_frame
@@ -8634,6 +8636,14 @@ func _scenario_bl_the_shelf_sells_a_pace() -> void:
 	_assert(BotBrain.owns_pace(farm.sim.actor(mk3).get("extra", {}), BotBrain.PACE_CALM)
 			and not BotBrain.owns_pace(farm.sim.actor(mk3).get("extra", {}), BotBrain.PACE_BOLD),
 		"and the robot owns only the first pace step")
+	GameState.gold = 100
+	bench.refresh()
+	await get_tree().process_frame
+	_assert(shelf._pace_card_affordable(),
+		"with calm bought, the pace card keeps its normal shade even below 150 gold")
+	GameState.gold = 850
+	bench.refresh()
+	await get_tree().process_frame
 	_assert(AudioManager.last_sfx == "jingle",
 		"with the shop's own purchase sound (%s)" % AudioManager.last_sfx)
 	_assert(farm.replay.entries.size() == before + 1,

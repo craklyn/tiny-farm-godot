@@ -290,7 +290,7 @@ func _draw() -> void:
 		var r := row_rect(i)
 		var owned := BotBrain.has_upgrade(extra, key)
 		var pace_row := key == "pace"
-		var can := owned or _affordable(key)
+		var can := _pace_card_affordable() if pace_row else owned or _affordable(key)
 		draw_rect(r, CARD_FILL if can else CARD_FILL_OFF)
 		draw_rect(r, Workbench.BRASS if owned or pace_row else CARD_EDGE, false, 2.0)
 		var pic := Rect2(r.position + PICTURE_AT, PICTURE_SIZE)
@@ -300,6 +300,17 @@ func _draw() -> void:
 		if not owned and not pace_row:
 			_draw_price(r, ShelfDefs.price_of(key), _affordable(key), _offered(key))
 	_draw_purse()
+
+
+## Whether the next pace step still for sale can be bought. Once no priced step
+## remains, the card is a set of owned controls and no longer depends on gold.
+func _pace_card_affordable() -> bool:
+	var extra := _extra()
+	for pace in pace_buttons.size():
+		var price := ShelfDefs.pace_price(pace)
+		if not BotBrain.owns_pace(extra, pace) and price >= 0:
+			return GameState.gold >= price
+	return true
 
 
 # The coin and the numeral: gold when she can buy it, red when she is short, and
