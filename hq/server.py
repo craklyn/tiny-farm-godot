@@ -4098,13 +4098,20 @@ def eval_measure(spec, depth=0):
             refs = ""
             for rel in spec.get("referenced_in") or []:
                 refs += _read(rel)
+            def is_asset(full):
+                # Candidate indexes describe where possible assets came from; they
+                # are not themselves art, sound or font assets needing a credit.
+                return os.path.basename(full) != "CANDIDATES.json"
             names = []
             for rel, full in _iter_files([spec["dir"]], set(spec.get("exts") or []) or None):
                 base = os.path.basename(full)
+                if not is_asset(full):
+                    continue
                 if base not in refs:
                     names.append(base)
-            total = sum(1 for _r, _f in _iter_files(
-                spec.get("count_dirs") or [spec["dir"]], set(spec.get("exts") or []) or None))
+            total = sum(1 for _r, full in _iter_files(
+                spec.get("count_dirs") or [spec["dir"]], set(spec.get("exts") or []) or None)
+                if is_asset(full))
             return _reading(len(names), spec.get("unit", "files"),
                             f"files in {spec['dir']} named nowhere in {', '.join(spec.get('referenced_in') or [])}",
                             "", "cheap", extra={"orphans": sorted(names),

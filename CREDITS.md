@@ -25,6 +25,12 @@ before the first public build ships.*
     they are undated and revocable-in-place, so re-check if the asset set is
     regenerated. A local copy of the PDF as read is not kept in-repo — retrieve it
     from https://www.retrodiffusion.ai/terms if the wording is ever disputed.*
+- `assets/sprites/generated/terrain_dirt.png` — the tilled-and-watered soil atlas,
+  generated deterministically in-repo by `tools/gen_terrain_autotile.py`. Its
+  dry-soil colour ramp comes from the Retro Diffusion ground sheet made for this
+  project on 2026-08-26; the watered-soil ramp, tile edges and furrow pattern are
+  derived locally by the script. No new third-party work is present. The source
+  sheet's output rights follow the Retro Diffusion terms verified above.
 - **Spiral Tower** (`assets/sprites/generated/spiral_tower.png`, 2026-09-23): one
   Retro Diffusion Plus generation at 128×192, $0.037. The original image and API
   metadata are archived under `assets/raw/2026-09-23-spiral-tower/`. The shipped
@@ -704,9 +710,11 @@ before the first public build ships.*
       linger on the flower and for "the chimes that play could be extended as
       well": a sixth note, D6, lands on the last seed and rings through the
       linger, so the flower is never held in silence. No other sound's bytes
-      moved — the chime draws no randomness and is generated last. `bloom_chime_cc0_333694.wav`, `_333695.wav`
-      and `_333696.wav` — Freesound #333694/#333695/#333696 "Thin bell ding
-      1/2/3" by Khrinx — a single decaying ding rather than a rise, unwired.
+      moved — the chime draws no randomness and is generated last.
+      `bloom_chime_cc0_333694.wav` — Freesound #333694 "Thin bell ding 3",
+      `bloom_chime_cc0_333695.wav` — Freesound #333695 "Thin bell ding 2", and
+      `bloom_chime_cc0_333696.wav` — Freesound #333696 "Thin bell ding 1", all
+      by Khrinx under CC0 1.0 — single decaying dings rather than a rise, unwired.
 
     CC0 1.0 Universal is a public domain dedication: commercial use,
     modification and redistribution are permitted with no attribution
