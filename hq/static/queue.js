@@ -214,13 +214,19 @@ function qWorkItem(card, org, reason) {
   // has said what he should do about it, and pretending otherwise turns his
   // thirty-second pick into a rubber stamp (docs/QUEUE_TO_ZERO.md §7a).
   const answer = hasRec ? rec.answer : merge ? (ap ? "Yes, add it" : "Merge it") : "";
+  // Who is recommending (2026-09-28: "Who is 'I' in 'What I recommend'?"). A
+  // chief-of-staff review writes the recommendation on concern and spending
+  // cards; an owner writes their own; a clean review fills in a merge.
+  const recommender = !answer ? ""
+    : (card.concern_resolution || card.spending_checkpoint) ? "Adam, the chief of staff,"
+    : hasRec ? owner.name : "the chief of staff's review";
   const convo = (card.conversation || []).filter(m => m.text)
     .map(m => ({ who: m.role === "daniel" ? "You" : qFirst(owner.name), text: m.text, at: m.at || "" }));
   return {
     kind: card.state === "needs_approval" ? "approve" : "review",
     id: card.id, cardId: card.id, isDecision: false, subject: card.subject || "",
     title: card.state === "for_review" ? reviewTitle(card) : card.title,
-    question, answer, why: rec.why || (ap ? ap.why : merge ? (card.check || {}).summary || "" : ""), instead: rec.instead || "",
+    question, answer, recommender, why: rec.why || (ap ? ap.why : merge ? (card.check || {}).summary || "" : ""), instead: rec.instead || "",
     owner, seconds: answer ? Q_PICK_SECONDS : Q_READ_SECONDS, state: card.state, merge,
     spendingYes: card.state === "needs_approval" ? (card.spending_checkpoint || {}).yes_starts || "" : "",
     tier: card.tier ?? 2, reason: (ap && ap.reason) || reason || "hard to walk back, or a matter of taste",
@@ -248,7 +254,7 @@ function qDecisionItem(c, org, seats) {
     ? foundOwner : { name: "the studio", emoji: "🗂️" };
   return {
     kind: "rule", id: c.id, cardId: c.id, isDecision: true, subject: c.subject || "",
-    title: c.title, question: c.title,
+    title: c.title, question: c.title, recommender: rec && owner.name !== "the studio" ? owner.name : rec ? "the studio" : "",
     answer: rec ? clean(rec.label) : "", why: rec ? (rec.detail || "") : "", instead: "",
     recOption: rec, owner, seconds: rec ? Q_PICK_SECONDS : Q_READ_SECONDS,
     tier: 2, reason: c.why_now || (rec && rec.detail) || "Choose how the design should proceed.", diffApplied: false,
@@ -469,7 +475,7 @@ function qPaneHtml(row, org) {
     ${reviewComparison(row.artifact, row.attachments)}
     <div class="q-atts" id="q-pane-atts"></div>
 
-    <div class="q-sec"><h3>What I recommend</h3>
+    <div class="q-sec"><h3>${row.answer && row.recommender ? `What ${esc(row.recommender).replace(/,$/, "")} recommends` : "Recommendation"}</h3>
       ${row.answer
         ? `<div class="q-rec"><b>${mdi(row.answer)}</b>${row.why ? `<p>${mdi(row.why)}</p>` : ""}${row.instead ? `<p class="q-instead">Instead: ${mdi(row.instead)}</p>` : ""}</div>`
         : `<div class="q-rec q-rec-none"><b>No recommendation on this one.</b><p>${esc(qNoRecommendation(row))}</p></div>`}

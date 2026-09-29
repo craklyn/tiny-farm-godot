@@ -193,10 +193,10 @@ vm.runInContext(fs.readFileSync(root + "/hq/static/queue.js", "utf8"), queue);
 const index = (text, needle) => { const found = text.indexOf(needle); assert.ok(found >= 0, needle); return found; };
 const animation = queue.qPaneHtml({ id: "animation", kind: "review", question: "Does the motion read clearly?", title: "Review: Watering animation", source: "work card animation", owner: { name: "Ingrid" }, answer: "Keep this timing", why: "The pause reads at game size.", instead: "Slow it down", options: [], followUps: [], conversation: [], attachments: [], canDrop: true, artifact: {deliverable: {name: "Watering animation", evidence: [{ label: "Play the watering animation", href: "/review/watering" }]}}, evidence: [{ label: "Run notes", text: "Frames checked" }] }, {});
 assert.ok(index(animation, "Does the motion read clearly?") < index(animation, "Play the watering animation"));
-assert.ok(index(animation, "Play the watering animation") < index(animation, "What I recommend"));
+assert.ok(index(animation, "Play the watering animation") < index(animation, 'class="q-rec'));
 const design = queue.qPaneHtml({ id: "design", isDecision: true, question: "Which tool should players receive first?", title: "First tool", source: "decision card design", owner: { name: "Milo" }, answer: "Watering can", why: "It teaches the core loop.", instead: "Hoe", options: [{ key: "can", label: "Watering can", detail: "Care for a planted crop." }], followUps: [], conversation: [], attachments: [], canDrop: false, deliverableEvidence: [], evidence: [{ label: "Design comparison", text: "Both choices shown" }] }, {});
-assert.ok(index(design, "Which tool should players receive first?") < index(design, "What I recommend"));
-assert.ok(index(design, "What I recommend") < index(design, "What choosing starts"));
+assert.ok(index(design, "Which tool should players receive first?") < index(design, 'class="q-rec'));
+assert.ok(index(design, 'class="q-rec') < index(design, "What choosing starts"));
 const incomplete = queue.qPaneHtml({ id: "incomplete", kind: "review", question: "Does this result stand despite the missing recommendation?", title: "Review: Crop icon", source: "work card incomplete", owner: { name: "Yuki" }, answer: "", why: "", instead: "", options: [], followUps: [], conversation: [], attachments: [], canDrop: true, artifact: {deliverable: {name: "Crop icon", evidence: [{ label: "Open the crop icon", href: "/review/icon" }]}}, evidence: [], }, {});
 assert.ok(index(incomplete, "Does this result stand despite the missing recommendation?") < index(incomplete, "Open the crop icon"));
 assert.ok(index(incomplete, "Open the crop icon") < index(incomplete, "No recommendation on this one."));
@@ -273,7 +273,7 @@ for (const recorded of [actualAnimation, actualIncomplete]) {
   assert.ok(html.includes(recorded.title), "legacy review retains its actual title");
   assert.equal(row.deliverableEvidence.length, 0, "does not invent evidence for old cards");
   if (recorded.recommend && recorded.recommend.question)
-    assert.ok(index(html, recorded.recommend.question) < index(html, "What I recommend"));
+    assert.ok(index(html, recorded.recommend.question) < index(html, 'class="q-rec'));
   else assert.ok(html.includes("No recommendation on this one."));
   const legacy = work.workCard(recorded, {}, {}).html;
   assert.ok(legacy.includes(recorded.title));
@@ -288,7 +288,7 @@ for (const option of actualDesign.options) assert.ok(choice.includes('value="' +
 assert.equal((choice.match(/type="radio"/g) || []).length, actualDesign.options.length + 1);
 assert.equal((choice.match(/class="q-decision-submit"/g) || []).length, 1);
 assert.ok(choice.includes('data-intent="revise"'));
-assert.ok(index(choice, "Result to review") < index(choice, "What I recommend"));
+assert.ok(index(choice, "Result to review") < index(choice, 'class="q-rec'));
 console.log("Rendered review cards keep question, artifact, recommendation, and result in order.");
 '''
         rendered = subprocess.run(["node", "-e", renderer_test, os.path.dirname(os.path.dirname(HERE))],
