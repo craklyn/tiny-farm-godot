@@ -297,14 +297,14 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   are separate purchases, rather than controls unlocked by the first purchase. Recorded as
   S-34. Card: `hq/data/decisions/Q-131.json`.
 
-- **Q-132 — Should every Mark III be allowed to buy the starting brain?** — **Revised
-  2026-09-26, open.** Built under S-32 (Q-128): the current shelf sells a small head start
-  for 200 gold only to a robot that has not yet had a night. The card now recommends that
-  every Mark III may buy it now, accepting that a robot which has learned loses its
-  farm-specific learning and did slightly worse in the follow-up measurement. The game can
-  replay a recorded day and rebuild the robot's view at each action, but whether saved days
-  can effectively refit a replacement brain is untested. That is a separate future
-  improvement, not a condition of this sale. Card: `hq/data/decisions/Q-132.json`.
+- **Q-132 — Should every Mark III be allowed to buy the starting brain?** — ✅ **Ruled
+  2026-09-27: (b), let every Mark III buy it now.** The shelf sells the 200-gold starting
+  brain to any Mark III, including a robot that has already learned. Buying it replaces the
+  robot's farm-specific learning with the studio's trained weights; in the follow-up
+  measurement, a replaced robot did slightly worse the next week. The purchase remains a
+  replayable Action that names the exact brain weights. Training a replacement brain from
+  saved days is a separate future improvement, not a condition of this sale. Card:
+  `hq/data/decisions/Q-132.json`.
 
 - **Q-133 — Which picture of the moving Mark III goes on the workbench shelf's pace
   row?** — **Open, 2026-09-29.** Three Retro Diffusion candidates for S-34's permanent
@@ -359,11 +359,11 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
     bigger brain stays unbuilt; the starting brain was built as the shelf's second card
     (200 gold, `[Playtest]`): the robot's own weights, averaged from 96 robots that each
     learned a week on a generated farm, installed by the shelf's `buy_upgrade` with the
-    brain's hash in it, and only for a robot that has not yet had a night. Measured on 24
+    brain's hash in it, and for every Mark III. Measured on 24
     farms it never saw, it is a small head start, not a smarter robot: about one point a
     day more in the first week on open ground (19.8 against 18.8), 0.5 to 1.1 on her
-    squares, better on 13 to 16 of 24 farms. Its two placeholder choices — only for a robot
-    that has not yet had a night, and 200 gold — are Q-132. Design in `design/06-bots-and-training.md`
+    squares, better on 13 to 16 of 24 farms. Its price, 200 gold, remains a placeholder for
+    playtesting. Design in `design/06-bots-and-training.md`
     ("A starting brain from the studio"); `tools/pretrain_mk3.gd`.
   - **Q-129** ~~Which new way of training the Mark III should be built first?~~ — ✅
     **ruled 2026-09-25: (a), a pace setting for each robot.** Recorded as S-31 and built

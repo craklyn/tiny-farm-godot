@@ -14,8 +14,8 @@
 # the robot on the bench. The first row is the pace setting (Q-129 a): a moving
 # Mark III stays beside the picture buttons, one, two and three chevrons for calm,
 # normal and bold, with the lit one in the bench's brass (S-34). The second is the studio's starting brain (Q-128):
-# no control once bought, only its spark turned brass, and dark for a robot that
-# has already had a night, because the gateway refuses it one.
+# no control once bought, only its spark turned brass. Every Mark III may buy it;
+# buying it replaces any learning the robot already has.
 #
 # **It never writes the robot.** Buying is a `buy_upgrade` Action at the bench's
 # own square and a pace press is a `set_pace` Action, both through the gateway
@@ -215,12 +215,10 @@ func _affordable(key: String) -> bool:
 	return GameState.gold >= ShelfDefs.price_of(key) and _offered(key)
 
 
-# Whether the robot on the bench can take `key` at all, gold aside. Only the
-# starting brain has a condition: a robot that has already had a night keeps its
-# own learning (the gateway's `_starter_refusal`), so its card goes dark.
+# Whether the robot on the bench can take `key` at all, gold aside. Every listed
+# upgrade is offered to every Mark III. The gateway still checks that the brain
+# named in a starting-brain purchase exists and fits the robot.
 func _offered(key: String) -> bool:
-	if key == StarterBrains.SHELF_KEY:
-		return int(_extra().get("days", 0)) == 0
 	return true
 
 

@@ -3766,22 +3766,18 @@ func _fail(reason: String) -> Dictionary:
 	return { "ok": false, "reason": reason }
 
 
-# **Why a Mark III may not be given the studio's starting brain**, or "" if it may
-# (Q-128, ruled 2026-09-26; `buy_upgrade`'s `starter_brain` row). The brain is
+# **Why a Mark III's starting-brain purchase is refused**, or "" if it may proceed
+# (Q-132, ruled 2026-09-27; `buy_upgrade`'s `starter_brain` row). The brain is
 # named in the Action by the hash of its weights (`sha`), never "whatever the
 # shelf sells today", so a replay loads the identical weights even after a better
 # brain has shipped beside it — and a hash that names no file, or a file edited
 # since, is refused rather than quietly swapped for something else.
 #
-# It has to fit the robot (a robot with a wider view, S-30, would need a brain of
-# its own width, and none has been trained), and the robot must not yet have had a
-# night: one that has learned on her farm would lose that learning to the brain,
-# and measured on 24 farms it gains nothing for it — a week-old robot's next week
-# averaged 30.0 points a day kept and 29.5 given the brain (`tools/pretrain_mk3.gd`,
-# the swap table). Whether to allow it anyway is Q-132; one line here.
+# It has to fit the robot: a robot with a wider view, S-30, would need a brain of
+# its own width, and none has been trained. Q-132 lets a robot that has already
+# learned replace its weights anyway. The replacement discards its farm-specific
+# learning; in the swap measurement it did slightly worse the following week.
 func _starter_refusal(extra: Dictionary, sha: String) -> String:
-	if int(extra.get("days", 0)) > 0:
-		return "already_learning"
 	var brain := StarterBrains.load_brain(StarterBrains.MK3, sha)
 	if brain.is_empty():
 		return "no_such_brain"

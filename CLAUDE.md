@@ -77,7 +77,7 @@ godot --headless --path . --script res://tools/measure_wider_view.gd
 godot --headless --path . --script res://tools/pretrain_mk3.gd
 godot --headless --path . --script res://tools/pretrain_mk3.gd -- --evaluate
 
-# The starting brain's card on the workbench shelf, for sale, bought and dark, as PNGs
+# The starting brain's card on the workbench shelf, for sale and bought, as PNGs
 # under docs/design/mockups/starter_brain/ — needs a display
 godot --path . res://tools/capture_starter_brain.tscn
 

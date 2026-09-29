@@ -14547,16 +14547,21 @@ func test_starter_brain() -> void:
 	_assert(String(ask.call({}).get("reason", "")) == "already_owned",
 		"bought once, it cannot be bought again for the same robot")
 	_assert(_json_plain(extra), "and everything on it is still plain JSON (ground rule 4)")
-	# A robot that has had a night is refused: it would lose what it learned on her
-	# farm, and the swap table in the tool measured no gain for it.
+	# This robot has one recorded night. Q-132 lets it buy the brain. The
+	# replacement gives up its farm-specific weights, but it is the same recorded
+	# Action as a new robot's purchase.
 	s.gs.gold = 2000
 	var older := _mk3_place(s, MK3_SPOT + Vector2i(2, 0))
 	s.world.actor(older)["extra"]["days"] = 1
-	var refused: Dictionary = ask.call({ "machine": older })
-	_assert(String(refused.get("reason", "")) == "already_learning"
-			and (s.world.actor(older)["extra"]["weights"] as Array).max() == 0.0,
-		"and a robot that has already had a night keeps its own learning: refused (%s)"
-			% String(refused.get("reason", "")))
+	var older_weights: Array = s.world.actor(older)["extra"]["weights"]
+	older_weights[0] = 0.75
+	var replaced: Dictionary = ask.call({ "machine": older })
+	var replaced_extra: Dictionary = s.world.actor(older)["extra"]
+	_assert(bool(replaced.get("ok", false)) and BotBrain.has_upgrade(replaced_extra, StarterBrains.SHELF_KEY)
+			and (replaced_extra["weights"] as Array) == (shipped["weights"] as Array),
+		"and a robot with one recorded night can replace its learning with the starting brain")
+	_assert(int(replaced_extra.get("days", -1)) == 1 and int(replaced_extra.get("starter_day", -1)) == 1,
+		"while its day count remains, so the replacement is recorded on its second day")
 
 	# --- a save and a replay give back the same robot ------------------------------
 	var lyard := _shelf_yard(12802)

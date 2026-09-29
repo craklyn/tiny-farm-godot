@@ -45,13 +45,13 @@ static var TYPES: Dictionary = {
 	},
 	# --- the studio's starting brain (Q-128, ruled 2026-09-26; S-32) -----------
 	#
-	# Replaces a blank robot's weights with a brain trained before shipping on 96
+	# Replaces a Mark III's weights with a brain trained before shipping on 96
 	# generated farms (`StarterBrains`, `tools/pretrain_mk3.gd`). The purchase is
-	# `buy_upgrade` with the brain's hash in it, and it is refused to a robot that
-	# has already had a night (`SimWorld._starter_refusal`), so the card goes dark
-	# after the robot's first night. Measured, it is a small head start — about a
-	# point a day in the first week on farms it never saw — not a smarter robot
-	# (design/06, "A starting brain from the studio").
+	# `buy_upgrade` with the brain's hash in it. Q-132 lets every Mark III buy it,
+	# including one with nights behind it; that replacement discards the robot's
+	# farm-specific learning. Measured, it is a small head start — about a point a
+	# day in the first week on farms it never saw — not a smarter robot (design/06,
+	# "A starting brain from the studio").
 	#
 	# **Priced at 200** — a quarter of the robot it is for, because it buys a head
 	# start and nothing the robot could not learn on her farm. A strawman; the

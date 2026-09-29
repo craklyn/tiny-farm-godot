@@ -292,7 +292,7 @@ all three controls; the separate second and third purchases remain to be built.
 
 The shelf's second row. What the brain is and how much it helps — a small head start, not
 a smarter robot — is `06-bots-and-training.md`, "A starting brain from the studio".
-Pictures (for sale, bought, and dark on a robot that has had a night):
+Pictures (for sale and bought):
 `mockups/starter_brain/`, taken from the game by `tools/capture_starter_brain.tscn`.
 
 - **The picture is the Mark III with a four-point spark beside its head**: the robot,
@@ -303,11 +303,11 @@ Pictures (for sale, bought, and dark on a robot that has had a night):
   key: `sha`, the hash of the brain the shelf sells today (`StarterBrains.CURRENT`). The
   gateway loads the brain by that hash, so a replay installs the identical weights even
   after a better brain ships beside it. It refuses a hash that names no brain file
-  (`no_such_brain`), a robot with a view the brain was not trained for
-  (`brain_does_not_fit`), and a robot that has already had a night (`already_learning`).
-- **So the card goes dark after the robot's first night**, price dimmed rather than red,
-  because the reason is not gold. A robot that has learned on her farm keeps its own
-  learning; whether to allow the swap anyway is Q-132.
+  (`no_such_brain`) or a robot with a view the brain was not trained for
+  (`brain_does_not_fit`).
+- **Every Mark III can buy it.** Q-132, ruled 2026-09-27, keeps the card available after
+  the robot's first night. Buying it replaces the robot's farm-specific learning with the
+  studio's trained weights.
 - **The robot records it**: `starter`, `starter_sha` and `starter_day` on the robot, for
   the plate to say so and for anyone reading a save to tell the studio's learning from hers.
 - **The price is 200**, a quarter of the robot. `[Playtest]`; the measured effect argues

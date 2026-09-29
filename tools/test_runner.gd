@@ -8657,17 +8657,17 @@ func _scenario_bl_the_shelf_sells_a_pace() -> void:
 	if starter_card == null:
 		menus.close_menu()
 		return
-	# This farm's Mark III may come out of a crate with nights behind it (Q-98), and
-	# a robot that has had a night keeps its own learning: the card is dark.
+	# This Mark III has one recorded night. Q-132 lets it buy the studio's
+	# starting brain.
 	mk3_extra["days"] = 1
 	bench.refresh()
 	await get_tree().process_frame
-	_assert(starter_card.disabled, "a robot that has had a night: the card will not take a tap")
-	# ...and a robot with none behind it can take the brain.
+	_assert(not starter_card.disabled, "a robot with one recorded night can take the starting brain")
+	# A robot with none behind it can take it too.
 	mk3_extra["days"] = 0
 	bench.refresh()
 	await get_tree().process_frame
-	_assert(not starter_card.disabled, "one with no night behind it can")
+	_assert(not starter_card.disabled, "one with no night behind it can too")
 	var gold_then: int = GameState.gold
 	before = farm.replay.entries.size()
 	starter_card.pressed.emit()

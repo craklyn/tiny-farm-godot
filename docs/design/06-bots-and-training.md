@@ -853,13 +853,12 @@ would not change either fact. What would is a learner that gets more out of a ni
 training that transfers (practice runs, Q-130); then a larger pretrained base is worth
 building (option a's trigger).
 
-**Only a robot that has not yet had a night can take it.** A robot that learned for a week
-and was then given the brain did worse the next week than one left alone — 29.3 points a
-day against 30.1, better on 11 of 24 farms — and lost what it learned on her farm. So the
-gateway refuses a robot with a night behind it (`already_learning`), and its card on the
-shelf goes dark. That includes every Mark III already on a farm today, so in practice the
-card is for a new robot. Whether a trained robot should be allowed to swap anyway is
-Q-132 (below).
+**Every Mark III can take it.** Q-132 was ruled 2026-09-27: every Mark III may buy the
+starting brain for 200 gold, including a robot with nights behind it. A robot that learned
+for a week and was then given the brain did worse the next week than one left alone — 29.3
+points a day against 30.1, better on 11 of 24 farms — because the replacement discards what
+it learned on her farm. The shelf leaves the card available and the gateway installs the
+brain named in the purchase Action.
 
 **Built:** the training and measuring tool; the shipped brain
 (`assets/brains/mk3_starter-91d39ddc8512.json`, with its seeds, method, commit and Godot
@@ -871,10 +870,9 @@ determinism, the checks, a save, a replay (`test_starter_brain`) and the tap on 
 plate could read to say in words that it started from the studio's brain; that line is not
 drawn yet.
 
-**Open, Q-132:** whether a robot that has already learned may take the brain, whether the
-price should drop to fit a small head start, or whether the card comes off the shelf until a
-brain clearly beats a blank robot. Strawman: keep it as built. Pictures of the card in
-`mockups/starter_brain/`, taken from the game by `tools/capture_starter_brain.tscn`.
+**Q-132 is settled:** every Mark III may buy the brain now. The price remains 200 gold for
+playtesting. Pictures of the card in `mockups/starter_brain/`, taken from the game by
+`tools/capture_starter_brain.tscn`.
 
 ### Practice runs: it rehearses at night (Q-130, ruled 2026-09-27; S-35)
 
