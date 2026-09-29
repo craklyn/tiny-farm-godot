@@ -4833,7 +4833,7 @@ def _counts(reading):
 # HIM? Everything else is still on the pillar's page, in the scoreboard, where a
 # person looking for it will find it — and reaches the dashboard as a count.
 #
-# Four tests, and a failing goal reaches him only by passing one:
+# Four reasons a failing goal may be raised for his attention:
 #
 #   authority            only he can settle it — his taste, a direction, a
 #                        commitment, a date, money, a credential. A recorded
@@ -4843,7 +4843,8 @@ def _counts(reading):
 #                        is not true, or we owe an outsider something.
 #   exposure             a player or an outsider can be hit by this now.
 #   age                  ours to fix, but it has waited long enough — or is
-#                        getting worse fast enough — that the delay is the news.
+#                        getting worse fast enough — that the delay is the news,
+#                        not that Daniel has an action.
 #
 # Deliberately NOT a test: needing an approval. A tier-2 item and a prepped
 # decision card serve Daniel as an approver, and approvals belong on the Work
@@ -4859,7 +4860,7 @@ ESCALATION_WORDS = {
     "authority": "Only you can settle this",
     "external_commitment": "We have told people outside the studio something this contradicts",
     "exposure": "Somebody outside the studio can hit this right now",
-    "age": "This is ours, but it has waited long enough that the delay is the news",
+    "age": "This goal is late; its owner is still responsible for finishing it",
 }
 
 # How long ours-to-fix may sit before the waiting is itself worth his attention.
@@ -4925,8 +4926,10 @@ def _goal_open_since(goal):
 
 
 def _escalation(goal, state, reading):
-    """Which of the four tests this failing goal passes, or None — in which case
-    it is ours, and it reaches him as a count and not as an alarm."""
+    """Why this failing goal merits attention, or None.
+
+    Age remains the owner's problem; the other reasons can require Daniel.
+    """
     # A goal that is being MET escalates to nobody, and an attestation he signed
     # and that has not run out is being met — by his own word rather than by a
     # machine, which is a fact about assurance, not about whether it needs him.
@@ -5202,12 +5205,13 @@ def eval_goal(goal):
         out["assured"] = state in ASSURED_STATES
         out["attestation_expired"] = bool(reading.get("expired"))
         out["stale"] = bool(reading.get("stale"))
-        # Whose problem is this? A goal reaches him only by passing one of the
-        # four escalation tests above; everything else is ours, and reaches him
-        # as a count. Note what is gone: a tier-2 action used to make a goal
-        # his, which meant every pillar holding something awaiting a yes glowed
-        # at him. Approvals are the Work page's job and the inbox's job — they
-        # serve him as an approver, and the board is not a third copy of them.
+        # Whose problem is this? Authority, an external commitment, and current
+        # exposure can make a goal Daniel's move. Age only raises studio-owned
+        # work for his awareness: lateness does not transfer responsibility.
+        # Note what is gone: a tier-2 action used to make a goal his, which meant
+        # every pillar holding something awaiting a yes glowed at him. Approvals
+        # are the Work page's job and the inbox's job — they serve him as an
+        # approver, and the board is not a third copy of them.
         out["route_target"] = _route_target(p2g.get("route"))
         # The row said "vp-engineering owns it" — an internal key on a page the
         # CEO reads, which tells him nothing he does not already have to decode.
@@ -5230,8 +5234,10 @@ def eval_goal(goal):
         if pending_decision:
             out["escalation"] = None
         # Health and attention are separate facts. A red check is not Daniel's
-        # move unless it passes an escalation test; a held repair is ours.
-        out["needs_you"] = bool(out["escalation"]) and not pending_decision
+        # move unless its escalation reason requires him; a held or late repair
+        # is ours.
+        out["needs_you"] = bool(out["escalation"] and
+                                out["escalation"].get("reason") != "age") and not pending_decision
         out["ours"] = (state not in ("green", "attested") and not out["needs_you"])
     except Exception as e:
         out["state"] = "broken"
@@ -5276,9 +5282,9 @@ def rollup(pillar_id, goals, dormant_decl, pillar_name="", parked_n=0):
     unchecked_blocking = [g for g in goals
                           if g["state"] in ("unchecked", "attested") and g.get("severity") == "blocking"]
 
-    # The dot is his, so it is built from what escalated to him and nothing
-    # else. A pillar can hold six failing goals and still be quiet here — they
-    # are on its own page, in the scoreboard, and counted on the dashboard row.
+    # The dot reports exceptional attention, including studio-owned work whose
+    # age has become news. Ordinary failures stay on the pillar's own page, in
+    # the scoreboard, and counted on the dashboard row.
     escalated = [g for g in goals if g.get("escalation")]
     # Fire is reserved for a reading that is actually bad AND either aimed
     # outward or blocking. An attestation that has merely lapsed, or a promise

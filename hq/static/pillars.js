@@ -129,7 +129,7 @@ const ESC_WHY = {
   authority: "Only you can settle this.",
   external_commitment: "We have told people outside the studio something this contradicts.",
   exposure: "Somebody outside the studio can hit this right now.",
-  age: "This goal is ours to finish, and it has waited long enough that the delay is now the problem.",
+  age: "This goal is late. The studio still owns the next step.",
 };
 
 /* Band 1. The verdict is generated from the goals, never authored: a sentence
@@ -144,8 +144,9 @@ function verdictLine(g) {
   // putting it at the top of the CEO's page spends his attention on something
   // that should simply have been done.
   // "Needs him" is now the escalation test the server applies — his authority, a
-  // promise made outside the studio, something an outsider can hit today, or a
-  // delay that has become the story. Wrong is not the same as his: everything
+  // promise made outside the studio, or something an outsider can hit today.
+  // Age raises a late goal for his awareness without making it his action.
+  // Wrong is not the same as his: everything
   // else on this pillar is real work with an owner, and it is counted here and
   // listed in the scoreboard below rather than shouted at the top of his page.
   const yours = (g.goals || []).filter(x => x.needs_you && x.state !== "green");

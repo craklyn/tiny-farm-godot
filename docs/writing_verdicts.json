@@ -4754,6 +4754,9 @@
   "8f84737cf7612b374168": {
    "verdict": "ok"
   },
+  "8fb5aa8447551f2d7991": {
+   "verdict": "ok"
+  },
   "8fe11165cd394f9d460d": {
    "verdict": "ok"
   },
@@ -4879,6 +4882,12 @@
   },
   "9343d6a27ac79043c629": {
    "verdict": "ok"
+  },
+  "937810d002038a6aae0b": {
+   "instead": "This goal is late. The studio is responsible for completing it.",
+   "quote": "owns the next step",
+   "verdict": "second-look",
+   "why": "This metaphor makes the reader translate “owns” into “is responsible for completing it.”"
   },
   "938babe427cc8e760456": {
    "verdict": "ok"
