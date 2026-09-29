@@ -253,37 +253,47 @@ card when a run on main fails), the goal journal and the itch.io probe.
 ### Art the queue can generate
 
 Ruled by the CEO on 2026-09-29 (S-37). A build worker has no network and never holds
-the key to Retro Diffusion, the paid pixel-art service, so it cannot make new art itself.
-It asks for art instead, and the drain makes the paid call for it:
+the key to Retro Diffusion, the paid pixel-art service, so it cannot reach the service
+itself. Instead, every build session (tier 1 and above) comes with an art tool, which
+runs outside the worker's sandbox and makes the paid call for it while the session is
+still going. Read-only sessions do not get the tool.
 
-1. The worker writes one request per image subject to `art_requests/<name>.json` in its
-   worktree: a short name for the batch, the prompt, the size, how many images (up to
-   four), and optionally the style, a palette from the art-direction chapter, a source
-   image and a seed. Then it ends its session.
-2. After the session the drain takes the request files out of the worktree, so they
-   never land, and prices every request with the service's free cost check.
-3. If the round would take the card past **$2** of generated art, or the studio past
-   **$10** in one calendar day, nothing is generated. The card is held for the chief of
-   staff with the reason on the task queue, for example "This card asked for $0.12 of art
-   generation; it has spent $1.90 of its $2 and the studio $1.90 of today's $10." The rest
-   of the card's work still goes through the normal check. A card held by the daily limit
-   goes back into the queue the next day. A card held by its own limit goes back when the
-   chief of staff raises that card's limit (its `art_cap_usd` field).
-4. Otherwise the drain generates each request, keeps the raw images and the service's
+1. The worker calls the tool with a short name for the subject, the prompt, the size,
+   how many images (up to four), and optionally the style, a palette from the
+   art-direction chapter, a source image and a seed. A request that does not follow
+   that shape is refused before anything is priced or paid for.
+2. The tool prices the request with the service's free cost check.
+3. If the request would take the card past **$2** of generated art, or the studio past
+   **$10** in one calendar day, nothing is generated. The worker is told the amounts,
+   for example "This card has spent $1.90 of its $2 and the studio $1.90 of today's $10;
+   this request would cost $0.12.", and finishes the rest of the card. After the
+   session the card is held for the chief of staff with that reason on the task queue,
+   and the rest of its work still goes through the normal check. A card held by the
+   daily limit goes back into the queue the next day. A card held by its own limit goes
+   back when the chief of staff raises that card's limit (its `art_cap_usd` field).
+4. Otherwise the tool generates the images, keeps the raw images and the service's
    metadata under `assets/raw/<date>-<card>-<name>/` in the worktree and in HQ's store,
-   and records each call's cost both in `hq/data/spend.json`, tagged with the card and
+   and records the cost both in `hq/data/spend.json`, tagged with the card and
    `recorded_by: "drain"`, and in the drain's own ledger in HQ's store. The limits are
    counted from the drain's ledger, because a card's spend reaches `spend.json` only
    when its work lands.
-5. The worker gets one more session, told which files now exist and what they cost, to
-   post-process them to the game's palette, place them, and credit them in `CREDITS.md`.
-   The drain runs one round of art per run. If the worker asks for more art in that
-   session, the card's result says so, and the worker can ask again on the card's next
-   run.
+5. The tool answers with the paths of the new files, what the call cost and what the
+   card has left. The worker looks at them in the same session and, if they are wrong,
+   calls again with a better prompt while the budget allows. Then it post-processes
+   the images to the game's palette, places them, and credits them in `CREDITS.md`.
 
-The key is read from the main checkout's `.env` by the drain alone, and it is removed
-from the environment of every model session. The limits are constants at the top of
-`hq/art_requests.py`; the hook in the drain is `art_round` in `hq/drain.py`.
+The drain runs up to three cards at once. Each call reserves its price in the drain's
+ledger under a lock before it generates, so parallel workers cannot take the studio
+past the daily limit between them. The key is read from the main checkout's `.env` by
+the tool itself. It is never passed on the tool's command line, and it is removed from
+the environment of every model session. The limits are constants at the top of
+`hq/art_requests.py`; the tool is `hq/art_mcp.py`, attached to build sessions by
+`hq/execution.py`.
+
+Until 2026-09-29 the worker wrote request files and the drain ran a second session with
+the results. That second session re-read everything the first had read, often over a
+million tokens a card, and the worker could not try again when an image came out wrong,
+so Daniel approved the tool the same day.
 
 ## What a result cost
 

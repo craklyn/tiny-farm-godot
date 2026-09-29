@@ -12,8 +12,9 @@ batch, named `YYYY-MM-DD-<what>`, holding the raw PNGs/GIFs plus each
 generation's `*_meta.json` (model, cost, request id) as the API returned them.
 
 Batches the work queue generated for a card on its own are named
-`YYYY-MM-DD-<card id>-<what>` and are archived by the drain before the card's
-worker touches them (`docs/HOW_WORK_ORIGINATES.md`, "Art the queue can generate").
+`YYYY-MM-DD-<card id>-<what>` and are archived by the work queue's art tool before
+the card's worker touches them (`docs/HOW_WORK_ORIGINATES.md`, "Art the queue can
+generate").
 
 The `.gdignore` file in this directory keeps Godot from importing any of this —
 nothing in here is game data. Spend records for these batches are in
