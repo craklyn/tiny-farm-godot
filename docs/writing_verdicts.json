@@ -4682,6 +4682,9 @@
   "9289308481c74ae7306f": {
    "verdict": "ok"
   },
+  "9291c316e9af6a7fafda": {
+   "verdict": "ok"
+  },
   "92aab01ca095802120be": {
    "verdict": "ok"
   },
@@ -5976,6 +5979,12 @@
   },
   "bbd4dc3c89d664359f88": {
    "verdict": "ok"
+  },
+  "bbeec6017c8baeaeed13": {
+   "instead": "Every line added and removed, with the names of the documents changed at the top.",
+   "quote": "the documents it touches",
+   "verdict": "second-look",
+   "why": "“Touches” is shorthand for documents changed, so the reader has to infer the meaning."
   },
   "bc4246bc17701563e5fe": {
    "verdict": "ok"

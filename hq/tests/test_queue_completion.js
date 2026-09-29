@@ -90,7 +90,12 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/queue.js'), 'utf
   const redSuite = context.qWorkEvidence({ suites: { unit: { ok: true }, integration: { ok: false } } }, 'Rin');
   assert.deepEqual(Array.from(redSuite, e => e.label), ['Test suites: integration failing']);
   assert.equal(context.qWorkEvidence({ suites: { unit: { ok: true }, integration: { ok: true } } }, 'Rin').length, 0);
-  assert.ok(!briefed.evidence.some(e => e.label === 'Read the exact changes'));
+  assert.ok(!briefed.evidence.some(e => /Read the exact changes|Files changed|How it was done/.test(e.label)));
+  assert.deepEqual(Array.from(briefed.refs, r => r.label), ['Changes', 'Execution session']);
+  assert.equal(briefed.refs[0].title, 'Files changed:\nthe bots and training design doc');
+  const refs = context.qReferenceLinks({ id: 'w1', started: 'x', diff: { stat: ' a.md | 1 +\n b.md | 2 +-\n 2 files changed' } });
+  assert.deepEqual(Array.from(refs, r => [r.label, r.href]), [['Changes', '/work-change/w1'], ['Execution session', '#/chat/bullpen?item=w1']]);
+  assert.equal(refs[0].title, 'Files changed:\na.md\nb.md');
   assert.match(briefed.reason, /^Design documents record your direction/);
   assert.equal(context.qWalkBack(briefed), 'Nothing is added until you say yes. After that, one revert undoes it.');
   assert.match(context.qYesCauses(briefed), /^Tomás's edits become the official version .* revert; then one piece of work starts\.$/);

@@ -339,7 +339,7 @@ function consequence(it, org) {
     rows.push([workDecisionLabel(it), `${esc(yes)}${fus.length
       ? `, and then the studio starts the follow-up work listed below` : ""}.`]);
     if (fus.length) extra = followUpBox(fus, org);
-    if (ap.changes_link) rows.push(["Read the exact changes", `<a href="${esc(ap.changes_link)}" target="_blank" rel="noopener">Every line added and removed, in each document</a>.`]);
+    if (ap.changes_link) rows.push(["Changes", `<a href="${esc(ap.changes_link)}" target="_blank" rel="noopener">Every line added and removed, with the documents it touches at the top</a>.`]);
     rows.push(["Reject and close review", `Rejects this version and closes its review. Nothing is merged and no follow-up work is filed.`]);
     rows.push(commentRow(first));
   } else if (it.state === "for_review") {

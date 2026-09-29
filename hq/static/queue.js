@@ -130,12 +130,11 @@ function qWorkEvidence(card, ownerName) {
   // (2026-09-28: "What does the title mean?").
   const ap = card.approval;
   if (ap) {
-    const docs = (ap.files || []).map(f => f.name).join(", ");
-    items.push({ label: "What changes", text: [ap.summary, docs && `Documents: ${docs}.`].filter(Boolean).join("\n\n") });
+    // The documents it touches are listed at the top of the change log.
+    if (ap.summary) items.push({ label: "What changes", text: ap.summary });
     items.push({ label: "Why this needs you", text: ap.reason });
   }
   if (card.result) items.push({ label: "What came back", text: card.result });
-  if (card.diff && card.diff.stat) items.push({ label: "Files changed", text: card.diff.stat });
   // Test suites only when one failed: all green says nothing, and a change held
   // for his yes cannot reach him without both passing (2026-09-28). The
   // checker's verdict is not repeated when the recommendation already quotes it.
@@ -147,14 +146,28 @@ function qWorkEvidence(card, ownerName) {
     items.push({ label: `Checker: ${card.check.verdict || ""}`, text: card.check.summary });
   const brief = card.ask || card.source_message || "";
   if (brief) items.push({ label: `The brief written for ${ownerName}`, text: brief });
-  // The session that produced this result is written down as it runs, so the
-  // result can be read back to how it was made rather than taken on trust.
-  if (card.started || card.diff) {
-    // A link, not a fold: there is nothing to read here but where it goes (2026-09-28).
-    items.push({ label: "How it was done", link: `#/chat/bullpen?item=${encodeURIComponent(card.id)}`, linkOnly: true,
-                 linkText: "Execution session" });
-  }
   return items;
+}
+
+/* References to the underlying work, side by side under the question
+   (2026-09-28): the changes (every line added and removed, with the files it
+   touches at its top; hovering lists those files) and the execution session
+   that produced it. */
+function qReferenceLinks(card) {
+  const refs = [];
+  const diff = card.diff || {};
+  const changes = (card.approval || {}).changes_link
+    || ((diff.stat || (diff.files || []).length) ? `/work-change/${encodeURIComponent(card.id)}` : "");
+  const files = (card.approval || {}).files
+    ? card.approval.files.map(f => f.name)
+    : (diff.files || []).length ? diff.files
+    : String(diff.stat || "").split("\n").map(l => l.split("|")[0].trim()).filter(l => l && !/files? changed/.test(l));
+  if (changes) refs.push({ label: "Changes", href: changes,
+                           title: files.length ? `Files changed:\n${files.join("\n")}` : "" });
+  // The session is written down as it runs, so a result can be read back to how
+  // it was made rather than taken on trust.
+  if (card.started || card.diff) refs.push({ label: "Execution session", href: `#/chat/bullpen?item=${encodeURIComponent(card.id)}` });
+  return refs;
 }
 
 /* The named deliverable is the thing Daniel is deciding about.  It is not
@@ -244,7 +257,7 @@ function qWorkItem(card, org, reason) {
     attachments: [...(card.attachments || []), ...linkEvidenceAttachments(card.links)],
     links: card.links || [],
     artifact: card,
-    deliverableEvidence: qDeliverableEvidence(card),
+    deliverableEvidence: qDeliverableEvidence(card), refs: qReferenceLinks(card),
     evidence: qWorkEvidence(card, owner.name), source: `work card ${card.id}`, canDrop: true,
   };
 }
@@ -472,10 +485,8 @@ function qPaneHtml(row, org) {
       row.title !== row.question ? esc(row.title) : "",
       row.kind === "review" ? reviewHeadingArtifact(row.artifact).trim() : "",
       esc(row.source), esc(ownerName)].filter(Boolean).join(" · ")}</div>
-    ${((row.artifact || {}).approval || {}).changes_link
-      // The change itself is what he is deciding on, so its link sits under the
-      // question at reading size, not in an evidence fold (2026-09-28).
-      ? `<p class="q-changes-link"><a class="plain" href="${esc(row.artifact.approval.changes_link)}" target="_blank" rel="noopener">Read the exact changes${Q_NEW_TAB_ICON}</a></p>` : ""}
+    ${(row.refs || []).length ? `<p class="q-refs">${row.refs.map(r =>
+      `<a class="plain" href="${esc(r.href)}" target="_blank" rel="noopener"${r.title ? ` title="${esc(r.title)}"` : ""}>${esc(r.label)}${Q_NEW_TAB_ICON}</a>`).join(" · ")}</p>` : ""}
     ${sources.length ? `<div class="q-sec"><h3>Requests this answer serves</h3><ul>${sources.map(source =>
       `<li><a class="plain" href="#/work/${encodeURIComponent(source.id)}">${esc(source.title)}</a></li>`).join("")}</ul></div>` : ""}
     ${artifact.decision_id || artifact.decision ? `<p class="q-pane-src">Earlier decision: <a class="plain" href="#/inbox/${encodeURIComponent(artifact.decision_id || artifact.decision)}">${esc(artifact.decision_id || artifact.decision)}</a></p>` : ""}

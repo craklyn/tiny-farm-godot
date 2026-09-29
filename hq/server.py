@@ -2357,6 +2357,16 @@ def work_change_page(item_id):
     parts = [f"<h1>What {esc(who)} changed</h1><p class=sub>{esc(item.get('title') or '')}</p>"]
     if not files:
         parts.append("<p>This card has no recorded change to show.</p>")
+    else:
+        # The files it touches, at the top rather than as a section on the card
+        # (2026-09-28).
+        rows = []
+        for f in files:
+            added = sum(1 for k, _ in f["lines"] if k == "add")
+            removed = sum(1 for k, _ in f["lines"] if k == "del")
+            rows.append(f"<li><b>{esc(work.plain_file(f['path']))}</b> <small>{esc(f['path'])}</small>"
+                        f" <span class=addn>+{added}</span> <span class=deln>−{removed}</span></li>")
+        parts.append(f"<h2 class=files-h>Files changed</h2><ul class=files>{''.join(rows)}</ul>")
     for f in files:
         parts.append(f"<h2>{esc(work.plain_file(f['path']))} <small>{esc(f['path'])}</small></h2><div class=diff>")
         for kind, text in f["lines"]:
@@ -2374,6 +2384,8 @@ def work_change_page(item_id):
             ".diff div{padding:.15rem .6rem;white-space:pre-wrap;word-break:break-word}"
             ".add{background:var(--add);color:var(--addfg)}.del{background:var(--del);color:var(--delfg);text-decoration:line-through}"
             ".ctx{color:var(--mute)}.gap{color:var(--mute);text-align:center}"
+            ".files{margin:.25rem 0 1.5rem;padding-left:1.2rem}.files li{margin:.15rem 0}.files-h{font-size:1rem}"
+            ".addn{color:var(--addfg)}.deln{color:var(--delfg)}"
             "</style></head><body><p class=sub>Lines struck through in red are removed; lines in green are added. "
             "Grey lines are unchanged, shown for context.</p>" + "".join(parts) + "</body></html>")
     return 200, page

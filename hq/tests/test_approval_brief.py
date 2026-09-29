@@ -81,6 +81,8 @@ class ApprovalBrief(unittest.TestCase):
             code, page = server.work_change_page("wa0bea812648")
         self.assertEqual(code, 200)
         self.assertIn("What Tomás changed", page)
+        self.assertLess(page.index("Files changed"), page.index("class=diff"))
+        self.assertIn("<span class=addn>+1</span> <span class=deln>−1</span>", page)
         self.assertIn("the bots and training design doc", page)
         self.assertIn('class=del>The player buys pace once for 150 gold.', page)
         self.assertIn("class=add>A moving Mark III sits beside the chevrons", page)
