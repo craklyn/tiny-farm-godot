@@ -18,8 +18,10 @@ class PaletteReadoutTests(unittest.TestCase):
         server._PALETTE_CACHE.update(key=None, data=None)
         data = server.palette_union()
         self.assertEqual(data["failed"], [])
-        self.assertEqual(data["sheets"], 52)  # 51 runtime generated + tool icons
+        self.assertEqual(data["sheets"], 53)  # 52 runtime generated + tool icons
         self.assertIn("player_chop.png", data["sheet_names"])
+        # The Mark III running in place on the workbench shelf's pace row (Q-133 b).
+        self.assertIn("mk3_pace_run.png", data["sheet_names"])
         self.assertTrue({"nest_box.png", "rug.png"} <= set(data["sheet_names"]))
         self.assertTrue({"terrain_field.png", "terrain_yard.png", "wheat.png"}
                         <= set(data["sheet_names"]))

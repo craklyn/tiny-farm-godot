@@ -5827,6 +5827,9 @@
    "verdict": "decode",
    "why": "The pronoun has no referent in the sentence, so the reader cannot tell what was confirmed."
   },
+  "aa331fa9b585320d9b6d": {
+   "verdict": "ok"
+  },
   "aa41a1c39be6572008b2": {
    "verdict": "ok"
   },
@@ -7292,6 +7295,12 @@
    "quote": "every-frame redraw: the sort costs nearly as much as the walk",
    "verdict": "decode",
    "why": "It uses engineering shorthand without saying what the page redraws, what is being sorted, or what the walk checks."
+  },
+  "d6df0cb31aaba1eee343": {
+   "instead": "The HQ colour check counts the Mark III's running picture as one of the game's image files",
+   "quote": "colour readout test counts the running Mark III picture among the game's sprite sheets",
+   "verdict": "decode",
+   "why": "The reader has to know what the colour readout test and sprite sheets are to understand what changed."
   },
   "d6e917b25b9bea983f16": {
    "instead": "None of the recorded options — revise and ask me again. Tell the studio what needs to change. The decision stays open.",
