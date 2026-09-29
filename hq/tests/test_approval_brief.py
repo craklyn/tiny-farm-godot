@@ -23,12 +23,15 @@ index 1111111..2222222 100644
 """
 
 
+FILES = ["docs/design/06-bots-and-training.md", "docs/DECISION_LOG.md"]
+
+
 def ruling_card(held="it changes docs/design/06-bots-and-training.md, " + work.APPROVAL_HOLD):
     return {"id": "wa0bea812648", "owner": "tomas", "state": "for_review", "tier": 1,
             "ruling_id": "Q-131",
             "title": "Act on your ruling: The Mark III learning shop — you chose Show a moving Mark III beside the chevrons",
             "result": "Recorded Daniel's ruling in the design documents.\n\nMore detail.\n" + work.FOLLOW_MARK + "\n{}",
-            "diff": {"applied": False, "files": ["docs/design/06-bots-and-training.md", "docs/DECISION_LOG.md"],
+            "diff": {"applied": False, "files": FILES,
                      "why_not_landed": held},
             "attempt_outcome": {"id": "a1", "status": "complete",
                                 "candidate": {"files": {"docs/design/06-bots-and-training.md": "blob"}}},
@@ -49,6 +52,11 @@ class ApprovalBrief(unittest.TestCase):
         self.assertIn("record your direction", brief["reason"])
         self.assertIn("can be undone later", brief["yes"])
         self.assertEqual(brief["changes_link"], "/work-change/wa0bea812648")
+        many = ruling_card()
+        many["diff"]["files"] = FILES + ["docs/DESIGNER_QUEUE.md", "docs/design/14-training-workbench.md"]
+        long = work.approval_brief(many, ORG)
+        self.assertTrue(long["question"].endswith("to the design docs?"))
+        self.assertEqual(len(long["files"]), 4)
         for text in brief.values():
             self.assertNotIn("undoing a commit", str(text))
 

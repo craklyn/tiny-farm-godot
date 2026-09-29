@@ -831,7 +831,11 @@ def approval_brief(item, org=None):
         return None
     files = list((item.get("diff") or {}).get("files") or
                  ((item.get("attempt_outcome") or {}).get("candidate") or {}).get("files") or [])
-    where = _plain_list([plain_file(f) for f in files]) if files else "the project"
+    names = list(dict.fromkeys(plain_file(f) for f in files))
+    # One or two documents are named; more are "the design docs", listed below
+    # the question under "What changes".
+    where = (_plain_list(names) if 0 < len(names) <= 2 else
+             "the design docs" if names else "the project")
     people = {e.get("id"): e for e in ((org or {}).get("employees") or [])}
     who = str((people.get(item.get("owner")) or {}).get("name") or item.get("owner") or "The studio").split()[0]
     title = str(item.get("title") or "")
