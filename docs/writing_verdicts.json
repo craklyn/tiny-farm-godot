@@ -3223,6 +3223,12 @@
    "verdict": "second-look",
    "why": "“Artifact” is engineering shorthand, so the reader has to work out whether it means the submitted work, a file, or something else."
   },
+  "63f79774530f5fb6e2f1": {
+   "instead": "The desktop picture check passes again: its reference picture now shows the crop totals and the new basket button",
+   "quote": "its reference picture now shows the crop counts as pictures",
+   "verdict": "decode",
+   "why": "It is unclear whether this means the crop totals are visible, or that the totals are displayed as images."
+  },
   "6421c8f40da9c308a534": {
    "verdict": "ok"
   },
@@ -4133,6 +4139,9 @@
   "80f091a1ac95d8d0437a": {
    "verdict": "ok"
   },
+  "80f8a6b080902518f38c": {
+   "verdict": "ok"
+  },
   "8142ce847dc8207d3fcd": {
    "verdict": "ok"
   },
@@ -4678,6 +4687,12 @@
    "quote": "asked you to decide",
    "verdict": "decode",
    "why": "It does not say what decision you need to make."
+  },
+  "9227b4231734714a2fd8": {
+   "instead": "The desktop version now shows the crop totals and the new basket button correctly",
+   "quote": "The desktop picture check passes again",
+   "verdict": "decode",
+   "why": "It names an internal check instead of saying what the reader can now see on the desktop version."
   },
   "923f92114c1cf766da54": {
    "verdict": "ok"
