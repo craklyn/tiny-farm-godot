@@ -679,6 +679,16 @@ replayed, not the first lesson. The worm practice itself is not built. Design in
 `design/14-training-workbench.md` ("The practice cards"). Daniel also settled Q-65's
 living-farm question: worms appear rarely on farms.
 
+### S-36. Recurring duties enter the queue on their schedule, and an empty queue stays empty
+**Ruled 2026-09-29 (Q-134, option d).** The studio leaves spare Codex capacity unused
+when the work queue runs out; the chief of staff does not create filler work for an empty
+queue. Scheduled processes add their work to the queue at their regular intervals and
+priorities, not early and not ahead of other work to use the remaining allowance. The
+duties are listed in `hq/data/schedules.json` and filed by each drain run
+(`hq/schedules.py`); how that works is in `docs/HOW_WORK_ORIGINATES.md`. On the day of the
+ruling every listed duty belonged to a function whose page was switched off, or had
+nothing to run on, so the schedule filed no cards.
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported

@@ -1,7 +1,8 @@
-# What Codex works on when the queue runs out (Q-134, proposed 2026-09-29)
+# What Codex works on when the queue runs out (Q-134, ruled 2026-09-29)
 
-**Status: proposal, waiting on Daniel's ruling on Q-134.** Drafted by the chief of
-staff. Nothing here is built.
+**Status: not adopted.** Daniel chose to leave spare capacity unused. Scheduled
+processes continue to add work at their regular intervals and priorities; an empty
+queue does not trigger filler work. Nothing described in this proposal will be built.
 
 ## The problem, measured
 

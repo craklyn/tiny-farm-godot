@@ -230,13 +230,25 @@ bottleneck this whole design exists to remove, and tier 1 is reversible by defin
 its results already coming back for review — so the same rule that lets a build session
 drain it lets a timer.
 
-`hq/systemd/tiny-farm-drain.timer` runs `python3 hq/drain.py --unattended` every two hours
-on the machine that runs HQ. Unattended means: at most three items a run, two seats at a
-time, and nothing at all when the token window is dry or when the studio's own work has
-already spent most of what it had spent the last time a window ran dry — the Work page's
-own number, so what the timer respects is what he can see. Only one drain runs at a time;
-the timer and a person at the keyboard take the same lock. Installing it is four commands
-in the unit file's header.
+`hq/systemd/tiny-farm-drain.timer` runs `python3 hq/drain.py --unattended` every ten
+minutes on the machine that runs HQ (every two hours until 2026-09-20). A run works up to
+three cards at once, and starts nothing when Daniel has paused automatic work or the model
+allowance has run out. Only one drain runs at a time; the timer and a person at the keyboard
+take the same lock. Installing it is four commands in the unit file's header.
+
+### Recurring duties are filed on their own schedule
+
+Ruled by the CEO on 2026-09-29 (Q-134, S-36). A duty a seat performs on a cadence, such
+as a weekly review or a monthly close, is listed in `hq/data/schedules.json`. Every drain
+run files a card for each duty that has come due, at the duty's regular priority, whatever
+else is queued. An empty queue is left empty: nothing is filed to use up allowance that
+would otherwise go unused. A duty is not filed while its previous card is still open, while
+its function's page is switched off in `hq/data/surface.json`, or while its entry gives a
+reason it is off. The filing code is `hq/schedules.py`.
+
+The timer-driven processes that are the queue's own machinery do not become cards: the
+drain itself, HQ's recovery and bookkeeping threads, the CI poller (which files an urgent
+card when a run on main fails), the goal journal and the itch.io probe.
 
 ## What a result cost
 

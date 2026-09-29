@@ -53,6 +53,7 @@ timer take the same lock.
 import execution
 import integration
 import roots
+import schedules
 import verification_evidence
 
 import argparse
@@ -3313,6 +3314,16 @@ def main():
         if released:
             print(f"Released {len(released)} card(s) whose earlier session died with nothing "
                   f"to land: {', '.join(released)}.")
+        # Recurring duties go into the queue on their own schedule, whatever else
+        # is queued; nothing is filed to use up spare allowance (Q-134).
+        try:
+            scheduled = schedules.file_due(server.load_json(server.cfg("schedules.json")),
+                                           server.parked_routes(), org)
+        except (OSError, ValueError) as exc:
+            scheduled = []
+            print(f"Could not read the schedule of recurring duties: {exc}")
+        for card in scheduled:
+            print(f"Filed the recurring duty {card['source_ref']} as {card['id']} for {card['owner']}.")
     if lock:
         recovered += action_dispatch.recover_orphaned_claims(work)
     if args.recover_only:

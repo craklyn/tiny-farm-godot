@@ -314,15 +314,11 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   `assets/raw/2026-09-29-mark3-pace/`; pictures: `docs/design/mockups/pace_picture/`.
   Card: `hq/data/decisions/Q-133.json`.
 
-- **Q-134 — What should Codex work on when the work queue runs out?** — **Open,
-  2026-09-29.** Since Codex took over the queue on 21 September it has used about 30% of
-  its allowance, and from 27 September 245 of the drain's 283 checks found nothing they
-  could start. Recommended: when nothing can start and the window has room, the chief of
-  staff refills the queue from new play-session findings, failing or unmeasured goal
-  checks, the next step of each project in progress, and a regular list of checks for each
-  role, filing only work the studio can finish and ship without Daniel, holding at most one
-  question for him at a time and at most six refill cards open. Proposal and measurement: `docs/hq/QUEUE_REFILL.md`.
-  Card: `hq/data/decisions/Q-134.json`.
+- **Q-134** ~~What should Codex work on when the work queue runs out?~~ — ✅ **Ruled
+  2026-09-29: (d), leave spare capacity unused.** Scheduled processes continue to add
+  work to the queue at their regular intervals and priorities. When the queue is empty,
+  Codex does not create filler work to use the remaining allowance. Proposal and
+  measurement: `docs/hq/QUEUE_REFILL.md`. Card: `hq/data/decisions/Q-134.json`.
 
 - **Q-126 to Q-130 — The Mark III learning shop.** — **Ruled 2026-09-25 to
   2026-09-27.**

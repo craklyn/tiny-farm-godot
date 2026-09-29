@@ -1,0 +1,50 @@
+{
+  "note": "Recurring studio duties (Q-134, ruled 2026-09-29). Each drain run files a card for every duty that is due, at its regular priority, whatever else is queued; an empty queue is left empty. A duty is skipped while its route is parked in surface.json or while it carries an \"off\" reason, and never stacks a second card while its last one is still open. Read by hq/schedules.py.",
+  "schedules": [
+    {
+      "id": "weekly-business-review",
+      "owner": "marcus",
+      "title": "Write this week's business review",
+      "every_days": 7,
+      "priority": "ordinary",
+      "tier": 1,
+      "follows": "/pillar/product",
+      "off": "No KPI is defined yet, so a weekly review would have nothing to review. Remove this line when the product pillar has its first KPI.",
+      "ask": "Weekly business review (org.json: KPI definitions and weekly business review). Report each defined KPI's value this week against last week and its target, from the records the studio already keeps. Land it as a dated section in docs/product/business_review.md.",
+      "first_action": "List the KPIs defined on the product pillar and where each one's number is recorded."
+    },
+    {
+      "id": "weekly-top-issues-digest",
+      "owner": "fatima",
+      "title": "Write this week's top player issues for Engineering and Product",
+      "every_days": 7,
+      "priority": "ordinary",
+      "tier": 1,
+      "follows": "/pillar/ops",
+      "ask": "Weekly top-issues digest (org.json: Top-issues digest to Engineering/Product weekly). Rank the week's player-reported problems by how many players hit them, and file a work card for any that repeats without one.",
+      "first_action": "Collect this week's player reports from the support inbox and the storefront comments."
+    },
+    {
+      "id": "monthly-financial-close",
+      "owner": "harold",
+      "title": "Close this month's books",
+      "every_days": 30,
+      "priority": "ordinary",
+      "tier": 1,
+      "follows": "/pillar/ops",
+      "ask": "Monthly financial close (org.json: Budget, runway, and monthly financial close). Reconcile the month's spend in hq/data/spend.json and any storefront revenue, and state the runway.",
+      "first_action": "Total this month's entries in hq/data/spend.json by vendor."
+    },
+    {
+      "id": "tiktok-posting",
+      "owner": "jordan",
+      "title": "Prepare this week's TikTok posts",
+      "every_days": 7,
+      "priority": "ordinary",
+      "tier": 2,
+      "follows": "/pillar/marketing",
+      "ask": "TikTok posting cadence (org.json: TikTok content strategy, production, and posting cadence). Draft this week's posts from the capture pipeline's output; posting is public, so the drafts wait for approval.",
+      "first_action": "List the captures made since the last batch of posts."
+    }
+  ]
+}
