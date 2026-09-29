@@ -199,6 +199,22 @@ echo "Build id: $BUILD_ID"
 step "Regenerating the demo replay"
 godot --headless --path . --script res://tools/gen_demo_replay.gd
 step "Exporting the Android APK"
+# Godot's Android build template lives in android/build, which git ignores, so a
+# checkout only has it if someone installed it by hand. HQ runs this from its own
+# main checkout, which never had it, and every deploy from 2026-09-23 stopped
+# here. Install it from Godot's export templates, as the editor's menu would.
+if [[ ! -f android/build/build.gradle ]]; then
+	template_version=$(cat android/.build_version)
+	template_zip="$HOME/.local/share/godot/export_templates/$template_version/android_source.zip"
+	if [[ ! -f "$template_zip" ]]; then
+		echo "Godot's Android build template $template_version is not installed ($template_zip)." >&2
+		echo "Install export templates $template_version from Godot's editor, then deploy again." >&2
+		exit 1
+	fi
+	echo "Installing Godot's Android build template $template_version into android/build"
+	mkdir -p android/build
+	unzip -q -o "$template_zip" -d android/build
+fi
 godot --headless --path . --export-debug "Android" "$APK"
 
 if [[ "$SERIAL" == *:* ]]; then
