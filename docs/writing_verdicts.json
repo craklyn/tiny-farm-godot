@@ -19,6 +19,9 @@
    "verdict": "decode",
    "why": "The sentence does not say what “it” refers to or what “built” means here."
   },
+  "009ecde6e8d0f2ca35d0": {
+   "verdict": "ok"
+  },
   "00b51884d09275f08850": {
    "verdict": "ok"
   },
@@ -5406,6 +5409,9 @@
    "verdict": "ok"
   },
   "9d766836429c9a8c6440": {
+   "verdict": "ok"
+  },
+  "9e59fb57d9eedaab42f9": {
    "verdict": "ok"
   },
   "9e8d4a48ded8a5e94b77": {

@@ -11,6 +11,10 @@ outputs here before anything is composited into a game sheet.** One folder per
 batch, named `YYYY-MM-DD-<what>`, holding the raw PNGs/GIFs plus each
 generation's `*_meta.json` (model, cost, request id) as the API returned them.
 
+Batches the work queue generated for a card on its own are named
+`YYYY-MM-DD-<card id>-<what>` and are archived by the drain before the card's
+worker touches them (`docs/HOW_WORK_ORIGINATES.md`, "Art the queue can generate").
+
 The `.gdignore` file in this directory keeps Godot from importing any of this —
 nothing in here is game data. Spend records for these batches are in
 `hq/data/spend.json`; prompts and parameters are in the pixel-art skill's

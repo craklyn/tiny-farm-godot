@@ -29,7 +29,7 @@ costs when no one checked it first.
 |---|---|---|---|---|
 | **0** | Just do it | Nothing to walk back | Runs immediately; the CEO reviews the **result** | Reading the repo, drafting, analysing, rendering a picture, running the suites, writing a proposal |
 | **1** | Do it, show the diff | Changes files, but git reverts it | Queued for a build session, which does it and shows the diff afterwards | Doc edits, code behind tests, a new decision card, a generated sprite landing in `assets/` |
-| **2** | Ask first | Hard to walk back, or the CEO's taste to settle | Nothing happens until he says yes | Shipping or deploying anything players see, spending money, deleting, changing design direction, anything outward-facing |
+| **2** | Ask first | Hard to walk back, or the CEO's taste to settle | Nothing happens until he says yes | Shipping or deploying anything players see, spending money (except art generated within the limits in [Art the queue can generate](#art-the-queue-can-generate)), deleting, changing design direction, anything outward-facing |
 
 When a work item's tier is unclear, it is a **2**. Unknown blast radius is not tier 0.
 
@@ -249,6 +249,41 @@ reason it is off. The filing code is `hq/schedules.py`.
 The timer-driven processes that are the queue's own machinery do not become cards: the
 drain itself, HQ's recovery and bookkeeping threads, the CI poller (which files an urgent
 card when a run on main fails), the goal journal and the itch.io probe.
+
+### Art the queue can generate
+
+Ruled by the CEO on 2026-09-29 (S-37). A build worker has no network and never holds
+the key to Retro Diffusion, the paid pixel-art service, so it cannot make new art itself.
+It asks for art instead, and the drain makes the paid call for it:
+
+1. The worker writes one request per image subject to `art_requests/<name>.json` in its
+   worktree: a short name for the batch, the prompt, the size, how many images (up to
+   four), and optionally the style, a palette from the art-direction chapter, a source
+   image and a seed. Then it ends its session.
+2. After the session the drain takes the request files out of the worktree, so they
+   never land, and prices every request with the service's free cost check.
+3. If the round would take the card past **$2** of generated art, or the studio past
+   **$10** in one calendar day, nothing is generated. The card is held for the chief of
+   staff with the reason on the task queue, for example "This card asked for $0.12 of art
+   generation; it has spent $1.90 of its $2 and the studio $1.90 of today's $10." The rest
+   of the card's work still goes through the normal check. A card held by the daily limit
+   goes back into the queue the next day. A card held by its own limit goes back when the
+   chief of staff raises that card's limit (its `art_cap_usd` field).
+4. Otherwise the drain generates each request, keeps the raw images and the service's
+   metadata under `assets/raw/<date>-<card>-<name>/` in the worktree and in HQ's store,
+   and records each call's cost both in `hq/data/spend.json`, tagged with the card and
+   `recorded_by: "drain"`, and in the drain's own ledger in HQ's store. The limits are
+   counted from the drain's ledger, because a card's spend reaches `spend.json` only
+   when its work lands.
+5. The worker gets one more session, told which files now exist and what they cost, to
+   post-process them to the game's palette, place them, and credit them in `CREDITS.md`.
+   The drain runs one round of art per run. If the worker asks for more art in that
+   session, the card's result says so, and the worker can ask again on the card's next
+   run.
+
+The key is read from the main checkout's `.env` by the drain alone, and it is removed
+from the environment of every model session. The limits are constants at the top of
+`hq/art_requests.py`; the hook in the drain is `art_round` in `hq/drain.py`.
 
 ## What a result cost
 

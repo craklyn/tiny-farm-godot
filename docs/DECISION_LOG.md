@@ -689,6 +689,20 @@ duties are listed in `hq/data/schedules.json` and filed by each drain run
 ruling every listed duty belonged to a function whose page was switched off, or had
 nothing to run on, so the schedule filed no cards.
 
+### S-37. Art generation runs unattended within caps, through the drain
+**Ruled by Daniel in chat 2026-09-29.** Art generation runs unattended within caps ($2 a
+card, $10 a day), through the drain; above the caps goes to the chief of staff; the key
+never enters a worker. A queue worker asks for art by writing request files in its
+worktree. The drain, outside the worker's sandbox, prices each round with Retro
+Diffusion's free cost check. It generates only rounds that keep the card within $2 and
+the studio within $10 for the calendar day. It archives the raw output under
+`assets/raw/`, records the spend in `hq/data/spend.json` tagged with the card, and gives
+the worker one more session to finish with the images. A round above either cap is not run.
+The card is held for the chief of staff with the amounts in the reason, not sent to
+Daniel. This narrows the tier-2 rule that spending money waits for his yes. Code:
+`hq/art_requests.py` (the caps), `hq/drain.py` (`art_round`); how it works is in
+`docs/HOW_WORK_ORIGINATES.md` ("Art the queue can generate").
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported
