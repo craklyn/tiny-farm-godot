@@ -22,7 +22,9 @@ const source = fs.readFileSync(path.join(root, "hq/static/workers.js"), "utf8")
   .replace(/<\/script/gi, "<\\/script");
 // The Work section's shared tab strip lives in app.js; the page gets the real one.
 const app = fs.readFileSync(path.join(root, "hq/static/app.js"), "utf8");
-const tabsSource = app.slice(app.indexOf("const WORK_TABS"), app.indexOf("function syncNavAvailability("));
+const tabsSource = app.slice(app.indexOf("const WORK_TABS"), app.indexOf("function syncNavAvailability(")) +
+  // The task queue controls are shared with the decisions page (app.js, execControlHtml).
+  "\n" + app.slice(app.indexOf("const execClock"), app.indexOf("// A work title"));
 const css = fs.readFileSync(path.join(root, "hq/static/style.css"), "utf8")
   .replace(/<\/style/gi, "<\\/style");
 const chrome = [process.env.CHROME, "/usr/bin/google-chrome", "/usr/bin/chromium"]

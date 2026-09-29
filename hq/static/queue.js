@@ -591,18 +591,8 @@ function qRender(state) {
   if (!rows.length) qDetailOpen = false;
 
   const unavailable = state.waiting.available === false;
-  const autoStatus = execution.paused ? "Paused" : (execution.timer.active === false ? "Scheduler stopped" : "Scheduler enabled");
-  const eligibleActions = state.executionQueue ? (state.executionQueue.eligible || []).length : execution.queued;
-  const statusTip = execution.paused
-    ? `${eligibleActions} actions are not starting while the scheduler is paused${execution.pause.reason ? `: ${execution.pause.reason}` : "."}`
-    : `${eligibleActions} actions are eligible. The scheduler is ${execution.timer.active === false ? "stopped" : "enabled"}; up to ${execution.batch_limit} start every ${execution.interval_minutes} minutes.`;
-  const executionHtml = `<section class="exec-control ${execution.paused ? "paused" : "running"}">
-    <span class="exec-name">Task queue</span>
-    <span class="exec-status tip" tabindex="0" data-tip="${esc(statusTip)}"><i></i>${esc(autoStatus)}</span>
-    <a class="exec-view" href="#/work/queue">View queue <span aria-hidden="true">→</span></a>
-    <button class="ghost exec-toggle tip" id="q-exec-toggle" aria-label="${execution.paused ? "Resume" : "Pause"} automatic task queue work"
-      data-tip="${execution.paused ? "Resume working through the accepted task queue." : "Pause working through the accepted task queue."}">${execution.paused ? "▶" : "Ⅱ"}</button>
-  </section>`;
+  // The task queue's controls are one shared component (app.js, execControlHtml).
+  const executionHtml = execControlHtml(execution);
   const bandHtml = unavailable
     ? `<b>Queue count unavailable.</b><p>HQ could not read the current queue. Try refreshing; this does not mean no items are waiting.</p>`
     : rows.length
@@ -709,20 +699,7 @@ function qRender(state) {
     .forEach(a => { try { box.appendChild(attachmentEl(a, null, null)); } catch (e) {} }); };
   fillAtts(selectedRow);
 
-  document.getElementById("q-exec-toggle").addEventListener("click", async ev => {
-    const action = execution.paused ? "resume" : "pause";
-    let reason = "";
-    if (action === "resume") {
-      if (!confirm(`Resume automatic work? ${execution.queued} accepted pieces are queued; up to ${execution.batch_limit} will start every ${execution.interval_minutes} minutes.`)) return;
-    } else {
-      reason = prompt("Why is automatic work being paused?") || "";
-      if (!reason.trim()) return;
-    }
-    ev.currentTarget.disabled = true;
-    const got = await workPost("/api/execution", { action, reason });
-    if (got.error) { alert(got.error); ev.currentTarget.disabled = false; return; }
-    qRefresh();
-  });
+  wireExecControl(document, execution, qRefresh);
 
   function qSelect(id) {
     qSelected = id;

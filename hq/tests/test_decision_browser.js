@@ -17,6 +17,11 @@ const review = fs.readFileSync(path.join(root, 'hq/static/review_evidence.js'), 
   .replace(/<\/script/gi, '<\\/script');
 const queue = fs.readFileSync(path.join(root, 'hq/static/queue.js'), 'utf8')
   .replace(/<\/script/gi, '<\\/script');
+// The task queue controls are shared with the other work pages (app.js,
+// execControlHtml); the page measured here carries the real ones.
+const appSource = fs.readFileSync(path.join(root, 'hq/static/app.js'), 'utf8');
+const execControl = appSource.slice(appSource.indexOf('const execClock'), appSource.indexOf('// A work title'))
+  .replace(/<\/script/gi, '<\\/script');
 const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'hq-layout-'));
 const page = path.join(temp, 'queue.html');
 fs.writeFileSync(page, `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
@@ -38,7 +43,7 @@ function updateQueueBadge() {} function attachmentEl() { return document.createE
 function noteVersion() {} function api() { return Promise.resolve({}); }
 function workPost() { return Promise.resolve({ok:true}); }
 function recordDecision() { return Promise.resolve({ok:true}); }
-</script><script>${review}</script><script>${queue}</script><script>
+</script><script>${execControl}</script><script>${review}</script><script>${queue}</script><script>
 const cards = Array.from({length:12}, (_,i) => ({id:'review-'+i,title:i===0?'The revised seeder-bot animation':'Farm review '+(i+1),
   state:'for_review',owner:'rin',tier:2,review_question:'Does this reviewed result stand?',
   recommend:{answer:'Approve this version',why:'The result is ready for inspection at game scale. The revised motion reads clearly and keeps the original farm palette.'},

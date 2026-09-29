@@ -12,6 +12,8 @@ vm.createContext(context);
 // The Work section's shared tab strip lives in app.js; load the real one.
 const app = fs.readFileSync(require("path").join(__dirname, "../static/app.js"), "utf8");
 vm.runInContext(app.slice(app.indexOf("const WORK_TABS"), app.indexOf("function syncNavAvailability(")), context);
+// The task queue controls are shared with the decisions page (app.js, execControlHtml).
+vm.runInContext(app.slice(app.indexOf("const execClock"), app.indexOf("// A work title")), context);
 vm.runInContext(source, context);
 
 const sessions = [

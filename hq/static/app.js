@@ -112,6 +112,88 @@ function workflowStatus(item) {
   return "Status not yet verified";
 }
 
+/* The task queue's controls: one implementation for every page that shows
+   them (the decisions page, the task queue and the bullpen). Daniel,
+   2026-09-29: "sometimes I check it and if I see nothing happening then I have
+   to check timestamps to see if it's stuck or just waiting for its next
+   operation." So the status names which — working since, next start at, out
+   of allowance until, paused — and "Start now" starts the timer's own work
+   early, or says in its tip why it would begin nothing. The server decides
+   that (run_now), so every page gives the same answer. */
+const execClock = iso => (iso ? String(iso).slice(11, 16) : "");
+function execReading(execution) {
+  const ex = execution || {};
+  const timer = ex.timer || {}, service = ex.service || {};
+  const every = ex.interval_minutes || 10, queued = ex.queued || 0;
+  const startable = ex.startable != null ? ex.startable : queued;
+  const waiting = `${queued} task${queued === 1 ? " is" : "s are"} waiting to start; ${startable} of those can begin without the chief of staff.`;
+  if (ex.paused) return {word: "Paused", cls: "paused",
+    tip: `Nothing starts while the task queue is paused${(ex.pause || {}).reason ? `: ${ex.pause.reason}` : "."} ${waiting}`};
+  if (service.running || ex.active) {
+    const since = execClock(service.since || (ex.active || {}).at);
+    return {word: since ? `Working since ${since}` : "Working now", cls: "running",
+      tip: `The task queue is working on up to ${ex.batch_limit || 3} tasks at a time. ${waiting}`};
+  }
+  if (ex.dry_until) return {word: `Out of allowance until ${execClock(ex.dry_until)}`, cls: "idle",
+    tip: `The AI usage limit has been reached; tasks can start again at ${execClock(ex.dry_until)}. ${waiting}`};
+  if (timer.active === false) return {word: "Scheduler stopped", cls: "paused",
+    tip: `The timer that starts queued tasks is off, so nothing starts on its own. ${waiting}`};
+  if (timer.next_at) return {word: `Next start ${execClock(timer.next_at)}`, cls: "running",
+    tip: `Every ${every} minutes, the task queue starts tasks that are waiting.${timer.last_at ? ` The last start was at ${execClock(timer.last_at)}.` : ""} ${waiting}`};
+  return {word: "Scheduler enabled", cls: "running", tip: `Every ${every} minutes, the task queue starts tasks that are waiting. ${waiting}`};
+}
+function execControlHtml(execution, {viewLink = true} = {}) {
+  const ex = execution || {};
+  const reading = execReading(ex);
+  const run = ex.run_now || {allowed: false, why: "HQ could not tell whether queued tasks can start."};
+  const next = execClock((ex.timer || {}).next_at);
+  const runTip = run.allowed
+    ? `Starts queued tasks now${next ? ` instead of at ${next}` : ""}: up to ${ex.batch_limit || 3} tasks will begin.`
+    : run.why;
+  return `<section class="exec-control ${reading.cls}">
+    <span class="exec-name">Task queue</span>
+    <span class="exec-status tip" tabindex="0" data-tip="${esc(reading.tip)}"><i></i>${esc(reading.word)}</span>
+    ${viewLink ? `<a class="exec-view" href="#/work/queue">View queue <span aria-hidden="true">→</span></a>` : ""}
+    <button type="button" class="ghost exec-run tip" data-exec="run" aria-disabled="${run.allowed ? "false" : "true"}"
+      data-tip="${esc(runTip)}">Start now</button>
+    <button type="button" class="ghost exec-toggle tip" data-exec="toggle" aria-label="${ex.paused ? "Resume" : "Pause"} automatic task queue work"
+      data-tip="${ex.paused ? "Resume working through the accepted task queue." : "Pause working through the accepted task queue."}">${ex.paused ? "▶" : "Ⅱ"}</button>
+  </section>`;
+}
+function wireExecControl(root, execution, refresh) {
+  const ex = execution || {};
+  const control = root && typeof root.querySelector === "function" ? root.querySelector(".exec-control") : null;
+  if (!control || typeof control.querySelector !== "function") return;
+  const post = body => fetch("/api/execution", {method: "POST", headers: {"Content-Type": "application/json"},
+    body: JSON.stringify(body)}).then(r => r.json()).catch(error => ({error: error.message}));
+  const toggle = control.querySelector('[data-exec="toggle"]');
+  if (toggle) toggle.addEventListener("click", async () => {
+    const action = ex.paused ? "resume" : "pause";
+    let reason = "";
+    if (action === "resume") {
+      if (!confirm(`Resume automatic work? ${ex.queued || 0} steps are waiting; up to ${ex.batch_limit || 3} start every ${ex.interval_minutes || 10} minutes.`)) return;
+    } else {
+      reason = prompt("Why is automatic work being paused?") || "";
+      if (!reason.trim()) return;
+    }
+    toggle.disabled = true;
+    const got = await post({action, reason});
+    if (got.error) { alert(got.error); toggle.disabled = false; return; }
+    refresh();
+  });
+  const run = control.querySelector('[data-exec="run"]');
+  if (run) run.addEventListener("click", async () => {
+    if (run.getAttribute("aria-disabled") === "true") return;
+    run.setAttribute("aria-disabled", "true");
+    run.textContent = "Starting…";
+    const got = await post({action: "run_now"});
+    if (got.error) alert(got.error);
+    // The work registers itself within a second or two; redraw after that so
+    // the status says "Working since".
+    setTimeout(refresh, 2000);
+  });
+}
+
 // A work title tells the studio what it was asked to do. A review heading
 // tells Daniel what finished thing is in front of him. Keep those names apart;
 // old records retain their title as the readable fallback rather than gaining
@@ -314,6 +396,7 @@ function workTabs(current) {
   return `<nav class="tabs work-tabs" aria-label="Work pages">${WORK_TABS.map(([path, label]) =>
     `<a href="#${path}"${path === current ? ` class="active" aria-current="page"` : ""}>${label}</a>`).join("")}</nav>`;
 }
+
 function syncNavAvailability() {
   document.querySelectorAll(".primary-nav a[data-section]").forEach(link => {
     link.hidden = !!surfaceParked(link.getAttribute("href"));

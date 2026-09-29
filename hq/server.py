@@ -2475,35 +2475,145 @@ def backfill_ruling_work():
     return filed
 
 
+DRAIN_TIMER = "tiny-farm-drain.timer"
+DRAIN_SERVICE = "tiny-farm-drain.service"
+
+
+def _iso_local(seconds):
+    import datetime as _dt
+    return _dt.datetime.fromtimestamp(seconds).isoformat(timespec="seconds") if seconds else ""
+
+
+def _drain_timer_reading():
+    """Whether the drain's timer is on, when it last fired and when it fires next.
+
+    The timer counts ten minutes from the start of the last run, so systemd
+    has no wall-clock "next" of its own to show; `list-timers` works it out.
+    Before this the task-queue controls could only say "Scheduler enabled",
+    and Daniel had to compare timestamps to tell a queue waiting for its next
+    run from one that was stuck (2026-09-29)."""
+    timer = {"active": None, "state": "unknown", "next_at": "", "last_at": "",
+             "interval_minutes": None}
+    try:
+        shown = subprocess.run(
+            ["systemctl", "--user", "show", DRAIN_TIMER,
+             "--property=ActiveState", "--property=SubState", "--value"],
+            capture_output=True, text=True, timeout=2)
+        values = shown.stdout.splitlines()
+        if shown.returncode == 0 and values:
+            timer["active"] = values[0].strip() == "active"
+            timer["state"] = " / ".join(value.strip() for value in values if value.strip())
+        listed = subprocess.run(
+            ["systemctl", "--user", "list-timers", DRAIN_TIMER, "--all", "--output=json"],
+            capture_output=True, text=True, timeout=2)
+        rows = json.loads(listed.stdout or "[]") if listed.returncode == 0 else []
+        row = rows[0] if rows else {}
+        nxt, last = (row.get("next") or 0) / 1e6, (row.get("last") or 0) / 1e6
+        timer["next_at"], timer["last_at"] = _iso_local(nxt), _iso_local(last)
+        if nxt and last and nxt > last:
+            timer["interval_minutes"] = round((nxt - last) / 60)
+    except (OSError, subprocess.TimeoutExpired, ValueError, TypeError, AttributeError):
+        pass
+    return timer
+
+
+def _drain_service_reading():
+    """Whether a drain run is going now, and since when."""
+    service = {"running": False, "since": ""}
+    try:
+        shown = subprocess.run(
+            ["systemctl", "--user", "show", DRAIN_SERVICE, "--timestamp=unix",
+             "--property=ActiveState", "--property=ExecMainStartTimestamp", "--value"],
+            capture_output=True, text=True, timeout=2)
+        values = [v.strip() for v in shown.stdout.splitlines()]
+        if shown.returncode == 0 and values:
+            service["running"] = values[0] in ("activating", "active", "reloading")
+            started = values[1].lstrip("@") if len(values) > 1 else ""
+            if service["running"] and started.isdigit():
+                service["since"] = _iso_local(int(started))
+    except (OSError, subprocess.TimeoutExpired, ValueError):
+        pass
+    return service
+
+
+def _provider_dry_until(provider):
+    """When the provider's window reopens, read fresh from the file the drain
+    writes; the server's own copy is only loaded when it starts."""
+    import time as _t
+    try:
+        saved = load_json(OUTBOX_STATE)
+    except Exception:
+        return ""
+    bucket = saved if provider == "claude" else (saved.get("providers") or {}).get(provider) or {}
+    until = float(bucket.get("until") or 0)
+    return _iso_local(until) if until > _t.time() else ""
+
+
+def run_now_reading(snapshot):
+    """Whether "Start now" may start a drain run, and in plain words why not."""
+    if snapshot["paused"]:
+        return {"allowed": False, "why": "Automatic work is paused; resume it before starting work."}
+    if snapshot["service"]["running"] or snapshot["active"]:
+        return {"allowed": False, "why": "The task queue is already working."}
+    if snapshot["dry_until"]:
+        return {"allowed": False, "why": f"{snapshot['provider'].capitalize()} is out of allowance until "
+                                         f"{snapshot['dry_until'][11:16]}; nothing can start before then."}
+    if not snapshot["startable"]:
+        waiting = snapshot["queued"]
+        why = ("Nothing is waiting to start." if not waiting else
+               f"The {waiting} task{'s' if waiting != 1 else ''} waiting {'are' if waiting != 1 else 'is'} "
+               "for the chief of staff, not the task queue, so starting now would begin nothing.")
+        return {"allowed": False, "why": why}
+    return {"allowed": True, "why": ""}
+
+
+def start_drain_now():
+    """Start one drain run now instead of at the timer's next firing. The run
+    is the timer's own service, so its lock, holds and logs are the same."""
+    started = subprocess.run(["systemctl", "--user", "start", "--no-block", DRAIN_SERVICE],
+                             capture_output=True, text=True, timeout=10)
+    if started.returncode:
+        raise RuntimeError((started.stderr or started.stdout or "systemctl refused").strip()[:300])
+
+
+def request_run_now():
+    """Daniel's "Start now": start the drain's next run early, or say why not.
+    Returns (HTTP status, body)."""
+    snapshot = execution_control_snapshot()
+    if not snapshot["run_now"]["allowed"]:
+        return 409, {"error": snapshot["run_now"]["why"], **snapshot}
+    start_drain_now()
+    return 200, {**execution_control_snapshot(), "started": True}
+
+
 def execution_control_snapshot():
     """The real launch brake, timer state, and work it currently governs."""
     policy = execution.load_policy()
     queue = execution_queue_snapshot()
     queued = len(queue["eligible"])
-    timer = {"active": None, "state": "unknown"}
-    try:
-        shown = subprocess.run(
-            ["systemctl", "--user", "show", "tiny-farm-drain.timer",
-             "--property=ActiveState", "--property=SubState", "--value"],
-            capture_output=True, text=True, timeout=2)
-        values = shown.stdout.splitlines()
-        if shown.returncode == 0 and values:
-            active = values[0].strip() == "active"
-            timer = {"active": active,
-                     "state": " / ".join(value.strip() for value in values if value.strip())}
-    except (OSError, subprocess.TimeoutExpired):
-        pass
-    return {
+    # Only these step types are started by a drain run; anything else listed
+    # as waiting (a handoff, for one) waits on a session, and a run started
+    # for it alone ends "Nothing queued".
+    import action_dispatch
+    runnable_types = action_dispatch.MODEL_ACTIONS | action_dispatch.RECOVERY_ACTIONS
+    startable = sum(1 for row in queue["eligible"] if row.get("action_type") in runnable_types)
+    timer = _drain_timer_reading()
+    snapshot = {
         "paused": policy["background_paused"],
         "pause": policy.get("background_pause") or {},
         "provider": policy["mode"],
         "mappings": policy["mappings"],
         "queued": queued,
+        "startable": startable,
         "batch_limit": 3,
-        "interval_minutes": 20,
+        "interval_minutes": timer["interval_minutes"] or 10,
         "timer": timer,
+        "service": _drain_service_reading(),
+        "dry_until": _provider_dry_until(policy["mode"]),
         "active": drain_state(),
     }
+    snapshot["run_now"] = run_now_reading(snapshot)
+    return snapshot
 
 
 def _pid_alive(pid):
@@ -7163,8 +7273,10 @@ class Handler(BaseHTTPRequestHandler):
         if path == "/api/execution":
             try:
                 action = payload.get("action")
+                if action == "run_now":
+                    return self._send(*request_run_now())
                 if action not in ("pause", "resume"):
-                    return self._send(400, {"error": "action must be pause or resume"})
+                    return self._send(400, {"error": "action must be pause, resume or run_now"})
                 execution.set_background_paused(
                     action == "pause", by="daniel", reason=payload.get("reason", ""))
                 return self._send(200, execution_control_snapshot())

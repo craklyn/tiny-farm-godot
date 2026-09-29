@@ -40,6 +40,12 @@
   "0131fcc64f069c52ccd6": {
    "verdict": "ok"
   },
+  "0155cc97d5f4f3962934": {
+   "instead": "Starting queued tasks now…: up to … tasks will begin.",
+   "quote": "Starts waiting work now…: up to … steps begin.",
+   "verdict": "decode",
+   "why": "“Waiting work” and “steps” are internal process terms that obscure what will begin."
+  },
   "015d91ed73d359ae5ab4": {
    "verdict": "ok"
   },
@@ -302,6 +308,12 @@
   "095ba4370aa6a15dcff3": {
    "verdict": "ok"
   },
+  "09afc8e1158cb07e8038": {
+   "instead": "whether processing can begin",
+   "quote": "whether a run can start",
+   "verdict": "second-look",
+   "why": "“Run” is internal shorthand and does not tell the reader what action HQ could not determine."
+  },
   "09d6f31b5bc2ffecf7d7": {
    "verdict": "ok"
   },
@@ -413,6 +425,9 @@
    "why": "The title does not say what “it” is or what the player should be shown."
   },
   "0c5608a471644d1ae101": {
+   "verdict": "ok"
+  },
+  "0c6557a5497550f9b777": {
    "verdict": "ok"
   },
   "0cdbe4f40b61c66a2fc3": {
@@ -1144,6 +1159,9 @@
   "21f35bafae0037966967": {
    "verdict": "ok"
   },
+  "22230a7e046d0901d194": {
+   "verdict": "ok"
+  },
   "222fd497b1e1572dc238": {
    "verdict": "ok"
   },
@@ -1406,6 +1424,9 @@
    "verdict": "ok"
   },
   "29eca6b22eb2c76f3c40": {
+   "verdict": "ok"
+  },
+  "2a0d061dbdcbc62034cd": {
    "verdict": "ok"
   },
   "2a0f8dae8a6a189d7a04": {
@@ -1809,6 +1830,12 @@
    "quote": "without assuming every card has an artifact",
    "verdict": "decode",
    "why": "“Artifact” does not tell a cold reader what the card is expected to contain."
+  },
+  "3549d99edd652e54c9aa": {
+   "instead": "… steps are waiting to start; … of those steps can begin …",
+   "quote": "a run can start … of them",
+   "verdict": "decode",
+   "why": "“Run” and “them” leave the reader to work out what process can start and what is being counted."
   },
   "3560fd62ce7705810d6c": {
    "verdict": "ok"
@@ -2285,6 +2312,9 @@
   "46c0200e3c525377794f": {
    "verdict": "ok"
   },
+  "46c52dc540ede7f5d554": {
+   "verdict": "ok"
+  },
   "46c89642297d7d0f33db": {
    "instead": "the greyed-out farm shows the player that she has chosen eight squares",
    "quote": "the greyed-out farm says \"full\" for her",
@@ -2373,6 +2403,12 @@
   "48df11628890ba04be2a": {
    "verdict": "ok"
   },
+  "490c15436f2fb4d96782": {
+   "instead": "The AI usage limit has been reached; work can start again at ….",
+   "quote": "The limit on model use is reached until …",
+   "verdict": "decode",
+   "why": "“Model use” is internal shorthand, so the reader must work out that an AI usage limit has been reached."
+  },
   "49229677a4241d827299": {
    "verdict": "ok"
   },
@@ -2405,6 +2441,12 @@
   },
   "49dac34f2dff340f1e8f": {
    "verdict": "ok"
+  },
+  "49dc2ac10aef885256ed": {
+   "instead": "The timer that starts queued tasks is off, so nothing starts on its own.",
+   "quote": "waiting work",
+   "verdict": "decode",
+   "why": "“Waiting work” is an internal process label rather than a plain description of queued tasks."
   },
   "49e22a75912e1e0e75ab": {
    "verdict": "ok"
@@ -2608,6 +2650,9 @@
   "4f5a3d7a57c0fd4dabc6": {
    "verdict": "ok"
   },
+  "4f6477bf85e0948d537e": {
+   "verdict": "ok"
+  },
   "4f69e7dea325eb322a6e": {
    "verdict": "ok"
   },
@@ -2686,6 +2731,9 @@
    "why": "Landing is internal shorthand for plans being filed; the construction is unclear to a reader unfamiliar with this term."
   },
   "51e3ada09d27ea3707a7": {
+   "verdict": "ok"
+  },
+  "51e6fe878831d5b54097": {
    "verdict": "ok"
   },
   "5207ce5256a27017e348": {
@@ -2937,6 +2985,12 @@
   "591cbebef07b7b63eea0": {
    "verdict": "ok"
   },
+  "59314fd6ef8ee65c052d": {
+   "instead": "The process starts every … minutes",
+   "quote": "A run starts every … minutes",
+   "verdict": "decode",
+   "why": "“Run” names an internal mechanism without saying what happens each time it starts."
+  },
   "593f8fea9bc7c9f402ca": {
    "verdict": "ok"
   },
@@ -2983,6 +3037,9 @@
    "verdict": "ok"
   },
   "5a8b0481e8a09b50f745": {
+   "verdict": "ok"
+  },
+  "5a98dac440a81c28319a": {
    "verdict": "ok"
   },
   "5a9b1564ab7031bff876": {
@@ -3140,6 +3197,12 @@
    "quote": "Candidate exists; checks are incomplete",
    "verdict": "decode",
    "why": "“Candidate” does not tell a cold reader what version or result it refers to."
+  },
+  "5e9b092ed59d891f4443": {
+   "instead": "Every … minutes, the system starts tasks that are waiting.",
+   "quote": "the task queue starts waiting work",
+   "verdict": "decode",
+   "why": "The sentence names the queue's internal mechanism instead of plainly saying that it starts queued tasks."
   },
   "5ea70f73f46acedea9d8": {
    "verdict": "ok"
@@ -3443,6 +3506,9 @@
   "66e950bcb25b7432f10c": {
    "verdict": "ok"
   },
+  "66f5e70112c096371084": {
+   "verdict": "ok"
+  },
   "66fdd1c3b31724783188": {
    "verdict": "ok"
   },
@@ -3538,6 +3604,9 @@
   "6aadc013e626593f490c": {
    "verdict": "ok"
   },
+  "6b12a5b2a64836c6f2c6": {
+   "verdict": "ok"
+  },
   "6b5047daa16ae0a50d37": {
    "verdict": "ok"
   },
@@ -3561,6 +3630,9 @@
    "quote": "new minds",
    "verdict": "decode",
    "why": "“New minds” is a metaphor whose meaning the reader has to work out."
+  },
+  "6c435f4c2e78fe5a8366": {
+   "verdict": "ok"
   },
   "6c8806bfbd4d8e5d0869": {
    "verdict": "ok"
@@ -3649,6 +3721,9 @@
   "6e9536f24e53036cb2a9": {
    "verdict": "ok"
   },
+  "6ebb79c123ca80e7c192": {
+   "verdict": "ok"
+  },
   "6eece977e2f6cf7b8e39": {
    "verdict": "ok"
   },
@@ -3703,6 +3778,9 @@
    "quote": "Repairs used up: the chief of staff gave it one more supervised try…",
    "verdict": "decode",
    "why": "The reader must work out what “repairs” means and what “it” refers to."
+  },
+  "702f14140be64b472048": {
+   "verdict": "ok"
   },
   "70392273dda0953a24d2": {
    "instead": "The link to a change's exact wording is visible directly below the question, rather than hidden in its own expandable section.",
@@ -3910,6 +3988,9 @@
   "76d026fc5be61d23518b": {
    "verdict": "ok"
   },
+  "76d9b792b339c6f44c82": {
+   "verdict": "ok"
+  },
   "76ef7949ab977b4a25c9": {
    "verdict": "ok"
   },
@@ -4111,6 +4192,9 @@
    "verdict": "ok"
   },
   "7c56f8c44df0c98818f1": {
+   "verdict": "ok"
+  },
+  "7cb590dbb1f27efb09f0": {
    "verdict": "ok"
   },
   "7cb9b247ec51f1c223a5": {
@@ -4466,6 +4550,12 @@
    "verdict": "second-look",
    "why": "The wording makes the reader reread it to understand that one sound should use no listed option."
   },
+  "867e6d04077d383a1906": {
+   "instead": "The last processing job began at …",
+   "quote": "The last run began at …",
+   "verdict": "second-look",
+   "why": "The reader has to infer what kind of run began."
+  },
   "86d40a4484923d33c665": {
    "verdict": "ok"
   },
@@ -4477,6 +4567,9 @@
    "quote": "landed work cards",
    "verdict": "second-look",
    "why": "“Landed” is internal shorthand for completed, so a cold reader may need to infer the status."
+  },
+  "86ecef8b835c1f5733af": {
+   "verdict": "ok"
   },
   "8705e70efe563015ce09": {
    "instead": "Build new animation images from pixels already in the game",
@@ -4823,6 +4916,9 @@
   "913c5c5e69d22ef0bba7": {
    "verdict": "ok"
   },
+  "9152912fc273b22478c2": {
+   "verdict": "ok"
+  },
   "91757e1af2c66a9d5097": {
    "verdict": "ok"
   },
@@ -5077,6 +5173,12 @@
   },
   "98160cafeca6990177c4": {
    "verdict": "ok"
+  },
+  "9845b0a0908ef22b66f1": {
+   "instead": "… steps are waiting to start; a run can start up to … of them.",
+   "quote": "… step… waiting to start, … of them work a run can start.",
+   "verdict": "decode",
+   "why": "The sentence does not make clear how many waiting steps can be started in a run."
   },
   "9861a6dcfaf30bd33532": {
    "instead": "Show and edit all nine pictures used to make the farm's ground",
@@ -5631,6 +5733,9 @@
   "a79a0286b168e9e44812": {
    "verdict": "ok"
   },
+  "a79bbcc916a22b7a9f12": {
+   "verdict": "ok"
+  },
   "a7b579ff21490b26ec4d": {
    "instead": "Restore the main branch to the last version that built successfully",
    "quote": "Restore the failed build on main",
@@ -5896,6 +6001,12 @@
   "aea8d5f0c6715d4957a0": {
    "verdict": "ok"
   },
+  "aec56216030d09bfc401": {
+   "instead": "HQ could not tell whether queued tasks can start.",
+   "quote": "whether waiting work can start",
+   "verdict": "decode",
+   "why": "“Waiting work” is an internal process label, so the reader must work out that it means queued tasks."
+  },
   "aecbeab1f13f395f22c9": {
    "instead": "Closed as complete, but no commit was recorded on the main code branch",
    "quote": "Closed as landed",
@@ -5977,6 +6088,9 @@
    "verdict": "ok"
   },
   "b2741383440790e21748": {
+   "verdict": "ok"
+  },
+  "b282ebc0fea0bade2747": {
    "verdict": "ok"
   },
   "b29c020364151c761e13": {
@@ -6497,6 +6611,12 @@
   "c3e3fa514615099752ed": {
    "verdict": "ok"
   },
+  "c403013eb1e8c6b90a24": {
+   "instead": "The limit on model use has been reached until …; no runs start before then.",
+   "quote": "The model allowance is used up until …; runs start nothing before then.",
+   "verdict": "decode",
+   "why": "“Model allowance” is internal shorthand, and “runs start nothing” makes the reader translate the intended status."
+  },
   "c4060f31d64309439fe1": {
    "instead": "reaching the required phase",
    "quote": "the phase gate",
@@ -6762,6 +6882,12 @@
    "verdict": "decode",
    "why": "The metaphor does not say whether the robot keeps its learning when it is picked up."
   },
+  "cb6b0f532f3472189d34": {
+   "instead": "The last run began at …",
+   "quote": "; the last one began at …",
+   "verdict": "decode",
+   "why": "“The last one” has no referent in the sentence, so the reader must infer that it means the last run."
+  },
   "cb811c4681baae83f29a": {
    "verdict": "ok"
   },
@@ -6990,6 +7116,9 @@
    "verdict": "ok"
   },
   "d27de2d124c7f0b260fb": {
+   "verdict": "ok"
+  },
+  "d287740bff00e1546f44": {
    "verdict": "ok"
   },
   "d299acf6fb957d08b5f7": {
@@ -7300,6 +7429,12 @@
   "db4edc5d5ec64e56a957": {
    "verdict": "ok"
   },
+  "db5b6c03808d6eacb72d": {
+   "instead": "HQ could not determine whether a run can start.",
+   "quote": "HQ could not read whether a run can start.",
+   "verdict": "second-look",
+   "why": "“Read whether” describes how the system obtained the information instead of plainly stating that it could not determine the status."
+  },
   "db8bd257bb812dd3f5e5": {
    "verdict": "ok"
   },
@@ -7412,6 +7547,9 @@
   "dd9c32a51ca07fb49736": {
    "verdict": "ok"
   },
+  "ddaa618564436ef1623e": {
+   "verdict": "ok"
+  },
   "dde81a93cb94fa525374": {
    "instead": "Make the work card include its deliverable before the CEO sees it",
    "quote": "Make a work card carry its deliverable before it reaches the CEO",
@@ -7438,6 +7576,9 @@
    "quote": "It does not answer your concern",
    "verdict": "second-look",
    "why": "The reader must look back to identify what “It” refers to."
+  },
+  "decc61bbcc67e040e1fe": {
+   "verdict": "ok"
   },
   "dee117497447474bed4d": {
    "verdict": "ok"
@@ -7628,6 +7769,12 @@
   },
   "e4cb8a71a2ad7e498bf3": {
    "verdict": "ok"
+  },
+  "e4ea511bed9c42801630": {
+   "instead": "The task queue is working on up to … tasks at a time. …",
+   "quote": "up to … steps at a time",
+   "verdict": "second-look",
+   "why": "“Steps” sounds like an internal unit of work rather than something the reader can identify plainly."
   },
   "e51823e913f6f3eb87a6": {
    "instead": "Save the player's longer tablet session after the game rejects an attempt to collect an eleventh crop because the pouch already holds ten",
@@ -7854,6 +8001,9 @@
   "edc9dd6329657ed4c338": {
    "verdict": "ok"
   },
+  "edd109e1c80401d92c56": {
+   "verdict": "ok"
+  },
   "ee07ce06baf3f9a0ee6e": {
    "verdict": "ok"
   },
@@ -8018,6 +8168,12 @@
   "f33966c6ca1c85b7e85a": {
    "verdict": "ok"
   },
+  "f3bc6eeed9cf449ed496": {
+   "instead": "nothing is processed before then",
+   "quote": "no runs start before then",
+   "verdict": "second-look",
+   "why": "“Runs” is internal process shorthand, so the reader has to infer what will not start."
+  },
   "f3db77d763bc60e47a28": {
    "instead": "does not retain any learned behavior",
    "quote": "keeps nothing worth keeping",
@@ -8037,6 +8193,9 @@
    "verdict": "ok"
   },
   "f4f5ec3bcffb9462effa": {
+   "verdict": "ok"
+  },
+  "f4f87b3bfb2044fe30e3": {
    "verdict": "ok"
   },
   "f50a4b88cc0fabf22dc5": {
@@ -8267,6 +8426,12 @@
   },
   "fc32bf8a4e798eba7781": {
    "verdict": "ok"
+  },
+  "fc6f21a631196a2f995e": {
+   "instead": "Every … minutes, the system starts tasks that are waiting.",
+   "quote": "the task queue starts waiting work",
+   "verdict": "decode",
+   "why": "The sentence names the queue's internal mechanism instead of plainly saying that it starts queued tasks."
   },
   "fc8dd2358121f40a18ae": {
    "instead": "then a much larger income",

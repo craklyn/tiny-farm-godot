@@ -236,19 +236,11 @@ async function renderWorkers() {
   const forOne = wanted
     ? `<p><b>Showing one piece of work.</b> <a class="plain" href="#/chat/bullpen">Show the whole Bullpen</a></p>`
     : "";
-  const autoStatus = execution.paused ? "Paused" : (execution.timer.active === false ? "Scheduler stopped" : "Scheduler enabled");
-  const statusTip = execution.paused
-    ? `${execution.queued} accepted pieces are held${execution.pause.reason ? `: ${execution.pause.reason}` : "."}`
-    : `${execution.queued} accepted pieces are eligible. The scheduler is ${execution.timer.active === false ? "stopped" : "active"}; up to ${execution.batch_limit} start every ${execution.interval_minutes} minutes.`;
-  const control = `<section class="exec-control ${execution.paused ? "paused" : "running"}">
-    <span class="exec-name">Task queue</span>
-    <span class="exec-status tip" tabindex="0" data-tip="${esc(statusTip)}"><i></i>${esc(autoStatus)}</span>
-    <button class="ghost exec-toggle tip" id="wk-exec-toggle" aria-label="${execution.paused ? "Resume" : "Pause"} automatic task queue work"
-      data-tip="${execution.paused ? "Resume working through the accepted task queue." : "Pause working through the accepted task queue."}">${execution.paused ? "▶" : "Ⅱ"}</button>
-  </section>`;
+  // The tabs above already lead to the task queue, so no link to it here.
+  const control = execControlHtml(execution, {viewLink: false});
   $view.innerHTML = `${workTabs("/chat/bullpen")}
     <h1>🔭 The bullpen</h1>
-    <p class="sub">Where the studio's workers can be watched as they work. Every model session the build queue runs, as it runs: what the worker reads, edits and runs, its turns and cost so far, and how it ended. The build queue itself starts these on its timer; nothing here starts one.</p>
+    <p class="sub">Where the studio's workers can be watched as they work. Every model session the build queue runs, as it runs: what the worker reads, edits and runs, its turns and cost so far, and how it ended. The task queue starts these on its timer, or at once when you press Start now.</p>
     ${control}
     ${forOne}
     <p><b>${head}</b></p>
@@ -264,20 +256,7 @@ async function renderWorkers() {
     try { localStorage.setItem(WK_VIEW_KEY, button.dataset.view); } catch (e) { /* The default still works without storage. */ }
     renderWorkers();
   }));
-  document.getElementById("wk-exec-toggle").addEventListener("click", async ev => {
-    const action = execution.paused ? "resume" : "pause";
-    let reason = "";
-    if (action === "resume") {
-      if (!confirm(`Resume automatic work? ${execution.queued} accepted pieces are queued; up to ${execution.batch_limit} will start every ${execution.interval_minutes} minutes.`)) return;
-    } else {
-      reason = prompt("Why is automatic work being paused?") || "";
-      if (!reason.trim()) return;
-    }
-    ev.currentTarget.disabled = true;
-    const got = await fetch("/api/execution", {method: "POST", headers: {"Content-Type": "application/json"}, body: JSON.stringify({action, reason})}).then(r => r.json());
-    if (got.error) { alert(got.error); ev.currentTarget.disabled = false; return; }
-    renderWorkers();
-  });
+  wireExecControl($view, execution, renderWorkers);
   const byKey = {};
   sessions.forEach(s => { byKey[wkKey(s)] = s; });
   for (const s of running) wkFill($view.querySelector(`.wk-panel[data-key="${CSS.escape(wkKey(s))}"]`), s);
@@ -376,18 +355,21 @@ function wkRulingsWaiting(rulings, org) {
 }
 
 async function renderExecutionQueue() {
-  let queue, org;
-  try { [queue, org] = await Promise.all([
-    fetch("/api/execution/queue").then(r => r.json()), api("/api/org")]); }
+  let queue, org, execution;
+  try { [queue, org, execution] = await Promise.all([
+    fetch("/api/execution/queue").then(r => r.json()), api("/api/org"),
+    fetch("/api/execution").then(r => r.json()).catch(() => null)]); }
   catch (e) { $view.innerHTML = `<div class="card">HQ could not read the task queue: ${esc(e.message)}</div>`; return; }
   const next = (queue.eligible || []).slice(0, 10), later = (queue.eligible || []).slice(10);
   $view.innerHTML = `${workTabs("/work/queue")}<h1>Task queue</h1>
     <p class="sub">The order the scheduler will actually use. A reviewed fix for overlapping changes can start ahead of new work; older work gains priority over newer work. A change that cannot land as it stands is listed once, under the fix that replaces it.</p>
+    ${execControlHtml(execution, {viewLink: false})}
     ${wkRulingsWaiting(queue.rulings_waiting || [], org)}
     <section class="exec-queue-section"><h2>Being worked now <span class="w-count">${(queue.working || []).length}</span></h2>${wkQueueRows(queue.working || [], org)}</section>
     <section class="exec-queue-section"><h2>Waiting to start <span class="w-count">${(queue.eligible || []).length}</span></h2>${wkQueueRows(next, org)}
       ${later.length ? `<details class="exec-queue-section exec-queue-later"><summary>Later (${later.length})</summary>${wkQueueRows(later, org)}</details>` : ""}</section>
     <details class="exec-queue-section"><summary>Blocked (${(queue.held || []).length})</summary>${wkQueueRows(queue.held || [], org, true)}</details>`;
+  wireExecControl($view, execution, renderExecutionQueue);
   // While the task queue runs, items move between these lists on their own;
   // re-read every 15 seconds and redraw only when a row moved or changed.
   const shape = doc => ["working", "eligible", "held"].map(k => (doc[k] || [])
