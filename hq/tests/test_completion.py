@@ -175,36 +175,70 @@ class Completion(unittest.TestCase):
 
     def test_applied_diff_evidence_and_failed_commit(self):
         self.card['tier'] = 1
+        repo = Path(self.tmp.name, 'repo')
+        repo.mkdir()
+        drain.sh(['git', 'init', '-b', 'main'], cwd=repo, check=True)
+        drain.sh(['git', 'config', 'user.name', 'HQ fixture'], cwd=repo, check=True)
+        drain.sh(['git', 'config', 'user.email', 'hq@example.invalid'], cwd=repo, check=True)
+        Path(repo, 'sample.txt').write_text('before')
+        drain.sh(['git', 'add', 'sample.txt'], cwd=repo, check=True)
+        drain.sh(['git', 'commit', '-m', 'fixture base'], cwd=repo, check=True)
+        parent = drain.sh(['git', 'rev-parse', 'HEAD'], cwd=repo, check=True).stdout.strip()
+        drain.sh(['git', 'switch', '--detach'], cwd=repo, check=True)
+        checkout = Path(self.tmp.name, 'integration')
+        drain.sh(['git', 'worktree', 'add', '--detach', str(checkout), parent],
+                 cwd=repo, check=True)
+        Path(checkout, 'sample.txt').write_text('tested')
+        drain.sh(['git', 'add', 'sample.txt'], cwd=checkout, check=True)
         r = record(files=['sample.txt'], patch='test patch')
-        r['integration_checkout'] = self.tmp.name  # The commit boundary is mocked here.
-        suites = {'unit':{'ok':True},'integration':{'ok':True}}
-        with patch.object(server, 'REPO', self.tmp.name):
-            Path(self.tmp.name,'sample.txt').write_text('tested')
-            r['candidate']['files'] = drain.git_blobs(self.tmp.name,'',r['files'])
+        r['integration_checkout'] = str(checkout)
+        r['candidate'] = {
+            'base': parent,
+            'tree': drain.sh(['git', 'write-tree'], cwd=checkout, check=True).stdout.strip(),
+            'files': drain.git_blobs(checkout, '', r['files']),
+            'base_files': drain.git_blobs(checkout, parent, r['files']),
+        }
+        suites = {
+            'unit': {'ok': True, 'passed': 2853, 'failed': 0,
+                     'tail': 'Results: 2853 PASSED, 0 FAILED'},
+            'integration': {'ok': True, 'passed': 968, 'failed': 0,
+                            'tail': 'Results: 968 PASSED, 0 FAILED'},
+        }
+        history = Path(self.tmp.name, 'history')
+        with patch.object(server, 'REPO', str(repo)), \
+             patch.object(server, 'DATA', self.tmp.name), \
+             patch.object(server, 'HISTORY', str(history)):
             r['candidate_test_evidence'] = work.evidence_id([r['candidate'],r['candidate_suites']])
             r['check_evidence'] = work.evidence_id([r['result'],r['patch'],r['candidate']])
-            r['tree_evidence'] = drain.tree_evidence(r['files'])
+            r['tree_evidence'] = drain.tree_evidence(r['files'], repo=checkout)
             r['test_evidence'] = work.evidence_id([r['patch'],suites])
-            self.assertTrue(drain.meets_landing_bar(self.card,r,True,suites)[0])
-            self.assertFalse(drain.meets_landing_bar(self.card,r,True,{'unit':{'ok':True}})[0])
-            Path(self.tmp.name,'sample.txt').write_text('changed')
-            self.assertFalse(drain.meets_landing_bar(self.card,r,True,suites)[0])
-            Path(self.tmp.name,'sample.txt').write_text('tested')
+            landing_bar = drain.meets_landing_bar(self.card,r,True,suites,repo=checkout)
+            self.assertTrue(landing_bar[0], landing_bar[1])
+            self.assertFalse(drain.meets_landing_bar(
+                self.card,r,True,{'unit':{'ok':True}},repo=checkout)[0])
+            Path(checkout,'sample.txt').write_text('changed')
+            self.assertFalse(drain.meets_landing_bar(self.card,r,True,suites,repo=checkout)[0])
+            Path(checkout,'sample.txt').write_text('tested')
             with patch.object(drain,'land',return_value=('', 'commit failed')):
                 got=drain.write_back(self.card,r,True,'',suites,ORG)
             self.assertNotIn('completion',got)
             self.assertEqual(got['diff']['why_not_landed'],'commit failed')
             r['attempt_id'] = 'new-attempt'
-            def commit(current, attempt, **_kwargs):
-                self.assertEqual(current['result'],'The requested reading is finished.')
-                self.assertEqual(current['follow_ups'],[])
-                self.assertEqual(current['check']['attempt_id'],'new-attempt')
-                return 'fixture-commit', ''
-            with patch.object(drain,'land',side_effect=commit):
-                got=drain.write_back(got,r,True,'',suites,ORG)
+            got=drain.write_back(got,r,True,'',suites,ORG)
+            landed = drain.sh(['git', 'rev-parse', 'refs/heads/main'],
+                              cwd=repo, check=True).stdout.strip()
+            self.assertNotEqual(landed, parent)
             self.assertEqual(got['state'],'landed')
-            self.assertEqual(got['completion']['sha'],'fixture-commit')
+            self.assertEqual(got['completion']['sha'],landed)
             self.assertEqual(got['completion']['kind'],'change')
+            for job in ('unit', 'integration'):
+                latest = server._run_with_age(job)
+                self.assertEqual(latest['state'], 'green')
+                self.assertEqual(latest['head'], landed)
+                self.assertEqual(latest['behind_commits'], 0)
+            runs = [json.loads(line) for line in (history / 'runs.jsonl').read_text().splitlines()]
+            self.assertEqual([run['job'] for run in runs], ['unit', 'integration'])
+            self.assertEqual({run['head'] for run in runs}, {landed})
 
     def test_frozen_legacy_set_is_not_ready_and_reconciliation_is_idempotent(self):
         records=json.loads((Path(__file__).parent/'fixtures'/'reconciliation_records.json').read_text())

@@ -1254,6 +1254,17 @@ def latest_job_result(job):
         return None
 
 
+def record_job_result(result):
+    """Publish one completed check to the latest reading and run history."""
+    try:
+        os.makedirs(os.path.join(DATA, "runs"), exist_ok=True)
+        with open(_job_path(result["job"]), "w", encoding="utf-8") as f:
+            json.dump(result, f)
+    except OSError:
+        pass
+    append_history("runs", result)
+
+
 def _run_with_age(job):
     """A stored verdict plus how far behind main it is. Without the distance a
     pass from eighty commits ago and a pass from this commit look identical on
@@ -1265,7 +1276,7 @@ def _run_with_age(job):
     head = r.get("head")
     behind = None
     if head:
-        n = run_cmd(["git", "rev-list", "--count", f"{head}..HEAD"])
+        n = run_cmd(["git", "rev-list", "--count", f"{head}..HEAD"], cwd=REPO)
         if n:
             behind = int(n)
     return {**r, "behind_commits": behind}
@@ -1350,12 +1361,7 @@ def _run_job(job):
         # Everything here is best-effort, and the discard is unconditional:
         # a wedged 'already running' job with no thread behind it is worse
         # than any individual write failing.
-        try:
-            with open(_job_path(job), "w", encoding="utf-8") as f:
-                json.dump(result, f)
-        except OSError:
-            pass
-        append_history("runs", result)
+        record_job_result(result)
         with _JOB_LOCK:
             _RUNNING_JOBS.discard(job)
         signals_dirty()

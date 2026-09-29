@@ -1803,11 +1803,37 @@ def run_suites(cwd=REPO, files=None):
             matches = re.findall(r"Results:\s*(\d+) PASSED,\s*(\d+) FAILED", p.stdout or "")
             out[name] = {"ok": p.returncode == 0 and bool(matches) and int(matches[-1][1]) == 0,
                          "tail": "\n".join(tail)[-600:]}
+            if matches:
+                out[name].update({"passed": int(matches[-1][0]),
+                                  "failed": int(matches[-1][1])})
         except Exception as e:
             out[name] = {"ok": False, "tail": f"{type(e).__name__}: {e}"[:300]}
     if files and any(f.startswith(h) or f == h for f in files for h in HQ_PATHS):
         out["hq"] = _hq_suite(cwd)
     return out
+
+
+def record_landing_suites(suites, head):
+    """Publish the game checks that passed on the tree committed as ``head``."""
+    if not head:
+        return
+    finished = work._now_iso()
+    for job in ("unit", "integration"):
+        result = (suites or {}).get(job) or {}
+        if not result.get("ok"):
+            continue
+        passed, failed = result.get("passed"), result.get("failed")
+        if passed is None or failed is None:
+            match = re.search(r"Results:\s*(\d+) PASSED,\s*(\d+) FAILED",
+                              str(result.get("tail") or ""))
+            if match:
+                passed, failed = int(match.group(1)), int(match.group(2))
+        summary = (f"{passed} passed, {failed} failed" if passed is not None
+                   else "passed in the landing check")
+        server.record_job_result({"job": job, "label": server.JOBS[job]["label"],
+                                  "state": "green", "summary": summary,
+                                  "started": finished, "finished": finished,
+                                  "head": head, "tail": str(result.get("tail") or "")})
 
 
 # ---------------------------------------------------------------------------
@@ -2375,6 +2401,7 @@ def _write_back(item, rec, applied, why_not, suites, org):
     if landed_ok:
         if sha and item.get("pending_landing", {}).get("version") == 2:
             record_landed_integration(item, item["pending_landing"], sha)
+        record_landing_suites(suites, sha)
         work.land_item(item, "drain", sha=sha)
         item.pop("pending_landing", None)
     else:
