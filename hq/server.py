@@ -646,6 +646,12 @@ def _waiting_on_you_complete():
             status, reason = "verification_pending", "The patch has not reached the repository."
         elif item.get("awaiting_reply"):
             status, reason = "awaiting_owner_reply", "The studio owes a reply to your comment."
+        elif int(item.get("tier") or 0) > 0 and view.get("candidate_status") in (
+                "unverified", "reviewed", "held", "stale"):
+            # Not ready for the same reason work_ready_for_daniel gives: the
+            # change is not verified and on main. Falling through to the list
+            # below printed "The owner still needs ." with nothing missing.
+            status, reason = "verification_pending", "The code result still needs verification and a commit on main."
         elif work._in_his_list(item):
             status, reason = (("preparing", "The outcome is not recorded.")
                               if "consequences" in preparation["missing"] else _pending_review_status(item))

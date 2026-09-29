@@ -2385,6 +2385,9 @@
   "497161ee53878a206381": {
    "verdict": "ok"
   },
+  "4989d6140811b5ae68dd": {
+   "verdict": "ok"
+  },
   "499570ea44df3f71f6eb": {
    "verdict": "ok"
   },
@@ -4795,6 +4798,12 @@
   },
   "910f838c1f42f7ee8d06": {
    "verdict": "ok"
+  },
+  "9124ad9655da510345e6": {
+   "instead": "The decisions page marks the card as waiting for its code to be added to the main version, rather than showing an empty list of what its owner still needs",
+   "quote": "held because its code is not yet on main",
+   "verdict": "decode",
+   "why": "“Held” and “on main” are internal shorthand, so a cold reader must work out that the card is waiting for its code to be added to the main version."
   },
   "913c5c5e69d22ef0bba7": {
    "verdict": "ok"

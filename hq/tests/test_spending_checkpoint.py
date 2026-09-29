@@ -201,6 +201,9 @@ class SpendingCheckpoint(unittest.TestCase):
             waiting = server.waiting_on_you()
         self.assertNotIn(item["id"], {row["source_id"] for row in waiting["ready"]})
         self.assertEqual(waiting["count"], 0)
+        row = next(r for r in waiting["items"] if r["source_id"] == item["id"])
+        self.assertEqual((row["status"], row["reason"]), (
+            "verification_pending", "The code result still needs verification and a commit on main."))
 
     def test_hard_limits_skip_the_model(self):
         three = [{"decision": "extend", "by": "claude"}] * 3
