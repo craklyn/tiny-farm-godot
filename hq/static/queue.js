@@ -128,8 +128,6 @@ function qWorkEvidence(card, ownerName) {
   if (ap) {
     const docs = (ap.files || []).map(f => f.name).join(", ");
     items.push({ label: "What changes", text: [ap.summary, docs && `Documents: ${docs}.`].filter(Boolean).join("\n\n") });
-    items.push({ label: "Read the exact changes", link: ap.changes_link, linkText: "Open the changes",
-                 text: "Every line added and removed, in each document." });
     items.push({ label: "Why this needs you", text: ap.reason });
     if (ap.no) items.push({ label: "If you say no", text: ap.no });
   }
@@ -462,6 +460,10 @@ function qPaneHtml(row, org) {
     <div class="q-pane-src">${[
       // A decision's title is its question, already the heading above; saying
       // it twice is the first line he has to skip.
+      // The change itself is what he is deciding on, so its link sits under the
+      // question rather than inside an evidence fold (2026-09-28).
+      ((row.artifact || {}).approval || {}).changes_link
+        ? `<a class="review-heading-link" href="${esc(row.artifact.approval.changes_link)}" target="_blank" rel="noopener">Read the exact changes</a>` : "",
       row.title !== row.question ? esc(row.title) : "",
       row.kind === "review" ? reviewHeadingArtifact(row.artifact).trim() : "",
       esc(row.source), esc(ownerName)].filter(Boolean).join(" · ")}</div>

@@ -85,9 +85,8 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/queue.js'), 'utf
   assert.equal(context.qWorkItem({ ...items[1], recommend: { answer: 'Keep going' }, spending_checkpoint: {} }, {}, '').recommender,
     'Adam, the chief of staff,');
   assert.match(briefed.why, /^The reviewer read it and found nothing wrong/);
-  assert.deepEqual(Array.from(briefed.evidence.slice(0, 2), e => e.label), ['What changes', 'Read the exact changes']);
-  assert.equal(briefed.evidence[1].link, '/work-change/design');
-  assert.equal(briefed.evidence[1].linkText, 'Open the changes');
+  assert.equal(briefed.evidence[0].label, 'What changes');
+  assert.ok(!briefed.evidence.some(e => e.label === 'Read the exact changes'));
   assert.match(briefed.reason, /^Design documents record your direction/);
   assert.equal(context.qWalkBack(briefed), 'Nothing is added until you say yes. After that, one revert undoes it.');
   assert.match(context.qYesCauses(briefed), /^Tomás's edits become the official version .* revert; then one piece of work starts\.$/);

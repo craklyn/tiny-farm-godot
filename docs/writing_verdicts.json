@@ -3575,6 +3575,12 @@
   "700c4bec7f4d8ce38375": {
    "verdict": "ok"
   },
+  "70392273dda0953a24d2": {
+   "instead": "The link to a change's exact wording is visible directly below the question, rather than hidden in its own expandable section.",
+   "quote": "inside a fold of its own",
+   "verdict": "second-look",
+   "why": "“Fold” is a web-design term, so the reader may have to work out that this means a separate expandable section."
+  },
   "704bf28cdb2e4c693edb": {
    "verdict": "ok"
   },
