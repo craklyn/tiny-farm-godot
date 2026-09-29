@@ -80,10 +80,10 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/queue.js'), 'utf
   assert.match(briefed.question, /^Add Tomás's write-up of your Q-131 ruling/);
   assert.doesNotMatch(briefed.question, /main code branch|undoing a commit/);
   assert.equal(briefed.answer, 'Yes, add it');
-  assert.equal(briefed.recommender, "the chief of staff's review");
+  assert.equal(briefed.recommender, "Chief of staff");
   assert.equal(context.qWorkItem({ ...items[1], recommend: { answer: 'Ship it', why: 'Done.' } }, {}, '').recommender, 'Rin');
   assert.equal(context.qWorkItem({ ...items[1], recommend: { answer: 'Keep going' }, spending_checkpoint: {} }, {}, '').recommender,
-    'Adam, the chief of staff,');
+    'Chief of staff');
   assert.match(briefed.why, /^The reviewer read it and found nothing wrong/);
   assert.equal(briefed.evidence[0].label, 'What changes');
   assert.ok(!briefed.evidence.some(e => /^Test suites|^Checker/.test(e.label)));
