@@ -378,22 +378,61 @@ func _wait_until(pred: Callable, max_frames: int) -> bool:
 	return false
 
 
-# The ground a structure needs, waited for rather than assumed.
+# The ground a structure needs belongs to the scenario fixture, not to whichever
+# actor happens to arrive there while the test is drawing frames.  `placeable_at`
+# refuses every cell under a non-player actor, so waiting for the hen, crow, or a
+# robot to wander away made this check depend on CI's frame delta.  Park each
+# one-cell actor that is standing in the fixture's footprint on its cleared
+# margin, then place before another frame can advance the sim.
 #
-# `SimWorld.placeable_at` refuses every cell of the block somebody is standing
-# on, and the hen potters across the whole farm on the sim clock. Whether she is
-# on this square at this instant is therefore a function of how much sim time has
-# passed since the scenario started, which is frames times delta — the one number
-# that differs between this desktop and CI. `place` then comes back `occupied`
-# and the scenario fails on a message about coops.
-#
-# `_stage_tile` already claims a tile's state and its object layer; this claims
-# the last thing on it, by waiting for her to wander off. She is never still for
-# long (`ChickenBrain.REST_IDLE` is two to five seconds), so the budget only has
-# to outlast one of her rests.
+# A multi-cell actor cannot be safely moved by `set_actor_pos` alone: its body
+# still occupies its old cells.  Leave that fixture error visible, with the
+# actor and square named, instead of silently changing the actor's state.
+func _clear_ground_for_fixture(anchor: Vector2i, item: String) -> String:
+	var footprint := MachineDefs.footprint_cells(item, anchor)
+	var parking := anchor + Vector2i(-2, 2)
+	for raw in farm.sim.actors:
+		var id := String(raw)
+		if id == SimWorld.ACTOR_PLAYER:
+			continue
+		var occupied := Movement.occupied_tiles(farm.sim, id)
+		for cell in occupied:
+			if cell not in footprint:
+				continue
+			if occupied.size() != 1:
+				return "%s occupies %s" % [id, cell]
+			farm.sim.set_actor_pos(id, parking)
+			break
+	return _placement_blocker(anchor, item)
+
+
+# Other scenarios are observing live movement, so their existing bounded wait
+# remains a wait. Scenario BJ alone owns this entire patch of ground and uses the
+# synchronous fixture setup above.
 func _wait_for_clear_ground(anchor: Vector2i, item: String) -> bool:
 	return await _wait_until(
 		func(): return farm.sim.placeable_at(anchor, item), 1200)
+
+
+# The scenario's assertion needs the fact that refused placement otherwise hides:
+# the exact square and the thing occupying it.  The normal path is empty; the
+# fallback names a placement rule if a new rule is added before this fixture is.
+func _placement_blocker(anchor: Vector2i, item: String) -> String:
+	for cell in MachineDefs.footprint_cells(item, anchor):
+		for raw in farm.sim.actors:
+			var id := String(raw)
+			if id != SimWorld.ACTOR_PLAYER and cell in Movement.occupied_tiles(farm.sim, id):
+				return "%s at %s" % [id, cell]
+		var object: String = farm.sim.get_object(cell.x, cell.y)
+		if object != "":
+			return "%s at %s" % [object, cell]
+		if not farm.sim.is_walkable(cell.x, cell.y):
+			return "impassable ground at %s" % cell
+		if farm.sim.space_of(cell) != "farm":
+			return "room ground at %s" % cell
+	if not farm.sim.placeable_at(anchor, item):
+		return "placement rule at %s" % anchor
+	return ""
 
 
 # The action lock, waited out by condition on both edges rather than assumed to
@@ -8364,8 +8403,21 @@ func _scenario_bj_a_tap_on_the_tower_goes_inside() -> void:
 		for tx in range(22, 30):
 			_stage_tile(tx, ty, "cleared")
 	GameState.machines["spiral_tower"] = 1
-	var clear := await _wait_for_clear_ground(anchor, "spiral_tower")
-	_assert(clear, "the tower's sixteen squares are free")
+	# Exercise the condition CI used to reach by chance.  The fixture owns the
+	# footprint, so the hen is moved out before placement rather than waited out.
+	farm.sim.set_actor_pos(SimWorld.ACTOR_CHICKEN, anchor)
+	var blocker := _clear_ground_for_fixture(anchor, "spiral_tower")
+	_assert(farm.sim.actor_pos(SimWorld.ACTOR_CHICKEN) != anchor,
+		"the staged hen is moved out of the tower's footprint")
+	var clear_message := "the tower's sixteen squares are free"
+	if blocker != "":
+		clear_message += "; blocked by " + blocker
+	_assert(blocker == "", clear_message)
+	if blocker != "":
+		GameState.save_path = real_paths[0]
+		GameState.replay_path = real_paths[1]
+		GameState.trace_path = real_paths[2]
+		return
 	var laid: Dictionary = farm.apply_action({ "verb": "place", "target": anchor,
 		"item": "spiral_tower", "actor": "player" }, GameState)
 	var id := String(laid.get("room", ""))
