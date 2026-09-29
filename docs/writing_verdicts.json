@@ -1054,6 +1054,12 @@
   "1db7f88d1e548fdb1f5f": {
    "verdict": "ok"
   },
+  "1dbdea9258496391e754": {
+   "instead": "The tablet ignored 24 taps during the September 28 play session; 22 came from inside a room and were aimed at the farm beyond its walls.",
+   "quote": "Of the 24 squares the tablet ignored",
+   "verdict": "decode",
+   "why": "The sentence calls the ignored inputs “squares” and then says most of them were taps, so the reader has to work out what was actually ignored."
+  },
   "1e12eeddbc603de9944d": {
    "verdict": "ok"
   },
@@ -4001,6 +4007,9 @@
    "verdict": "ok"
   },
   "77071d7f8ff07845bc1d": {
+   "verdict": "ok"
+  },
+  "77153d24235acca9911a": {
    "verdict": "ok"
   },
   "771e6db7308df5919d2c": {
@@ -8498,6 +8507,12 @@
    "quote": "the task queue starts waiting work",
    "verdict": "decode",
    "why": "The sentence names the queue's internal mechanism instead of plainly saying that it starts queued tasks."
+  },
+  "fc6fce00a34437f0c062": {
+   "instead": "Milo, the tester, reviewed 24 squares the tablet ignored: 22 were taps from inside a room toward the farm beyond its walls",
+   "quote": "Milo's review",
+   "verdict": "decode",
+   "why": "The reader is not told who Milo is or why his review matters."
   },
   "fc8dd2358121f40a18ae": {
    "instead": "then a much larger income",
