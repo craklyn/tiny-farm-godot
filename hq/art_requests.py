@@ -1,29 +1,35 @@
-"""Pixel art the work queue generates for a card, as a service the drain runs (S-37).
+"""Pixel art the work queue generates for a card, as a tool its worker calls (S-37).
 
 A queue worker runs in a sandbox with no network and never holds the Retro
-Diffusion key. When a card needs new art the worker writes requests into
-`art_requests/<name>.json` at its worktree root and ends its session. After the
-session the drain (outside the sandbox) takes the files out of the worktree so
-they never land, prices every request with the free cost check, applies the
-caps below, generates what fits, archives the raw output, records the spend,
-and runs the worker once more with the results (hq/drain.py do_item).
+Diffusion key. For tier-1+ build sessions the drain attaches hq/art_mcp.py, a
+small tool server that runs outside the sandbox beside the worker's session.
+When the worker calls its `generate_art` tool, this module validates the
+request, prices it with the free cost check, applies the caps below, generates
+it, archives the raws (in HQ's store and in the worktree, so they land with the
+patch), records the spend in both ledgers and hands back the file paths — all
+inside the same session, so the worker can look at the result and ask again
+within the card's budget.
 
-A round the caps refuse is not run at all: the card is held for the chief of
-staff with the reason in plain words, and the rest of its work still goes
-through the normal check. The key is read here, from a gitignored .env outside
-any worktree (key_files), and passed only to tools/rd_client.py; it never enters
-a prompt, patch, log or card field.
+A call the caps refuse generates nothing: the worker is told the amounts in
+plain words and carries on with the rest of the card, and after the session the
+drain holds the card for the chief of staff (after_write_back). The key is read
+here, from a gitignored .env outside any worktree (key_files), and passed only
+to tools/rd_client.py; it never enters a prompt, patch, log, tool reply or card
+field. Concurrent calls from parallel drain workers are serialised by a file
+lock on the ledger, and a call's price is reserved in the ledger before it
+generates, so the day cap cannot be overspent.
 """
 import base64
 import contextlib
 import datetime
+import fcntl
 import io
 import json
 import os
 import re
 import shutil
 import sys
-import threading
+import uuid
 
 import roots
 import work
@@ -33,18 +39,17 @@ import work
 # sets it, as the answer to the hold below.
 CARD_CAP_USD = 2.00
 DAY_CAP_USD = 10.00           # per calendar day, local time, across every card
-MAX_IMAGES = 4                # per request
-MAX_REQUESTS = 8              # per round; one round per drain run
+MAX_IMAGES = 4                # per call
 
-REQUEST_DIR = "art_requests"
 DEFAULT_STYLE = "rd_plus__default"
 ALLOWED = ("what", "prompt", "width", "height", "num_images", "prompt_style",
            "palette", "input_image", "seed")
 HOLD_KIND = "art_budget"      # the blocker and action type on a held card
+MCP_NAME = "art"              # the tool server's name in a session's config
+MCP_TOOLS = ("generate_art", "art_budget")
 
 TOOLS = os.path.join(os.path.dirname(roots.CODE_ROOT), "tools")
 STORE = os.path.join(os.environ.get("HQ_TEST_SCRATCH") or roots.ROOTS["data"], "art_generations")
-_LOCK = threading.Lock()      # pricing, the cap check and the spend record are one step
 
 
 def _tool(name):
@@ -62,43 +67,17 @@ def _money(x):
 
 
 # ---------------------------------------------------------------------------
-# requests
+# one request
 # ---------------------------------------------------------------------------
 
-def take_requests(tree):
-    """Every request file in the worktree, read and then removed, so none lands."""
-    folder = os.path.join(tree, REQUEST_DIR)
-    if not os.path.isdir(folder):
-        return []
-    out = []
-    for name in sorted(os.listdir(folder)):
-        path = os.path.join(folder, name)
-        stem = re.sub(r"[^a-z0-9_-]+", "-", os.path.splitext(name)[0].lower()).strip("-") or "request"
-        entry = {"file": name, "name": stem[:40]}
-        if not name.endswith(".json") or not os.path.isfile(path):
-            entry["error"] = "it is not a .json file"
-        else:
-            try:
-                with open(path, encoding="utf-8") as f:
-                    entry["data"] = json.load(f)
-            except (OSError, ValueError) as exc:
-                entry["error"] = f"it is not readable JSON ({type(exc).__name__})"
-        out.append(entry)
-    shutil.rmtree(folder, ignore_errors=True)
-    return out
-
-
-def validate(entry, tree):
+def validate(data, tree):
     """(params for the API, error). Unknown fields are refused so a worker learns
     the format instead of having a field silently ignored."""
-    if entry.get("error"):
-        return None, entry["error"]
-    data = entry.get("data")
     if not isinstance(data, dict):
-        return None, "it is not a JSON object"
+        return None, "the request is not an object"
     unknown = sorted(set(data) - set(ALLOWED))
     if unknown:
-        return None, f"it has fields the format does not take: {', '.join(unknown)}"
+        return None, f"it has fields the tool does not take: {', '.join(unknown)}"
     what = data.get("what")
     if not isinstance(what, str) or not re.fullmatch(r"[a-z0-9][a-z0-9-]{0,39}", what):
         return None, "`what` must be a short lowercase slug (letters, digits, hyphens)"
@@ -149,9 +128,23 @@ def _ledger_path():
     return os.path.join(STORE, "ledger.json")
 
 
+@contextlib.contextmanager
+def ledger_lock():
+    """One writer at a time across every process: each drain worker's tool
+    server is its own process, and the drain runs up to three at once."""
+    os.makedirs(STORE, exist_ok=True)
+    with open(os.path.join(STORE, "ledger.lock"), "a") as handle:
+        fcntl.flock(handle, fcntl.LOCK_EX)
+        try:
+            yield
+        finally:
+            fcntl.flock(handle, fcntl.LOCK_UN)
+
+
 def ledger():
-    """Every drain-run generation. A missing file is an empty ledger; an unreadable
-    one raises, because reading it as empty would lift both caps."""
+    """Every drain-run generation, and every price reserved for one in flight.
+    A missing file is an empty ledger; an unreadable one raises, because reading
+    it as empty would lift both caps."""
     try:
         with open(_ledger_path(), encoding="utf-8") as f:
             return json.load(f).get("entries") or []
@@ -159,14 +152,25 @@ def ledger():
         return []
 
 
-def _record(entry):
+def _write(entries):
     os.makedirs(STORE, exist_ok=True)
-    entries = ledger() + [entry]
-    tmp = _ledger_path() + ".tmp"
+    tmp = _ledger_path() + f".{os.getpid()}.tmp"
     with open(tmp, "w", encoding="utf-8") as f:
         json.dump({"entries": entries}, f, indent=2)
         f.write("\n")
     os.replace(tmp, _ledger_path())
+
+
+def _record(entry):
+    with ledger_lock():
+        _write(ledger() + [entry])
+
+
+def _settle(reservation, entry):
+    """Replace a reservation with what the call really cost, or drop it (None)."""
+    with ledger_lock():
+        entries = [e for e in ledger() if e.get("reservation") != reservation]
+        _write(entries + ([entry] if entry else []))
 
 
 def spent(*, card=None, day=None):
@@ -189,13 +193,18 @@ def today():
     return datetime.date.today().isoformat()
 
 
-# ---------------------------------------------------------------------------
-# one round
-# ---------------------------------------------------------------------------
+def budget(item, day=None):
+    """What this card and the studio have spent, and what one more call may cost."""
+    day = day or today()
+    card_spent, day_spent, cap = spent(card=item["id"]), spent(day=day), card_cap(item)
+    return {"card_spent": card_spent, "card_cap": cap, "day_spent": day_spent,
+            "day_cap": DAY_CAP_USD, "day": day,
+            "remaining": round(max(0.0, min(cap - card_spent, DAY_CAP_USD - day_spent)), 4)}
+
 
 def key_files(repo):
-    """Where the drain looks for the key: the main checkout's .env, then the
-    user workspace's (on 2026-09-29 only the workspace had one). Never a worktree."""
+    """Where the key is looked for: the main checkout's .env, then the user
+    workspace's (on 2026-09-29 only the workspace had one). Never a worktree."""
     paths = [os.path.join(repo, ".env"), os.path.join(roots.ROOTS["user_workspace"], ".env")]
     return tuple(dict.fromkeys(os.path.realpath(p) for p in paths))
 
@@ -210,105 +219,169 @@ def _failure(exc, key):
     return f"the art service call failed ({type(exc).__name__}{': ' + detail if detail else ''})"
 
 
-def run_round(item, tree, repo, *, rd=None, day=None):
-    """Take the worktree's requests and run them within the caps. Returns None
-    when there were none, otherwise what happened, for the continuation brief,
-    the card's result and the hold."""
-    requests = take_requests(tree)
-    if not requests:
-        return None
+def refusal(card_spent, cap, day_spent, asked):
+    return (f"This card has spent {_money(card_spent)} of its {_money(cap)} and the studio "
+            f"{_money(day_spent)} of today's {_money(DAY_CAP_USD)}; this request would cost "
+            f"{_money(asked)}.")
+
+
+# ---------------------------------------------------------------------------
+# one tool call
+# ---------------------------------------------------------------------------
+
+def generate_one(item, data, tree, key_paths, *, rd=None, day=None):
+    """Run one generate_art call within the caps. `item` needs id and title, and
+    may carry art_cap_usd. Returns the outcome: status is generated, refused (over
+    a cap; nothing generated), rejected (malformed; nothing priced) or failed. A
+    refusal, or a failure only the chief of staff can fix, carries `hold`."""
     day = day or today()
-    art = {"requests": len(requests), "day": day, "generated": [], "rejected": [],
-           "failed": [], "hold": None, "spent": 0.0}
-    valid = []
-    for entry in requests[:MAX_REQUESTS]:
-        params, error = validate(entry, tree)
-        if error:
-            art["rejected"].append({"file": entry["file"], "reason": error})
-        else:
-            valid.append({**entry, "params": params, "what": entry["data"]["what"]})
-    for entry in requests[MAX_REQUESTS:]:
-        art["rejected"].append({"file": entry["file"],
-                                "reason": f"a round runs at most {MAX_REQUESTS} requests"})
-    if not valid:
-        return art
+    params, error = validate(data, tree)
+    if error:
+        what = data.get("what") if isinstance(data, dict) else None
+        return {"status": "rejected", "what": what, "reason": error}
+    what = data["what"]
     rd = rd or client()
-    key = rd.find_key(*key_files(repo))
+    key = rd.find_key(*key_paths)
     if not key:
-        art["hold"] = {"kind": "failed", "day": day, "asked": None,
-                       "reason": "The drain could not find the art service key on this machine, "
-                                 "so the art this card asked for was not generated."}
-        return art
-    with _LOCK:
-        priced = []
-        for entry in valid:
-            try:
-                with contextlib.redirect_stdout(io.StringIO()):
-                    quote = rd.cost(key, entry["params"])
-                priced.append({**entry, "price": float(quote.get("balance_cost"))})
-            except Exception as exc:  # noqa: BLE001 - any failure is reported, none is fatal
-                art["failed"].append({"file": entry["file"], "reason": _failure(exc, key)})
-        asked = round(sum(p["price"] for p in priced), 4)
-        try:
-            card_spent, day_spent, cap = spent(card=item["id"]), spent(day=day), card_cap(item)
-        except (OSError, ValueError, AttributeError):
-            art["hold"] = {"kind": "failed", "day": day, "asked": None,
-                           "reason": "The drain could not read its record of art spending, so "
-                                     "no art was generated for this card."}
-            return art
-        if priced and (card_spent + asked > cap + 1e-9 or day_spent + asked > DAY_CAP_USD + 1e-9):
-            kind = "card" if card_spent + asked > cap + 1e-9 else "day"
-            art["hold"] = {"kind": kind, "day": day, "asked": asked,
-                           "reason": (f"This card asked for {_money(asked)} of art generation; it has "
-                                      f"spent {_money(card_spent)} of its {_money(cap)} and the studio "
-                                      f"{_money(day_spent)} of today's {_money(DAY_CAP_USD)}.")}
-            return art
-        for entry in priced:
-            _generate(item, tree, rd, key, entry, art, day)
-    if not art["generated"] and art["failed"]:
-        art["hold"] = {"kind": "failed", "day": day, "asked": None,
-                       "reason": "The art service did not generate any of the art this card asked "
-                                 "for: " + "; ".join(f["reason"] for f in art["failed"][:3]) + "."}
-    return art
-
-
-def _generate(item, tree, rd, key, entry, art, day):
-    folder = f"{day}-{item['id']}-{entry['what']}"
-    store = os.path.join(STORE, folder)
-    name, n = entry["name"], 2
-    while os.path.exists(os.path.join(store, f"{name}_meta.json")):
-        name, n = f"{entry['name']}-{n}", n + 1
+        reason = ("The art service key could not be found on this machine, so the art this card "
+                  "asked for was not generated.")
+        return {"status": "failed", "what": what, "reason": reason,
+                "hold": {"kind": "failed", "day": day, "asked": None, "reason": reason}}
     try:
         with contextlib.redirect_stdout(io.StringIO()):
-            meta = rd.generate(key, name, entry["params"], store)
+            quote = rd.cost(key, params)
+        price = float(quote.get("balance_cost"))
+    except Exception as exc:  # noqa: BLE001 - any failure is reported, none is fatal
+        return {"status": "failed", "what": what, "reason": _failure(exc, key)}
+    reservation = uuid.uuid4().hex
+    try:
+        with ledger_lock():
+            try:
+                money = budget(item, day)
+            except (OSError, ValueError, AttributeError):
+                reason = ("The record of art spending could not be read, so no art was generated "
+                          "for this card.")
+                return {"status": "failed", "what": what, "reason": reason,
+                        "hold": {"kind": "failed", "day": day, "asked": None, "reason": reason}}
+            card_over = money["card_spent"] + price > money["card_cap"] + 1e-9
+            if card_over or money["day_spent"] + price > DAY_CAP_USD + 1e-9:
+                reason = refusal(money["card_spent"], money["card_cap"], money["day_spent"], price)
+                return {"status": "refused", "what": what, "reason": reason, "asked": price, **money,
+                        "hold": {"kind": "card" if card_over else "day", "day": day,
+                                 "asked": price, "reason": reason}}
+            # The price is held in the ledger before the call so a parallel
+            # worker's check counts it; a crash leaves it counted, never lifted.
+            _write(ledger() + [{"work_item": item["id"], "date": day, "dollars": price,
+                                "recorded_by": "drain", "request": what,
+                                "reservation": reservation, "unconfirmed": True}])
+    except OSError as exc:
+        return {"status": "failed", "what": what, "reason": _failure(exc, key)}
+    return _generate(item, tree, rd, key, what, params, price, reservation, day)
+
+
+def _generate(item, tree, rd, key, what, params, price, reservation, day):
+    folder = f"{day}-{item['id']}-{what}"
+    store = os.path.join(STORE, folder)
+    name, n = what, 2
+    while os.path.exists(os.path.join(store, f"{name}_meta.json")):
+        name, n = f"{what}-{n}", n + 1
+    try:
+        with contextlib.redirect_stdout(io.StringIO()):
+            meta = rd.generate(key, name, params, store)
     except Exception as exc:  # noqa: BLE001
         # A call that died mid-way may still have been charged (a timed-out read
-        # is billed), so the caps count its quoted price.
-        _record({"work_item": item["id"], "date": day, "dollars": entry["price"],
-                 "recorded_by": "drain", "request": entry["file"], "unconfirmed": True})
-        art["failed"].append({"file": entry["file"], "reason": _failure(exc, key)})
-        return
+        # is billed), so its reservation stays in the ledger at the quoted price.
+        return {"status": "failed", "what": what, "reason": _failure(exc, key)}
     if not meta:
-        art["failed"].append({"file": entry["file"], "reason": "the art service refused it after retries"})
-        return
-    dollars = float(meta.get("balance_cost") if meta.get("balance_cost") is not None else entry["price"])
+        _settle(reservation, None)     # refused by the service: nothing was charged
+        return {"status": "failed", "what": what, "reason": "the art service refused it after retries"}
+    dollars = float(meta.get("balance_cost") if meta.get("balance_cost") is not None else price)
     files = sorted(f for f in os.listdir(store) if f.startswith(name + "_"))
     raw = f"assets/raw/{folder}"
-    purpose = (f"{entry['what']} for the work card \"{item.get('title', '')[:80]}\" "
-               f"({name}, {entry['params']['num_images']} image(s)), generated by the work queue")
+    purpose = (f"{what} for the work card \"{str(item.get('title', ''))[:80]}\" "
+               f"({name}, {params['num_images']} image(s)), generated by the work queue")
     record = _tool("record_spend").make_entry(
         purpose, dollars, credits=round(dollars * 100, 4), balance_after=meta.get("remaining_balance"),
         work_item=item["id"], date=day, recorded_by="drain")
-    _record({**record, "raw_folder": raw, "request": entry["file"]})
+    _settle(reservation, {**record, "raw_folder": raw, "request": what})
     # Into the worktree: the raws and the spend record land with the card's patch.
     os.makedirs(os.path.join(tree, raw), exist_ok=True)
     for f in files:
         shutil.copy2(os.path.join(store, f), os.path.join(tree, raw, f))
     _tool("record_spend").append(record, os.path.join(tree, "hq", "data", "spend.json"))
-    art["spent"] = round(art["spent"] + dollars, 4)
-    art["generated"].append({"file": entry["file"], "folder": raw, "dollars": dollars,
-                             "images": [f for f in files if not f.endswith("_meta.json")],
-                             "meta": f"{name}_meta.json"})
+    try:
+        money = budget(item, day)
+    except (OSError, ValueError, AttributeError):
+        money = {}
+    return {"status": "generated", "what": what, "folder": raw, "dollars": dollars,
+            "images": [f"{raw}/{f}" for f in files if not f.endswith("_meta.json")],
+            "meta": f"{raw}/{name}_meta.json", **money}
+
+
+# ---------------------------------------------------------------------------
+# a session's calls, for the drain to read afterwards
+# ---------------------------------------------------------------------------
+
+def session_path(attempt_id):
+    return os.path.join(STORE, "sessions", f"{attempt_id}.json")
+
+
+def new_session(day=None):
+    return {"calls": 0, "day": day or today(), "generated": [], "refused": [], "rejected": [],
+            "failed": [], "hold": None, "spent": 0.0}
+
+
+def note_call(art, outcome):
+    """Fold one call's outcome into the session's record."""
+    art["calls"] += 1
+    status = outcome["status"]
+    if status == "generated":
+        art["generated"].append({k: outcome[k] for k in ("what", "folder", "dollars", "images", "meta")})
+        art["spent"] = round(art["spent"] + outcome["dollars"], 4)
+    else:
+        art[status].append({"what": outcome.get("what"), "reason": outcome["reason"]})
+    if outcome.get("hold"):
+        art["hold"] = outcome["hold"]
+    return art
+
+
+def save_session(attempt_id, art):
+    path = session_path(attempt_id)
+    os.makedirs(os.path.dirname(path), exist_ok=True)
+    tmp = path + ".tmp"
+    with open(tmp, "w", encoding="utf-8") as f:
+        json.dump(art, f, indent=2)
+        f.write("\n")
+    os.replace(tmp, path)
+
+
+def session_outcome(attempt_id):
+    """What the worker's tool calls did, or None when it made none. A session
+    whose calls all failed at the service is held like a refused one."""
+    try:
+        with open(session_path(attempt_id), encoding="utf-8") as f:
+            art = json.load(f)
+    except (OSError, ValueError):
+        return None
+    if not art.get("calls"):
+        return None
+    if not art.get("hold") and not art.get("generated") and art.get("failed"):
+        art["hold"] = {"kind": "failed", "day": art["day"], "asked": None,
+                       "reason": "The art service did not generate any of the art this card asked "
+                                 "for: " + "; ".join(f["reason"] for f in art["failed"][:3]) + "."}
+    return art
+
+
+def mcp_server(item, tree, run_id, attempt_id, repo):
+    """How a worker session starts its art tool server. Every argument is a
+    path or a card fact; the server finds the key itself, in key_files."""
+    args = [os.path.join(str(roots.CODE_ROOT), "art_mcp.py"),
+            "--card", item["id"], "--title", str(item.get("title") or "")[:80],
+            "--cap", str(card_cap(item)), "--tree", tree, "--run", run_id or "byhand",
+            "--attempt", attempt_id, "--store", STORE]
+    for path in key_files(repo):
+        args += ["--key-file", path]
+    return {"name": MCP_NAME, "command": sys.executable, "args": args, "tools": list(MCP_TOOLS)}
 
 
 # ---------------------------------------------------------------------------
@@ -316,44 +389,20 @@ def _generate(item, tree, rd, key, entry, art, day):
 # ---------------------------------------------------------------------------
 
 WORKER_BRIEF = f"""
-NEW PIXEL ART: you cannot call the art service (no network, no key). If the card needs new
-art, write one request per subject to {REQUEST_DIR}/<name>.json at the worktree root, then end
-your session saying you are waiting for art. Fields: "what" (short slug), "prompt", "width",
+NEW PIXEL ART: if the card needs new art, call the `generate_art` tool (you cannot reach the
+art service yourself: no network, no key). Fields: "what" (short slug), "prompt", "width",
 "height" (16-512; sprites 64+, generate at 4x the cell), optional "num_images" (1-{MAX_IMAGES}),
 "prompt_style" (default {DEFAULT_STYLE}), "palette" (["#rrggbb", ...] from
-docs/design/09-art-direction.md), "input_image" (a worktree PNG path), "seed". After your
-session the drain prices and generates them — at most {_money(CARD_CAP_USD)} of art per card and
-{_money(DAY_CAP_USD)} a day across the studio — saves the raws under assets/raw/, records the
-spend, and starts one more session for you to post-process, place and credit them.
+docs/design/09-art-direction.md), "input_image" (a worktree PNG path), "seed". It returns the
+raw files it saved under assets/raw/, what the call cost and what is left. A card may spend
+{_money(CARD_CAP_USD)} of art and the studio {_money(DAY_CAP_USD)} a day; `art_budget` tells you
+where you stand. Look at what comes back, and if it is wrong, call again with a better prompt
+while the budget allows. The spend is already recorded in hq/data/spend.json; do not record it
+again or touch the raw folders. Post-process the raws (key the background, trim, fit the cell,
+lock to the game's palette), place the result where the card needs it, and credit it in
+CREDITS.md (generator, prompt, date, raw folder, cost). If the tool refuses for budget, finish
+the rest of the card and say in your reply what is still waiting for art.
 """
-
-
-def continuation_brief(art, earlier_reply):
-    lines = ["ART ROUND. This is your second session on this card in this run. Your earlier "
-             "session's changes are in the worktree (see `git status`). After it ended, the drain "
-             f"ran the art requests it wrote and removed {REQUEST_DIR}/, which never lands."]
-    for g in art["generated"]:
-        lines.append(f"- generated {g['file']}: {', '.join(g['images'])} in {g['folder']}/ "
-                     f"(metadata {g['meta']}), {_money(g['dollars'])}")
-    for r in art["rejected"]:
-        lines.append(f"- not run, {r['file']}: {r['reason']}")
-    for f in art["failed"]:
-        lines.append(f"- failed, {f['file']}: {f['reason']}")
-    if art["hold"]:
-        lines.append(f"Not generated: {art['hold']['reason']} The card is held for the chief of "
-                     "staff for that art. Finish everything else the card needs and say in your "
-                     "reply what is still waiting for art.")
-    if art["generated"]:
-        lines.append("The spend is already in hq/data/spend.json; do not record it again, and do "
-                     "not edit or delete anything in those raw folders. Continue the card: "
-                     "post-process the raws (key the background, trim, fit the cell, lock to the "
-                     "game's palette), place the result where the card needs it, and record "
-                     "provenance in CREDITS.md (generator, prompt, date, raw folder, cost).")
-    lines.append(f"A new request written to {REQUEST_DIR}/ now is not run in this run; the drain "
-                 "runs one round of art per run.")
-    if earlier_reply:
-        lines.append("YOUR EARLIER SESSION'S REPLY:\n" + earlier_reply.strip()[-3000:])
-    return "\n".join(lines) + "\n\n"
 
 
 def result_note(art):
@@ -370,9 +419,6 @@ def result_note(art):
         said.append(f"{len(art['rejected'])} art request{'s were' if len(art['rejected']) != 1 else ' was'} "
                     "not run because it did not follow the request format: "
                     + "; ".join(r["reason"] for r in art["rejected"][:3]) + ".")
-    if art.get("second_round"):
-        said.append("After the first images came back it asked for more art; the work queue runs "
-                    "one round of art per run, so that waits for this card's next run.")
     return " ".join(said)
 
 
@@ -384,9 +430,9 @@ def hold_wake(hold):
 
 
 def after_write_back(item, rec):
-    """Put the art round on the card once its result is written: the note on the
-    result and, when art was refused, the hold. Only a card still in the queue's
-    hands is held; a card that landed without the art says so and closes."""
+    """Put the session's art on the card once its result is written: the note on
+    the result and, when art was refused, the hold. Only a card still in the
+    queue's hands is held; a card that landed without the art says so and closes."""
     art = rec.get("art")
     if not art:
         return item
@@ -398,7 +444,7 @@ def after_write_back(item, rec):
             fresh["result"] = ((fresh.get("result") or "").rstrip() + "\n\n" + note).strip()
         held = hold and fresh.get("state") in ("for_review", "waiting_session")
         if held:
-            # Back in the queue, held: a refused round is the chief of staff's to
+            # Back in the queue, held: a refused call is the chief of staff's to
             # settle, not a verdict for Daniel and not a repair for the owner, which
             # would only ask for the same art again.
             fresh["state"], fresh["started"] = "waiting_session", ""

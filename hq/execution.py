@@ -92,12 +92,28 @@ def launch_allowed(*, launch_context='automatic', item='', phase=''):
     return launch_context != 'automatic' or not policy['background_paused']
 
 
-def command_for(prompt, system, tools, route, turns):
+# A tool server call may wait on a slow remote service (the art tool's
+# generation retries a failed call), so it gets far longer than the CLI default.
+MCP_TOOL_TIMEOUT_SEC = 1200
+MCP_STARTUP_TIMEOUT_SEC = 30
+
+
+def command_for(prompt, system, tools, route, turns, mcp=None):
+    """The CLI argv for one session. `mcp` attaches one stdio tool server
+    ({name, command, args, tools}); only a session that may write gets one."""
+    if mcp and not {'Write', 'Edit', 'Bash'} <= set(filter(None, re.split(r'[,\s]+', tools or ''))):
+        raise ValueError('A tool server is attached only to a session that may write')
     if route['provider'] == 'claude':
-        return ['claude', '-p', prompt, '--append-system-prompt', system,
-                '--allowedTools', tools, '--max-turns', str(turns),
-                '--permission-mode', 'acceptEdits', '--output-format', 'stream-json',
-                '--verbose', '--model', route['model']]
+        cmd = ['claude', '-p', prompt, '--append-system-prompt', system,
+               '--allowedTools', tools, '--max-turns', str(turns),
+               '--permission-mode', 'acceptEdits', '--output-format', 'stream-json',
+               '--verbose', '--model', route['model']]
+        if mcp:
+            cmd[cmd.index('--allowedTools') + 1] = ','.join(
+                [tools] + [f"mcp__{mcp['name']}__{t}" for t in mcp['tools']])
+            cmd += ['--mcp-config', json.dumps({'mcpServers': {mcp['name']: {
+                'type': 'stdio', 'command': mcp['command'], 'args': list(mcp['args'])}}})]
+        return cmd
     allowed = set(filter(None, re.split(r'[,\s]+', tools or '')))
     if not allowed:
         profile = 'none'
@@ -119,6 +135,18 @@ def command_for(prompt, system, tools, route, turns):
         disabled.append('shell_tool')
     for feature in disabled:
         cmd += ['--disable', feature]
+    if mcp:
+        # Values are TOML; JSON strings and string arrays are valid TOML. The
+        # server is not `required`, so a server that fails to start leaves the
+        # session running without it. Its calls are approved up front: an exec
+        # session has nobody to answer an approval prompt.
+        prefix = f"mcp_servers.{mcp['name']}."
+        for key, value in (('command', mcp['command']), ('args', list(mcp['args'])),
+                           ('startup_timeout_sec', MCP_STARTUP_TIMEOUT_SEC),
+                           ('tool_timeout_sec', MCP_TOOL_TIMEOUT_SEC),
+                           ('default_tools_approval_mode', 'approve'),
+                           ('enabled_tools', list(mcp['tools']))):
+            cmd += ['-c', prefix + key + '=' + json.dumps(value)]
     return cmd + [system + '\n\n' + prompt]
 
 
@@ -231,7 +259,7 @@ SECRET_ENV = ("RETRODIFFUSION_API_KEY",)
 
 
 def run_session(prompt, system, tools, model, cwd, timeout, turns, *, phase='', seat='',
-                item='', on_event=None, on_start=None, launch_context='automatic'):
+                item='', on_event=None, on_start=None, launch_context='automatic', mcp=None):
     started = time.monotonic()
     route = resolve_model(model)
     result = {**route, 'text': '', 'usage': {**route, 'list_usd': None}, 'error': '',
@@ -241,12 +269,13 @@ def run_session(prompt, system, tools, model, cwd, timeout, turns, *, phase='', 
     try:
         if route['provider'] == 'codex':
             check_mcp_config(cwd)
-        command = command_for(prompt, system, tools, route, turns)
+        command = command_for(prompt, system, tools, route, turns, mcp)
+        env = {**{k: v for k, v in os.environ.items() if k not in SECRET_ENV},
+               'CLAUDE_CODE_DISABLE_AUTOUPDATE': '1'}
+        if mcp and route['provider'] == 'claude':
+            env['MCP_TOOL_TIMEOUT'] = str(MCP_TOOL_TIMEOUT_SEC * 1000)
         proc = subprocess.Popen(command, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
-                                text=True, start_new_session=True,
-                                env={**{k: v for k, v in os.environ.items()
-                                        if k not in SECRET_ENV},
-                                     'CLAUDE_CODE_DISABLE_AUTOUPDATE': '1'})
+                                text=True, start_new_session=True, env=env)
     except (OSError, ValueError) as exc:
         return {**result, 'error': str(exc)}
     normalizer = Normalizer(route)

@@ -765,7 +765,7 @@ def _last_assistant_text(lines):
 
 
 def run_cli(prompt, system, tools, model, cwd, timeout, turns, phase, seat, item_id,
-            attempt_id="", suffix=""):
+            attempt_id="", suffix="", mcp=None):
     """One model session, streamed to disk as it runs.
 
     Every event the CLI emits is appended to the session's file the moment it
@@ -794,7 +794,7 @@ def run_cli(prompt, system, tools, model, cwd, timeout, turns, phase, seat, item
     save_meta()
     result = execution.run_session(prompt, system, tools, model, cwd, timeout, turns,
         phase=adapter_phase, seat=seat, item=item_id, on_event=on_event, on_start=on_start,
-        launch_context=context)
+        launch_context=context, mcp=mcp)
     usage = result.get("usage")
     if usage:
         server.record_model_usage(phase, seat, result["model"], usage, item_id)
@@ -1274,33 +1274,21 @@ def preflight_godot_import(tree):
 # the phases
 # ---------------------------------------------------------------------------
 
-def art_round(item, org, run_id, log, tree, rec, text, err, model, turns, brief):
-    """S-37: after the owner's session, run the art it asked for and give it one
-    more session with the results. Returns the (text, error) that stand for the
-    attempt — the continuation's when there was one. At most one round a run;
-    requests written during the continuation are removed and said so."""
-    art = art_requests.run_round(item, tree, REPO)
+def art_outcome(item, log, tree, rec, err):
+    """S-37: what the owner's generate_art calls did, read after its session.
+    The note and any budget hold go on the card at write-back (art_requests.
+    after_write_back); nothing else runs here."""
+    art = art_requests.session_outcome(rec["attempt_id"])
     if art is None:
-        return text, err
+        return
     rec["art"] = art
-    log(f"{item['id']} · art round: {len(art['generated'])} generated for ${art['spent']:.2f}"
+    log(f"{item['id']} · art: {len(art['generated'])} generated for ${art['spent']:.2f}"
         + (f", held — {art['hold']['kind']} limit" if art["hold"] else "")
         + (f", {len(art['rejected'])} malformed" if art["rejected"] else ""))
-    record_phase(run_id, item, "worker", "The owner is using the art it asked for.")
-    seat = item["owner"]
-    ctext, cusage, cerr = run_cli(art_requests.continuation_brief(art, text) + brief,
-                                  seat_prompt(org, seat, False), WRITE_TOOLS, model, tree,
-                                  WORKER_TIMEOUT, turns, "drain-work", seat, item["id"],
-                                  rec["attempt_id"], suffix="-art")
-    if cusage:
-        rec["usage"].append(dict(cusage, phase="drain-work", seat=seat))
-    if art_requests.take_requests(tree):
-        art["second_round"] = True
-    if cerr in ("HELD", "LIMITED"):
+    if err in ("HELD", "LIMITED") and art["generated"]:
         # Paid raws and their spend record are in this worktree: keep them as the
         # held patch the next attempt starts from, before the worktree goes.
         save_patch(item["id"], worktree_patch(tree)[0])
-    return (ctext or text), cerr
 
 
 def do_item(item, org, run_id, log, action=None):
@@ -1349,15 +1337,19 @@ def do_item(item, org, run_id, log, action=None):
         brief = task_prompt(item, org, resumed=committed_prior, continuing=bool(resumed),
                             turns=turns, action=action,
                             blocker=project_work(item).get("blocker") if action else None)
+        # A build session gets the art tool (S-37); a read-only one does not.
+        art_tool = (None if thinking else
+                    art_requests.mcp_server(item, tree, run_id, rec["attempt_id"], REPO))
         text, usage, err = run_cli(brief,
                                    seat_prompt(org, seat, thinking),
                                    READ_TOOLS if thinking else WRITE_TOOLS,
                                    model, tree, WORKER_TIMEOUT,
-                                   turns, "drain-work", seat, item["id"], rec["attempt_id"])
+                                   turns, "drain-work", seat, item["id"], rec["attempt_id"],
+                                   mcp=art_tool)
         if usage:
             rec["usage"].append(dict(usage, phase="drain-work", seat=seat))
-        if err not in ("HELD", "LIMITED") and not thinking:
-            text, err = art_round(item, org, run_id, log, tree, rec, text, err, model, turns, brief)
+        if art_tool:
+            art_outcome(item, log, tree, rec, err)
         if err == "HELD":
             rec["held"] = True
             item["started"] = ""
@@ -1394,7 +1386,7 @@ def do_item(item, org, run_id, log, action=None):
         }
         rec["execution_evidence"] = owner_execution_evidence(
             os.path.join(WORKERS, RUN_ID or "byhand",
-                         f"{item['id']}-drain-work{'-art' if rec.get('art') else ''}.jsonl"),
+                         f"{item['id']}-drain-work.jsonl"),
             run=RUN_ID or "byhand", attempt_id=rec["attempt_id"],
             candidate=rec["candidate"])
         external = verification_evidence.lookup(item, roots.ROOTS["data"])
