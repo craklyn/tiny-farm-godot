@@ -179,6 +179,29 @@ class SpendingCheckpoint(unittest.TestCase):
         view = drain.project_work(work.load_item(item["id"]), head="", active={})
         self.assertEqual((view.get("next_action") or {}).get("availability"), "runnable")
 
+    def test_a_checkpoint_on_code_that_has_not_landed_stays_with_the_studio(self):
+        # wbecb4f98af1, 2026-09-29: the navbar badge counted a checkpoint card
+        # whose change had not landed, while the Decisions page (correctly) did
+        # not list it. Both now read work_ready_for_daniel the same way.
+        hold = "The rendered capture test needs a display this worker does not have."
+        outcome = {"version": 1, "status": "blocked", "reason": hold, "id": "attempt-1",
+                   "candidate": {"tree": "t1", "base": "b1", "files": ["systems/shelf_defs.gd"]}}
+        item = self.card(state="for_review", repair_hold=hold, automatic_repairs=1,
+                         attempt_outcome=outcome)
+        self.spend(item["id"], 4_900_000, 120_000)
+        work.save_item(dict(work.load_item(item["id"]), token_cap=4_000_000))
+        self.reply = (DANIEL, False)
+        self.assertTrue(work.review_next_spending_checkpoint(ORG))
+        got = work.load_item(item["id"])
+        view = drain.project_work(got, head="", active={})
+        self.assertEqual(view.get("candidate_status"), "unverified")
+        self.assertFalse(work.work_ready_for_daniel(got, view))
+        self.assertNotIn("daniel", work.card_lanes(got, view))
+        with patch.object(server, "api_queue", lambda **kw: {"curated": [], "decided": [], "rulings": {}}):
+            waiting = server.waiting_on_you()
+        self.assertNotIn(item["id"], {row["source_id"] for row in waiting["ready"]})
+        self.assertEqual(waiting["count"], 0)
+
     def test_hard_limits_skip_the_model(self):
         three = [{"decision": "extend", "by": "claude"}] * 3
         item = self.card(cap_reviews=three, token_cap=4_000_000)

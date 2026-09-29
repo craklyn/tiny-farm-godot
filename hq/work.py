@@ -1547,6 +1547,15 @@ def work_reviewable(item, workflow_view=None):
     if landing_awaits_approval(item):
         # Unlanded on purpose: the merge waits for exactly this verdict.
         return not landing_approved(item)
+    # Code the studio has not yet verified or landed is the studio's, whatever
+    # question a checkpoint put on the card: the Decisions page already read it
+    # that way (queue.js, candidateNeedsLanding), and the navbar badge, which
+    # asks here, counted a card the page did not show (wbecb4f98af1,
+    # 2026-09-29). A change that waits only for his yes reads awaiting_approval
+    # and is handled above.
+    if int(item.get("tier") or 0) > 0 and view.get("candidate_status") in (
+            "unverified", "reviewed", "held", "stale"):
+        return False
     shipped = view.get("shipped_evidence") or {}
     unlanded_code = (item.get("state") == "for_review" and item.get("tier") in (1, 2)
                      and not shipped.get("landed_sha"))
