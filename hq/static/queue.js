@@ -238,7 +238,7 @@ function qWorkItem(card, org, reason) {
   // chief-of-staff review writes the recommendation on concern and spending
   // cards; an owner writes their own; a clean review fills in a merge.
   const recommender = !answer ? ""
-    : (card.concern_resolution || card.spending_checkpoint) ? "Chief of staff"
+    : (card.concern_resolution || card.spending_checkpoint || card.repair_checkpoint) ? "Chief of staff"
     : hasRec ? owner.name : "Chief of staff";
   const convo = (card.conversation || []).filter(m => m.text)
     .map(m => ({ who: m.role === "daniel" ? "You" : qFirst(owner.name), text: m.text, at: m.at || "" }));
@@ -248,7 +248,8 @@ function qWorkItem(card, org, reason) {
     title: card.state === "for_review" ? reviewTitle(card) : card.title,
     question, answer, recommender, why: rec.why || (ap ? ap.why : merge ? (card.check || {}).summary || "" : ""), instead: rec.instead || "",
     owner, seconds: answer ? Q_PICK_SECONDS : Q_READ_SECONDS, state: card.state, merge,
-    spendingYes: card.state === "needs_approval" ? (card.spending_checkpoint || {}).yes_starts || "" : "",
+    spendingYes: card.state === "needs_approval"
+      ? (card.spending_checkpoint || card.repair_checkpoint || {}).yes_starts || "" : "",
     tier: card.tier ?? 2, reason: (ap && ap.reason) || reason || "hard to walk back, or a matter of taste",
     diffApplied: !!(card.diff && card.diff.applied),
     options: [], followUps: followUps(card), conversation: convo,

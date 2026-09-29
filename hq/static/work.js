@@ -319,6 +319,10 @@ function consequence(it, org) {
     rows.push(["Approve this work", esc(it.spending_checkpoint.yes_starts || "Raises this card's spending limit by one step and puts it back in the queue.")]);
     rows.push(["Decline and close request", `The card closes. Nothing more is spent on it.`]);
     rows.push(commentRow(first));
+  } else if (it.state === "needs_approval" && it.repair_checkpoint) {
+    rows.push(["Approve this work", esc(it.repair_checkpoint.yes_starts || "Gives the owner one more attempt to repair this card and puts it back in the queue.")]);
+    rows.push(["Decline and close request", `The card closes. Nothing more is spent on it.`]);
+    rows.push(commentRow(first));
   } else if (it.state === "needs_approval") {
     rows.push(["Approve this work", `Nothing runs on its own. It joins the build queue, and the next run — a session, or the studio's own scheduled one — carries out the step above and shows you the diff.`]);
     rows.push(["Decline and close request", `The request closes. Nothing is created and nothing changes.`]);
@@ -682,6 +686,21 @@ function checkpointLines(it) {
   return `<div class="w-cost">${reviews.map(r => `<div>${esc(line(r))}</div>`).join("")}</div>`;
 }
 
+/* Each time the reviewer failed the card again after its automatic repairs
+   (work.review_exhausted_repair): who decided what, and why. */
+function repairReviewLines(it) {
+  const reviews = Array.isArray(it.repair_reviews) ? it.repair_reviews : [];
+  if (!reviews.length) return "";
+  const line = r => {
+    const why = r.reason ? ` — ${r.reason}` : "";
+    if (r.by === "daniel") return `All repair attempts are used: you gave the owner one more attempt to repair this card${why}`;
+    if (r.decision === "retry") return `All repair attempts are used: the chief of staff gave the owner one more attempt to repair this card, with clearer instructions${why}`;
+    if (r.decision === "close") return `All repair attempts are used: the chief of staff closed this card${why}`;
+    return `All repair attempts are used: the chief of staff brought this card to you${why}`;
+  };
+  return `<div class="w-cost">${reviews.map(r => `<div>${esc(line(r))}</div>`).join("")}</div>`;
+}
+
 /* The Work page's own header line: what the company's unattended work has spent
    in the trailing five hours, against the only measured ceiling this machine
    has — what it had spent the last time a window actually ran dry. */
@@ -819,6 +838,7 @@ function workCard(it, org, pol) {
       ${drainBlock(it, org)}
       ${costLine(it)}
       ${checkpointLines(it)}
+      ${repairReviewLines(it)}
       ${convoBlock(it, org)}
       ${childrenNote(it, org)}
       ${spawnedNote(it)}

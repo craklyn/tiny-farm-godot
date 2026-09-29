@@ -284,6 +284,9 @@
   "0920bb7cf241f240d3f2": {
    "verdict": "ok"
   },
+  "09321f12c3c3291c7a8c": {
+   "verdict": "ok"
+  },
   "095ba4370aa6a15dcff3": {
    "verdict": "ok"
   },
@@ -2086,6 +2089,12 @@
   "40c681ef91bb815c04f6": {
    "verdict": "ok"
   },
+  "40f3e57c9c0477c89967": {
+   "instead": "All repair attempts used: you gave this card one more supervised try…",
+   "quote": "Repairs used up: you gave it one more supervised try…",
+   "verdict": "decode",
+   "why": "The reader must work out what “repairs” means and what “it” refers to."
+  },
   "412ccb9cc444c6809cef": {
    "instead": "buy the starting brain now",
    "quote": "buy it now",
@@ -2801,6 +2810,12 @@
   },
   "57ccfcd2f7b440201735": {
    "verdict": "ok"
+  },
+  "57cdb554cbd7d76842d0": {
+   "instead": "All repair attempts are used: you made one final attempt to repair this card with supervision.",
+   "quote": "one more supervised try",
+   "verdict": "decode",
+   "why": "The reader has to work out what a supervised try is and what happened to the card."
   },
   "580ba0fbb68e0e09c967": {
    "verdict": "ok"
@@ -3599,6 +3614,12 @@
   "700c4bec7f4d8ce38375": {
    "verdict": "ok"
   },
+  "700f428089dd80f0938b": {
+   "instead": "All repair attempts used: the chief of staff gave this card one more supervised try…",
+   "quote": "Repairs used up: the chief of staff gave it one more supervised try…",
+   "verdict": "decode",
+   "why": "The reader must work out what “repairs” means and what “it” refers to."
+  },
   "70392273dda0953a24d2": {
    "instead": "The link to a change's exact wording is visible directly below the question, rather than hidden in its own expandable section.",
    "quote": "inside a fold of its own",
@@ -4133,6 +4154,12 @@
   "80c4a75b6aa34a308d7c": {
    "verdict": "ok"
   },
+  "80c99fd75ae5959d844e": {
+   "instead": "All repair attempts used: the chief of staff brought this card to you…",
+   "quote": "Repairs used up: the chief of staff brought it to you…",
+   "verdict": "decode",
+   "why": "The reader must work out what “repairs” means and what “it” refers to."
+  },
   "80dade8ba64f421f1aad": {
    "verdict": "ok"
   },
@@ -4222,6 +4249,12 @@
   },
   "836be81c34aef1a5e839": {
    "verdict": "ok"
+  },
+  "8389dca4427e338d5bd9": {
+   "instead": "All repair attempts are used: the chief of staff made one final attempt to repair this card with supervision.",
+   "quote": "one more supervised try",
+   "verdict": "decode",
+   "why": "The reader has to work out what a supervised try is and what happened to the card."
   },
   "839e88217c0625d5261f": {
    "verdict": "ok"
@@ -4549,6 +4582,9 @@
   "8d9b158a61616491f6db": {
    "verdict": "ok"
   },
+  "8db5420d6ea1f0f3d0c3": {
+   "verdict": "ok"
+  },
   "8dca247f85365f6af315": {
    "baselined": "2026-09-19",
    "instead": "Menu appears as the harvest animation",
@@ -4605,6 +4641,9 @@
    "why": "The reader has to decode “carries” and “dies” as being visible up close but not from the robot-directing height."
   },
   "8f056a11aeec6fd3a313": {
+   "verdict": "ok"
+  },
+  "8f0b136772caf9c3fb2d": {
    "verdict": "ok"
   },
   "8f34b6f54b3613296d57": {
@@ -4836,6 +4875,9 @@
    "verdict": "ok"
   },
   "964a2dff466ccc4cb8ad": {
+   "verdict": "ok"
+  },
+  "964c29c8520f3773e32f": {
    "verdict": "ok"
   },
   "966edd798ec9dc7641dd": {
@@ -5243,6 +5285,9 @@
   "a2d38abb19b40b3e83c2": {
    "verdict": "ok"
   },
+  "a2e7699dfd70f084ebe2": {
+   "verdict": "ok"
+  },
   "a30f6bdbcb0b02d17901": {
    "instead": "Any Mark III can use the studio's trained model. A robot that has already learned loses what it learned on your farm, and in testing it did slightly worse afterwards.",
    "quote": "the studio's brain",
@@ -5263,6 +5308,9 @@
    "verdict": "ok"
   },
   "a3785a300aacdbafcbc5": {
+   "verdict": "ok"
+  },
+  "a3796ea2fd215276b3af": {
    "verdict": "ok"
   },
   "a39bc41ce3c5a4d4c34b": {
@@ -5298,6 +5346,9 @@
    "quote": "Record the verified obstacle picture cleanup",
    "verdict": "decode",
    "why": "The reader cannot tell whether the obstacle picture was cleaned up, verified, or both."
+  },
+  "a478baaebecc6f61549d": {
+   "verdict": "ok"
   },
   "a4935454f57ebd8038fa": {
    "verdict": "ok"
@@ -6121,6 +6172,9 @@
    "verdict": "decode",
    "why": "\"This\" has no referent in the sentence—the reader cannot tell what started recording, so they cannot understand the timeframe or what \"it takes\" refers to."
   },
+  "bffd05a5c5e0cb73470c": {
+   "verdict": "ok"
+  },
   "c004bcb8f3f1b6bf028e": {
    "verdict": "ok"
   },
@@ -6788,6 +6842,12 @@
    "verdict": "second-look",
    "why": "The pronoun \"Both\" has no named referent in this sentence, requiring the reader to infer what the two things are from context."
   },
+  "d3daffb94ba6ca67bc37": {
+   "instead": "All repair attempts used: the chief of staff closed this card…",
+   "quote": "Repairs used up: the chief of staff closed it…",
+   "verdict": "decode",
+   "why": "The reader must work out what “repairs” means and what “it” refers to."
+  },
   "d3deff7d0d0d4854ca11": {
    "verdict": "ok"
   },
@@ -7068,6 +7128,9 @@
    "quote": "the reward and view shape",
    "verdict": "second-look",
    "why": "“View shape” is internal design shorthand for what the robot can see and how it is arranged."
+  },
+  "dbcfe8305851014115d3": {
+   "verdict": "ok"
   },
   "dbe01701a9a93161924c": {
    "verdict": "ok"

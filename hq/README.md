@@ -389,6 +389,20 @@ it back in the queue. After three raises, or when a raise would pass 10 million
 tokens (1.5 million new, $200), no model is asked: the card goes straight to him.
 Every review is written on the card as `cap_reviews` and shown on the Work page.
 
+A card the reviewer fails again after its automatic repair stops on its own, and
+used to wait for a supervised retry that nothing ever gave. Daniel approved
+(2026-09-28) the same kind of review for it (`work.review_exhausted_repair`, on the
+same cadence and pauses as the spending review, one card per pass; a card also over
+its spending limit gets the spending review first). The chief of staff reads the
+attempts and the reviewer's findings and does one of three things. If the owner can
+fix the findings, the card gets one more supervised try with a sharper instruction.
+If only Daniel can settle it, it goes to his list with a recommendation; his yes
+gives it one more supervised try with his answer passed to the owner. If the work is
+no longer needed, the card is closed, except that a ruling's work or work that needs
+his approval goes to him instead. After two supervised tries from the chief of staff,
+or three reviews that came back unusable, the card goes straight to him. Every
+decision is written on the card as `repair_reviews` and shown on the Work page.
+
 Nothing here is written by a request handler. A tracked file written on page
 render leaves the tree dirty, and `git describe --dirty` is where playtest build
 ids come from — which is exactly how two recorded sessions became impossible to
