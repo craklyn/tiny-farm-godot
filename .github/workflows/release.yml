@@ -107,6 +107,9 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@v4
+        with:
+          # The store-page check compares this tag with the preceding tag.
+          fetch-depth: 0
 
       - name: Cache Godot
         id: cache-godot
@@ -195,3 +198,34 @@ jobs:
           fi
           ~/butler/butler push build/web "${ITCH_TARGET}:html5" --userversion "$BUILD_ID"
           ~/butler/butler status "${ITCH_TARGET}"
+
+      - name: Check whether the store-page copy changed
+        id: itch-page
+        run: |
+          set -euo pipefail
+          previous_tag="$(git describe --tags --abbrev=0 HEAD^ 2>/dev/null || true)"
+          if [ -z "$previous_tag" ] || ! git diff --quiet "$previous_tag" HEAD -- ITCH_PAGE.md; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+            echo "ITCH_PAGE.md has not changed since $previous_tag; skipping the store-page check."
+          fi
+
+      # This is deliberately read-only. It does not receive credentials, even
+      # when the repository has them, so the normal release cannot sign in.
+      - name: Compare the public itch.io description with the release copy
+        if: steps.itch-page.outputs.changed == 'true' && vars.ITCH_PAGE_LIVE_SYNC != 'true'
+        run: python3 tools/itch_page_sync.py --page ITCH_PAGE.md
+
+      # Daniel enables this only after creating an itch.io game-admin account.
+      # It signs in as that account, never as Daniel, and fails rather than
+      # attempting to bypass a captcha or a two-factor prompt.
+      - name: Update the itch.io description from the release copy
+        if: steps.itch-page.outputs.changed == 'true' && vars.ITCH_PAGE_LIVE_SYNC == 'true'
+        env:
+          ITCH_PAGE_USER: ${{ secrets.ITCH_PAGE_USER }}
+          ITCH_PAGE_PASSWORD: ${{ secrets.ITCH_PAGE_PASSWORD }}
+        run: |
+          python3 -m pip install --quiet playwright
+          python3 -m playwright install --with-deps chromium
+          python3 tools/itch_page_sync.py --page ITCH_PAGE.md --live

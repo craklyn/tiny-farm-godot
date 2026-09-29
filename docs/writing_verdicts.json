@@ -314,6 +314,12 @@
   "0a4ad953a30ab13e49de": {
    "verdict": "ok"
   },
+  "0a5c1affe01f0ec6e7b1": {
+   "instead": "Each new release compares the itch.io store page with the saved store-page copy and shows the updated text to paste",
+   "quote": "checks the itch.io store page against ITCH_PAGE.md and prints what to paste",
+   "verdict": "decode",
+   "why": "The reader does not know what ITCH_PAGE.md contains or what text should be pasted where."
+  },
   "0a69cb9fdd2b0e92380b": {
    "verdict": "ok"
   },
@@ -6998,6 +7004,12 @@
    "verdict": "second-look",
    "why": "The phrase describes the production pattern indirectly instead of saying that one cycle fills the reserve and later cycles produce crops to sell."
   },
+  "d410129a65b91adc55bf": {
+   "instead": "The release check compares the itch.io store page with ITCH_PAGE.md and prints what to paste",
+   "quote": "Tagged releases",
+   "verdict": "decode",
+   "why": "This internal label does not tell a cold reader what is doing the comparison."
+  },
   "d426d6c79c5bdc58c991": {
    "verdict": "ok"
   },
@@ -7677,6 +7689,9 @@
    "verdict": "ok"
   },
   "e7be8f769d4db985b60a": {
+   "verdict": "ok"
+  },
+  "e830bd8d12d5158e3980": {
    "verdict": "ok"
   },
   "e846622d523d16792663": {
