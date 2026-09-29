@@ -132,10 +132,15 @@ function qWorkEvidence(card, ownerName) {
   }
   if (card.result) items.push({ label: "What came back", text: card.result });
   if (card.diff && card.diff.stat) items.push({ label: "Files changed", text: card.diff.stat });
-  if (card.suites && Object.keys(card.suites).length)
-    items.push({ label: "Test suites", text: Object.entries(card.suites)
-      .map(([name, v]) => `${name}: ${(v && typeof v === "object" ? v.ok : v) ? "green" : "red"}`).join(", ") });
-  if (card.check && card.check.summary) items.push({ label: `Checker: ${card.check.verdict || ""}`, text: card.check.summary });
+  // Test suites only when one failed: all green says nothing, and a change held
+  // for his yes cannot reach him without both passing (2026-09-28). The
+  // checker's verdict is not repeated when the recommendation already quotes it.
+  const suites = Object.entries(card.suites || {});
+  const red = suites.filter(([, v]) => !(v && typeof v === "object" ? v.ok : v)).map(([name]) => name);
+  if (red.length) items.push({ label: `Test suites: ${red.join(" and ")} failing`, text: suites
+      .map(([name, v]) => `${name}: ${(v && typeof v === "object" ? v.ok : v) ? "passed" : "failed"}`).join(", ") });
+  if (card.check && card.check.summary && !ap)
+    items.push({ label: `Checker: ${card.check.verdict || ""}`, text: card.check.summary });
   const brief = card.ask || card.source_message || "";
   if (brief) items.push({ label: `The brief written for ${ownerName}`, text: brief });
   // The session that produced this result is written down as it runs, so the

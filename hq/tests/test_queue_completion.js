@@ -86,6 +86,10 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/queue.js'), 'utf
     'Adam, the chief of staff,');
   assert.match(briefed.why, /^The reviewer read it and found nothing wrong/);
   assert.equal(briefed.evidence[0].label, 'What changes');
+  assert.ok(!briefed.evidence.some(e => /^Test suites|^Checker/.test(e.label)));
+  const redSuite = context.qWorkEvidence({ suites: { unit: { ok: true }, integration: { ok: false } } }, 'Rin');
+  assert.deepEqual(Array.from(redSuite, e => e.label), ['Test suites: integration failing']);
+  assert.equal(context.qWorkEvidence({ suites: { unit: { ok: true }, integration: { ok: true } } }, 'Rin').length, 0);
   assert.ok(!briefed.evidence.some(e => e.label === 'Read the exact changes'));
   assert.match(briefed.reason, /^Design documents record your direction/);
   assert.equal(context.qWalkBack(briefed), 'Nothing is added until you say yes. After that, one revert undoes it.');
