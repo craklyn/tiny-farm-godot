@@ -11,9 +11,10 @@
 # tap on a packet buys it — with a coin and a numeral beside the picture, the
 # numeral red when she cannot afford it (and the card will not take the tap).
 # Bought, the price is gone and the card carries the control the upgrade gives
-# the robot on the bench. The first row is the pace setting (Q-129 a): a moving
-# Mark III stays beside three buttons, one, two and three chevrons for calm,
-# normal and bold, with the lit one in the bench's brass (S-34). The second is the studio's starting brain (Q-128):
+# the robot on the bench. The first row is the pace setting (Q-129 a): the farm's
+# Mark III running in place (Q-133 b) stays beside three buttons, one, two and
+# three chevrons for calm, normal and bold, with the lit one in the bench's brass
+# (S-34). The second is the studio's starting brain (Q-128):
 # no control once bought, only its spark turned brass. Every Mark III may buy it;
 # buying it replaces any learning the robot already has.
 #
@@ -35,7 +36,7 @@ const ROW_Y := 168.0
 const ROW_SIZE := Vector2(744, 104)
 const ROW_STRIDE := 116.0
 const PICTURE_AT := Vector2(18, 16)     # the item's picture, inside a card
-const PICTURE_SIZE := Vector2(120, 72)  # the robot at 3x, and room for its chevrons
+const PICTURE_SIZE := Vector2(120, 72)  # the robot at 3x
 const PRICE_X := 152.0                   # the coin, and the numeral after it
 const COIN_SIZE := 28.0
 const PRICE_SIZE := 22
@@ -47,14 +48,16 @@ const PACE_GAP := 16.0
 # screen. Left because the game's build tag sits in the bottom right corner.
 const PURSE_AT := Vector2(36, 548)
 
-# The Mark III's body, cut out of the 48px cell its sheet draws it in (the sprite
-# fills only the middle of the cell) so it can be shown at a whole 3x. On the pace
-# row it strides a few pixels back and forth, once every PACE_MOTION_SECONDS,
-# beside the pace controls before and after purchase (S-34).
+# Daniel chose the farm's Mark III running in place for the pace row (Q-133 b).
+# Eight 40x30 frames, 150 ms each, drawn at 3x like the starting-brain picture
+# below them. It keeps running beside the pace controls before and after a
+# purchase (S-34).
 const SHEET_MK3 := preload("res://assets/sprites/generated/bot_mk3.png")
-const MK3_BODY := Rect2(14, 17, 22, 24)
-const PACE_MOTION_SECONDS := 0.72
-const PACE_MOTION_DISTANCE := 5.0
+const MK3_PACE_STRIP := preload("res://assets/sprites/generated/mk3_pace_run.png")
+const MK3_PACE_FRAME_SIZE := Vector2(40, 30)
+const MK3_PACE_FRAME_COUNT := 8
+const MK3_PACE_FRAME_SECONDS := 0.15
+const MK3_PACE_SCALE := 3.0
 
 # The shop's coin (`ui/menus.gd`'s `coin_icon`, column 3 of the same sheet), read
 # off the sheet the bench already holds rather than by loading the menus script.
@@ -77,20 +80,25 @@ var pace_buttons: Array = []
 ## The price shown inside each pace button while that step is for sale.
 var pace_prices: Array = []
 
-# Presentation time only: the pace card's Mark III takes a small repeating
-# stride beside the chevrons. It never enters the sim or a replay.
-var _pace_motion_s := 0.0
+# Presentation time only: where the pace card's Mark III is in its run. It never
+# enters the sim or a replay.
+var _pace_picture_time := 0.0
 
 
 func _ready() -> void:
 	_build()
+	set_process(true)
 
 
 func _process(delta: float) -> void:
 	if not is_visible_in_tree():
 		return
-	_pace_motion_s = fmod(_pace_motion_s + delta, PACE_MOTION_SECONDS)
-	queue_redraw()
+	var shown := pace_frame()
+	_pace_picture_time = fmod(_pace_picture_time + delta,
+		MK3_PACE_FRAME_COUNT * MK3_PACE_FRAME_SECONDS)
+	# Redraw when the run reaches its next frame, not on every engine frame.
+	if actor_id != "" and pace_frame() != shown:
+		queue_redraw()
 
 
 func _build() -> void:
@@ -288,7 +296,7 @@ func _draw() -> void:
 		var pic := Rect2(r.position + PICTURE_AT, PICTURE_SIZE)
 		draw_picture(self, ShelfDefs.picture_of(key), pic,
 			Workbench.INK if can or pace_row else Workbench.INK_DIM, false if pace_row else owned,
-			pace_motion_offset() if pace_row else 0.0)
+			pace_frame() if pace_row else 0)
 		if not owned and not pace_row:
 			_draw_price(r, ShelfDefs.price_of(key), _affordable(key), _offered(key))
 	_draw_purse()
@@ -337,27 +345,22 @@ static func pace_rect(row: int, p: int) -> Rect2:
 		r.position.y + (r.size.y - PACE_BUTTON.y) / 2.0), PACE_BUTTON)
 
 
-## The current stride offset in pixels. Public so the integration test can
-## observe the same value `_draw` consumes on two different rendered frames.
-func pace_motion_offset() -> float:
-	var unit := _pace_motion_s / PACE_MOTION_SECONDS
-	var triangle := 1.0 - absf(unit * 2.0 - 1.0)
-	return triangle * PACE_MOTION_DISTANCE
+## Which of its eight frames the running Mark III is on. Public so the
+## integration test can observe the same value `_draw` consumes on two
+## different rendered frames.
+func pace_frame() -> int:
+	return int(floor(_pace_picture_time / MK3_PACE_FRAME_SECONDS)) % MK3_PACE_FRAME_COUNT
 
 
 ## An item's picture, by its `ShelfDefs` `picture` key. The pace setting is the
-## Mark III moving beside its three pace controls. The robot remains on the row
-## while the separately owned controls change beside it.
+## Mark III running in place beside its three pace controls, on frame `frame` of
+## its run. The robot remains on the row while the separately owned controls
+## change beside it.
 static func draw_picture(canvas: CanvasItem, picture: String, r: Rect2, ink: Color,
-		owned := false, motion_offset := 0.0) -> void:
+		owned := false, frame := 0) -> void:
 	match picture:
 		"pace":
-			var body := Rect2(r.position + Vector2(motion_offset, 0), MK3_BODY.size * 3.0)
-			var trail := clampf(motion_offset, 1.0, PACE_MOTION_DISTANCE)
-			for y in [body.position.y + 27.0, body.position.y + 43.0]:
-				canvas.draw_line(Vector2(body.position.x - 4.0 - trail, y),
-					Vector2(body.position.x - 4.0, y), ink, 3.0)
-			canvas.draw_texture_rect_region(SHEET_MK3, body, MK3_BODY, Color(1, 1, 1, ink.a))
+			draw_moving_mk3(canvas, r, ink, frame)
 		# The studio's starting brain (Q-128): the Mark III with a four-point spark
 		# beside its head — the robot, already switched on. Kept once bought, in the
 		# bench's brass, so the card goes on saying this robot started from it.
@@ -366,6 +369,23 @@ static func draw_picture(canvas: CanvasItem, picture: String, r: Rect2, ink: Col
 			canvas.draw_texture_rect_region(SHEET_MK3, body, Rect2(14, 17, 22, 24), Color(1, 1, 1, ink.a))
 			var spark := Workbench.BRASS_LIT if owned else ink
 			draw_spark(canvas, Vector2(body.end.x + 22.0, r.position.y + 18.0), 14.0, spark)
+
+
+## The farm's Mark III running in place in an eight-frame loop. The picture keeps
+## moving in every purchase state, so buying does not leave the chevrons without
+## their robot (Q-133 b; S-34).
+static func draw_moving_mk3(canvas: CanvasItem, r: Rect2, ink: Color, frame := 0) -> void:
+	var source := Rect2(Vector2(posmod(frame, MK3_PACE_FRAME_COUNT) * MK3_PACE_FRAME_SIZE.x, 0),
+		MK3_PACE_FRAME_SIZE)
+	canvas.draw_texture_rect_region(MK3_PACE_STRIP, pace_body_rect(r), source,
+		Color(1, 1, 1, ink.a))
+
+
+## Where the running Mark III is drawn for the picture box `r`: a frame at 3x,
+## 120 by 90, so it overhangs the 72-high box and is centred on it.
+static func pace_body_rect(r: Rect2) -> Rect2:
+	var body_size := MK3_PACE_FRAME_SIZE * MK3_PACE_SCALE
+	return Rect2(r.position + Vector2(0, (r.size.y - body_size.y) / 2.0), body_size)
 
 
 ## A four-point spark of radius `size` at `c`: the starting brain's mark.

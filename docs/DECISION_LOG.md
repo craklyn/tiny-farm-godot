@@ -660,6 +660,11 @@ the robot's starting pace. This revises S-31's single 150-gold purchase. Bold's 
 remains `[Playtest]`. Design in `design/14-training-workbench.md`
 §11; the build uses separate purchases and keeps the robot moving beside the chevrons.
 
+**Picture settled 2026-09-29 (Q-133, option b).** The moving robot is the farm's Mark III
+running in place: eight frames at 150 milliseconds each, drawn at the same pixel size as
+the Mark III on the starting-brain card. It stays beside the controls in every purchase
+state.
+
 ### S-35. Worm practice is the Mark III's first overnight lesson, and it costs next-day energy
 **Ruled 2026-09-27 (Q-130, option c); clarified 2026-09-28.** The first practice sold for a Mark III at the
 training workbench is a rare worm beside a growing crop. The worm eats crops, ignores

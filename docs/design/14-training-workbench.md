@@ -244,10 +244,15 @@ bench is showing, not to every robot she owns, for the reason the dials are per 
 Prices and the shelf's look are for its build, `[Playtest]` like every other price.
 
 **The pace row's finished direction (Q-131, ruled 2026-09-27; S-34).** Keep the universal
-one-, two- and three-chevron controls. Beside them, show the Mark III leaning into motion
-with two short trails; keep that picture in every state so the row continues to read as the
-robot's pace. Calm and bold are separate purchases. Normal remains available without a
-purchase because it is the robot's starting pace. Bold's price remains `[Playtest]`.
+one-, two- and three-chevron controls. Beside them, show the farm's Mark III running in
+place in an eight-frame loop; keep that picture moving in every state so the row continues
+to read as the robot's pace. Calm and bold are separate purchases. Normal remains available
+without a purchase because it is the robot's starting pace. Bold's price remains `[Playtest]`.
+
+**The picture (Q-133, ruled 2026-09-29: b).** Use the farm's Mark III running in place,
+eight frames at 150 milliseconds each. Draw its 40 by 30 pixel frames at 3x, the same
+pixel size as the Mark III on the starting-brain card. The loop takes 1.2 seconds. The
+frames are `assets/sprites/generated/mk3_pace_run.png`.
 
 ### What is in the current build: the shelf and the pace card (S-31, S-34)
 
@@ -264,10 +269,12 @@ bought, back to normal), taken from the game by `tools/capture_workbench_shelf.t
   packet is in the seed box: tap to buy. Too little gold, and the price is red and the card
   refuses the tap. Her gold is shown with a coin at the page's bottom left, so a red price
   has its reason on the same screen.
-- **The pace row is always its moving Mark III and three controls.** The 96 by 72 buttons
-  carry one, two and three chevrons for calm, normal and bold. Each step must be
-  bought and owned by this robot where a price is shown. Normal remains selectable without
-  a purchase because it is the robot's unchanged starting pace.
+- **The pace row is always its running Mark III and three controls.** The farm's Mark III
+  runs in place in an eight-frame loop beside three 96 by 72 buttons: one, two and three
+  chevrons for calm, normal and bold, the robot's current step lit in the bench's brass. A
+  step for sale shows its price inside its button, red when she is short of gold, and a tap
+  buys it for this robot. Normal remains selectable without a purchase because it is the
+  robot's unchanged starting pace.
 - **Buying is the Action `buy_upgrade`**, with the bench's own square as its target, the
   robot named, and the item's key. The gateway refuses it away from a bench
   (`no_workbench`), for a machine that does not learn (`not_a_learner`), for anything not

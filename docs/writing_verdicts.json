@@ -827,6 +827,12 @@
    "verdict": "decode",
    "why": "The reader has to infer that “seats” means roles and that their lists are recurring work lists."
   },
+  "18d506699a4650cf1bb9": {
+   "instead": "The workbench shelf automatically gives the Mark III its calm pace, and normal pace is always free",
+   "quote": "sells a Mark III's calm pace on its own",
+   "verdict": "decode",
+   "why": "It is unclear whether the shelf sells a speed setting, changes the robot's speed automatically, or does something else."
+  },
   "18f3ebc3c76357a29fba": {
    "instead": "the player's only gold would be the hen's egg",
    "quote": "her only gold would be the hen's egg",
@@ -4146,6 +4152,9 @@
   "7d711e56025757f4eed4": {
    "verdict": "ok"
   },
+  "7dd9e52abef561baa736": {
+   "verdict": "ok"
+  },
   "7de1a46604958f18bba0": {
    "verdict": "ok"
   },
@@ -4606,6 +4615,12 @@
   },
   "8b87fad8dac778e5d1f2": {
    "verdict": "ok"
+  },
+  "8baaa9e34e911fc44e2a": {
+   "instead": "The workbench shelf's pace row shows that the farm's Mark III is active but not making progress.",
+   "quote": "running in place",
+   "verdict": "decode",
+   "why": "This could mean the Mark III is stuck, idle, or failing to make progress."
   },
   "8bac951db3e2e6876976": {
    "verdict": "ok"
@@ -6923,6 +6938,12 @@
   },
   "d0e0c5ac3e3c68b1a290": {
    "verdict": "ok"
+  },
+  "d0f1916e77bb0ae37b19": {
+   "instead": "The workbench sells the Mark III's calm speed setting as a separate purchase, while normal speed requires no purchase.",
+   "quote": "normal speed needs none",
+   "verdict": "second-look",
+   "why": "The reader has to infer that normal speed requires no purchase."
   },
   "d10fba8d06df9788313b": {
    "baselined": "2026-09-19",

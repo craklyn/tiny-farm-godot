@@ -307,11 +307,10 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   `hq/data/decisions/Q-132.json`.
 
 - **Q-133 — Which picture of the moving Mark III goes on the workbench shelf's pace
-  row?** — **Open, 2026-09-29.** Three Retro Diffusion candidates for S-34's permanent
-  pace picture, each placed on a capture of the real bought shelf: A, the farm's Mark III
-  leaned forward, standing still; B, the same robot running in place (recommended); C, a
-  new drawing. A and B keep the farm sprite's pixel size, which makes the picture 90
-  pixels tall instead of 72. Raws, costs and the rebuild script:
+  row?** — ✅ **Ruled 2026-09-29: (b), the farm's Mark III running in place.** The pace
+  row plays the eight-frame loop at the farm sprite's pixel size, one stride every 1.2
+  seconds. The robot stays beside the pace controls before and after purchase. Raws,
+  costs and the rebuild script:
   `assets/raw/2026-09-29-mark3-pace/`; pictures: `docs/design/mockups/pace_picture/`.
   Card: `hq/data/decisions/Q-133.json`.
 

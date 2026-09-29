@@ -8572,16 +8572,21 @@ func _scenario_bl_the_shelf_sells_a_pace() -> void:
 		"pressing it shows the shelf (%d)" % bench.plate)
 
 	# S-34's pace picture is the Mark III going, not a robot frozen beside a
-	# speed symbol. Observe the value the draw path consumes on distinct frames;
-	# a fixed sprite or an animation that advances only during refresh fails here.
-	var motion_before: float = shelf.pace_motion_offset()
-	var motion_changed := await _wait_until(
-		func(): return not is_equal_approx(shelf.pace_motion_offset(), motion_before), 30)
-	_assert(motion_changed,
-		"the Mark III beside the pace chevrons moves across rendered frames")
+	# speed symbol: Q-133's eight-frame run, 150 ms a frame. Observe the frame the
+	# draw path consumes on distinct rendered frames; a fixed sprite or an
+	# animation that advances only during refresh fails here. The budget is
+	# frames, and a headless frame can be under 7 ms, so it allows well over one
+	# 150 ms step.
+	var frame_before: int = shelf.pace_frame()
+	var frame_changed := await _wait_until(
+		func(): return shelf.pace_frame() != frame_before, 120)
+	_assert(frame_changed,
+		"the Mark III beside the pace chevrons runs across rendered frames (from frame %d)"
+			% frame_before)
 
 	# --- separately bought pace steps ------------------------------------------
 	var card := _find_button(shelf, "ShelfBuy0")
+	var pace_card_rect: Rect2 = shelf.row_rect(0)
 	_assert(card != null and not card.visible,
 		"the old whole-row pace purchase is no longer offered")
 	if card == null:
@@ -8643,6 +8648,14 @@ func _scenario_bl_the_shelf_sells_a_pace() -> void:
 		"recorded as the player's purchase of that pace step at the bench (%s)"
 			% str(bought))
 	_assert(bold.disabled, "the later step stays unavailable while its price is unset")
+
+	# Q-133's picture is 90 high on a 104-high card, so check it still fits.
+	var pace_picture: Rect2 = shelf.pace_body_rect(
+		Rect2(pace_card_rect.position + shelf.PICTURE_AT, shelf.PICTURE_SIZE))
+	_assert(pace_card_rect.encloses(pace_picture) and paces.all(func(b):
+			return b != null and pace_card_rect.encloses(Rect2(b.position, b.size))),
+		"the pace picture and all three controls stay inside the one card (%s in %s)"
+			% [str(pace_picture), str(pace_card_rect)])
 
 	# --- the owned pace, by tap ------------------------------------------------
 	before = farm.replay.entries.size()

@@ -467,14 +467,17 @@ before the first public build ships.*
 - **The Mark III's pace picture candidates, 2026-09-29** — **generated, $0.486**
   (same Retro Diffusion pipeline and rights as above; raws with `*_meta.json`, the
   request bodies and the rebuild script archived per the standing policy at
-  `assets/raw/2026-09-29-mark3-pace/`). **Nothing ships yet**: three candidates for
-  the shelf's pace-row picture wait on Daniel's pick (Q-133), and only the picked one
-  will be copied into the game. A and B are the shipped `bot_mk3.png` robot itself —
-  an eight-frame run cycle the animation model drew from its right-facing frame, which
-  stayed on the sprite's own pixel grid and is snapped back to its colours — leaned
-  forward by a local shear; C is a new text-prompted drawing reduced to the same
-  height. The two trails on each are drawn locally. Of the eight images bought, the
-  run cycle and one profile run contributed pixels; the rest are in the archive.
+  `assets/raw/2026-09-29-mark3-pace/`). **Candidate B ships** as
+  `assets/sprites/generated/mk3_pace_run.png`, the shelf's pace-row picture (Daniel's
+  pick on Q-133): eight 40x30 frames side by side, copied unchanged from
+  `docs/design/mockups/pace_picture/B_moving_strip_native.png`. A and C, the other two
+  candidates for that picture, are not in the game. A and B are the shipped
+  `bot_mk3.png` robot itself — an eight-frame run cycle the animation model drew from
+  its right-facing frame, which stayed on the sprite's own pixel grid and is snapped
+  back to its colours — leaned forward by a local shear; C is a new text-prompted
+  drawing reduced to the same height. The two trails on each are drawn locally. Of the
+  eight images bought, the run cycle and one profile run contributed pixels; the rest
+  are in the archive.
 
 - **The training workbench, 2026-09-10** — **generated, $0.108** (same Retro
   Diffusion pipeline, rights and post-processing as above; raws with `*_meta.json`,

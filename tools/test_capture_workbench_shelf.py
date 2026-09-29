@@ -76,6 +76,10 @@ def count_colour(rows: list[bytes], box: tuple[int, int, int, int], colour: tupl
     return sum(pixel == colour for pixel in pixels(rows, box))
 
 
+def count_pale(rows: list[bytes], box: tuple[int, int, int, int]) -> int:
+    return sum(r > 180 and g > 180 and b > 180 for r, g, b in pixels(rows, box))
+
+
 class WorkbenchShelfCaptureTests(unittest.TestCase):
     def test_scene_exits_after_writing_every_capture(self) -> None:
         with tempfile.TemporaryDirectory(prefix="tiny-farm-shelf-capture-") as tmp:
@@ -128,16 +132,16 @@ class WorkbenchShelfCaptureTests(unittest.TestCase):
                 ]
                 self.assertEqual(selected, [False, True, False], name)
 
-            # The robot picture ends before x=125. Any pale strokes in the rest
-            # of its picture are the removed decorative chevrons, which looked
-            # like a fourth control beside the three real buttons.
-            decoration_box = (125, 184, 166, 256)
+            # The running Mark III (Q-133: 40x30 frames at 3x from x=46) is in
+            # every picture, and its pale head ends before x=150. Between it and
+            # the first pace button is bare card: pale strokes there are the
+            # removed decorative chevrons, which looked like a fourth control
+            # beside the three real buttons.
+            robot_box = (46, 175, 150, 265)
+            decoration_box = (150, 175, 180, 265)
             for name, picture in pictures.items():
-                pale_pixels = sum(
-                    r > 180 and g > 180 and b > 180
-                    for r, g, b in pixels(picture, decoration_box)
-                )
-                self.assertEqual(pale_pixels, 0, name)
+                self.assertGreater(count_pale(picture, robot_box), 100, f"no robot in {name}")
+                self.assertEqual(count_pale(picture, decoration_box), 0, name)
 
 
 if __name__ == "__main__":
