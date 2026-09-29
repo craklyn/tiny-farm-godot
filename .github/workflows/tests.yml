@@ -162,3 +162,6 @@ jobs:
 
       - name: Test process isolation and exit handling
         run: python3 tools/test_process_integrity.py
+
+      - name: Test workbench shelf capture
+        run: python3 tools/test_capture_workbench_shelf.py

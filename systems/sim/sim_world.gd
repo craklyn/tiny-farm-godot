@@ -1615,7 +1615,7 @@ const NON_WORK_VERBS := { "sleep": true, "sell": true, "withdraw_seed": true,
 		"tune": true,
 		# ...and so is buying from the bench's shelf and setting a robot's pace
 		# (S-29, Q-129): an errand at the bench and an instruction to a machine.
-		"buy_upgrade": true, "set_pace": true,
+		"buy_upgrade": true, "buy_pace": true, "set_pace": true,
 		# Teaching a mark-1 and sending it out are instructions, not strokes of
 		# work (2026-09-03). Charging the day's clock for pointing at eight tiles
 		# would make delegating the round cost more than doing it.
@@ -3207,6 +3207,32 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 					String(action.get("sha", "")))
 			return { "ok": true, "machine": upgraded, "item": shelf_key, "price": cost }
 
+		# S-34's separately owned pace steps. This is a new verb so an old replay's
+		# `buy_upgrade` of `pace` keeps unlocking the three controls it bought then.
+		# An unset price is not free: the step remains unavailable until its price is
+		# ruled and entered in ShelfDefs.
+		"buy_pace":
+			if gs == null: return _fail("no_state")
+			if get_object(target.x, target.y) != WorldLayout.WORKBENCH:
+				return _fail("no_workbench")
+			var pace_machine := String(action.get("machine", ""))
+			if not actors.has(pace_machine): return _fail("no_machine_here")
+			var pace_extra: Dictionary = actors[pace_machine]["extra"]
+			if not pace_extra.has("weights"): return _fail("not_a_learner")
+			var bought_pace := int(action.get("pace", -1))
+			if bought_pace < 0 or bought_pace >= BotBrain.PACE_SCALES.size():
+				return _fail("bad_pace")
+			if BotBrain.owns_pace(pace_extra, bought_pace): return _fail("already_owned")
+			var pace_cost := ShelfDefs.pace_price(bought_pace)
+			if pace_cost < 0: return _fail("price_unset")
+			if bought_pace > 0 and not BotBrain.owns_pace(pace_extra, bought_pace - 1):
+				return _fail("previous_pace_unowned")
+			if gs.gold < pace_cost: return _fail("no_gold")
+			gs.set_gold(gs.gold - pace_cost)
+			BotBrain.add_pace(pace_extra, bought_pace)
+			return { "ok": true, "machine": pace_machine, "pace": bought_pace,
+				"price": pace_cost }
+
 		# **Setting a Mark III's pace** (Q-129 a, ruled 2026-09-25). How hard the
 		# robot's nightly update pushes: calm, normal or bold (`BotBrain.PACE_*`).
 		# A setting on the robot, not a dial on the reward table, so a verb of its
@@ -3219,10 +3245,11 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			if not actors.has(paced): return _fail("no_machine_here")
 			var paced_extra: Dictionary = actors[paced]["extra"]
 			if not paced_extra.has("weights"): return _fail("not_a_learner")
-			if not BotBrain.has_upgrade(paced_extra, "pace"): return _fail("not_owned")
 			var wanted_pace := int(action.get("pace", -1))
 			if wanted_pace < 0 or wanted_pace >= BotBrain.PACE_SCALES.size():
 				return _fail("bad_pace")
+			if not BotBrain.owns_pace(paced_extra, wanted_pace):
+				return _fail("not_owned")
 			var previous_pace := BotBrain.pace_of(paced_extra)
 			BotBrain.set_pace(paced_extra, wanted_pace)
 			return { "ok": true, "machine": paced, "pace": wanted_pace,

@@ -8571,52 +8571,22 @@ func _scenario_bl_the_shelf_sells_a_pace() -> void:
 	_assert(bench.plate == 5 and (shelf as Control).visible,
 		"pressing it shows the shelf (%d)" % bench.plate)
 
-	# --- a card she cannot afford ----------------------------------------------
+	# S-34's pace picture is the Mark III going, not a robot frozen beside a
+	# speed symbol. Observe the value the draw path consumes on distinct frames;
+	# a fixed sprite or an animation that advances only during refresh fails here.
+	var motion_before: float = shelf.pace_motion_offset()
+	var motion_changed := await _wait_until(
+		func(): return not is_equal_approx(shelf.pace_motion_offset(), motion_before), 30)
+	_assert(motion_changed,
+		"the Mark III beside the pace chevrons moves across rendered frames")
+
+	# --- separately bought pace steps ------------------------------------------
 	var card := _find_button(shelf, "ShelfBuy0")
-	_assert(card != null and card.visible and card.size.x >= Workbench.TOUCH
-			and card.size.y >= Workbench.TOUCH,
-		"the pace setting is a card on the shelf, the whole of it a target (%s)"
-			% (str(card.size) if card != null else "-"))
+	_assert(card != null and not card.visible,
+		"the old whole-row pace purchase is no longer offered")
 	if card == null:
 		menus.close_menu()
 		return
-	GameState.gold = 100
-	bench.refresh()
-	await get_tree().process_frame
-	_assert(card.disabled, "with 100 gold, the 150 card will not take a tap")
-	var before: int = farm.replay.entries.size()
-	card.pressed.emit()
-	await get_tree().process_frame
-	_assert(farm.replay.entries.size() == before and GameState.gold == 100,
-		"and nothing is bought or recorded (%d gold)" % GameState.gold)
-
-	# --- buying it ---------------------------------------------------------------
-	GameState.gold = 1000
-	bench.refresh()
-	await get_tree().process_frame
-	_assert(not card.disabled, "with 1000 gold it will")
-	AudioManager.last_sfx = ""
-	card.pressed.emit()
-	await get_tree().process_frame
-	_assert(GameState.gold == 850, "a tap buys it: 850 gold left (%d)" % GameState.gold)
-	_assert(BotBrain.has_upgrade(farm.sim.actor(mk3).get("extra", {}), "pace"),
-		"and the robot on the bench owns the pace setting")
-	_assert(AudioManager.last_sfx == "jingle",
-		"with the shop's own purchase sound (%s)" % AudioManager.last_sfx)
-	_assert(farm.replay.entries.size() == before + 1,
-		"exactly one Action reached the gateway (%d)" % (farm.replay.entries.size() - before))
-	var bought: Dictionary = farm.replay.entries[farm.replay.entries.size() - 1]
-	var aimed = bought.get("target", null)
-	_assert(String(bought.get("verb", "")) == "buy_upgrade"
-			and String(bought.get("item", "")) == "pace"
-			and String(bought.get("machine", "")) == mk3
-			and String(bought.get("actor", "")) == "player"
-			and aimed is Array and int(aimed[0]) == bench_spot.x and int(aimed[1]) == bench_spot.y,
-		"recorded as the player's `buy_upgrade` of pace for that robot, at the bench (%s)"
-			% str(bought))
-	_assert(not card.visible, "the bought card no longer takes a tap as a purchase")
-
-	# --- the pace, by tap ----------------------------------------------------------
 	var paces: Array = []
 	for p in 3:
 		paces.append(_find_button(shelf, "Pace%d" % p))
@@ -8625,29 +8595,77 @@ func _scenario_bl_the_shelf_sells_a_pace() -> void:
 		if b == null or not (b as Button).visible or (b as Button).size.x < Workbench.TOUCH \
 				or (b as Button).size.y < Workbench.TOUCH:
 			all_there = false
-	_assert(all_there, "three pace buttons appear in its place, each a thumb's size")
+	_assert(all_there, "three separately owned pace steps are always visible and thumb-sized")
 	if not all_there:
 		menus.close_menu()
 		return
-	before = farm.replay.entries.size()
-	(paces[BotBrain.PACE_BOLD] as Button).pressed.emit()
+	GameState.gold = 100
+	bench.refresh()
 	await get_tree().process_frame
-	_assert(BotBrain.pace_of(farm.sim.actor(mk3).get("extra", {})) == BotBrain.PACE_BOLD,
-		"a tap on three chevrons sets it bold")
+	var calm: Button = paces[BotBrain.PACE_CALM]
+	var normal: Button = paces[BotBrain.PACE_NORMAL]
+	var bold: Button = paces[BotBrain.PACE_BOLD]
+	var calm_price := calm.get_node_or_null("Price") as Label
+	_assert(calm_price != null and calm_price.visible and calm_price.text == "150",
+		"the first pace button shows the 150 gold it will spend")
+	_assert(not normal.disabled and (normal.get_node("Price") as Label).text == "",
+		"normal is available from the start and has no purchase price")
+	_assert(calm.disabled, "with 100 gold, the 150 first step will not take a tap")
+	var before: int = farm.replay.entries.size()
+	calm.pressed.emit()
+	await get_tree().process_frame
+	_assert(farm.replay.entries.size() == before and GameState.gold == 100,
+		"and nothing is bought or recorded (%d gold)" % GameState.gold)
+
+	# --- buying the first step --------------------------------------------------
+	GameState.gold = 1000
+	bench.refresh()
+	await get_tree().process_frame
+	_assert(not calm.disabled, "with 1000 gold the first step will")
+	AudioManager.last_sfx = ""
+	calm.pressed.emit()
+	await get_tree().process_frame
+	_assert(GameState.gold == 850, "a tap buys it: 850 gold left (%d)" % GameState.gold)
+	_assert(BotBrain.owns_pace(farm.sim.actor(mk3).get("extra", {}), BotBrain.PACE_CALM)
+			and not BotBrain.owns_pace(farm.sim.actor(mk3).get("extra", {}), BotBrain.PACE_BOLD),
+		"and the robot owns only the first pace step")
+	_assert(AudioManager.last_sfx == "jingle",
+		"with the shop's own purchase sound (%s)" % AudioManager.last_sfx)
+	_assert(farm.replay.entries.size() == before + 1,
+		"exactly one Action reached the gateway (%d)" % (farm.replay.entries.size() - before))
+	var bought: Dictionary = farm.replay.entries[farm.replay.entries.size() - 1]
+	var aimed = bought.get("target", null)
+	_assert(String(bought.get("verb", "")) == "buy_pace"
+			and int(bought.get("pace", -1)) == BotBrain.PACE_CALM
+			and String(bought.get("machine", "")) == mk3
+			and String(bought.get("actor", "")) == "player"
+			and aimed is Array and int(aimed[0]) == bench_spot.x and int(aimed[1]) == bench_spot.y,
+		"recorded as the player's purchase of that pace step at the bench (%s)"
+			% str(bought))
+	_assert(bold.disabled, "the later step stays unavailable while its price is unset")
+
+	# --- the owned pace, by tap ------------------------------------------------
+	before = farm.replay.entries.size()
+	calm.pressed.emit()
+	await get_tree().process_frame
+	_assert(BotBrain.pace_of(farm.sim.actor(mk3).get("extra", {})) == BotBrain.PACE_CALM,
+		"a second tap on the bought one-chevron step sets it calm")
 	var paced: Dictionary = farm.replay.entries[farm.replay.entries.size() - 1]
 	_assert(farm.replay.entries.size() == before + 1
 			and String(paced.get("verb", "")) == "set_pace"
-			and int(paced.get("pace", -1)) == BotBrain.PACE_BOLD
+			and int(paced.get("pace", -1)) == BotBrain.PACE_CALM
 			and String(paced.get("machine", "")) == mk3,
 		"recorded as one `set_pace` (%s)" % str(paced))
-	(paces[BotBrain.PACE_BOLD] as Button).pressed.emit()
+	calm.pressed.emit()
 	await get_tree().process_frame
 	_assert(farm.replay.entries.size() == before + 1,
 		"a second tap on the step it is already on records nothing")
-	(paces[BotBrain.PACE_CALM] as Button).pressed.emit()
+	before = farm.replay.entries.size()
+	normal.pressed.emit()
 	await get_tree().process_frame
-	_assert(BotBrain.pace_of(farm.sim.actor(mk3).get("extra", {})) == BotBrain.PACE_CALM,
-		"and a tap on one chevron sets it calm")
+	_assert(BotBrain.pace_of(farm.sim.actor(mk3).get("extra", {})) == BotBrain.PACE_NORMAL
+			and farm.replay.entries.size() == before + 1,
+		"normal remains selectable after calm without another purchase")
 
 	# --- the studio's starting brain, by tap (Q-128) -----------------------------
 	var starter_card := _find_button(shelf, "ShelfBuy1")

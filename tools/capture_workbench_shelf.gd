@@ -6,15 +6,20 @@
 #   1_shelf.png      the shelf plate open, the pace setting for sale
 #   2_short.png      the same card when she has too little gold (the price in red)
 #   3_bought.png     bought: the price is gone, three pace buttons, normal lit
-#   4_bold.png       after a tap on three chevrons: bold lit
+#   4_normal.png     after calm, normal is selected again without a purchase
 # Every change is made the way the game makes it — the page's own buy and pace
 # presses, through the gateway — so the pictures are of the real screen.
 extends Node2D
 
-const OUT := "res://docs/design/mockups/workbench_shelf/"
+const DEFAULT_OUT := "res://docs/design/mockups/workbench_shelf/"
+
+var out_dir := DEFAULT_OUT
 
 
 func _ready() -> void:
+	for arg in OS.get_cmdline_user_args():
+		if arg.begins_with("--out-dir="):
+			out_dir = arg.trim_prefix("--out-dir=").path_join("")
 	var main = load("res://main.tscn").instantiate()
 	add_child(main)
 	for i in 30:
@@ -49,7 +54,7 @@ func _ready() -> void:
 	var bench = main.menus.workbench
 	bench.select_plate(5)
 	var shelf = bench.pages[5]
-	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUT))
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(out_dir))
 
 	var written: Array[String] = []
 	written.append(await _shot("1_shelf.png"))
@@ -58,10 +63,11 @@ func _ready() -> void:
 	written.append(await _shot("2_short.png"))
 	gs.gold = 2000
 	bench.refresh()
-	shelf.buy("pace")
+	shelf.choose_pace(BotBrain.PACE_CALM)
 	written.append(await _shot("3_bought.png"))
-	shelf.set_pace(BotBrain.PACE_BOLD)
-	written.append(await _shot("4_bold.png"))
+	shelf.choose_pace(BotBrain.PACE_CALM)
+	shelf.choose_pace(BotBrain.PACE_NORMAL)
+	written.append(await _shot("4_normal.png"))
 	print("captured -> " + ", ".join(written))
 	get_tree().quit(0)
 
@@ -69,7 +75,7 @@ func _ready() -> void:
 func _shot(file_name: String) -> String:
 	for f in 6:
 		await get_tree().process_frame
-	var path := OUT + file_name
+	var path := out_dir.path_join(file_name)
 	get_viewport().get_texture().get_image().save_png(path)
 	return path
 

@@ -655,10 +655,10 @@ base is never rebuilt. Code: `hq/drain.py` (`run_verified_batch`, the landing pa
 **Ruled 2026-09-27 (Q-131, option a).** The pace row's permanent picture is the Mark III
 leaning into motion with two short trails behind it. The one-, two- and three-chevron
 controls stay beside that picture, so the same row says both robot and pace before and after
-a purchase. The second and third steps are separate purchases; buying the first step no
-longer unlocks all three controls. This revises S-31's single 150-gold purchase. The exact
-prices of the later purchases remain `[Playtest]`. Design in `design/14-training-workbench.md`
-§11; the current build still has the earlier single purchase and stationary robot.
+a purchase. Calm and bold are separate purchases; normal is always selectable because it is
+the robot's starting pace. This revises S-31's single 150-gold purchase. Bold's exact price
+remains `[Playtest]`. Design in `design/14-training-workbench.md`
+§11; the build uses separate purchases and keeps the robot moving beside the chevrons.
 
 ### S-35. Worm practice is the Mark III's first overnight lesson, and it costs next-day energy
 **Ruled 2026-09-27 (Q-130, option c); clarified 2026-09-28.** The first practice sold for a Mark III at the

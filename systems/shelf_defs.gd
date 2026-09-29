@@ -5,22 +5,23 @@
 # seed box.** Everything else — the bench and the robots included — stays in the
 # shop (`MachineDefs`, P-12). So this is a second, much smaller catalogue beside
 # that one, read by the bench's shelf page (`ui/workbench_shelf.gd`) and by the
-# gateway's `buy_upgrade` verb, and by nothing else.
+# gateway's `buy_upgrade` and `buy_pace` verbs, and by nothing else.
 #
-# **One row per thing for sale, and a later upgrade is one more row.** The first
-# is the pace setting (Q-129 a, ruled 2026-09-25); the second, the studio's
+# **One row per thing for sale, except pace steps.** Pace uses `PACE_PRICES`, and
+# each priced step is bought with `buy_pace`. The other row is the studio's
 # starting brain (Q-128). The candidates still waiting — practice scenarios
-# (Q-130), a wider view (S-30) — each arrive as a row here plus whatever the robot does with it, and the
-# shelf draws however many rows there are.
+# (Q-130), a wider view (S-30) — each arrive as a row here plus whatever the
+# robot does with it, and the shelf draws however many rows there are.
 #
 # **What a row says:**
 # - `price` — gold, `[Playtest]` like every price in the game.
 # - `scope` — who the purchase belongs to. `"robot"` is the only one so far, and it
 #   is S-29's rule: an upgrade applies to the robot the bench is showing, for the
-#   reason the reward dials are per robot. The bought key goes into that robot's
-#   `extra["upgrades"]`, rides in its save and in the crate when she picks it up.
-#   A row that belonged to the whole farm would name a different scope and need a
-#   home for it on `GameState`; none exists yet, so none is written.
+#   reason the reward dials are per robot. A bought upgrade key goes into that
+#   robot's `extra["upgrades"]`; bought pace steps instead go into
+#   `extra["pace_steps"]`. Both ride in its save and in the crate when she picks
+#   it up. A row that belonged to the whole farm would name a different scope and
+#   need a home for it on `GameState`; none exists yet, so none is written.
 # - `picture` — which drawing the shelf card uses. Pictures, not words, on the
 #   bench (design/14 §2); the drawing itself lives with the page that draws it.
 #
@@ -29,15 +30,11 @@ class_name ShelfDefs
 extends RefCounted
 
 static var TYPES: Dictionary = {
-	# --- the pace setting (Q-129 a, ruled 2026-09-25) --------------------------
+	# --- the legacy pace row (Q-129 a, ruled 2026-09-25) -----------------------
 	#
-	# Buying it gives the robot on the bench a three-step pace control — calm,
-	# normal, bold — that sets how hard its nightly update pushes
-	# (`BotBrain.PACE_SCALES`). The robot starts on normal, which is the night it
-	# already had, so the purchase alone changes nothing until she turns it.
-	#
-	# **Priced at 150** — a fifth of the robot it is for (800) and half the bench
-	# it is sold from (300): a small thing on a small shelf. A strawman.  [Playtest]
+	# New purchases use `PACE_PRICES` and `buy_pace`, not this row. It remains in
+	# the catalogue so recorded `buy_upgrade` Actions for `pace` keep granting the
+	# three controls they bought before pace ownership was split into steps.
 	"pace": {
 		"price": 150,
 		"scope": "robot",
@@ -67,6 +64,12 @@ static var TYPES: Dictionary = {
 # actually for sale. A row missing from here exists and cannot be bought.
 static var ORDER: Array[String] = ["pace", "starter_brain"]
 
+# S-34 split the pace row into separately owned steps. Only the first price has
+# been ruled; -1 means the step is shown but cannot yet be bought. The old
+# `pace` catalogue row remains above because recorded `buy_upgrade` Actions must
+# keep their original meaning.
+static var PACE_PRICES: Array[int] = [150, -1, -1]
+
 
 static func has(key: String) -> bool:
 	return TYPES.has(key)
@@ -82,3 +85,9 @@ static func scope_of(key: String) -> String:
 
 static func picture_of(key: String) -> String:
 	return String(TYPES.get(key, {}).get("picture", ""))
+
+
+static func pace_price(step: int) -> int:
+	if step < 0 or step >= PACE_PRICES.size():
+		return -1
+	return PACE_PRICES[step]

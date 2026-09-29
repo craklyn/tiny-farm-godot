@@ -1077,17 +1077,18 @@ these is a later shelf item, not a rewrite.
 ### Its pace: how hard its nights push (Q-129 a, ruled 2026-09-25; S-31)
 
 **Purchase direction revised 2026-09-27 (Q-131; S-34).** The one-, two- and
-three-chevron steps remain, but the second and third steps are separate purchases rather
-than controls opened by the first purchase. The permanent row picture is a Mark III leaning
-into motion with two short trails. The current build still has the earlier single purchase;
-the learning scales and the day-size guard below do not change.
+three-chevron controls remain, but calm and bold are separate purchases rather than
+controls opened by one purchase. Normal is the robot's starting pace and remains available
+without a purchase. The permanent row picture is a Mark III moving
+beside two short trails. The build now uses the separate purchases and moving picture; the
+learning scales and the day-size guard below do not change.
 
 **The ruling.** Of the three new ways of training in Milo's sketch, Daniel chose the pace
 setting first. It is the first thing on the workbench's shelf (S-29; the card is `14` §11).
-The one-, two- and three-chevron steps are three separate purchases for each Mark III. The
-first costs 150 gold `[Playtest]`; the second and third prices remain `[Playtest]` and must
-be set before the change is built. The pace scales how far each night's update moves the
-robot's weights.
+Calm and bold are separate purchases for each Mark III. Calm costs 150 gold `[Playtest]`;
+bold's price remains unset and it cannot be bought until a price is entered. Normal is not
+for sale because it is the robot's starting pace. The pace scales how far each night's
+update moves the robot's weights.
 
 **Normal is the night it already had, to the bit.** Every robot starts on normal, and normal
 is stored as nothing (`extra["pace"]` absent), so a robot she never set, a robot set bold and
@@ -1156,12 +1157,14 @@ What that says:
   bold should say anything on a robot given squares, are questions for playtest, not for this
   table.
 
-**The Actions.** `set_pace` with `machine` and `pace` (0 calm, 1 normal, 2 bold); refused on a
-machine that does not learn, on a robot not bought the setting, and for any other number.
-Buying the setting is the shelf's `buy_upgrade` (`14` §11). Both are her instructions, free
-and off the clock; a bot has no reason to emit either and no path that does. The pace is
-saved on the robot, recomputed into every night on replay, and carried in the crate when she
-picks it up (Q-98).
+**The Actions.** `buy_pace` with `machine` and `pace` buys one step in order; an unset price
+is refused. `set_pace` selects an owned step (0 calm, 1 normal, 2 bold). Normal is always
+owned because it is the robot's unchanged starting pace.
+Historical `buy_upgrade` Actions for `pace`
+retain their former meaning and grant every step, so old saves and replays do not change.
+Both Actions are her instructions, free and off the clock; a bot has no reason to emit
+either and no path that does. The pace is saved on the robot, recomputed into every night on
+replay, and carried in the crate when she picks it up (Q-98).
 
 **Not in this version:** a pace chosen per night or per job; a pace shown anywhere but the
 bench (the panel and the plate do not mention it); an explanation of what each step does

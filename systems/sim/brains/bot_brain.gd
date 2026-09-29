@@ -917,6 +917,40 @@ static func add_upgrade(extra: Dictionary, key: String) -> void:
 	extra["upgrades"] = owned
 
 
+# A pre-S-34 `pace` purchase owns every step: old saves and old replays keep the
+# exact controls they bought. New purchases are individual integers in a sorted
+# list, absent on every old robot that never bought the setting.
+static func owns_pace(extra: Dictionary, pace: int) -> bool:
+	# Normal is the robot's starting pace, not an upgrade. It must always remain
+	# selectable so choosing calm never strands the robot there.
+	if pace == PACE_NORMAL:
+		return true
+	if has_upgrade(extra, "pace"):
+		return true
+	return pace in _pace_steps(extra)
+
+
+static func add_pace(extra: Dictionary, pace: int) -> void:
+	var owned := _pace_steps(extra)
+	if pace in owned:
+		return
+	owned.append(pace)
+	owned.sort()
+	extra["pace_steps"] = owned
+
+
+# The bought steps as whole numbers, however the list arrived. A live robot holds
+# ints; one loaded from a save holds the floats JSON hands back, and an array of
+# floats does not contain the int step, so a loaded robot would forget a step she
+# paid for. Anything that is not a number is not a step.
+static func _pace_steps(extra: Dictionary) -> Array:
+	var out: Array = []
+	for step in (extra.get("pace_steps", []) as Array):
+		if typeof(step) == TYPE_INT or typeof(step) == TYPE_FLOAT:
+			out.append(int(step))
+	return out
+
+
 # Its pace as a `PACE_*` step. Normal is the key's absence (see `set_pace`), and
 # anything unreadable is normal too, so a hand-edited save cannot make a night
 # push harder than the three steps allow.

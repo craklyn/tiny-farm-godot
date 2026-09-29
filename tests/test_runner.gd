@@ -17260,6 +17260,11 @@ func _set_pace(s: LiveSession, bot: String, pace: int) -> Dictionary:
 		"pace": pace, "actor": "player" })
 
 
+func _buy_pace(s: LiveSession, bot: String, bench: Vector2i, pace: int) -> Dictionary:
+	return s.act({ "verb": "buy_pace", "target": bench, "machine": bot,
+		"pace": pace, "actor": "player" })
+
+
 func test_workbench_shelf() -> void:
 	print("\n--- The workbench's shelf and a Mark III's pace (S-29, Q-129) Tests ---")
 
@@ -17276,6 +17281,107 @@ func test_workbench_shelf() -> void:
 			and float(BotBrain.PACE_SCALES[BotBrain.PACE_BOLD]) > 1.0,
 		"three steps, and normal is exactly the rate the robot always had (%s)"
 			% str(BotBrain.PACE_SCALES))
+	_assert(ShelfDefs.pace_price(BotBrain.PACE_CALM) == 150
+			and ShelfDefs.pace_price(BotBrain.PACE_NORMAL) < 0
+			and ShelfDefs.pace_price(BotBrain.PACE_BOLD) < 0,
+		"the first pace step costs 150 gold and later prices remain unset")
+	_assert(BotBrain.owns_pace({}, BotBrain.PACE_NORMAL),
+		"normal is owned by every Mark III because it is the pace each one starts with")
+	# --- separately owned steps (S-34) -----------------------------------------
+	var separate := _shelf_yard(12900)
+	var ss: LiveSession = separate["s"]
+	var sb := String(separate["bot"])
+	var sbench: Vector2i = separate["bench"]
+	ss.gs.gold = 149
+	var step_short := _buy_pace(ss, sb, sbench, BotBrain.PACE_CALM)
+	_assert(not step_short.get("ok", true) and step_short.get("reason", "") == "no_gold"
+			and ss.gs.gold == 149 and not BotBrain.owns_pace(ss.world.actor(sb)["extra"], BotBrain.PACE_CALM),
+		"one gold short cannot buy the first pace step")
+	ss.gs.gold = 500
+	var step_bought := _buy_pace(ss, sb, sbench, BotBrain.PACE_CALM)
+	var step_extra: Dictionary = ss.world.actor(sb)["extra"]
+	_assert(step_bought.get("ok", false) and ss.gs.gold == 350
+			and BotBrain.owns_pace(step_extra, BotBrain.PACE_CALM)
+			and not BotBrain.owns_pace(step_extra, BotBrain.PACE_BOLD),
+		"150 gold buys only the first pace step through the gateway")
+	var unset := _buy_pace(ss, sb, sbench, BotBrain.PACE_BOLD)
+	_assert(not unset.get("ok", true) and unset.get("reason", "") == "price_unset"
+			and ss.gs.gold == 350 and not BotBrain.owns_pace(step_extra, BotBrain.PACE_BOLD),
+		"an unset later price cannot be treated as free")
+	_assert(_set_pace(ss, sb, BotBrain.PACE_CALM).get("ok", false)
+			and not _set_pace(ss, sb, BotBrain.PACE_BOLD).get("ok", true),
+		"the bought step can be set and an unowned step cannot")
+	var normal_free := _set_pace(ss, sb, BotBrain.PACE_NORMAL)
+	_assert(normal_free.get("ok", false)
+			and BotBrain.owns_pace(step_extra, BotBrain.PACE_NORMAL)
+			and BotBrain.pace_of(step_extra) == BotBrain.PACE_NORMAL,
+		"after choosing calm, the robot can always return to its starting normal pace")
+	# A save gives the bought step back as bought. The file is JSON, which hands
+	# every number back as a float, and an array holding 0.0 does not contain the
+	# step 0 — so without care a loaded robot forgets the step she paid for, and
+	# the shelf sells it to her a second time.
+	var step_snapshot = JSON.parse_string(JSON.stringify(SaveGame.capture(ss.world, ss.gs)))
+	var step_gs = load("res://systems/game_state.gd").new()
+	step_gs.reset()
+	var step_world := SimWorld.new()
+	_assert(SaveGame.restore(step_snapshot, step_world, step_gs),
+		"a farm with a separately bought pace step saves")
+	var step_back: Dictionary = step_world.actor(sb)["extra"]
+	_assert(BotBrain.owns_pace(step_back, BotBrain.PACE_CALM)
+			and BotBrain.owns_pace(step_back, BotBrain.PACE_NORMAL)
+			and not BotBrain.owns_pace(step_back, BotBrain.PACE_BOLD),
+		"and the loaded robot keeps calm, its starting normal pace, and no bold pace")
+	var rebuy: Dictionary = step_world.apply_action({ "verb": "buy_pace", "target": sbench,
+		"machine": sb, "pace": BotBrain.PACE_CALM, "actor": "player" }, step_gs)
+	_assert(not rebuy.get("ok", true) and rebuy.get("reason", "") == "already_owned"
+			and step_gs.gold == ss.gs.gold,
+		"so the shelf does not sell her the same step twice (%s)" % str(rebuy))
+	step_gs.free()
+	var loaded_steps := { "pace_steps": [0.0] }
+	BotBrain.add_pace(loaded_steps, BotBrain.PACE_NORMAL)
+	_assert(loaded_steps["pace_steps"] == [BotBrain.PACE_CALM, BotBrain.PACE_NORMAL],
+		"and a step bought after a load joins a list of whole steps (%s)"
+			% str(loaded_steps["pace_steps"]))
+	ss.done()
+
+	# Exercise the complete ownership model without inventing bold's production
+	# price. The catalogue is restored before any other case.
+	var held_prices := ShelfDefs.PACE_PRICES.duplicate()
+	ShelfDefs.PACE_PRICES = [150, 200, 300]
+	var ordered := _shelf_yard(12902)
+	var os: LiveSession = ordered["s"]
+	var ob := String(ordered["bot"])
+	var obench: Vector2i = ordered["bench"]
+	os.gs.gold = 1000
+	var bought_in_order := true
+	for step in [BotBrain.PACE_CALM, BotBrain.PACE_BOLD]:
+		var purchase := _buy_pace(os, ob, obench, step)
+		bought_in_order = bought_in_order and purchase.get("ok", false) \
+			and BotBrain.owns_pace(os.world.actor(ob)["extra"], step)
+	_assert(bought_in_order
+			and os.world.actor(ob)["extra"].get("pace_steps", []) == [0, 2]
+			and BotBrain.owns_pace(os.world.actor(ob)["extra"], BotBrain.PACE_NORMAL),
+		"calm and bold can be bought while normal remains owned without purchase")
+	os.done()
+	ShelfDefs.PACE_PRICES = held_prices
+
+	var recorded := _shelf_yard(12899)
+	var rs: LiveSession = recorded["s"]
+	var rb := String(recorded["bot"])
+	rs.gs.gold = 500
+	rs.rebase()
+	_buy_pace(rs, rb, recorded["bench"], BotBrain.PACE_CALM)
+	_set_pace(rs, rb, BotBrain.PACE_CALM)
+	var replay_gold = load("res://systems/game_state.gd").new()
+	var replay_world := SimWorld.new()
+	var pace_replay := ReplayLog.from_json(rs.log.to_json())
+	pace_replay.apply_to(replay_world, replay_gold)
+	_assert(pace_replay.divergence == ""
+			and SaveGame.capture_canonical(replay_world, replay_gold)
+				== SaveGame.capture_canonical(rs.world, rs.gs),
+		"a separately bought pace step replays to the same farm and robot")
+	replay_gold.free()
+	rs.done()
 
 	# --- what buying refuses ---------------------------------------------------
 	var yard := _shelf_yard(12901)

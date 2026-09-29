@@ -246,13 +246,13 @@ Prices and the shelf's look are for its build, `[Playtest]` like every other pri
 **The pace row's finished direction (Q-131, ruled 2026-09-27; S-34).** Keep the universal
 one-, two- and three-chevron controls. Beside them, show the Mark III leaning into motion
 with two short trails; keep that picture in every state so the row continues to read as the
-robot's pace. The second and third steps are separate purchases. The first purchase no
-longer opens all three. Prices for those later purchases remain `[Playtest]`.
+robot's pace. Calm and bold are separate purchases. Normal remains available without a
+purchase because it is the robot's starting pace. Bold's price remains `[Playtest]`.
 
-### What is in the current build: the shelf and the pace card (Q-129 a, built 2026-09-26; S-31)
+### What is in the current build: the shelf and the pace card (S-31, S-34)
 
-Pictures of each moment: `mockups/workbench_shelf/` (shelf open, too little gold, bought,
-set bold), taken from the game by `tools/capture_workbench_shelf.tscn`.
+Pictures of each moment: `mockups/workbench_shelf/` (shelf open, too little gold, calm
+bought, back to normal), taken from the game by `tools/capture_workbench_shelf.tscn`.
 
 - **The shelf is the bench's sixth plate**, after the mosaic; its face is a plank with a coin
   and a box on it. To fit six plates on the bench top each is now 120 wide rather than the
@@ -264,29 +264,32 @@ set bold), taken from the game by `tools/capture_workbench_shelf.tscn`.
   packet is in the seed box: tap to buy. Too little gold, and the price is red and the card
   refuses the tap. Her gold is shown with a coin at the page's bottom left, so a red price
   has its reason on the same screen.
-- **Bought, the price is replaced by the item's controls, in the same place.** For the pace
-  setting that is three buttons, 96 by 72: one, two and three chevrons for calm, normal and
-  bold, the robot's current step lit in the bench's brass. The Mark III in a rightward stride,
-  with two short trails behind it, stays beside the controls before and after purchase.
+- **The pace row is always its moving Mark III and three controls.** The 96 by 72 buttons
+  carry one, two and three chevrons for calm, normal and bold. Each step must be
+  bought and owned by this robot where a price is shown. Normal remains selectable without
+  a purchase because it is the robot's unchanged starting pace.
 - **Buying is the Action `buy_upgrade`**, with the bench's own square as its target, the
   robot named, and the item's key. The gateway refuses it away from a bench
   (`no_workbench`), for a machine that does not learn (`not_a_learner`), for anything not
   on the shelf (`not_offered`), twice for the same robot (`already_owned`) and without the
   gold (`no_gold`). What a robot owns is saved on it as `extra["upgrades"]` and carried in
   the crate when she picks it up (Q-98).
-- **Setting the pace is the Action `set_pace`** (`machine`, `pace` 0 to 2), refused on a
-  robot not bought the setting (`not_owned`). A tap on the step it is already on sends
-  nothing. What the pace does to the robot's nights, and the measurement, are in `06`,
-  "Its pace: how hard its nights push".
+- **Buying a pace step is the Action `buy_pace`** (`machine`, `pace` 0 to 2). It is refused
+  until the previous step is owned or when that step's price is unset, without treating an
+  unknown price as free. Setting an owned step is the Action `set_pace`; a tap on the current
+  step sends nothing. Historical
+  `buy_upgrade` Actions for `pace` still grant all three controls, preserving old replays
+  and saves.
 - **Per robot**, as ruled above: a second Mark III on the strip shows the card unbought
   until it is bought for that robot too. Both Actions are free and off the day's clock.
-- **The price is 150** — a fifth of the robot it is for, half the bench. `[Playtest]`
+- **Calm costs 150.** Normal is the free starting pace. Bold's price remains unset, so it
+  cannot be bought until that price is settled. `[Playtest]`
 - Every row so far belongs to one robot (`scope: "robot"` in the catalogue). A row that
   belonged to the whole farm would need a home for it on the farm's own state; none exists
   yet, so none is written.
 
-The pace card has S-34's permanent moving picture. Its single 150-gold purchase still opens
-all three controls; the separate second and third purchases remain to be built.
+The pace purchases are stored on the robot as a sorted list and travel with it in saves and
+crates. A robot from an older save that owns the former `pace` upgrade keeps all three steps.
 
 ### The starting brain card (Q-128, built 2026-09-26; S-32)
 
