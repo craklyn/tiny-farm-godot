@@ -122,6 +122,17 @@ function qNoRecommendation(row) {
    carries — an absent field is left out rather than shown empty. */
 function qWorkEvidence(card, ownerName) {
   const items = [];
+  // A change held for his yes leads with what it is and a way to read it
+  // (2026-09-28: "What does the title mean?").
+  const ap = card.approval;
+  if (ap) {
+    const docs = (ap.files || []).map(f => f.name).join(", ");
+    items.push({ label: "What changes", text: [ap.summary, docs && `Documents: ${docs}.`].filter(Boolean).join("\n\n") });
+    items.push({ label: "Read the exact changes", link: ap.changes_link,
+                 text: "Every line added and removed, in each document." });
+    items.push({ label: "Why this needs you", text: ap.reason });
+    if (ap.no) items.push({ label: "If you say no", text: ap.no });
+  }
   if (card.result) items.push({ label: "What came back", text: card.result });
   if (card.diff && card.diff.stat) items.push({ label: "Files changed", text: card.diff.stat });
   if (card.suites && Object.keys(card.suites).length)
@@ -172,7 +183,9 @@ function qYesCauses(row) {
   if (row.spendingYes) return row.spendingYes;
   if (row.state === "needs_approval") return "Approves this work and queues it for a build session; the finished result comes back for review.";
   const fus = row.followUps;
-  const merged = row.merge ? "The studio merges this exact change into the main code branch on its next run" : "";
+  const approvalYes = ((row.artifact || {}).approval || {}).yes || "";
+  const merged = row.merge ? (approvalYes.replace(/\.$/, "")
+    || "The work queue adds this exact change to the official version of the project within about ten minutes, once the tests pass") : "";
   if (!fus.length) return merged ? merged + "." : "It closes. Nothing else starts.";
   const risky = fus.filter(f => (f.tier ?? 1) === 2).length;
   let s = fus.length === 1 ? "One piece of work starts" : `${fus.length} pieces of work start`;
@@ -192,20 +205,21 @@ function qWorkItem(card, org, reason) {
   // merge it (work.landing_awaits_approval). The clean review is the reason.
   const merge = (card.workflow_view || {}).candidate_status === "awaiting_approval";
   const held = String((card.diff || {}).why_not_landed || "");
-  const question = rec.question || card.review_question || (merge
+  const ap = card.approval || null;
+  const question = rec.question || card.review_question || (ap ? ap.question : merge
     ? `Merge this reviewed change into the main code branch? ${held.charAt(0).toUpperCase()}${held.slice(1)}.`
     : "Does this reviewed result stand?");
   // A card whose only evidence is a change to the files is not prepped: nobody
   // has said what he should do about it, and pretending otherwise turns his
   // thirty-second pick into a rubber stamp (docs/QUEUE_TO_ZERO.md §7a).
-  const answer = hasRec ? rec.answer : merge ? "Merge it" : "";
+  const answer = hasRec ? rec.answer : merge ? (ap ? "Yes, add it" : "Merge it") : "";
   const convo = (card.conversation || []).filter(m => m.text)
     .map(m => ({ who: m.role === "daniel" ? "You" : qFirst(owner.name), text: m.text, at: m.at || "" }));
   return {
     kind: card.state === "needs_approval" ? "approve" : "review",
     id: card.id, cardId: card.id, isDecision: false, subject: card.subject || "",
     title: card.state === "for_review" ? reviewTitle(card) : card.title,
-    question, answer, why: rec.why || (merge ? (card.check || {}).summary || "" : ""), instead: rec.instead || "",
+    question, answer, why: rec.why || (ap ? ap.why : merge ? (card.check || {}).summary || "" : ""), instead: rec.instead || "",
     owner, seconds: answer ? Q_PICK_SECONDS : Q_READ_SECONDS, state: card.state, merge,
     spendingYes: card.state === "needs_approval" ? (card.spending_checkpoint || {}).yes_starts || "" : "",
     tier: card.tier ?? 2, reason: reason || "hard to walk back, or a matter of taste",

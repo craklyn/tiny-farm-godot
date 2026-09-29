@@ -780,13 +780,83 @@ def action_key(item_id, kind, input_id=""):
 
 
 # The landing bar's last gate (drain.NEVER_LANDS): a clean result that touches
-# something reverting a commit would not undo waits for Daniel's yes. The drain
-# writes this sentence and the projection recognises it, so both live here.
-APPROVAL_HOLD = "which undoing a commit would not put back the way it was"
+# the design documents, the deploy runbook, the store page or the build
+# pipeline waits for Daniel's yes. The drain writes this sentence and the
+# projection recognises it, so both live here. The earlier wording ("which
+# undoing a commit would not put back the way it was") was muddled and not
+# true of a document; cards held under it are still recognised.
+APPROVAL_HOLD = "which records the studio's direction, so it needs Daniel's OK"
+_OLD_APPROVAL_HOLD = "which undoing a commit would not put back the way it was"
 
 
 def approval_hold_reason(path):
     return f"it changes {path}, {APPROVAL_HOLD}"
+
+
+_PLAIN_FILES = {"docs/DECISION_LOG.md": "the decision log",
+                "docs/DESIGNER_QUEUE.md": "the list of open design questions",
+                "docs/DEPLOY.md": "the deploy runbook", "ITCH_PAGE.md": "the store page text",
+                "hq/data/releases.json": "the release list"}
+
+
+def plain_file(path):
+    """A file named the way Daniel would say it."""
+    if path in _PLAIN_FILES:
+        return _PLAIN_FILES[path]
+    if path.startswith("docs/design/") and path.endswith(".md"):
+        stem = os.path.basename(path)[:-3]
+        stem = re.sub(r"^\d+-", "", stem).replace("-", " ")
+        return f"the {stem} design doc"
+    if path.startswith("hq/data/decisions/"):
+        return f"decision card {os.path.basename(path)[:-5]}"
+    if path.startswith(".github/"):
+        return "the build pipeline"
+    return path
+
+
+def _plain_list(names):
+    names = list(dict.fromkeys(names))
+    return names[0] if len(names) == 1 else ", ".join(names[:-1]) + " and " + names[-1]
+
+
+def approval_brief(item, org=None):
+    """What Daniel needs on the page to answer a change held for his yes.
+
+    2026-09-28, on the Q-131 card: "What does the title mean?" It read "Merge
+    this reviewed change into the main code branch? It changes docs/design/
+    06-bots-and-training.md, which undoing a commit would not put back the way
+    it was." This says instead what the change is, where, what the review
+    found, and what yes and no each do, in his words."""
+    if not landing_awaits_approval(item):
+        return None
+    files = list((item.get("diff") or {}).get("files") or
+                 ((item.get("attempt_outcome") or {}).get("candidate") or {}).get("files") or [])
+    where = _plain_list([plain_file(f) for f in files]) if files else "the project"
+    people = {e.get("id"): e for e in ((org or {}).get("employees") or [])}
+    who = str((people.get(item.get("owner")) or {}).get("name") or item.get("owner") or "The studio").split()[0]
+    title = str(item.get("title") or "")
+    if item.get("ruling_id"):
+        chose = title.split("you chose", 1)[1].strip(" :—") if "you chose" in title else ""
+        what = f"your {item['ruling_id']} ruling" + (f" (you chose: {chose})" if chose else "")
+        question = f"Add {who}'s write-up of {what} to {where}?"
+    else:
+        question = f"Add {who}'s change to {where}? It is for: {title}"
+    body = str(item.get("result") or "").partition(FOLLOW_MARK)[0].strip()
+    summary = body.split("\n\n")[0][:700]
+    check = (item.get("check") or {}).get("summary") or ""
+    return {
+        "question": question,
+        "summary": summary,
+        "files": [{"path": f, "name": plain_file(f)} for f in files],
+        "why": ("The reviewer read it and found nothing wrong: " + check) if check else
+               "The reviewer read it and found nothing wrong.",
+        "reason": ("Design documents record your direction for the game, so the studio never "
+                   "changes them without your OK."),
+        "yes": (f"{who}'s edits become the official version of {where} within about ten minutes, "
+                "once the tests pass. It can be undone later with one revert."),
+        "no": f"Nothing in {where} changes; the card goes back to {who} with anything you write.",
+        "changes_link": f"/work-change/{item['id']}",
+    }
 
 
 def landing_awaits_approval(item):
@@ -796,7 +866,8 @@ def landing_awaits_approval(item):
     Q-131 ruling cards were projected as studio repairs and never reached him)."""
     if item.get("state") != "for_review" or item.get("completion") or item.get("pending_landing"):
         return False
-    if item.get("repair_hold") or not str((item.get("diff") or {}).get("why_not_landed") or "").endswith(APPROVAL_HOLD):
+    held = str((item.get("diff") or {}).get("why_not_landed") or "")
+    if item.get("repair_hold") or not held.endswith((APPROVAL_HOLD, _OLD_APPROVAL_HOLD)):
         return False
     attempt = item.get("attempt_outcome") or {}
     check = item.get("check") or {}
@@ -3303,8 +3374,12 @@ def snapshot():
     head_result = drain.sh(["git", "rev-parse", "main"], cwd=drain.REPO, timeout=10)
     head = head_result.stdout.strip() if head_result.returncode == 0 else ""
     active = HOST.drain_state() if hasattr(HOST, "drain_state") else None
+    org = HOST.load_org() if hasattr(HOST, "load_org") else None
     for item in got:
         item["workflow_view"] = drain.project_work(item, head=head, active=active)
+        brief = approval_brief(item, org)
+        if brief:
+            item["approval"] = brief
         # The lanes the health check counts (card_lanes), so the queue page
         # sorts a card by the same verdict instead of re-deriving it.
         item["lanes"] = card_lanes(item, item["workflow_view"])

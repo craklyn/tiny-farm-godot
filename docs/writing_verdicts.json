@@ -3229,6 +3229,9 @@
    "verdict": "decode",
    "why": "The sentence does not identify who “she” is or what “it” refers to."
   },
+  "64af74c9716debe3f2b9": {
+   "verdict": "ok"
+  },
   "64b5b06728658e91f82c": {
    "instead": "Record the completed work that prevents integration from ending before it is ready",
    "quote": "integration exit guard work",
@@ -3410,6 +3413,9 @@
    "verdict": "ok"
   },
   "6a9a314e5882383e6126": {
+   "verdict": "ok"
+  },
+  "6aa60321e2b43f2e4b68": {
    "verdict": "ok"
   },
   "6aadc013e626593f490c": {
@@ -5769,6 +5775,9 @@
   "b449661b5686cbc7ec97": {
    "verdict": "ok"
   },
+  "b4e5fec34936442f709a": {
+   "verdict": "ok"
+  },
   "b500c97095b5e277eaa8": {
    "instead": "An automated task can start these actions; none is running merely because it is ready",
    "quote": "A worker can start these actions",
@@ -6677,6 +6686,9 @@
   "d27de2d124c7f0b260fb": {
    "verdict": "ok"
   },
+  "d299acf6fb957d08b5f7": {
+   "verdict": "ok"
+  },
   "d2d294b3e723514a4d57": {
    "verdict": "ok"
   },
@@ -7153,6 +7165,12 @@
    "quote": "The studio owns the next step",
    "verdict": "second-look",
    "why": "“Owns” is being used as a metaphor for responsibility."
+  },
+  "e0a3d85cf7976a4b09e8": {
+   "instead": "The next automated check will merge this reviewed change into the main code branch.",
+   "quote": "on its next run",
+   "verdict": "decode",
+   "why": "“Run” names an internal process without telling the reader what will happen or when."
   },
   "e0a685b866155c557bad": {
    "verdict": "ok"

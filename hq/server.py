@@ -2318,6 +2318,67 @@ def drain_entry(state, item_id):
     return state if state.get("item") == item_id else None
 
 
+def _parse_patch(patch):
+    """A unified diff as [{path, lines: [(kind, text)]}], kind in add/del/ctx/gap."""
+    files, cur = [], None
+    for line in (patch or "").splitlines():
+        if line.startswith("diff --git "):
+            cur = {"path": line.split(" b/", 1)[-1], "lines": []}
+            files.append(cur)
+        elif cur is None or line.startswith(("index ", "--- ", "+++ ", "new file", "deleted file",
+                                             "similarity", "rename ", "old mode", "new mode")):
+            continue
+        elif line.startswith("@@"):
+            cur["lines"].append(("gap", ""))
+        elif line.startswith("+"):
+            cur["lines"].append(("add", line[1:]))
+        elif line.startswith("-"):
+            cur["lines"].append(("del", line[1:]))
+        elif not line.startswith("\\"):
+            cur["lines"].append(("ctx", line[1:] if line.startswith(" ") else line))
+    return files
+
+
+def work_change_page(item_id):
+    """The exact wording a card's change adds and removes, readable before he
+    says yes to it (2026-09-28: the approval card showed only file names)."""
+    import html as _h
+    import drain
+    if not re.fullmatch(work.WORK_ID, item_id or ""):
+        return 404, "<p>No such work card.</p>"
+    try:
+        item = work.load_item(item_id)
+    except Exception:
+        return 404, "<p>No such work card.</p>"
+    files = _parse_patch(drain.load_patch(item_id))
+    esc = lambda t: _h.escape(str(t))
+    people = {e.get("id"): e for e in (load_org().get("employees") or [])}
+    who = str((people.get(item.get("owner")) or {}).get("name") or item.get("owner") or "the studio").split()[0]
+    parts = [f"<h1>What {esc(who)} changed</h1><p class=sub>{esc(item.get('title') or '')}</p>"]
+    if not files:
+        parts.append("<p>This card has no recorded change to show.</p>")
+    for f in files:
+        parts.append(f"<h2>{esc(work.plain_file(f['path']))} <small>{esc(f['path'])}</small></h2><div class=diff>")
+        for kind, text in f["lines"]:
+            parts.append("<div class=gap>…</div>" if kind == "gap" else
+                         f"<div class={kind}>{esc(text) or '&nbsp;'}</div>")
+        parts.append("</div>")
+    page = ("<!doctype html><html><head><meta charset=utf-8><meta name=viewport content='width=device-width'>"
+            f"<title>Changes — {esc(item_id)}</title><style>"
+            ":root{--bg:#fbfaf7;--fg:#222;--mute:#777;--add:#e6f4e4;--addfg:#1d5a1d;--del:#fbe6e4;--delfg:#8a2a22}"
+            "@media (prefers-color-scheme:dark){:root{--bg:#1c1a17;--fg:#e8e4dc;--mute:#9a948a;"
+            "--add:#1f3320;--addfg:#a6d9a2;--del:#3a2220;--delfg:#f0aaa2}}"
+            "body{background:var(--bg);color:var(--fg);font:15px/1.5 system-ui,sans-serif;max-width:60rem;margin:2rem auto;padding:0 1rem}"
+            ".sub,small{color:var(--mute)}small{font-size:.75em;font-weight:400;margin-left:.5em}"
+            ".diff{border:1px solid color-mix(in srgb,var(--mute) 40%,transparent);border-radius:6px;overflow:hidden}"
+            ".diff div{padding:.15rem .6rem;white-space:pre-wrap;word-break:break-word}"
+            ".add{background:var(--add);color:var(--addfg)}.del{background:var(--del);color:var(--delfg);text-decoration:line-through}"
+            ".ctx{color:var(--mute)}.gap{color:var(--mute);text-align:center}"
+            "</style></head><body><p class=sub>Lines struck through in red are removed; lines in green are added. "
+            "Grey lines are unchanged, shown for context.</p>" + "".join(parts) + "</body></html>")
+    return 200, page
+
+
 def execution_queue_snapshot():
     """Read fresh Git and card facts; dirty edits need not change card mtimes."""
     got = subprocess.run([sys.executable, os.path.join(HQ_DIR, "drain.py"), "--list-json"],
@@ -2730,6 +2791,9 @@ def work_detail(item_id):
         return {"error": "no such item"}
     import drain
     item["workflow_view"] = drain.project_work(item)
+    brief = work.approval_brief(item, load_org())
+    if brief:
+        item["approval"] = brief
     timeline = []
     for index, message in enumerate(item.get("conversation") or []):
         timeline.append({"id": f"conversation:{index}", "kind": "comment",
@@ -6990,6 +7054,9 @@ class Handler(BaseHTTPRequestHandler):
                 if not os.path.isfile(mp):
                     return self._send(404, {"error": "no such map"})
                 return self._send(200, load_json(mp))
+            if path.startswith("/work-change/"):
+                code, page = work_change_page(unquote(path[len("/work-change/"):]))
+                return self._send(code, page, "text/html; charset=utf-8")
             if path == "/api/docs":
                 return self._send(200, api_docs())
             if path.startswith("/api/doc/"):

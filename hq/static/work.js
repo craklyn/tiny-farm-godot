@@ -334,9 +334,12 @@ function consequence(it, org) {
     </div>`;
   } else if (it.state === "for_review" && view.candidate_status === "awaiting_approval") {
     const fus = followUps(it);
-    rows.push([workDecisionLabel(it), `The studio merges this exact reviewed change into the main code branch on its next run${fus.length
+    const ap = it.approval || {};
+    const yes = (ap.yes || "The work queue adds this exact reviewed change to the official version of the project within about ten minutes, once the tests pass.").replace(/\.$/, "");
+    rows.push([workDecisionLabel(it), `${esc(yes)}${fus.length
       ? `, and then the studio starts the follow-up work listed below` : ""}.`]);
     if (fus.length) extra = followUpBox(fus, org);
+    if (ap.changes_link) rows.push(["Read the exact changes", `<a href="${esc(ap.changes_link)}" target="_blank" rel="noopener">Every line added and removed, in each document</a>.`]);
     rows.push(["Reject and close review", `Rejects this version and closes its review. Nothing is merged and no follow-up work is filed.`]);
     rows.push(commentRow(first));
   } else if (it.state === "for_review") {

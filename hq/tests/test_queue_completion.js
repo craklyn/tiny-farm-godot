@@ -67,7 +67,23 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/queue.js'), 'utf
   assert.match(merge.question, /^Merge this reviewed change into the main code branch\? It changes docs\/design\/06/);
   assert.equal(merge.answer, 'Merge it');
   assert.equal(merge.why, 'The ruling is consistently recorded.');
-  assert.match(context.qYesCauses(merge), /merges this exact change .*; then one piece of work starts\.$/);
+  assert.match(context.qYesCauses(merge), /adds this exact change .*; then one piece of work starts\.$/);
+  // With the server's plain brief (2026-09-28, "What does the title mean?"),
+  // the card asks in his words and leads with what changes and how to read it.
+  const briefed = context.qWorkItem({ ...items[7], approval: {
+    question: "Add Tomás's write-up of your Q-131 ruling (you chose: Show a moving Mark III beside the chevrons) to the bots and training design doc?",
+    summary: 'Recorded the ruling.', files: [{ path: 'docs/design/06-bots-and-training.md', name: 'the bots and training design doc' }],
+    why: 'The reviewer read it and found nothing wrong: The ruling is consistently recorded.',
+    reason: 'Design documents record your direction for the game, so the studio never changes them without your OK.',
+    yes: "Tomás's edits become the official version of the bots and training design doc within about ten minutes, once the tests pass. It can be undone later with one revert.",
+    no: 'Nothing changes.', changes_link: '/work-change/design' } }, {}, '');
+  assert.match(briefed.question, /^Add Tomás's write-up of your Q-131 ruling/);
+  assert.doesNotMatch(briefed.question, /main code branch|undoing a commit/);
+  assert.equal(briefed.answer, 'Yes, add it');
+  assert.match(briefed.why, /^The reviewer read it and found nothing wrong/);
+  assert.deepEqual(Array.from(briefed.evidence.slice(0, 2), e => e.label), ['What changes', 'Read the exact changes']);
+  assert.equal(briefed.evidence[1].link, '/work-change/design');
+  assert.match(context.qYesCauses(briefed), /^Tomás's edits become the official version .* revert; then one piece of work starts\.$/);
   assert.equal(context.workflowStatus(items[6]).startsWith('Blocked — Save-lineage edits'), true);
   // The folds below are what this test reads; the question pane's own
   // renderers are exercised by test_waiting_on_you.py.
