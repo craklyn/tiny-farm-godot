@@ -50,7 +50,7 @@ server.backfill_ruling_work()
 server.record_ruling({"id": "Q-902", "intent": "choose", "option": "b",
                       "submission_id": "live-submission-00002",
                       "judgment": "Keep it quiet under the music."})
-# A card an outside session is working, so the page shows it under Working now.
+# A card an outside session is working, so the page shows it under Being worked now.
 claimed = {"id": "w0000000000c", "title": "Fix the shop shelf", "owner": "rin", "tier": 1,
            "state": "waiting_session", "created": "2026-09-25T08:00:00", "created_ts": 1,
            "first_action": "Read the shelf code."}

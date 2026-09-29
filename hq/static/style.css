@@ -245,6 +245,8 @@ button.exec-toggle { width: 27px; height: 27px; padding: 0; border-radius: 50%; 
 .tip:hover::after, .tip:focus-visible::after { opacity: 1; visibility: visible; transform: translate(-50%, 0); }
 .exec-queue-section { margin: 20px 0; }
 .exec-queue-section > summary { cursor: pointer; font-size: 18px; font-weight: 700; margin-bottom: 10px; }
+.exec-queue-later { margin: 10px 0 0; }
+.exec-queue-later > summary { font-size: 14px; color: var(--muted); }
 .exec-queue-list { border-top: 1px solid var(--line); }
 .exec-queue-row { display: grid; grid-template-columns: 32px minmax(0, 1fr) auto; gap: 10px; align-items: center;
   padding: 10px 7px; border-bottom: 1px solid var(--line); color: var(--text); text-decoration: none; }
@@ -365,7 +367,10 @@ button.exec-toggle { width: 27px; height: 27px; padding: 0; border-radius: 50%; 
 .tabs button {
   background: var(--panel); color: var(--muted); border: 1px solid var(--line); font-weight: 600;
 }
-.tabs button.active { background: var(--panel2); color: var(--accent); border-color: var(--accent); }
+.tabs button.active, .tabs a.active { background: var(--panel2); color: var(--accent); border-color: var(--accent); }
+.tabs a { padding: 8px 16px; border: 1px solid var(--line); border-radius: 8px; background: var(--panel);
+  color: var(--muted); font-weight: 600; font-size: 14px; text-decoration: none; }
+.tabs a:hover, .tabs a:focus-visible { color: var(--accent); }
 .ent-card {
   background: var(--panel); border: 1px solid var(--line); border-radius: var(--radius);
   padding: 14px; cursor: pointer; text-align: center; transition: border-color .15s;

@@ -307,6 +307,13 @@ function navSection(hash) {
   if (path === "/design" || path.startsWith("/design/") || path === "/entities" || path.startsWith("/entity/") || path.startsWith("/sprite/") || path === "/maps" || path === "/playtests" || path.startsWith("/playtest/")) return "studio";
   return "overview";
 }
+// The Work section's three pages are sister tabs, not drill-downs of each
+// other: one strip, drawn by this one function on each of them.
+const WORK_TABS = [["/work-status", "Work"], ["/work/queue", "Task queue"], ["/chat/bullpen", "Bullpen"]];
+function workTabs(current) {
+  return `<nav class="tabs work-tabs" aria-label="Work pages">${WORK_TABS.map(([path, label]) =>
+    `<a href="#${path}"${path === current ? ` class="active" aria-current="page"` : ""}>${label}</a>`).join("")}</nav>`;
+}
 function syncNavAvailability() {
   document.querySelectorAll(".primary-nav a[data-section]").forEach(link => {
     link.hidden = !!surfaceParked(link.getAttribute("href"));

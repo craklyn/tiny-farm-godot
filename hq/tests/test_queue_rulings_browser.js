@@ -2,7 +2,7 @@
 // Browser-observed contract for the task queue page (#/work/queue), Q-125 (a):
 // every ruling Daniel has recorded and the studio has not yet acted on is on
 // the page in plain words, with his comment, linking to the card that acts on
-// it; and a card a session outside HQ is working shows under "Working now".
+// it; and a card a session outside HQ is working shows under "Being worked now".
 // The page is fed the backend's own projection for a scratch store
 // (fixtures/ruling_queue_payload.py), not a hand-written fixture.
 const assert = require("node:assert/strict");
@@ -20,6 +20,9 @@ const org = {employees: [{id: "claude", name: "Adam"}, {id: "rin", name: "Rin Na
 
 const source = fs.readFileSync(path.join(root, "hq/static/workers.js"), "utf8")
   .replace(/<\/script/gi, "<\\/script");
+// The Work section's shared tab strip lives in app.js; the page gets the real one.
+const app = fs.readFileSync(path.join(root, "hq/static/app.js"), "utf8");
+const tabsSource = app.slice(app.indexOf("const WORK_TABS"), app.indexOf("function syncNavAvailability("));
 const css = fs.readFileSync(path.join(root, "hq/static/style.css"), "utf8")
   .replace(/<\/style/gi, "<\\/style");
 const chrome = [process.env.CHROME, "/usr/bin/google-chrome", "/usr/bin/chromium"]
@@ -39,6 +42,7 @@ function workflowView(item) { return item.workflow_view ? {...item.workflow_view
 const payload = ${JSON.stringify({queue, org})};
 window.fetch = async url => ({ ok: true, json: async () => JSON.parse(JSON.stringify(url === "/api/execution/queue" ? payload.queue : {})) });
 async function api(url) { return JSON.parse(JSON.stringify(url === "/api/org" ? payload.org : {})); }
+${tabsSource}
 </script><script>${source}</script><script>
 (async () => {
   await routes["/work/queue"]();
@@ -52,8 +56,8 @@ async function api(url) { return JSON.parse(JSON.stringify(url === "/api/org" ? 
     $view.querySelector(".exec-queue-section:not(.exec-rulings)")) & Node.DOCUMENT_POSITION_FOLLOWING);
   const sections = [...$view.querySelectorAll(".exec-queue-section:not(.exec-rulings)")];
   const section = name => sections.find(s => (s.querySelector("h2, summary") || {}).textContent.startsWith(name));
-  out.working = section("Working now").textContent.replace(/\\s+/g, " ");
-  out.next = section("Next").textContent.replace(/\\s+/g, " ");
+  out.working = section("Being worked now").textContent.replace(/\\s+/g, " ");
+  out.next = section("Waiting to start").textContent.replace(/\\s+/g, " ");
   narrow.innerHTML = wkRulingsWaiting(payload.queue.rulings_waiting, payload.org);
   const narrowRow = narrow.querySelector(".exec-queue-row");
   out.narrowFits = narrowRow.scrollWidth <= narrow.clientWidth;
@@ -87,7 +91,7 @@ try {
   assert.deepEqual(out.rows.map(r => r.href), workIds.map(id => "#/work/" + id), "each row opens its card");
   assert.ok(!out.rows.some(r => r.text.includes("already integrated")), "an integrated ruling is not listed");
   assert.ok(out.rulingsFirst, "the rulings come before the queue sections");
-  assert.match(out.working, /Fix the shop shelf/, "a card claimed from outside HQ is under Working now");
+  assert.match(out.working, /Fix the shop shelf/, "a card claimed from outside HQ is under Being worked now");
   assert.match(out.working, /Being worked by Codex session since/, "and says who is working it");
   assert.match(out.next, /Act on your ruling: The planting sound — you chose The two soft beats/,
     "the ruling's own card is in the queue");

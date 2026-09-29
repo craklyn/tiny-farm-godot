@@ -243,11 +243,10 @@ async function renderWorkers() {
   const control = `<section class="exec-control ${execution.paused ? "paused" : "running"}">
     <span class="exec-name">Task queue</span>
     <span class="exec-status tip" tabindex="0" data-tip="${esc(statusTip)}"><i></i>${esc(autoStatus)}</span>
-    <a class="exec-view" href="#/work/queue">View queue <span aria-hidden="true">→</span></a>
     <button class="ghost exec-toggle tip" id="wk-exec-toggle" aria-label="${execution.paused ? "Resume" : "Pause"} automatic task queue work"
       data-tip="${execution.paused ? "Resume working through the accepted task queue." : "Pause working through the accepted task queue."}">${execution.paused ? "▶" : "Ⅱ"}</button>
   </section>`;
-  $view.innerHTML = `
+  $view.innerHTML = `${workTabs("/chat/bullpen")}
     <h1>🔭 The bullpen</h1>
     <p class="sub">Where the studio's workers can be watched as they work. Every model session the build queue runs, as it runs: what the worker reads, edits and runs, its turns and cost so far, and how it ended. The build queue itself starts these on its timer; nothing here starts one.</p>
     ${control}
@@ -381,14 +380,13 @@ async function renderExecutionQueue() {
     fetch("/api/execution/queue").then(r => r.json()), api("/api/org")]); }
   catch (e) { $view.innerHTML = `<div class="card">HQ could not read the task queue: ${esc(e.message)}</div>`; return; }
   const next = (queue.eligible || []).slice(0, 10), later = (queue.eligible || []).slice(10);
-  $view.innerHTML = `<h1>Task queue</h1>
+  $view.innerHTML = `${workTabs("/work/queue")}<h1>Task queue</h1>
     <p class="sub">The order the scheduler will actually use. A reviewed fix for overlapping changes can start ahead of new work; older work gains priority over newer work. A change that cannot land as it stands is listed once, under the fix that replaces it.</p>
-    <p><a class="plain" href="#/chat/bullpen">← Back to the bullpen</a></p>
     ${wkRulingsWaiting(queue.rulings_waiting || [], org)}
-    <section class="exec-queue-section"><h2>Working now <span class="w-count">${(queue.working || []).length}</span></h2>${wkQueueRows(queue.working || [], org)}</section>
-    <section class="exec-queue-section"><h2>Next <span class="w-count">${next.length}</span></h2>${wkQueueRows(next, org)}</section>
-    ${later.length ? `<details class="exec-queue-section"><summary>Later (${later.length})</summary>${wkQueueRows(later, org)}</details>` : ""}
-    <details class="exec-queue-section"><summary>Held (${(queue.held || []).length})</summary>${wkQueueRows(queue.held || [], org, true)}</details>`;
+    <section class="exec-queue-section"><h2>Being worked now <span class="w-count">${(queue.working || []).length}</span></h2>${wkQueueRows(queue.working || [], org)}</section>
+    <section class="exec-queue-section"><h2>Waiting to start <span class="w-count">${(queue.eligible || []).length}</span></h2>${wkQueueRows(next, org)}
+      ${later.length ? `<details class="exec-queue-section exec-queue-later"><summary>Later (${later.length})</summary>${wkQueueRows(later, org)}</details>` : ""}</section>
+    <details class="exec-queue-section"><summary>Blocked (${(queue.held || []).length})</summary>${wkQueueRows(queue.held || [], org, true)}</details>`;
   // While the task queue runs, items move between these lists on their own;
   // re-read every 15 seconds and redraw only when a row moved or changed.
   const shape = doc => ["working", "eligible", "held"].map(k => (doc[k] || [])

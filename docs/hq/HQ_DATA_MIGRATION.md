@@ -23,7 +23,7 @@ After this change there is one copy of each record, and one way to close a card:
 - **A session closes a card with `python3 hq/card.py close`.** HQ checks the evidence
   itself and refuses without it (`hq/closing.py`).
 - **A session HQ did not launch can claim a card** with `python3 hq/card.py claim`, so
-  the task queue shows it under "Working now" instead of "Next".
+  the task queue shows it under "Being worked now" instead of "Waiting to start".
 - **A ruling files its own work.** When Daniel picks an option on a decision card, HQ
   files an "Act on your ruling" card for the decision's owner at once. The task queue
   page lists every ruling not yet integrated until its status changes.
@@ -132,7 +132,7 @@ python3 hq/card.py release w0123456789a --by "Codex session"
 A claim is a lease on the card (`outside_claim`: who, since, the last check-in, the
 expiry).
 
-- **While it is live:** the card is "Working now" on the task queue, and the drain
+- **While it is live:** the card is "Being worked now" on the task queue, and the drain
   does not start a worker on it.
 - **When it lapses:** a session that stops checking in loses the claim, and the card
   returns to "Next".

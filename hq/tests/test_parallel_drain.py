@@ -139,7 +139,7 @@ class ParallelDrain(unittest.TestCase):
         self.assertEqual({e['item'] for e in doc['items']}, {'wa', 'wb', 'wc'})
         self.assertIn(doc['item'], {'wa', 'wb', 'wc'})
         self.assertEqual(doc['run'], 'fixture')
-        # The queue page's "Working now" lists all three, none as a lost claim.
+        # The queue page's "Being worked now" lists all three, none as a lost claim.
         self.assertEqual({row['work_id'] for row in seen['queue']['working']}, {'wa', 'wb', 'wc'})
         self.assertEqual(seen['queue']['held'], [])
         # When the run has finished with them, none is still shown as worked.

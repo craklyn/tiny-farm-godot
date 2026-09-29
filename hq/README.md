@@ -53,7 +53,7 @@ the rollback.
 Nobody edits a card file. A session works a card through HQ:
 
 ```bash
-python3 hq/card.py claim   <id> --by "Codex session"     # shows under Working now; lapses unless renewed
+python3 hq/card.py claim   <id> --by "Codex session"     # shows under Being worked now; lapses unless renewed
 python3 hq/card.py close   <id> --by "Codex session" --sha <commit> --ci-run <run id> \
                            --result "What changed, in plain sentences."
 python3 hq/card.py release <id> --by "Codex session"

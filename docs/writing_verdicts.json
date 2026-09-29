@@ -481,6 +481,12 @@
   "0f2d4ba45145dd81d7aa": {
    "verdict": "ok"
   },
+  "0f973b459adc0eb1656e": {
+   "instead": "Work, Task queue and Bullpen become tabs at the same level, with matching counts",
+   "quote": "sister tabs",
+   "verdict": "second-look",
+   "why": "This metaphor makes the reader work out that the tabs are at the same level."
+  },
   "0fa1ac65ddfcc954c09f": {
    "verdict": "ok"
   },
@@ -4066,6 +4072,9 @@
    "verdict": "ok"
   },
   "7f53ffabc3a1e4df7a86": {
+   "verdict": "ok"
+  },
+  "7f827c6a7c77206340d4": {
    "verdict": "ok"
   },
   "7fc195090a053707bde9": {

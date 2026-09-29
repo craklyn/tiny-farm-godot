@@ -9,6 +9,9 @@ const context = {
   esc: value => String(value), renderExecutionQueue: () => {}, console,
 };
 vm.createContext(context);
+// The Work section's shared tab strip lives in app.js; load the real one.
+const app = fs.readFileSync(require("path").join(__dirname, "../static/app.js"), "utf8");
+vm.runInContext(app.slice(app.indexOf("const WORK_TABS"), app.indexOf("function syncNavAvailability(")), context);
 vm.runInContext(source, context);
 
 const sessions = [
@@ -64,7 +67,7 @@ for (const kind of ["warning", "command-failure", "recovered", "finding", "termi
 }
 
 // The queue page re-reads itself while the task queue runs, and redraws only
-// when a row moved: a card that starts moves from Next to Working now.
+// when a row moved: a card that starts moves from Waiting to start to Being worked now.
 (async () => {
   let payload = {working: [], eligible: [{action_id: "a1", position: 1, title: "Alpha", age_seconds: 1}], held: []};
   let fetches = 0, tick = null;
@@ -83,8 +86,8 @@ for (const kind of ["warning", "command-failure", "recovered", "finding", "termi
   assert.equal(context.$view.innerHTML, "unchanged", "a re-read that moves nothing does not redraw");
   payload = {working: [{action_id: "a1", title: "Alpha"}], eligible: [], held: []};
   await tick();
-  assert.ok(context.$view.innerHTML.includes("Working now <span class=\"w-count\">1</span>"),
-    "a card that started is redrawn under Working now");
+  assert.ok(context.$view.innerHTML.includes("Being worked now <span class=\"w-count\">1</span>"),
+    "a card that started is redrawn under Being worked now");
   context.location.hash = "#/";
   const before = fetches;
   await tick();
