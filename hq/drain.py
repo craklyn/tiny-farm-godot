@@ -2768,8 +2768,16 @@ def settle_handoffs():
     for item in work.items():
         if item.get("state") in work.FINAL_STATES:
             continue
-        if any(action.get("type") == "handoff" and action.get("state") == "open"
-               for action in (item.get("workflow") or {}).get("actions") or []):
+        workflow = item.get("workflow") or {}
+        handoffs = {a.get("id") for a in workflow.get("actions") or [] if a.get("type") == "handoff"}
+        # A hold can outlive its step, and a run that met the refusal used to
+        # block the card's own step for operator review with the same reason:
+        # on 2026-09-29 two cards sat on such holds long after main was ready.
+        if any(a.get("type") == "handoff" and a.get("state") == "open"
+               for a in workflow.get("actions") or []) or \
+                any(b.get("state") == "open" and (b.get("action_id") in handoffs or
+                    str(b.get("reason") or "").startswith(integration.HANDOFF_REFUSAL))
+                    for b in workflow.get("blockers") or []):
             resolve_handoff_action(item)
             cleared.append(item["id"])
     return cleared
@@ -2782,12 +2790,27 @@ def resolve_handoff_action(item):
         handoffs = set()
         changed = False
         for action in workflow.get("actions") or []:
-            if action.get("type") == "handoff" and action.get("state") == "open":
+            if action.get("type") != "handoff":
+                continue
+            # Every handoff step's hold is released, including one whose step
+            # was closed while its hold stayed open.
+            handoffs.add(action["id"])
+            if action.get("state") == "open":
                 action["state"], action["finished_at"] = "done", work._now_iso()
-                handoffs.add(action["id"])
+                changed = True
+        refused = {b.get("action_id") for b in workflow.get("blockers") or []
+                   if b.get("state") == "open"
+                   and str(b.get("reason") or "").startswith(integration.HANDOFF_REFUSAL)}
+        for action in workflow.get("actions") or []:
+            # A step blocked only because main was not ready may run again.
+            if action.get("id") in refused and action.get("state") == "blocked":
+                action["state"] = "open"
+                action.pop("finished_at", None)
+                action.pop("claim", None)
                 changed = True
         for blocker in workflow.get("blockers") or []:
-            if blocker.get("action_id") in handoffs and blocker.get("state") == "open":
+            if (blocker.get("action_id") in handoffs or blocker.get("action_id") in refused) \
+                    and blocker.get("state") == "open":
                 blocker["state"], blocker["resolved_at"] = "resolved", work._now_iso()
                 changed = True
         if changed:
@@ -2831,8 +2854,12 @@ def _claim_item(selected, actions, run_id, records, done):
             records[item["id"]] = rec
             record_handoff_blocker(item, reason)
             if claim_id:
+                # A deferral, like a pause or a dry allowance: the step goes back
+                # to open and the handoff hold alone keeps the card, until
+                # settle_handoffs releases it. Blocking the step for operator
+                # review instead left holds nothing ever cleared (2026-09-29).
                 action_dispatch.finish(work, item, action, claim_id,
-                                       progressed=False, reason=reason)
+                                       progressed=False, deferred=True, reason=reason)
             return None
         resolve_handoff_action(item)
     return {"item": item, "action": action, "claim_id": claim_id}

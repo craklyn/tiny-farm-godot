@@ -76,6 +76,51 @@ class ActionDispatch(unittest.TestCase):
         self.assertTrue(all(b["state"] == "resolved" for b in workflow["blockers"]
                             if b.get("action_id") in handoffs))
 
+    def test_a_handoff_hold_whose_step_is_already_closed_is_released_too(self):
+        # 2026-09-29: two cards kept an open "main is still checked out" hold
+        # whose handoff step had already been closed, so nothing released it.
+        item = self.card(state="waiting_session", repair_hold="")
+        with patch.object(drain.integration, "main_head", return_value="abc"):
+            drain.record_handoff_blocker(item, "Local main is still checked out at /somewhere.")
+        with work.mutation_lock():
+            fresh = work.load_item(item["id"])
+            for action in fresh["workflow"]["actions"]:
+                if action["type"] == "handoff":
+                    action["state"] = "done"
+            work.save_item(fresh)
+        with patch.object(drain.integration, "handoff_status", return_value=(True, "")):
+            self.assertEqual(drain.settle_handoffs(), [item["id"]])
+            self.assertEqual(drain.settle_handoffs(), [])
+        blockers = work.load_item(item["id"])["workflow"]["blockers"]
+        self.assertTrue(blockers)
+        self.assertTrue(all(b["state"] == "resolved" for b in blockers))
+
+    def test_a_step_blocked_only_because_main_was_not_ready_runs_again(self):
+        # 2026-09-29: a run that found main not ready blocked the card's own build
+        # step "for operator review" with the handoff refusal as its reason, and
+        # nothing ever released it once main was ready again.
+        item = self.card(state="waiting_session", repair_hold="")
+        action = work.ensure_action(item, "build", input_id="legacy", owner="grace",
+                                    summary="Build it.")
+        with work.mutation_lock():
+            fresh = work.load_item(item["id"])
+            for a in fresh["workflow"]["actions"]:
+                if a["id"] == action["id"]:
+                    a["state"] = "blocked"
+            work.save_item(fresh)
+        work.ensure_blocker(work.load_item(item["id"]), "tooling", input_id=action["id"], owner="claude",
+                            reason=drain.integration.HANDOFF_REFUSAL + "/somewhere; a handoff is required.",
+                            action_id=action["id"], wake="operator review")
+        with patch.object(drain.integration, "handoff_status", return_value=(False, "still held")):
+            self.assertEqual(drain.settle_handoffs(), [])
+        with patch.object(drain.integration, "handoff_status", return_value=(True, "")):
+            self.assertEqual(drain.settle_handoffs(), [item["id"]])
+            self.assertEqual(drain.settle_handoffs(), [])
+        workflow = work.load_item(item["id"])["workflow"]
+        step = next(a for a in workflow["actions"] if a["id"] == action["id"])
+        self.assertEqual(step["state"], "open")
+        self.assertTrue(all(b["state"] == "resolved" for b in workflow["blockers"]))
+
     def test_weather_reconciliation_is_selected_once_and_has_specific_brief(self):
         item = self.card()
         selected = action_dispatch.choose(drain)

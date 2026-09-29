@@ -53,6 +53,10 @@ def _owner_state(holder, parent):
     return True
 
 
+# The start of handoff_status's refusal, so a hold it caused can be recognised.
+HANDOFF_REFUSAL = "Local main is still checked out at "
+
+
 def handoff_status(repo):
     holder = main_checkout(repo)
     if holder:
@@ -62,7 +66,7 @@ def handoff_status(repo):
         if os.path.realpath(holder) != _primary_checkout(repo) and \
                 _owner_state(holder, main_head(repo)):
             return True, ""
-        return False, ("Local main is still checked out at " + holder + "; a confirmed-idle "
+        return False, (HANDOFF_REFUSAL + holder + "; a confirmed-idle "
                        "branch handoff or clean main-worktree synchronization is required before integration.")
     return True, ""
 

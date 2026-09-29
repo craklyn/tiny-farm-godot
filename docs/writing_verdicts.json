@@ -3946,6 +3946,9 @@
    "verdict": "second-look",
    "why": "The reader has to translate this into recording the session to match the approved style."
   },
+  "75ecfe381c9861d7e30d": {
+   "verdict": "ok"
+  },
   "75eec3813b1470ef1283": {
    "verdict": "ok"
   },
@@ -8410,6 +8413,12 @@
    "quote": "the next batched foley session under the existing Q-31 ruling",
    "verdict": "decode",
    "why": "“Batched foley session” and “Q-31 ruling” are internal process terms that do not tell a cold reader what will happen."
+  },
+  "fa16be0fc3141b565ce7": {
+   "instead": "Tasks now resume even if their next step was marked for review while the code could not safely be updated.",
+   "quote": "Queued tasks whose own step was marked for review while the code was unsafe to update now resume too",
+   "verdict": "decode",
+   "why": "The reader has to untangle which tasks were paused, why they were paused, and what is resuming."
   },
   "fa6db273ee067f802f67": {
    "verdict": "ok"
