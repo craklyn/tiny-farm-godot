@@ -2851,7 +2851,13 @@ def _cap_to_daniel(item, spent, caps, exceeded, reason, rec):
     item["spending_checkpoint"] = {
         "at": _now_iso(), "return_state": item.get("state"), "move": move,
         "exceeded": list(exceeded), "restore": restore,
+        "repair_hold": item.get("repair_hold"),
         "yes_starts": _cap_yes_starts(move, spent, caps, exceeded)}
+    # As in _repair_to_daniel: while the question waits on him, the hold it is
+    # about must not also read as the studio's to fix. Left in place, it kept the
+    # card off his page while its next step was his answer, so it sat in no lane
+    # for a day (w3b629423e60, 2026-09-28). His yes puts it back.
+    item.pop("repair_hold", None)
     item["recommend"] = recommend
     # His list asks for a named deliverable with inspectable evidence and for
     # what his answer starts. The yes starts no follow-up work of its own.
@@ -2990,6 +2996,11 @@ def grant_spending_checkpoint(item, said=""):
     for key in ("recommend", "deliverable", "follow_ups"):
         item.pop(key, None)
     item.update(pending.get("restore") or {})
+    if pending.get("repair_hold"):
+        # The hold comes back with the card, and his yes is what lets it run
+        # past it, as with grant_repair_checkpoint.
+        item["repair_hold"] = pending["repair_hold"]
+        item["supervised_retry"] = True
     notes = []
     if pending.get("move") == "rethink" and rec.get("answer"):
         notes.append("Daniel approved this at the spending checkpoint; do it before anything else:\n"

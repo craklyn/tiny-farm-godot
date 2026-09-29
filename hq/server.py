@@ -5075,6 +5075,15 @@ def _route_target(route):
                     elif drain_entry(live, rid):
                         entry = drain_entry(live, rid)
                         human = entry.get("detail") or entry.get("phase", "").replace("_", " ")
+                    if not human and it.get("state") in ("needs_approval", "for_review"):
+                        # "Waiting on your yes" only when his page actually shows
+                        # it. A card the studio still holds (an out-of-date change,
+                        # a repair hold) said so here while his page, correctly,
+                        # did not list it (w3b629423e60, 2026-09-29).
+                        import drain as _drain
+                        view = it.get("workflow_view") or _drain.project_work(it)
+                        if not work.work_ready_for_daniel(it, view):
+                            human = "held by the studio, not yet ready for you"
                     human = human or {
                         "waiting_session": "queued for the next task-queue run",
                         "for_review": "finished, with a result to review",
@@ -5935,12 +5944,17 @@ def api_needs(pillar_id):
             "rank": 0 if g["state"] == "red" else 1,
         })
 
-    # 2. Decision cards this pillar's people own that he has not ruled on.
-    q = api_queue()
-    ruled = set(q["decided"])
-    for c in q["curated"]:
-        if c["id"] in ruled:
-            continue
+    # 2 and 3 are what his decisions page shows him, filtered to this pillar.
+    # The band used to run its own test — any unruled card, any tier-2 card in
+    # needs_approval — and so it listed work his page correctly left off: on
+    # 2026-09-29 a tier-2 card still held by the studio read "What I need from
+    # you · Approve or decline" here, and the button led to a page without it
+    # (w3b629423e60). One readiness test, the decisions page's own, is the only
+    # thing that may put an ask in front of him.
+    waiting = waiting_on_you()
+
+    # 2. Decision cards this pillar's people own that are ready for his answer.
+    for c in waiting.get("decisions") or []:
         owner = c.get("owner")
         card_pillar = c.get("pillar")
         if card_pillar and card_pillar != pillar_id:
@@ -5955,14 +5969,8 @@ def api_needs(pillar_id):
             "href": "#/inbox", "rank": 2,
         })
 
-    # 3. Tier-2 work this pillar's people are waiting on him to approve.
-    try:
-        items = work.items()
-    except Exception:
-        items = []
-    for it in items:
-        if it.get("state") != "needs_approval" or it.get("tier") != 2:
-            continue
+    # 3. Work from this pillar's people with a result ready for his verdict.
+    for it in waiting.get("work") or []:
         owner = it.get("owner")
         if it.get("pillar"):
             if it["pillar"] != pillar_id:
@@ -5972,7 +5980,10 @@ def api_needs(pillar_id):
         needs.append({
             "kind": "budget", "ask": it.get("title", ""),
             "because": (it.get("ask") or "")[:220],
-            "consequence": "", "waiting_days": _days_since_date((it.get("created") or "")[:10]),
+            # How long it has waited on him, not how old the card is: counted
+            # from when the result came back, as waiting_reading counts it.
+            "consequence": "",
+            "waiting_days": _days_since_date((it.get("finished") or it.get("created") or "")[:10]),
             "surface": {"kind": "work", "id": it["id"]},
             "href": "#/work", "rank": 1,
         })

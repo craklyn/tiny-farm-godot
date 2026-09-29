@@ -155,6 +155,30 @@ class SpendingCheckpoint(unittest.TestCase):
                          ("daniel", "extend"))
         self.assertEqual(self.next_step(saved), "build")
 
+    def test_a_card_held_for_repair_still_reaches_daniel_at_its_checkpoint(self):
+        # w3b629423e60, 2026-09-28: the checkpoint sent a card with a repair hold
+        # to Daniel but left the hold on it, so his page never listed the card
+        # while its next step was his answer, and it sat in no lane for a day.
+        hold = "This worker cannot reach itch.io, so the comparison cannot be recorded."
+        item = self.card(state="for_review", repair_hold=hold, automatic_repairs=1)
+        self.spend(item["id"], 4_900_000, 120_000)
+        work.save_item(dict(work.load_item(item["id"]), token_cap=4_000_000))
+        self.reply = (DANIEL, False)
+        self.assertTrue(work.review_next_spending_checkpoint(ORG))
+        got = work.load_item(item["id"])
+        self.assertNotIn("repair_hold", got)
+        self.assertEqual(got["spending_checkpoint"]["repair_hold"], hold)
+        view = drain.project_work(got, head="", active={})
+        self.assertTrue(work.work_ready_for_daniel(got, view))
+        self.assertEqual(work.card_lanes(got, view), ["daniel"])
+        # His yes puts the hold back and lets one supervised try run past it.
+        saved = work.api_post("/api/work/approve", {"id": item["id"], "_revision": got["_revision"]})
+        self.assertNotIn("spending_checkpoint", saved)
+        self.assertEqual(saved["repair_hold"], hold)
+        self.assertTrue(saved["supervised_retry"])
+        view = drain.project_work(work.load_item(item["id"]), head="", active={})
+        self.assertEqual((view.get("next_action") or {}).get("availability"), "runnable")
+
     def test_hard_limits_skip_the_model(self):
         three = [{"decision": "extend", "by": "claude"}] * 3
         item = self.card(cap_reviews=three, token_cap=4_000_000)
