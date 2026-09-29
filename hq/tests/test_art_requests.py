@@ -124,8 +124,10 @@ class ArtRequests(unittest.TestCase):
         self.ask("tomato.json")
         rd = FakeRD()
         art = art_requests.run_round(item, str(self.tree), "/main/checkout", rd=rd)
-        self.assertEqual(rd.key_paths, ("/main/checkout/.env",),
-                         "the key is read from the main checkout's .env, not the worktree")
+        self.assertEqual(rd.key_paths[0], "/main/checkout/.env",
+                         "the key is read from the main checkout's .env first")
+        self.assertFalse(any(p.startswith(str(self.tree)) for p in rd.key_paths),
+                         "never from the worktree")
         self.assertEqual(len(rd.priced), 1, "priced before generating")
         self.assertEqual(rd.priced[0]["palette_hex"], ["#a4c263", "#c15a3a"])
         raw = self.tree / "assets" / "raw" / f"{DAY}-wart00000001-tomato"
@@ -297,6 +299,15 @@ class ArtRequests(unittest.TestCase):
         self.assertEqual(art["hold"]["kind"], "failed")
         self.assertIn("could not find the art service key", art["hold"]["reason"])
         self.assertEqual(rd.priced, [])
+
+    def test_an_unreadable_spend_record_generates_nothing(self):
+        os.makedirs(art_requests.STORE, exist_ok=True)
+        Path(art_requests._ledger_path()).write_text("{broken")
+        self.ask("tomato.json")
+        rd = FakeRD()
+        art = art_requests.run_round(self.card(), str(self.tree), "/main", rd=rd)
+        self.assertEqual(rd.generated, [], "an unreadable ledger must not read as $0 spent")
+        self.assertEqual(art["hold"]["kind"], "failed")
 
     def test_a_service_error_never_repeats_the_key(self):
         class Failing(FakeRD):

@@ -10,9 +10,9 @@ and runs the worker once more with the results (hq/drain.py do_item).
 
 A round the caps refuse is not run at all: the card is held for the chief of
 staff with the reason in plain words, and the rest of its work still goes
-through the normal check. The key is read here, from the main checkout's
-gitignored .env, and passed only to tools/rd_client.py; it never enters a
-prompt, patch, log or card field.
+through the normal check. The key is read here, from a gitignored .env outside
+any worktree (key_files), and passed only to tools/rd_client.py; it never enters
+a prompt, patch, log or card field.
 """
 import base64
 import contextlib
@@ -150,10 +150,12 @@ def _ledger_path():
 
 
 def ledger():
+    """Every drain-run generation. A missing file is an empty ledger; an unreadable
+    one raises, because reading it as empty would lift both caps."""
     try:
         with open(_ledger_path(), encoding="utf-8") as f:
             return json.load(f).get("entries") or []
-    except (OSError, ValueError):
+    except FileNotFoundError:
         return []
 
 
@@ -191,6 +193,13 @@ def today():
 # one round
 # ---------------------------------------------------------------------------
 
+def key_files(repo):
+    """Where the drain looks for the key: the main checkout's .env, then the
+    user workspace's (on 2026-09-29 only the workspace had one). Never a worktree."""
+    paths = [os.path.join(repo, ".env"), os.path.join(roots.ROOTS["user_workspace"], ".env")]
+    return tuple(dict.fromkeys(os.path.realpath(p) for p in paths))
+
+
 def _scrub(text, key):
     text = str(text or "")
     return text.replace(key, "[key]") if key else text
@@ -224,7 +233,7 @@ def run_round(item, tree, repo, *, rd=None, day=None):
     if not valid:
         return art
     rd = rd or client()
-    key = rd.find_key(os.path.join(repo, ".env"))
+    key = rd.find_key(*key_files(repo))
     if not key:
         art["hold"] = {"kind": "failed", "day": day, "asked": None,
                        "reason": "The drain could not find the art service key on this machine, "
@@ -240,7 +249,13 @@ def run_round(item, tree, repo, *, rd=None, day=None):
             except Exception as exc:  # noqa: BLE001 - any failure is reported, none is fatal
                 art["failed"].append({"file": entry["file"], "reason": _failure(exc, key)})
         asked = round(sum(p["price"] for p in priced), 4)
-        card_spent, day_spent, cap = spent(card=item["id"]), spent(day=day), card_cap(item)
+        try:
+            card_spent, day_spent, cap = spent(card=item["id"]), spent(day=day), card_cap(item)
+        except (OSError, ValueError, AttributeError):
+            art["hold"] = {"kind": "failed", "day": day, "asked": None,
+                           "reason": "The drain could not read its record of art spending, so "
+                                     "no art was generated for this card."}
+            return art
         if priced and (card_spent + asked > cap + 1e-9 or day_spent + asked > DAY_CAP_USD + 1e-9):
             kind = "card" if card_spent + asked > cap + 1e-9 else "day"
             art["hold"] = {"kind": kind, "day": day, "asked": asked,
@@ -267,6 +282,10 @@ def _generate(item, tree, rd, key, entry, art, day):
         with contextlib.redirect_stdout(io.StringIO()):
             meta = rd.generate(key, name, entry["params"], store)
     except Exception as exc:  # noqa: BLE001
+        # A call that died mid-way may still have been charged (a timed-out read
+        # is billed), so the caps count its quoted price.
+        _record({"work_item": item["id"], "date": day, "dollars": entry["price"],
+                 "recorded_by": "drain", "request": entry["file"], "unconfirmed": True})
         art["failed"].append({"file": entry["file"], "reason": _failure(exc, key)})
         return
     if not meta:
@@ -418,8 +437,11 @@ def settle_holds(day=None):
     for item in work.items():
         if item.get("state") in work.TERMINAL_STATES or not item.get("art_hold"):
             continue
-        if not hold_cleared(item, day):
-            continue
+        try:
+            if not hold_cleared(item, day):
+                continue
+        except (OSError, ValueError, AttributeError):
+            continue          # an unreadable ledger releases nothing
         with work.mutation_lock():
             fresh = work.load_item(item["id"])
             flow = work._workflow(fresh)

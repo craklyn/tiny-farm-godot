@@ -2891,6 +2891,9 @@
   "55d3dd9dd5229d81f564": {
    "verdict": "ok"
   },
+  "55d571f31f804c34385b": {
+   "verdict": "ok"
+  },
   "55f28a7e8cb8a388013f": {
    "instead": "Egg income pays for the early purchases",
    "quote": "eggs carry the early purchases",
@@ -5673,6 +5676,12 @@
    "quote": "the reply overclaimed",
    "verdict": "second-look",
    "why": "\"Overclaimed\" is vague; it could mean overstated, over-promised, or exceeded the original scope"
+  },
+  "a4e075d2bd142f0784db": {
+   "instead": "The art spending limits remain enforced even when the spending record is damaged or a request fails partway through",
+   "quote": "a call dies mid-way",
+   "verdict": "second-look",
+   "why": "“Call dies” is technical shorthand for a request failing partway through."
   },
   "a4e854796855ac5d494f": {
    "verdict": "ok"
