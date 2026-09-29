@@ -4400,6 +4400,12 @@
   "8260cd6930e7d4de9645": {
    "verdict": "ok"
   },
+  "82867d12a28aaf8e88e3": {
+   "instead": "Tasks held by the queue can resume now that the main copy of the code is safe to update.",
+   "quote": "Tasks the queue held until the main copy of the code was safe to update now resume once it is",
+   "verdict": "decode",
+   "why": "The sentence makes the reader untangle the timing and infer that the queued tasks can resume because the main code is now safe to update."
+  },
   "828c01b63b556a1fb67c": {
    "instead": "but its status still says waiting",
    "quote": "it still reads as waiting",
@@ -8099,6 +8105,12 @@
   "f10a30745648451534e8": {
    "verdict": "ok"
   },
+  "f13c0c236dddf54ce698": {
+   "instead": "Tasks waiting for the checkout work to be handed over will resume when the main checkout is ready",
+   "quote": "Tasks stuck waiting for a checkout handoff start again once the main checkout is ready",
+   "verdict": "decode",
+   "why": "A cold reader cannot tell what the checkout handoff is or what it means for the tasks to start again."
+  },
   "f14709a22e81601886b8": {
    "verdict": "ok"
   },
@@ -8335,6 +8347,9 @@
   "f8778746cd898e9371cf": {
    "verdict": "ok"
   },
+  "f8c4083c16a6c5b2cbd5": {
+   "verdict": "ok"
+  },
   "f8f59e03750a58510ec5": {
    "verdict": "ok"
   },
@@ -8480,6 +8495,12 @@
   },
   "fd2c79343f9541c75739": {
    "verdict": "ok"
+  },
+  "fd3dd1c9c6766a0b7cd4": {
+   "instead": "Tasks waiting in the queue can resume now that the studio's code is safe to update",
+   "quote": "held by the queue",
+   "verdict": "decode",
+   "why": "The reader has to work out whether these tasks are waiting in a work queue or blocked by it."
   },
   "fd6bc3cc11dad7cc2d33": {
    "baselined": "2026-09-19",

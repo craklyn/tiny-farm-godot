@@ -83,10 +83,17 @@ class RunNow(unittest.TestCase):
     def test_steps_only_a_session_can_take_do_not_count(self):
         # 2026-09-29: three handoff steps sat "waiting to start" while every run
         # said "Nothing queued"; a button counting them would start nothing.
-        got, _ = self.snapshot(eligible("handoff", "handoff", "handoff"))
+        import integration
+        with patch.object(integration, "handoff_status", return_value=(False, "main is held")):
+            got, _ = self.snapshot(eligible("handoff", "handoff", "handoff"))
         self.assertEqual((got["queued"], got["startable"]), (3, 0))
         self.assertFalse(got["run_now"]["allowed"])
         self.assertIn("for the chief of staff", got["run_now"]["why"])
+        # Once main can take landings, a run clears them and works the cards.
+        with patch.object(integration, "handoff_status", return_value=(True, "")):
+            got, _ = self.snapshot(eligible("handoff", "handoff", "handoff"))
+        self.assertEqual((got["queued"], got["startable"]), (3, 3))
+        self.assertTrue(got["run_now"]["allowed"])
 
     def test_it_refuses_with_a_reason_and_never_starts_a_second_run(self):
         run, calls = systemctl(service_state="activating\n@1790694661\n")

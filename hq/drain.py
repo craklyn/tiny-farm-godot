@@ -2752,6 +2752,29 @@ def record_handoff_blocker(item, reason):
                         wake="The primary checkout is confirmed idle.")
 
 
+def settle_handoffs():
+    """Clear every open handoff once local main is in a state a landing may use.
+
+    A run records a handoff when local main is held by a checkout it may not
+    land into, and _claim_item cleared it only when it claimed that card. But a
+    card whose next step is the handoff is never claimed, since a handoff is not
+    a step a run dispatches, so once recorded it stayed: three cards sat on one
+    from 2026-09-28 to 09-29 while main had long been a clean linked checkout.
+    Returns the ids of the cards it cleared."""
+    ready, _reason = integration.handoff_status(REPO)
+    if not ready:
+        return []
+    cleared = []
+    for item in work.items():
+        if item.get("state") in work.FINAL_STATES:
+            continue
+        if any(action.get("type") == "handoff" and action.get("state") == "open"
+               for action in (item.get("workflow") or {}).get("actions") or []):
+            resolve_handoff_action(item)
+            cleared.append(item["id"])
+    return cleared
+
+
 def resolve_handoff_action(item):
     with work.mutation_lock():
         fresh = work.load_item(item["id"])
@@ -3189,6 +3212,11 @@ def main():
             return 0
 
     recovered = recover_interrupted_transactions(org) if lock else 0
+    if lock:
+        cleared = settle_handoffs()
+        if cleared:
+            print(f"Local main can take landings again; cleared the checkout handoff on "
+                  f"{len(cleared)} card(s): {', '.join(cleared)}.")
     if lock:
         recovered += action_dispatch.recover_orphaned_claims(work)
     if args.recover_only:

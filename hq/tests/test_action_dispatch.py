@@ -57,6 +57,25 @@ class ActionDispatch(unittest.TestCase):
         item.update(fields)
         return work.save_item(item)
 
+    def test_a_recorded_handoff_clears_once_main_can_take_landings(self):
+        # 2026-09-29: three cards sat on a recorded handoff long after main had
+        # become a clean linked checkout, because only claiming a card cleared
+        # it and a card whose next step is a handoff is never claimed.
+        item = self.card(state="waiting_session", repair_hold="")
+        with patch.object(drain.integration, "main_head", return_value="abc"):
+            drain.record_handoff_blocker(item, "Local main is still checked out at /somewhere.")
+        with patch.object(drain.integration, "handoff_status", return_value=(False, "still held")):
+            self.assertEqual(drain.settle_handoffs(), [])
+        with patch.object(drain.integration, "handoff_status", return_value=(True, "")):
+            self.assertEqual(drain.settle_handoffs(), [item["id"]])
+            self.assertEqual(drain.settle_handoffs(), [])
+        workflow = work.load_item(item["id"])["workflow"]
+        handoffs = {a["id"] for a in workflow["actions"] if a["type"] == "handoff"}
+        self.assertTrue(handoffs)
+        self.assertTrue(all(a["state"] == "done" for a in workflow["actions"] if a["id"] in handoffs))
+        self.assertTrue(all(b["state"] == "resolved" for b in workflow["blockers"]
+                            if b.get("action_id") in handoffs))
+
     def test_weather_reconciliation_is_selected_once_and_has_specific_brief(self):
         item = self.card()
         selected = action_dispatch.choose(drain)

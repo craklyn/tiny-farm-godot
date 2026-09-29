@@ -2591,12 +2591,17 @@ def execution_control_snapshot():
     policy = execution.load_policy()
     queue = execution_queue_snapshot()
     queued = len(queue["eligible"])
-    # Only these step types are started by a drain run; anything else listed
-    # as waiting (a handoff, for one) waits on a session, and a run started
-    # for it alone ends "Nothing queued".
+    # Only these step types are started by a drain run. A handoff counts too
+    # once local main can take landings, because each run then clears it
+    # (drain.settle_handoffs) and works the card; until then it waits on the
+    # chief of staff, and a run started for it alone would begin nothing.
     import action_dispatch
+    import integration
     runnable_types = action_dispatch.MODEL_ACTIONS | action_dispatch.RECOVERY_ACTIONS
-    startable = sum(1 for row in queue["eligible"] if row.get("action_type") in runnable_types)
+    handoffs = any(row.get("action_type") == "handoff" for row in queue["eligible"])
+    handoffs_clear = handoffs and integration.handoff_status(REPO)[0]
+    startable = sum(1 for row in queue["eligible"] if row.get("action_type") in runnable_types
+                    or (row.get("action_type") == "handoff" and handoffs_clear))
     timer = _drain_timer_reading()
     snapshot = {
         "paused": policy["background_paused"],
