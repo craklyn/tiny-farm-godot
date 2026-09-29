@@ -141,8 +141,9 @@ function qWorkEvidence(card, ownerName) {
   // The session that produced this result is written down as it runs, so the
   // result can be read back to how it was made rather than taken on trust.
   if (card.started || card.diff) {
-    items.push({ label: "How it was done", link: `#/chat/bullpen?item=${encodeURIComponent(card.id)}`,
-                 text: "Open the record of the session that produced this: every file it read, every change it made, every command it ran, and what it cost." });
+    // A link, not a fold: there is nothing to read here but where it goes (2026-09-28).
+    items.push({ label: "How it was done", link: `#/chat/bullpen?item=${encodeURIComponent(card.id)}`, linkOnly: true,
+                 linkText: "See how it was done", text: "every file it read, change it made and command it ran, and what it cost" });
   }
   return items;
 }
@@ -506,9 +507,11 @@ function qPaneHtml(row, org) {
       `<div class="q-msg${m.who === "You" ? " q-msg-you" : ""}"><div class="q-msg-who">${esc(m.who)}${m.at ? ` · ${esc(m.at)}` : ""}</div><div>${mdi(m.text)}</div></div>`).join("")}</div>` : ""}
 
     <div class="q-sec"><h3>The evidence</h3>
-      ${row.evidence.length ? row.evidence.map(e =>
+      ${row.evidence.length ? row.evidence.filter(e => !e.linkOnly).map(e =>
         `<details><summary>${esc(e.label)}</summary><div>${mdi(e.text)}${
           e.link ? `<p><a class="plain" href="${e.link}"${e.link.startsWith("#") ? "" : ` target="_blank" rel="noopener"`}>${esc(e.linkText || "Open the session in the bullpen")}</a></p>` : ""}</div></details>`).join("")
+        + row.evidence.filter(e => e.linkOnly).map(e =>
+        `<p class="q-evidence-link"><a class="plain" href="${e.link}"${e.link.startsWith("#") ? "" : ` target="_blank" rel="noopener"`}>${esc(e.linkText)} →</a>${e.text ? ` <span class="q-pane-muted">— ${esc(e.text)}</span>` : ""}</p>`).join("")
         : `<p class="q-pane-muted">Nothing recorded yet.</p>`}
     </div>
 
