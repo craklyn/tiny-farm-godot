@@ -858,7 +858,8 @@ def approval_brief(item, org=None):
                    "changes them without your OK."),
         "yes": (f"{who}'s edits become the official version of {where} within about ten minutes, "
                 "once the tests pass. It can be undone later with one revert."),
-        "no": f"Nothing in {where} changes; the card goes back to {who} with anything you write.",
+        "no": (f"Nothing in {where} changes, and the card closes. To send it back to {who} "
+               "instead, write a comment."),
         "changes_link": f"/work-change/{item['id']}",
     }
 

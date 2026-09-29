@@ -129,7 +129,6 @@ function qWorkEvidence(card, ownerName) {
     const docs = (ap.files || []).map(f => f.name).join(", ");
     items.push({ label: "What changes", text: [ap.summary, docs && `Documents: ${docs}.`].filter(Boolean).join("\n\n") });
     items.push({ label: "Why this needs you", text: ap.reason });
-    if (ap.no) items.push({ label: "If you say no", text: ap.no });
   }
   if (card.result) items.push({ label: "What came back", text: card.result });
   if (card.diff && card.diff.stat) items.push({ label: "Files changed", text: card.diff.stat });
@@ -517,15 +516,26 @@ function qPaneHtml(row, org) {
       <label class="q-talk-l" for="q-talk-t">Anything you want to say about this — optional</label>
       <textarea id="q-talk-t" placeholder="A line of why. Whichever button you press, ${esc(qFirst(ownerName))} reads this."></textarea>
       <div class="q-talk-acts">
-        <button class="ghost q-send" data-id="${esc(row.id)}">Comment to ${esc(qFirst(ownerName))} without a verdict</button>
+        <button class="ghost q-send" data-id="${esc(row.id)}" title="${esc(`Sends your note to ${qFirst(ownerName)}. The card stays open and ${qFirst(ownerName)} answers or revises the work.`)}">Comment to ${esc(qFirst(ownerName))} without a verdict</button>
         <span class="q-talk-n" id="q-talk-st">${esc(qFirst(ownerName))} answers within thirty seconds or hands it back and you move on.</span>
       </div>
     </div>`}
 
     ${row.isDecision ? "" : `<div class="q-acts-big">
-      <button class="q-yes" data-id="${esc(row.id)}">${esc(qWorkActionLabel(row))}</button>
-      ${row.canDrop ? `<button class="ghost q-no" data-id="${esc(row.id)}">${row.state === "for_review" ? "Reject and close review" : "Decline and close request"}</button>` : ""}
+      <button class="q-yes" data-id="${esc(row.id)}" title="${esc(qYesCauses(row))}">${esc(qWorkActionLabel(row))}</button>
+      ${row.canDrop ? `<button class="ghost q-no" data-id="${esc(row.id)}" title="${esc(qNoCauses(row, ownerName))}">${row.state === "for_review" ? "Reject and close review" : "Decline and close request"}</button>` : ""}
     </div>`}`;
+}
+
+/* What the reject button does, shown where he presses it (2026-09-28: "Should
+   this be a tooltip on the reject button?"). Rejecting closes the card; only a
+   comment sends it back to the owner, so the two are never blurred. */
+function qNoCauses(row, ownerName) {
+  const ap = (row.artifact || {}).approval;
+  if (ap && ap.no) return ap.no;
+  return row.state === "for_review"
+    ? `Rejects this version and closes its review. Nothing is merged and no follow-up work is filed. To send it back to ${qFirst(ownerName)} instead, write a comment.`
+    : "Closes the request without doing it.";
 }
 
 function qRender(state) {

@@ -198,6 +198,9 @@ const approvalPane = queue.qPaneHtml({ id: "approval", kind: "review", question:
 assert.ok(index(approvalPane, "Add Tomás's write-up") < index(approvalPane, 'href="/work-change/approval"'));
 assert.ok(index(approvalPane, 'href="/work-change/approval"') < index(approvalPane, 'class="q-rec'));
 assert.ok(index(approvalPane, "the chief of staff's review recommends</h3>") >= 0);
+const reviewPane = queue.qPaneHtml({ id: "rev", kind: "review", state: "for_review", question: "Q?", title: "T", source: "work card rev", owner: { name: "Tomás Herrera" }, answer: "Yes", why: "", instead: "", options: [], followUps: [], conversation: [], attachments: [], canDrop: true, artifact: { approval: { no: "Nothing changes, and the card closes. To send it back to Tomás instead, write a comment." } }, evidence: [] }, {});
+assert.ok(index(reviewPane, 'title="Nothing changes, and the card closes. To send it back to Tomás instead, write a comment."') < index(reviewPane, "Reject and close review"));
+assert.ok(index(reviewPane, 'title="Sends your note to Tomás.') >= 0);
 const design = queue.qPaneHtml({ id: "design", isDecision: true, question: "Which tool should players receive first?", title: "First tool", source: "decision card design", owner: { name: "Milo" }, answer: "Watering can", why: "It teaches the core loop.", instead: "Hoe", options: [{ key: "can", label: "Watering can", detail: "Care for a planted crop." }], followUps: [], conversation: [], attachments: [], canDrop: false, deliverableEvidence: [], evidence: [{ label: "Design comparison", text: "Both choices shown" }] }, {});
 assert.ok(index(design, "Which tool should players receive first?") < index(design, 'class="q-rec'));
 assert.ok(index(design, 'class="q-rec') < index(design, "What choosing starts"));
