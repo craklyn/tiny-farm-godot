@@ -184,6 +184,15 @@ def check_mcp_config(cwd):
             raise ValueError(f'MCP tools may load from {path}; disable each server with enabled=false before running HQ')
 
 
+def _tool_server_text(item):
+    result, error = item.get('result'), item.get('error')
+    if isinstance(result, dict) and isinstance(result.get('content'), list):
+        text = ''.join(c.get('text', '') for c in result['content'] if isinstance(c, dict))
+        if text:
+            return text
+    return str(error.get('message', '') if isinstance(error, dict) else error or '')
+
+
 class Normalizer:
     def __init__(self, route):
         self.route = route
@@ -240,7 +249,9 @@ class Normalizer:
             content = ({'type': 'tool_use', 'id': item.get('id'), 'name': item.get('tool') or item['type'],
                         'input': {'command': item.get('command', '')}} if kind == 'item.started' else
                        {'type': 'tool_result', 'tool_use_id': item.get('id'),
-                        'content': item.get('aggregated_output', ''),
+                        # A tool server's reply (e.g. the art tool's file paths)
+                        # has no shell output; keep its text for the session log.
+                        'content': item.get('aggregated_output', '') or _tool_server_text(item),
                         # Keep the provider's structured result. Consumers must not
                         # guess whether a command failed from words in its output.
                         'status': item.get('status'),

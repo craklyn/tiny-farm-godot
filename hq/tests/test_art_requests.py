@@ -344,6 +344,18 @@ class ArtTool(unittest.TestCase):
         self.assertNotIn("RETRODIFFUSION_API_KEY", seen["env"])
         self.assertNotIn(KEY, json.dumps(seen))
 
+    def test_the_session_log_keeps_what_the_tool_answered(self):
+        """Codex reports a tool server call without shell output; its reply text
+        is what a reviewer of the session needs to see."""
+        normalizer = execution.Normalizer(CODEX)
+        [event] = normalizer.feed({"type": "item.completed", "item": {
+            "id": "item_3", "type": "mcp_tool_call", "server": "art", "tool": "generate_art",
+            "arguments": request(), "status": "completed", "error": None,
+            "result": {"content": [{"type": "text", "text": "Generated 2 image(s) for $0.06"}]}}})
+        block = event["message"]["content"][0]
+        self.assertEqual((block["type"], block["content"], block["is_error"]),
+                         ("tool_result", "Generated 2 image(s) for $0.06", False))
+
     def test_the_key_is_stripped_from_every_model_session(self):
         seen = {}
 
