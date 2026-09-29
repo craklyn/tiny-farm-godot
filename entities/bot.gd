@@ -109,7 +109,7 @@ func _process(delta: float) -> void:
 			# a bot that walked through frame 0 would bob to a halt every stride.
 			walk_frame = 1 + ((walk_frame) % (WALK_FRAMES - 1))
 			queue_redraw()
-		position = position.move_toward(goal, minf(speed_px * delta, MAX_STEP))
+		position = ActorMotion.follow(farm.sim, position, goal, minf(speed_px * delta, MAX_STEP), TILE_SIZE)
 		queue_redraw()
 	elif walk_frame != 0:
 		walk_frame = 0

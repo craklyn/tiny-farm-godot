@@ -7218,6 +7218,43 @@ func _scenario_ax_she_can_get_back_out_of_the_coop() -> void:
 	_assert(player.get_tile_pos() == hut + Vector2i(0, 1),
 		"onto her own doorstep, below the hut (%s)" % player.get_tile_pos())
 
+	# --- the hen goes in too, and her picture goes with her ----------------------
+	#
+	# **Found in play, 2026-09-28.** In the rain the hen walked to the coop door and let
+	# herself in, and her sprite then marched straight south, through fences and off the
+	# bottom of the map: a room's cells sit far below the farm on the grid, and the
+	# sprite slid toward them at walking pace. The sim had her in the coop the whole
+	# time. A move through a door is a jump (`ActorMotion.follow`), in and out.
+	var hen_id := SimWorld.ACTOR_CHICKEN
+	var hen_node = farm.actor_nodes.get(hen_id, null)
+	_assert(hen_node != null, "the hen has a sprite on the farm")
+	if hen_node != null:
+		# Exactly what her brain does in the rain: stand on the doorstep, and the door
+		# is the hut square above it (chicken_brain `_step_through`).
+		var exit_cell: Vector2i = farm.sim.room_exit_for(room)
+		farm.sim.set_actor_pos(hen_id, exit_cell)
+		hen_node.position = Vector2(exit_cell * 16)
+		var through: Dictionary = farm.apply_action({ "verb": "use_door",
+			"target": exit_cell + Vector2i(0, -1), "actor": hen_id }, GameState)
+		var hen_room: String = farm.sim.room_of_cell(farm.sim.actor_pos(hen_id))
+		_assert(through.get("ok", false) and hen_room != "",
+			"she lets herself into the coop (%s)" % through)
+		for i in 3:
+			await get_tree().process_frame
+		var drawn_at := Vector2i(roundi(hen_node.position.x / 16.0), roundi(hen_node.position.y / 16.0))
+		_assert(farm.sim.space_of(drawn_at) == farm.sim.space_of(farm.sim.actor_pos(hen_id)),
+			"and her picture is inside with her at once, not walking south across the farm (drawn at %s, she is at %s)"
+			% [drawn_at, farm.sim.actor_pos(hen_id)])
+		# Inside, the doorway is the square she stands on (the same `_step_through`).
+		farm.sim.set_actor_pos(hen_id, Vector2i(room["door"]))
+		var back: Dictionary = farm.apply_action({ "verb": "use_door",
+			"target": Vector2i(room["door"]), "actor": hen_id }, GameState)
+		for i in 3:
+			await get_tree().process_frame
+		var drawn_out := Vector2i(roundi(hen_node.position.x / 16.0), roundi(hen_node.position.y / 16.0))
+		_assert(back.get("ok", false) and farm.sim.space_of(drawn_out) == "farm",
+			"and when she comes out her picture is back on the farm at once (drawn at %s, %s)" % [drawn_out, back])
+
 	# --- tap three: the other row of the panel ----------------------------------
 	#
 	# "Pick up" is the only way the repositioning ruling of 2026-09-14 is reachable,

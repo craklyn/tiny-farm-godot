@@ -76,7 +76,7 @@ func _process(delta: float) -> void:
 		facing_left = true
 	elif goal.x > position.x + 0.01:
 		facing_left = false
-	position = position.move_toward(goal, minf(speed_px * delta, MAX_STEP))
+	position = ActorMotion.follow(farm.sim, position, goal, minf(speed_px * delta, MAX_STEP), TILE_SIZE)
 
 	flap_timer += delta
 	if flap_timer > FLAP_TIME:

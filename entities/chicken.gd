@@ -87,7 +87,7 @@ func _process(delta: float) -> void:
 			facing_left = true
 		elif goal.x > position.x:
 			facing_left = false
-		position = position.move_toward(goal, minf(SPEED * delta, MAX_STEP))
+		position = ActorMotion.follow(farm.sim, position, goal, minf(SPEED * delta, MAX_STEP), TILE_SIZE)
 		queue_redraw()
 	else:
 		if walk_frame != 0:

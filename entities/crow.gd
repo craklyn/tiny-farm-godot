@@ -162,7 +162,7 @@ func _process(delta: float) -> void:
 		queue_redraw()
 
 	var speed: float = FLY_OUT_SPEED if state == "leaving" else FLY_IN_SPEED
-	position = position.move_toward(sim_position(), minf(speed * delta, MAX_STEP))
+	position = ActorMotion.follow(farm.sim, position, sim_position(), minf(speed * delta, MAX_STEP), TILE_SIZE)
 
 
 # 3 tiles by default, read off the player node in pixels, exactly as before. The
