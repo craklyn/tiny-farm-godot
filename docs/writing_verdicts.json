@@ -7568,6 +7568,12 @@
    "verdict": "second-look",
    "why": "The terms 'the dashboard' and 'the queue page' are not introduced or linked, making it unclear which specific tools are referenced."
   },
+  "e9217cc90f667a1ad934": {
+   "instead": "Keep the tablet play session of 2026-09-28, whose robot actions replay correctly but whose final farm state still differs from the original session",
+   "quote": "whose final farm state does not yet match",
+   "verdict": "second-look",
+   "why": "It does not say what the final farm state is being compared with."
+  },
   "e930ce4ab968d7b855ec": {
    "verdict": "ok"
   },
