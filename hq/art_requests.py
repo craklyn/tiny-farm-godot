@@ -29,8 +29,10 @@ import os
 import re
 import shutil
 import sys
+import urllib.error
 import uuid
 
+import execution
 import roots
 import work
 
@@ -219,6 +221,11 @@ def _failure(exc, key):
     return f"the art service call failed ({type(exc).__name__}{': ' + detail if detail else ''})"
 
 
+def _timed_out(exc):
+    return isinstance(exc, TimeoutError) or (
+        isinstance(exc, urllib.error.URLError) and isinstance(exc.reason, TimeoutError))
+
+
 def refusal(card_spent, cap, day_spent, asked):
     return (f"This card has spent {_money(card_spent)} of its {_money(cap)} and the studio "
             f"{_money(day_spent)} of today's {_money(DAY_CAP_USD)}; this request would cost "
@@ -287,14 +294,22 @@ def _generate(item, tree, rd, key, what, params, price, reservation, day):
         name, n = f"{what}-{n}", n + 1
     try:
         with contextlib.redirect_stdout(io.StringIO()):
-            meta = rd.generate(key, name, params, store)
+            # One request, no retries, bounded inside the tool's own timeout
+            # (execution.ART_REQUEST_TIMEOUT_SEC), so the call is over before the
+            # worker could try again.
+            meta = rd.generate(key, name, params, store, tries=1,
+                               timeout=execution.ART_REQUEST_TIMEOUT_SEC)
     except Exception as exc:  # noqa: BLE001
         # A call that died mid-way may still have been charged (a timed-out read
         # is billed), so its reservation stays in the ledger at the quoted price.
+        if _timed_out(exc):
+            return {"status": "failed", "what": what,
+                    "reason": "the art service did not answer in time; nothing was charged that "
+                              "we know of — you may try once more"}
         return {"status": "failed", "what": what, "reason": _failure(exc, key)}
     if not meta:
         _settle(reservation, None)     # refused by the service: nothing was charged
-        return {"status": "failed", "what": what, "reason": "the art service refused it after retries"}
+        return {"status": "failed", "what": what, "reason": "the art service refused it"}
     dollars = float(meta.get("balance_cost") if meta.get("balance_cost") is not None else price)
     files = sorted(f for f in os.listdir(store) if f.startswith(name + "_"))
     raw = f"assets/raw/{folder}"

@@ -99,13 +99,14 @@ def cost(key, params):
     return res
 
 
-def generate(key, name, params, out_dir, tries=4):
-    """Generate and save. Returns the response metadata, or None if it never succeeded."""
+def generate(key, name, params, out_dir, tries=4, timeout=900):
+    """Generate and save. Returns the response metadata, or None if it never succeeded.
+    `timeout` bounds each request; `tries` is how many requests an HTTP error may use."""
     body = _prepare(params)
     res = None
     for attempt in range(1, tries + 1):
         try:
-            res = _request("POST", "/inferences", key, body)
+            res = _request("POST", "/inferences", key, body, timeout=timeout)
             break
         except urllib.error.HTTPError as err:
             detail = err.read().decode()[:200]

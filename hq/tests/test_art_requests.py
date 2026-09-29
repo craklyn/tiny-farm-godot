@@ -54,9 +54,10 @@ class FakeRD:
         self.priced.append(params)
         return {"balance_cost": self.price * params.get("num_images", 1)}
 
-    def generate(self, key, name, params, out_dir):
+    def generate(self, key, name, params, out_dir, tries=4, timeout=900):
         assert key == KEY
         time.sleep(self.pause)
+        self.calls = getattr(self, "calls", []) + [{"tries": tries, "timeout": timeout}]
         self.generated.append((name, params))
         os.makedirs(out_dir, exist_ok=True)
         meta = {"balance_cost": self.price * params.get("num_images", 1),
@@ -344,6 +345,19 @@ class ArtTool(unittest.TestCase):
         self.assertNotIn("RETRODIFFUSION_API_KEY", seen["env"])
         self.assertNotIn(KEY, json.dumps(seen))
 
+    def test_a_call_finishes_inside_the_tool_timeout_with_no_retries(self):
+        """So a worker's retry can never overlap a paid call still running."""
+        rd = FakeRD()
+        call(self.server(rd)[0], "generate_art", request())
+        [made] = rd.calls
+        self.assertEqual(made["tries"], 1)
+        self.assertLess(made["timeout"], execution.MCP_TOOL_TIMEOUT_SEC)
+        self.assertLessEqual(made["timeout"] + 120, execution.MCP_TOOL_TIMEOUT_SEC,
+                             "the request timeout sits comfortably inside the tool's")
+        spec = art_requests.mcp_server(self.card(), str(self.tree), "r", "a", "/main")
+        cmd = execution.command_for("p", "s", drain.WRITE_TOOLS, CODEX, 1, spec)
+        self.assertIn(f"mcp_servers.art.tool_timeout_sec={execution.MCP_TOOL_TIMEOUT_SEC}", cmd)
+
     def test_the_session_log_keeps_what_the_tool_answered(self):
         """Codex reports a tool server call without shell output; its reply text
         is what a reviewer of the session needs to see."""
@@ -530,14 +544,17 @@ class ArtTool(unittest.TestCase):
 
     def test_a_call_that_dies_mid_generation_stays_counted(self):
         class Dies(FakeRD):
-            def generate(self, key, name, params, out_dir):
+            def generate(self, key, name, params, out_dir, **_kw):
                 raise TimeoutError("read timed out")
 
         class Refused(FakeRD):
-            def generate(self, key, name, params, out_dir):
+            def generate(self, key, name, params, out_dir, **_kw):
                 return None
         item = self.card()
-        art_requests.generate_one(item, request(), str(self.tree), (), rd=Dies())
+        outcome = art_requests.generate_one(item, request(), str(self.tree), (), rd=Dies())
+        self.assertEqual(art_mcp.reply(outcome),
+                         "Nothing was generated. The art service did not answer in time; nothing "
+                         "was charged that we know of — you may try once more.")
         [entry] = art_requests.ledger()
         self.assertEqual((entry["dollars"], entry["unconfirmed"]), (0.06, True),
                          "a timed-out call may have been billed, so its price stays counted")

@@ -92,9 +92,13 @@ def launch_allowed(*, launch_context='automatic', item='', phase=''):
     return launch_context != 'automatic' or not policy['background_paused']
 
 
-# A tool server call may wait on a slow remote service (the art tool's
-# generation retries a failed call), so it gets far longer than the CLI default.
+# A tool server call may wait on a slow remote service, so it gets far longer
+# than the CLI default. The art tool's one request to the art service is bounded
+# well inside it, with no retries, so every generate_art call has finished
+# (success or failure) before the CLI gives up on it: a worker's retry can never
+# overlap a paid call that is still running.
 MCP_TOOL_TIMEOUT_SEC = 1200
+ART_REQUEST_TIMEOUT_SEC = 900       # must stay comfortably below MCP_TOOL_TIMEOUT_SEC
 MCP_STARTUP_TIMEOUT_SEC = 30
 
 
