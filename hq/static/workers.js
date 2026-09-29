@@ -355,8 +355,9 @@ function wkWhen(iso) {
 // a row leaves only when the ruling is integrated, not when a card is filed.
 function wkRulingsWaiting(rulings, org) {
   if (!rulings.length) return "";
-  const heading = rulings.length === 1 ? "1 of your decisions is waiting to be acted on"
-    : `${rulings.length} of your decisions are waiting to be acted on`;
+  // The studio's move, not his: the menu badge counts what waits on him, and
+  // "your decisions are waiting" read as if these did too (2026-09-28).
+  const heading = `You answered — waiting on the studio (${rulings.length})`;
   const stateWords = { waiting_session: "queued", doing: "being worked on", for_review: "finished, being checked",
     landed: "finished", dropped: "dropped without acting on it" };
   return `<section class="exec-queue-section exec-rulings" aria-label="Rulings waiting to be acted on">

@@ -77,7 +77,7 @@ try {
   assert.ok(match, "the page recorded no result");
   const out = JSON.parse(match[1].replace(/&quot;/g, '"').replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&#39;/g, "'"));
   assert.equal(out.error, undefined, out.error);
-  assert.equal(out.heading, "2 of your decisions are waiting to be acted on", "the count is stated plainly");
+  assert.equal(out.heading, "You answered — waiting on the studio (2)", "the count says whose move it is");
   assert.equal(out.rows.length, 2, "one row per ruling not yet integrated; the integrated one is gone");
   const [early, planting] = out.rows;
   assert.match(early.text, /Act on your ruling: Where HQ keeps its work cards — you chose A separate folder/,
