@@ -4901,6 +4901,12 @@
   "97128bad0d452b3f03a0": {
    "verdict": "ok"
   },
+  "972f18a59fd99a2374cb": {
+   "instead": "When the project copy is missing the app's folder, sending the game to the tablet creates that folder.",
+   "quote": "creates the folder the app is built into when the project copy does not have it",
+   "verdict": "second-look",
+   "why": "The sentence makes the reader untangle which folder is missing and when it is created."
+  },
   "973ad9b63870768d4c7a": {
    "verdict": "ok"
   },

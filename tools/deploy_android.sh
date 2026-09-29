@@ -215,6 +215,8 @@ if [[ ! -f android/build/build.gradle ]]; then
 	mkdir -p android/build
 	unzip -q -o "$template_zip" -d android/build
 fi
+# The APK's folder is git-ignored too, so a fresh checkout does not have it.
+mkdir -p "$(dirname "$APK")"
 godot --headless --path . --export-debug "Android" "$APK"
 
 if [[ "$SERIAL" == *:* ]]; then
