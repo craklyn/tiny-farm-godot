@@ -4543,6 +4543,12 @@
   "85f89b638ca2d9463d48": {
    "verdict": "ok"
   },
+  "86118b166994e37d7b81": {
+   "instead": "A task whose worker stopped before producing a result goes back to the queue instead of waiting for someone to handle it",
+   "quote": "worker died with nothing to land",
+   "verdict": "decode",
+   "why": "The reader has to work out that a task stopped before producing a result."
+  },
   "8612df48568e5f8b7df4": {
    "baselined": "2026-09-19",
    "instead": "Before: the sheet as it was when you opened the editor.",
@@ -4882,6 +4888,12 @@
   },
   "8fb5aa8447551f2d7991": {
    "verdict": "ok"
+  },
+  "8fdd1b53094dfebb6b1d": {
+   "instead": "A task with no result goes back to the queue instead of waiting for someone to handle it",
+   "quote": "whose worker stopped before producing a result",
+   "verdict": "decode",
+   "why": "“Worker” is an internal system term here, so the reader has to work out whether it means a person, agent, or process."
   },
   "8fe11165cd394f9d460d": {
    "verdict": "ok"

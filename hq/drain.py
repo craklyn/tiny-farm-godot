@@ -2783,6 +2783,70 @@ def settle_handoffs():
     return cleared
 
 
+NO_LANDING_TO_RECOVER = "No recoverable landing transaction remains."
+
+
+def release_lost_claim(item):
+    """A card whose session died with nothing to land goes back to its queue.
+
+    The recovery step used to know only a half-finished landing. A card whose
+    worker simply died (``started`` set, no live claim, no pending landing) found
+    none, and its step was blocked for operator review: Grace's and Tomás's cards
+    sat that way from the night of 2026-09-28. Clearing ``started`` is the same
+    honest reset recover_interrupted_transactions gives a transaction with no
+    reviewed result; the card's own build step then runs again."""
+    with work.mutation_lock():
+        fresh = work.load_item(item["id"])
+        if fresh.get("pending_landing") or not fresh.get("started") \
+                or fresh.get("state") in work.FINAL_STATES:
+            return False
+        outside = fresh.get("outside_claim") if isinstance(fresh.get("outside_claim"), dict) else {}
+        try:
+            if float(outside.get("expires_ts") or 0) > time.time():
+                return False
+        except (TypeError, ValueError):
+            pass
+        fresh["started"] = ""
+        if fresh.get("state") == "doing":
+            fresh["state"] = "waiting_session"
+        work.save_item(fresh)
+        item.clear(); item.update(fresh)
+        return True
+
+
+def settle_lost_claims():
+    """Release every card an earlier run parked because it had no landing to recover.
+
+    Returns the ids of the cards it released."""
+    released = []
+    for item in work.items():
+        if item.get("state") in work.FINAL_STATES or item.get("pending_landing"):
+            continue
+        workflow = item.get("workflow") or {}
+        parked = {b.get("action_id") for b in workflow.get("blockers") or []
+                  if b.get("state") == "open" and b.get("reason") == NO_LANDING_TO_RECOVER}
+        steps = {a.get("id") for a in workflow.get("actions") or []
+                 if a.get("id") in parked and a.get("type") == "recover" and a.get("state") == "blocked"}
+        if not steps:
+            continue
+        release_lost_claim(item)
+        with work.mutation_lock():
+            fresh = work.load_item(item["id"])
+            if fresh.get("started"):
+                continue  # a live claim holds it; leave it alone
+            flow = fresh.get("workflow") or {}
+            for action in flow.get("actions") or []:
+                if action.get("id") in steps:
+                    action["state"], action["finished_at"] = "done", work._now_iso()
+                    action.pop("claim", None)
+            for blocker in flow.get("blockers") or []:
+                if blocker.get("action_id") in steps and blocker.get("state") == "open":
+                    blocker["state"], blocker["resolved_at"] = "resolved", work._now_iso()
+            work.save_item(fresh)
+        released.append(item["id"])
+    return released
+
+
 def resolve_handoff_action(item):
     with work.mutation_lock():
         fresh = work.load_item(item["id"])
@@ -2837,10 +2901,11 @@ def _claim_item(selected, actions, run_id, records, done):
                                    "check": None, "applied": False}
             return None
         if action["type"] == "recover":
-            progressed = bool(item.get("pending_landing") and recover_pending_landing(item))
+            progressed = (recover_pending_landing(item) if item.get("pending_landing")
+                          else release_lost_claim(item))
             action_dispatch.finish(work, item, action, claim_id,
                                    progressed=progressed,
-                                   reason="No recoverable landing transaction remains.")
+                                   reason=NO_LANDING_TO_RECOVER)
             records[item["id"]] = {"id": item["id"], "usage": [], "check": None,
                                    "applied": progressed}
             if progressed:
@@ -3244,6 +3309,10 @@ def main():
         if cleared:
             print(f"Local main can take landings again; cleared the checkout handoff on "
                   f"{len(cleared)} card(s): {', '.join(cleared)}.")
+        released = settle_lost_claims()
+        if released:
+            print(f"Released {len(released)} card(s) whose earlier session died with nothing "
+                  f"to land: {', '.join(released)}.")
     if lock:
         recovered += action_dispatch.recover_orphaned_claims(work)
     if args.recover_only:

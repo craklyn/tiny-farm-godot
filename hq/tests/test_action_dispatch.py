@@ -5,6 +5,7 @@ from pathlib import Path
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest.mock import patch
 
@@ -120,6 +121,48 @@ class ActionDispatch(unittest.TestCase):
         step = next(a for a in workflow["actions"] if a["id"] == action["id"])
         self.assertEqual(step["state"], "open")
         self.assertTrue(all(b["state"] == "resolved" for b in workflow["blockers"]))
+
+    def test_a_card_whose_session_died_with_nothing_to_land_goes_back_to_its_queue(self):
+        # 2026-09-29: Grace's and Tomás's cards had a worker die after starting;
+        # the recovery step knew only half-finished landings, found none, and
+        # was blocked for operator review, so neither card ever ran again.
+        item = self.card(state="waiting_session", repair_hold="", attempts=0,
+                         started="2026-09-29T01:44:24-07:00")
+        view = drain.project_work(work.load_item(item["id"]))
+        self.assertEqual(view["blocker"]["type"], "recovery")
+        self.assertTrue(drain.release_lost_claim(work.load_item(item["id"])))
+        fresh = work.load_item(item["id"])
+        self.assertEqual(fresh["started"], "")
+        self.assertNotEqual((drain.project_work(fresh).get("blocker") or {}).get("type"), "recovery")
+        self.assertFalse(drain.release_lost_claim(fresh))
+
+    def test_a_card_parked_for_having_no_landing_is_released_at_startup(self):
+        item = self.card(state="waiting_session", repair_hold="", attempts=0,
+                         started="2026-09-29T01:44:24-07:00")
+        step = work.ensure_action(item, "recover", input_id="legacy", owner="claude",
+                                  summary="Recover the interrupted transaction before another build.",
+                                  priority="reconciliation")
+        with work.mutation_lock():
+            fresh = work.load_item(item["id"])
+            for a in fresh["workflow"]["actions"]:
+                if a["id"] == step["id"]:
+                    a["state"] = "blocked"
+            work.save_item(fresh)
+        work.ensure_blocker(work.load_item(item["id"]), "tooling", input_id=step["id"], owner="claude",
+                            reason=drain.NO_LANDING_TO_RECOVER, action_id=step["id"],
+                            wake="operator review")
+        self.assertEqual(drain.settle_lost_claims(), [item["id"]])
+        self.assertEqual(drain.settle_lost_claims(), [])
+        fresh = work.load_item(item["id"])
+        self.assertEqual(fresh["started"], "")
+        self.assertTrue(all(a["state"] == "done" for a in fresh["workflow"]["actions"]))
+        self.assertTrue(all(b["state"] == "resolved" for b in fresh["workflow"]["blockers"]))
+        self.assertIsNone(drain.project_work(fresh).get("blocker"))
+
+    def test_a_live_outside_claim_is_not_released(self):
+        item = self.card(state="waiting_session", repair_hold="", started="2026-09-29T01:44:24-07:00",
+                         outside_claim={"by": "a session", "expires_ts": time.time() + 600})
+        self.assertFalse(drain.release_lost_claim(work.load_item(item["id"])))
 
     def test_weather_reconciliation_is_selected_once_and_has_specific_brief(self):
         item = self.card()
