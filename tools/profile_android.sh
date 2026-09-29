@@ -49,7 +49,9 @@ else
 echo ">>> Snapshotting the working tree into $WORK"
 rm -rf "$WORK"
 mkdir -p "$WORK"
-{ git ls-files; git ls-files --others --exclude-standard | grep -v -e '^playtests/' -e '^assets/raw/' -e '^android/build$'; } \
+# `|| true`: grep exits 1 when a clean tree has no untracked files left, and under
+# pipefail that ended the script here without a word (2026-09-29).
+{ git ls-files; git ls-files --others --exclude-standard | grep -v -e '^playtests/' -e '^assets/raw/' -e '^android/build$' || true; } \
 	| sort -u | tar -cf - -T - | tar -xf - -C "$WORK"
 mkdir -p "$WORK/android" "$WORK/build"
 ln -s "$PWD/android/build" "$WORK/android/build"

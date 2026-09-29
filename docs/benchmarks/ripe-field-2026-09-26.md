@@ -3,10 +3,12 @@ Engineering benchmark · Tiny Farm
 
 | Date | Status | Last updated | Repo/location |
 | --- | --- | --- | --- |
-| 2026-09-26 | LIVING | 2026-09-26 | `docs/benchmarks/ripe-field-2026-09-26.md` |
+| 2026-09-26 | FINAL | 2026-09-29 | `docs/benchmarks/ripe-field-2026-09-26.md` |
 
-Status: LIVING, because the tablet half is not measured yet: the tablet was not reachable over
-wireless debugging when this was run. Every tablet figure below is `TK`.
+Status: FINAL. The tablet was unreachable on 2026-09-26; it was profiled on 2026-09-29
+(§5.1, §5.3, Incident C), and all three questions in §3 are now answered. The tablet
+numbers are a single pass, not the five-pass median used for every desktop number on
+this page — see the noise note in §4 before reading them as precise.
 
 ## 1. Background
 
@@ -28,10 +30,11 @@ frame is felt directly.
 
 | | Desktop | Tablet |
 | --- | --- | --- |
-| Device | AMD Ryzen 7 PRO 6850H, Radeon 680M (radeonsi) | Lenovo TB336FU, Mali-G57 |
-| Renderer | `gl_compatibility` (Vulkan unavailable under this display) | TK |
-| Engine | Godot 4.7.2, 800×600 window, vsync off | TK |
-| Load | Other sessions were running; load average 4.5–6 during the runs | — |
+| Device | AMD Ryzen 7 PRO 6850H, Radeon 680M (radeonsi) | Lenovo TB336FU, Mali-G57 MC2 |
+| Renderer | `gl_compatibility` (Vulkan unavailable under this display) | `mobile` (as reported by the tool) |
+| Engine | Godot 4.7.2, 800×600 window, vsync off | Godot 4.7.2, 800×600 window |
+| Load | Other sessions were running; load average 4.5–6 during the runs | Not measured |
+| Passes | 5 (median of interleaved passes) | 1 — noisier than every other row on this page; see §4 |
 
 ## 3. Questions
 
@@ -71,9 +74,26 @@ processing, and the farm page was still redrawn every frame (`page_ms` unchanged
 per-frame redraw comes from `main.gd` calling `player.update_player()`, not from the
 player's own `_process`. Those rows were discarded and the tool now pauses `main.gd`.
 
+**Tablet noise band.** The tablet run (2026-09-29) was one pass, not the five-pass
+median used everywhere else on this page, so read every tablet number as noisier than
+its desktop counterpart — likely by more than the desktop's own ±2 ms run-to-run swing,
+since that swing is itself a median-of-five figure. Where a tablet reading is small (the
+10-crop "ripe adds" below comes out slightly negative), treat it as inside the noise, not
+as a measured saving.
+
+**Incident C — `tools/profile_android.sh` silently exited on a clean checkout.** The
+script's snapshot step piped `git status` through `grep -v` to drop untracked files; under
+`pipefail`, `grep` finding nothing to drop — a clean checkout has no untracked files —
+exits 1, and `pipefail` turned that into a script-wide failure with no error printed. The
+script just stopped. Fixed with a one-line change so an empty `grep -v` match no longer
+kills the run. Separately, the connection to the tablet dropped once mid-run (adb's daemon
+restarted) and was re-established; the device-side profiling run was unaffected, because
+`profile_android.sh` reads its results from the device's own log after the run finishes
+rather than streaming them live.
+
 ## 5. Results
 
-### 5.1 Cost per ripe crop — COMPLETE (desktop), TK (tablet)
+### 5.1 Cost per ripe crop — COMPLETE (desktop and tablet)
 
 Desktop, 5 passes[^run]:
 
@@ -88,12 +108,48 @@ Desktop, 5 passes[^run]:
 The other two runs gave the same shape: ripe added 2.6 and 3.0 ms at 50 crops, and 5.7
 and 6.3 ms at 100.
 
-Tablet: TK.
+Tablet, 1 pass, shipped code[^tabletrun]:
 
-> **Verdict (desktop):** yes, a ripe field slows the game, in proportion to its size:
-> about 3.5 ms a frame at 50 ripe crops and about 6 ms at 100, where the desktop falls
-> to 56 frames a second — below a 60 Hz screen. Ten ripe crops are inside the noise.
-> The GPU is not the problem: it stays under 1 ms.
+| Crops | Unripe frame ms | Ripe frame ms | Ripe adds | Light draw ms | Draw calls, unripe → ripe | GPU ms, ripe |
+| ---: | ---: | ---: | ---: | ---: | --- | ---: |
+| 0 (bare soil) | 21.68 | — | — | — | 357 | 10.73 |
+| 10 | 21.77 | 21.67 | -0.10 | 0.12 | 364 → 366 | 11.19 |
+| 25 | 21.92 | 24.74 | +2.81 | 0.21 | 380 → 382 | 11.93 |
+| 50 | 22.69 | 24.56 | +1.88 | 0.36 | 405 → 409 | 13.19 |
+| 100 | 24.97 | 27.08 | +2.11 | 0.64 | 452 → 458 | 14.15 |
+
+This run already carries the light fix from 5.4 (`wb93d7634ff1`) — the game shipped it
+before 2026-09-29 — so it is not the same code the desktop table above measured, and the
+two "ripe adds" columns are not a fair before/after pair. Compare this row's own light
+draw time against 5.4's, not against 5.1's four-ring numbers. Being a single pass, it also
+does not scale as cleanly as the desktop table: the 10-crop reading is slightly negative
+(noise, not a saving), and 50 crops reads lower than 25. Treat the four "ripe adds"
+figures as "roughly 2–3 ms once there is a field of them," not as points on a clean line.
+
+One anomaly, not hidden: the `unripe, 100` row on the tablet counts one ripe plant
+(`ripe=1.0`) even though it is nominally an all-unripe row. Every other tablet
+unripe/bare-soil row counts zero — unlike the desktop's, which consistently count one
+(the stray ripe crop outside the test field, noted under Raw output below). Why the
+tablet's stray crop shows up in only this one row, in a single-pass run, is not chased
+further here. It does not change the ripe-adds figures above, which come from each row's
+own frame time, not from its crop count.
+
+> **Verdict (desktop, four-ring code, 2026-09-26):** yes, a ripe field slows the game, in
+> proportion to its size: about 3.5 ms a frame at 50 ripe crops and about 6 ms at 100,
+> where the desktop falls to 56 frames a second — below a 60 Hz screen. Ten ripe crops
+> are inside the noise. The GPU is not the problem: it stays under 1 ms.
+>
+> **Verdict (tablet, shipped code, 2026-09-29, single pass):** a ripe field costs the
+> tablet less than the redraw it sits inside already costs. Ripe crops add roughly
+> 2–3 ms once there are 25 or more of them (noisier than the desktop reading — see the
+> noise note in §4). The ripe light's own script cost stays under 1 ms even at 100 crops
+> (0.64 ms), the same "light is cheap now" result the fix produced on desktop in 5.4. The
+> bigger number is the redraw everything sits inside (5.3): pausing it drops the tablet's
+> frame from about 22–27 ms to about 15–18 ms, near 60 fps. The tablet's own bare-soil
+> frame in this test scene is already 21.68 ms — over the 16.7 ms budget before a single
+> ripe crop is planted. (This test scene is not the same measurement as the yard's ~35 fps
+> cited in §1 — this tool's bare soil is a simpler scene — but both land over budget.) The
+> redraw, not the ripe look, is what is costing the tablet its frames.
 
 ### 5.2 Sway or light — COMPLETE
 
@@ -108,7 +164,9 @@ CPU every frame and each its own draw call (four extra calls per ripe crop in 5.
 
 > **Verdict:** the light is the cost; the sway is not worth touching.
 
-### 5.3 What the fixes gain — COMPLETE (desktop)
+### 5.3 What the fixes gain — COMPLETE (desktop and tablet)
+
+Desktop, four-ring code, 2026-09-26:
 
 | Crops | Ripe, as shipped | light_sprite | light_off | Unripe | no_redraw, ripe |
 | ---: | ---: | ---: | ---: | ---: | ---: |
@@ -125,6 +183,23 @@ Redrawing the whole farm page every frame is about 90% of the desktop frame with
 without ripe crops. It walks every square of the page each frame, which is against the
 project's own "no per-tile per-frame work" rule (`CLAUDE.md`), and it is the most likely
 reason the tablet sits near 35 frames a second.
+
+Tablet, shipped code (light fix already applied), 2026-09-29, 1 pass[^tabletrun]:
+
+| Crops | Ripe, as shipped | light_sprite | light_off | Unripe | no_redraw, ripe |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 50 | 24.56 ms | 25.28 ms | 25.39 ms | 22.69 ms | 16.62 ms |
+| 100 | 27.08 ms | 26.46 ms | 26.29 ms | 24.97 ms | 17.59 ms |
+
+On the tablet, "ripe, as shipped" already is the baked-texture fix — `light_sprite` here
+is the tool's own separate prototype re-applying an already-solved problem, and
+`light_off` removes a cost that is already under 1 ms. The three cluster within about a
+millisecond of each other, inside a single pass's noise: further light work has nothing
+left to save on this device either. The no_redraw floor is the real story, at the same
+scale as the desktop's: pausing the redraw drops the tablet's frame by about 8–9 ms (24.56
+to 16.62 ms at 50 crops, 27.08 to 17.59 ms at 100 crops), close to 60 fps in both cases.
+The every-frame redraw is the biggest lever on the tablet just as it is on desktop — now
+confirmed on the actual target device, not only projected from it.
 
 ### 5.4 After: the baked texture ships (wb93d7634ff1) — COMPLETE (desktop, different renderer)
 
@@ -182,7 +257,8 @@ Two things this confirms, both read from this run's own numbers rather than agai
 
 > **Verdict:** shipped as designed. The ripe field's light draw is no longer the
 > expensive part of the frame, on this renderer as on the one 5.1–5.3 used; the tablet
-> question in §6 stands until it is actually measured there.
+> question in §6 was open when this was written and is now answered — measured
+> 2026-09-29, §5.1 and §5.3.
 
 ## 6. Conclusions
 
@@ -200,27 +276,41 @@ Two things this confirms, both read from this run's own numbers rather than agai
   brightening and dimming as a whole rather than ring by ring, which is too fine a
   distinction to catch without the two frames in hand at once.
 - **Leave the sway alone.** 4 µs a plant (5.2).
-- **Do not start on the full-farm redraw from this note.** It is the bigger cost, but
-  the player and every animal are drawn inside the farm's own depth-sorted pass, so
-  keeping the still parts cached means splitting that pass. That is a project and needs
-  its own measurement of which part of the 6–7 ms page draw is the square walk.
-- **Tablet: TK.** On the desktop's numbers and the sim benchmark's 2.2–2.4× tablet
-  slowdown, 50 ripe crops might cost the tablet around 6 ms on top of about 28 ms, which
-  is 35 down to about 29 frames a second. That is a projection, not a measurement; the
-  tablet also has a different GPU that may treat 200 extra draw calls differently.
+- **Do not start on the full-farm redraw from this note.** It is the bigger cost on both
+  devices, and on the tablet it is the whole story — its bare-soil frame is already over
+  the 16.7 ms budget before any ripe crop is planted. But the player and every animal are
+  drawn inside the farm's own depth-sorted pass, so keeping the still parts cached means
+  splitting that pass. That is a project and needs its own measurement of which part of
+  the page draw (6–7 ms on desktop, roughly 12–15 ms on the tablet) is the square walk.
+- **Tablet: measured, not projected (2026-09-29, single pass — §5.1, §5.3, Incident C).**
+  The earlier projection guessed ripe crops would cost the tablet about 6 ms at 50 crops;
+  the actual reading is smaller — about +1.9 ms at 50 crops and +2.1 ms at 100 (single
+  pass, so read these as order-of-magnitude, not precise). The gap is expected, not a
+  contradiction: that projection scaled up the pre-fix, four-ring cost, and the tablet was
+  only reachable after the light fix (5.4) had already shipped, so it measured the cheaper
+  code. What the tablet actually shows: the ripe light itself is cheap there too (under
+  1 ms of script even at 100 crops), and the full-farm redraw is what dominates the frame
+  — pausing it drops the tablet's frame from about 22–27 ms to about 15–18 ms, near 60 fps.
+  The tablet's own bare-soil frame in this test scene, 21.68 ms, is already past the
+  16.7 ms budget before any ripe crop is planted. Ripe crops make an already-tight tablet
+  frame a little tighter; the redraw is what is breaking it.
 
 ## 7. Next steps
 
-1. TK — Run `TINY_FARM_PROFILE_MODE=ripe tools/profile_android.sh` once the tablet is
-   on wireless debugging, and fill in the tablet figures. It installs as
-   `com.daniel.tinyfarm.ripeprofile` and uninstalls afterwards; the game's own package
-   and saves are not touched.
+1. ~~Run `TINY_FARM_PROFILE_MODE=ripe tools/profile_android.sh` once the tablet is on
+   wireless debugging, and fill in the tablet figures.~~ Done, 2026-09-29 (§5.1, §5.3,
+   Incident C). It installs as `com.daniel.tinyfarm.ripeprofile` and uninstalls
+   afterwards; the game's own package and saves were not touched. Still open: this was
+   one pass, not the five-pass median the rest of this note uses — a repeat run would
+   tighten the tablet's noisier numbers, especially the near-zero 10-crop reading.
 2. ~~Replace the ripe light's four circles with one baked texture, with a
    before-and-after capture of the ripe cue.~~ Done (wb93d7634ff1, 5.4). Still open: a
    hardware-desktop re-run of 5.4's table, so the fix's numbers sit on the same renderer
    as 5.1–5.3 instead of only on their own relative shape.
 3. Measure how much of the farm page's every-frame redraw is the walk over every square,
-   before anyone designs a cached farm.
+   before anyone designs a cached farm. The tablet numbers above make this the more
+   urgent of the two remaining items: its bare-soil frame is already over budget, with or
+   without ripe crops.
 
 ## Raw output
 
@@ -289,3 +379,35 @@ other table on this page was measured on. The "ripe" row is the shipped code
 5.1–5.3's "ripe, as shipped" rows exercised the four rings before it; the `light_sprite`
 row alongside it is still the tool's unchanged local prototype, kept as the same
 same-renderer sanity check it was in 5.3.
+
+## Raw output, tablet (2026-09-29)
+
+```text
+PROFILE ripe field window=(800.0, 600.0) renderer=mobile device=Mali-G57 MC2 passes=1 frames=240
+PROFILE field                crops  frame_ms    fps    calls   gpu_ms  page_ms light_ms   ripe
+PROFILE bare soil                0    21.679     46      357   10.729   11.668    0.027    0.0
+PROFILE unripe                  10    21.765     46      364   11.026   11.858    0.029    0.0
+PROFILE ripe                    10    21.666     46      366   11.187   11.885    0.119   10.0
+PROFILE unripe                  25    21.922     46      380   11.179   11.962    0.028    0.0
+PROFILE ripe                    25    24.735     40      382   11.927   12.711    0.214   25.0
+PROFILE unripe                  50    22.687     44      405   11.452   12.280    0.027    0.0
+PROFILE ripe                    50    24.563     41      409   13.191   13.499    0.361   50.7
+PROFILE unripe                 100    24.968     40      452   11.832   13.514    0.078    1.0
+PROFILE ripe                   100    27.081     37      458   14.152   14.927    0.639  101.0
+PROFILE ripe, light_sprite      50    25.276     40      420   12.187   13.476    0.225   51.0
+PROFILE ripe, light_off         50    25.392     39      419   11.149   13.422    0.011   51.0
+PROFILE unripe, no_redraw       50    16.203     62      419   11.342    0.000    0.000    0.0
+PROFILE ripe, no_redraw         50    16.623     60      420   12.724    0.000    0.000    0.0
+PROFILE ripe, light_sprite     100    26.455     38      457   14.126   14.759    0.352  101.0
+PROFILE ripe, light_off        100    26.292     38      457   11.805   14.570    0.011  101.0
+PROFILE unripe, no_redraw      100    15.492     65      457   11.664    0.000    0.000    0.0
+PROFILE ripe, no_redraw        100    17.592     57      458   14.305    0.000    0.000    0.0
+PROFILE ripe field done
+```
+
+[^tabletrun]: `TINY_FARM_PROFILE_MODE=ripe tools/profile_android.sh`, from main at
+`39cda9c` plus the one-line fix in Incident C, Lenovo TB336FU (Mali-G57 MC2), 2026-09-29
+~09:25 PDT, output above. One pass, not the five-pass median the rest of this page uses
+— see the tablet noise note in §4. Installs as `com.daniel.tinyfarm.ripeprofile` and
+uninstalls afterwards; results are read from the device's own log after the run
+finishes, which is why the mid-run adb disconnect (Incident C) did not affect them.

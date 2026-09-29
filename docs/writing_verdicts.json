@@ -2720,6 +2720,9 @@
    "verdict": "decode",
    "why": "The sentence does not identify what object “the neighbour” refers to, so a cold reader would have to ask which thing to render."
   },
+  "516457afde6d5ebd048d": {
+   "verdict": "ok"
+  },
   "51b18ce6211cc7714581": {
    "verdict": "ok"
   },
@@ -6316,6 +6319,12 @@
   "ba7320a958907f89e8c0": {
    "verdict": "ok"
   },
+  "ba869e4528bb143ee2bd": {
+   "instead": "The speed test shows that redrawing the whole farm instead of only ripe crops makes the tablet stutter",
+   "quote": "The ripe-field benchmark has its tablet numbers: redrawing the whole farm every frame, not the ripe crops, costs the tablet its frame rate",
+   "verdict": "decode",
+   "why": "The reader must translate “tablet numbers” and “costs the tablet its frame rate” into the visible result: the tablet stutters."
+  },
   "bac3aaecc31e6abbc388": {
    "verdict": "ok"
   },
@@ -6836,6 +6845,9 @@
    "verdict": "ok"
   },
   "c9797a3ce11a836525f7": {
+   "verdict": "ok"
+  },
+  "c989f2cdb1eb37569d50": {
    "verdict": "ok"
   },
   "c9cb66306ae4ea29271f": {
@@ -7422,6 +7434,12 @@
    "quote": "Match HQ's back-end labels to the plain wording now on its pages",
    "verdict": "second-look",
    "why": "\"Back-end labels\" is unclear—database keys, configuration values, or something else?"
+  },
+  "da0926c159b86d2c3bce": {
+   "instead": "redrawing the whole farm each time makes the game stutter on the tablet",
+   "quote": "redrawing the whole farm every frame is what keeps the game below 60 frames a second",
+   "verdict": "decode",
+   "why": "It describes the rendering mechanism and a technical rate instead of saying what the player experiences."
   },
   "da1b8b58310629ad203e": {
    "instead": "The picture display appeared in a draft of the reply shown after a tap.",
@@ -8038,6 +8056,9 @@
    "verdict": "ok"
   },
   "ee535dfc6f953d2a77f0": {
+   "verdict": "ok"
+  },
+  "ee5c3dcbedeebc80714d": {
    "verdict": "ok"
   },
   "ee6ac975e54332f72113": {
