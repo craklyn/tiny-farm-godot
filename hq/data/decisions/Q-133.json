@@ -1,0 +1,52 @@
+{
+ "id": "Q-133",
+ "owner": "claude",
+ "title": "Which picture of the moving Mark III goes on the workbench shelf's pace row?",
+ "question": "The first row of the training workbench's shelf sets how hard a Mark III learns each night. You ruled on Q-131 that the row keeps a picture of the Mark III leaning into motion with two short trails. Today that picture is a stand-in: the robot's walking frame from the farm, stretched two and a half times, which blurs its pixels.\n\nHere are three drawings from Retro Diffusion, each placed on a capture of the real shelf, above the starting-brain card for scale:\n\nA: the farm's own Mark III, leaned forward, standing still. It comes from a run cycle the generator drew from the robot's farm sprite.\nB: the same leaned robot running in place, eight frames looping at about one stride every 1.2 seconds.\nC: a new running robot the generator drew from a written description, cut to the same height.\n\nA and B are the farm robot at exactly the pixel size of the robot on the card below. C is a different design: it has no face, and its dark head sinks into the card. The trails are identical on all three, so the choice is only about the robot. At that pixel size the picture is 90 pixels tall instead of 72; the row has room for it.\n\nI recommend B. It is the robot the player already knows, and it actually moves, which is what you chose on Q-131.",
+ "why_now": "The pace row works today with the stretched stand-in. This is its permanent picture.",
+ "options": [
+  {
+   "key": "b",
+   "label": "B: the farm's Mark III running in place (Recommended)",
+   "detail": "The pace row plays B's eight frames as a loop, at the same pixel size as the robot on the starting-brain card. The studio puts it on the shelf, credits it and retakes the shelf's screenshots.",
+   "recommended": true
+  },
+  {
+   "key": "a",
+   "label": "A: the farm's Mark III leaned forward, standing still",
+   "detail": "The pace row shows A as a still picture, at the same pixel size as the robot on the starting-brain card. The studio puts it on the shelf, credits it and retakes the shelf's screenshots."
+  },
+  {
+   "key": "c",
+   "label": "C: the new drawing",
+   "detail": "The pace row shows C as a still picture. It is the most energetic pose, but it is not the robot the player sees on the farm."
+  }
+ ],
+ "links": [
+  {
+   "type": "image",
+   "src": "docs/design/mockups/pace_picture/0_today.png",
+   "caption": "Today: the farm's walking frame, stretched two and a half times."
+  },
+  {
+   "type": "image",
+   "src": "docs/design/mockups/pace_picture/A_still.png",
+   "caption": "A: the farm's Mark III, leaned forward, standing still."
+  },
+  {
+   "type": "image",
+   "src": "docs/design/mockups/pace_picture/B_moving.gif",
+   "caption": "B: the same robot running in place."
+  },
+  {
+   "type": "image",
+   "src": "docs/design/mockups/pace_picture/C_new_drawing.png",
+   "caption": "C: a new drawing, cut to the same height."
+  },
+  {
+   "label": "How the three were made, what each call cost, and the images that were not used",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/assets/raw/2026-09-29-mark3-pace/README.md"
+  }
+ ],
+ "subject": "The Mark III learning shop"
+}

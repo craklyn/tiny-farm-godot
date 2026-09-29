@@ -306,6 +306,15 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   can effectively refit a replacement brain is untested. That is a separate future
   improvement, not a condition of this sale. Card: `hq/data/decisions/Q-132.json`.
 
+- **Q-133 — Which picture of the moving Mark III goes on the workbench shelf's pace
+  row?** — **Open, 2026-09-29.** Three Retro Diffusion candidates for S-34's permanent
+  pace picture, each placed on a capture of the real bought shelf: A, the farm's Mark III
+  leaned forward, standing still; B, the same robot running in place (recommended); C, a
+  new drawing. A and B keep the farm sprite's pixel size, which makes the picture 90
+  pixels tall instead of 72. Raws, costs and the rebuild script:
+  `assets/raw/2026-09-29-mark3-pace/`; pictures: `docs/design/mockups/pace_picture/`.
+  Card: `hq/data/decisions/Q-133.json`.
+
 - **Q-126 to Q-130 — The Mark III learning shop.** — **Ruled 2026-09-25 to
   2026-09-27.**
   Milo's sketch (`docs/design/mockups/mk3_learning_shop/SKETCH.md`, 4f6ae2f) lays out

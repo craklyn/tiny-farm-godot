@@ -1,0 +1,40 @@
+[
+ [
+  "pace_lean_from_ingame",
+  {
+   "prompt": "the same small chibi farm robot with a big pale grey steel dome head and two small glowing amber eyes, one thin dark teal antenna with a tiny amber bead on top, small deep teal green barrel body with a pale teal chest panel, short stubby teal arms and legs, running fast to the right, three quarter view facing right, whole body leaning forward into its stride, front leg reaching forward and back leg kicking up behind, arms swinging, cozy pastel 2d farming game sprite, rounded soft silhouette, colored outlines (no black), each material a clearly distinct color with strong color separation, no sepia wash, no purple, no violet anywhere, no speed lines, no shadow, plain flat cream background",
+   "prompt_style": "rd_plus__default",
+   "width": 96,
+   "height": 96,
+   "num_images": 2,
+   "seed": 30903,
+   "strength": 0.65,
+   "input_image": "<input_ingame_right_frame0_96.png, base64>",
+   "palette_hex": [
+    "#3f7a70",
+    "#2b564f",
+    "#b8b2ac",
+    "#8d8e92",
+    "#6f6862",
+    "#8cbfc2",
+    "#5f8f93",
+    "#f1cf5a",
+    "#e9e178",
+    "#e0d9c4",
+    "#f8f4e6"
+   ]
+  }
+ ],
+ [
+  "pace_run_cycle_from_ingame",
+  {
+   "prompt": "small chibi farm robot with a big pale grey steel dome head and two small glowing amber eyes, one thin dark teal antenna with a tiny amber bead on top, small deep teal green barrel body with a pale teal chest panel, short stubby teal arms and legs, running fast to the right",
+   "prompt_style": "rd_advanced_animation__custom_action",
+   "width": 96,
+   "height": 96,
+   "num_images": 1,
+   "seed": 30903,
+   "input_image": "<input_ingame_right_frame0_96.png, base64>"
+  }
+ ]
+]

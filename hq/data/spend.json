@@ -382,6 +382,71 @@
       "balance_after": 2.996,
       "reconciled": true,
       "recorded_by": "record_spend"
+    },
+    {
+      "id": "2026-09-29-mark-iii-pace-picture-candidates-for-q-1",
+      "date": "2026-09-29",
+      "vendor": "Retro Diffusion",
+      "kind": "generation",
+      "purpose": "Mark III pace picture candidates for Q-133: text-prompted profile run, two images (pace_profile_run)",
+      "work_item": "w5a99f97ab80",
+      "dollars": 0.059,
+      "credits": 5.9,
+      "balance_after": 2.937,
+      "reconciled": true,
+      "recorded_by": "record_spend"
+    },
+    {
+      "id": "2026-09-29-mark-iii-pace-picture-candidates-for-q-1",
+      "date": "2026-09-29",
+      "vendor": "Retro Diffusion",
+      "kind": "generation",
+      "purpose": "Mark III pace picture candidates for Q-133: text-prompted three-quarter dash, two images (pace_three_quarter_dash)",
+      "work_item": "w5a99f97ab80",
+      "dollars": 0.059,
+      "credits": 5.9,
+      "balance_after": 2.878,
+      "reconciled": true,
+      "recorded_by": "record_spend"
+    },
+    {
+      "id": "2026-09-29-mark-iii-pace-picture-candidates-for-q-1",
+      "date": "2026-09-29",
+      "vendor": "Retro Diffusion",
+      "kind": "generation",
+      "purpose": "Mark III pace picture candidates for Q-133: text-prompted low sprint, two images (pace_low_sprint)",
+      "work_item": "w5a99f97ab80",
+      "dollars": 0.059,
+      "credits": 5.9,
+      "balance_after": 2.819,
+      "reconciled": true,
+      "recorded_by": "record_spend"
+    },
+    {
+      "id": "2026-09-29-mark-iii-pace-picture-candidates-for-q-1",
+      "date": "2026-09-29",
+      "vendor": "Retro Diffusion",
+      "kind": "generation",
+      "purpose": "Mark III pace picture candidates for Q-133: image-to-image lean from the shipped sprite, two images, neither used (pace_lean_from_ingame)",
+      "work_item": "w5a99f97ab80",
+      "dollars": 0.059,
+      "credits": 5.9,
+      "balance_after": 2.76,
+      "reconciled": true,
+      "recorded_by": "record_spend"
+    },
+    {
+      "id": "2026-09-29-mark-iii-pace-picture-candidates-for-q-1",
+      "date": "2026-09-29",
+      "vendor": "Retro Diffusion",
+      "kind": "generation",
+      "purpose": "Mark III pace picture candidates for Q-133: 8-frame run cycle animated from the shipped sprite (pace_run_cycle_from_ingame)",
+      "work_item": "w5a99f97ab80",
+      "dollars": 0.25,
+      "credits": 25,
+      "balance_after": 2.51,
+      "reconciled": true,
+      "recorded_by": "record_spend"
     }
   ]
 }

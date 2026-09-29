@@ -1,0 +1,74 @@
+[
+ [
+  "pace_profile_run",
+  {
+   "prompt": "small chibi farm robot running fast to the right, in profile facing right, side view, whole body leaning forward into its stride, front leg stepping far forward and back leg kicking up behind, stubby arms swinging, very squat proportions with an oversized rounded head about half its total height, smooth pale grey steel dome head with a narrow glowing amber sensor visor strip on the side of the face, one short thin antenna on top of the head swept back by the speed, ending in a small glowing amber bead, rounded barrel body in deep teal green with a small square pale teal chest panel, short stubby arms and short stubby legs, cozy pastel 2d farming game sprite, rounded soft silhouette, colored outlines (no black), deep teal green body with dark teal outlines and a pale grey steel head, each material a clearly distinct color with strong color separation, no sepia wash, no purple, no violet anywhere, no speed lines, no shadow, plain flat cream background",
+   "prompt_style": "rd_plus__default",
+   "width": 96,
+   "height": 96,
+   "num_images": 2,
+   "seed": 30903,
+   "palette_hex": [
+    "#3f7a70",
+    "#2b564f",
+    "#b8b2ac",
+    "#8d8e92",
+    "#6f6862",
+    "#8cbfc2",
+    "#5f8f93",
+    "#f1cf5a",
+    "#e9e178",
+    "#e0d9c4",
+    "#f8f4e6"
+   ]
+  }
+ ],
+ [
+  "pace_three_quarter_dash",
+  {
+   "prompt": "small chibi farm robot hurrying eagerly to the right, three quarter view turned toward the right, leaning forward mid stride with one foot off the ground, stubby arms pumping, very squat proportions with an oversized rounded head about half its total height, smooth pale grey steel dome head with a narrow glowing amber sensor visor strip on the side of the face, one short thin antenna on top of the head swept back by the speed, ending in a small glowing amber bead, rounded barrel body in deep teal green with a small square pale teal chest panel, short stubby arms and short stubby legs, cozy pastel 2d farming game sprite, rounded soft silhouette, colored outlines (no black), deep teal green body with dark teal outlines and a pale grey steel head, each material a clearly distinct color with strong color separation, no sepia wash, no purple, no violet anywhere, no speed lines, no shadow, plain flat cream background",
+   "prompt_style": "rd_plus__default",
+   "width": 96,
+   "height": 96,
+   "num_images": 2,
+   "seed": 30903,
+   "palette_hex": [
+    "#3f7a70",
+    "#2b564f",
+    "#b8b2ac",
+    "#8d8e92",
+    "#6f6862",
+    "#8cbfc2",
+    "#5f8f93",
+    "#f1cf5a",
+    "#e9e178",
+    "#e0d9c4",
+    "#f8f4e6"
+   ]
+  }
+ ],
+ [
+  "pace_low_sprint",
+  {
+   "prompt": "small chibi farm robot sprinting to the right, side view facing right, leaning far forward like a sprinter bursting off the line, stubby arms pulled back behind its body, one leg driving forward, very squat proportions with an oversized rounded head about half its total height, smooth pale grey steel dome head with a narrow glowing amber sensor visor strip on the side of the face, one short thin antenna on top of the head swept back by the speed, ending in a small glowing amber bead, rounded barrel body in deep teal green with a small square pale teal chest panel, short stubby arms and short stubby legs, cozy pastel 2d farming game sprite, rounded soft silhouette, colored outlines (no black), deep teal green body with dark teal outlines and a pale grey steel head, each material a clearly distinct color with strong color separation, no sepia wash, no purple, no violet anywhere, no speed lines, no shadow, plain flat cream background",
+   "prompt_style": "rd_plus__default",
+   "width": 96,
+   "height": 96,
+   "num_images": 2,
+   "seed": 30903,
+   "palette_hex": [
+    "#3f7a70",
+    "#2b564f",
+    "#b8b2ac",
+    "#8d8e92",
+    "#6f6862",
+    "#8cbfc2",
+    "#5f8f93",
+    "#f1cf5a",
+    "#e9e178",
+    "#e0d9c4",
+    "#f8f4e6"
+   ]
+  }
+ ]
+]

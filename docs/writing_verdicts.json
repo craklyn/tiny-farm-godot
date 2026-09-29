@@ -834,6 +834,9 @@
    "verdict": "decode",
    "why": "The metaphor does not plainly say whether the meal duration changes with the planting location."
   },
+  "1992c2c01502e4138ff2": {
+   "verdict": "ok"
+  },
   "19a9a5242dbded830be2": {
    "verdict": "ok"
   },
@@ -1488,6 +1491,9 @@
   "2ce75db25333c0032b03": {
    "verdict": "ok"
   },
+  "2d164d947f5fe606f48f": {
+   "verdict": "ok"
+  },
   "2d1ff4ba4f72beb9b3e8": {
    "verdict": "ok"
   },
@@ -1721,6 +1727,9 @@
    "why": "“Sorting” describes an internal rendering step, while the reader needs the plain result of that work."
   },
   "345a775a2fccb2867d12": {
+   "verdict": "ok"
+  },
+  "34605a90b6c240291b13": {
    "verdict": "ok"
   },
   "347e8c0eafe3fc39caec": {
@@ -1968,6 +1977,9 @@
   "3abde4495352d55d4af4": {
    "verdict": "ok"
   },
+  "3aedeec573cf79ebcb73": {
+   "verdict": "ok"
+  },
   "3b3ce9a553953351ae68": {
    "verdict": "ok"
   },
@@ -2037,6 +2049,9 @@
    "quote": "review fixtures",
    "verdict": "decode",
    "why": "“Fixtures” is internal testing shorthand, so the reader has to work out what is being kept aligned."
+  },
+  "3cc84431a534fedf4ff5": {
+   "verdict": "ok"
   },
   "3ce8cc0071b633b3b409": {
    "verdict": "ok"
@@ -3512,6 +3527,9 @@
   "6d64893f2a6050ce9be3": {
    "verdict": "ok"
   },
+  "6d6576a1b2eb4863e819": {
+   "verdict": "ok"
+  },
   "6d68bd32b4d203aff094": {
    "instead": "inventory pop-up opened from the bottom bar",
    "quote": "bottom-bar inventory modal",
@@ -4415,6 +4433,9 @@
    "verdict": "decode",
    "why": "“Open bar” is unexplained dashboard shorthand for an unfinished part of the milestone."
   },
+  "881afc086e59b68adbe2": {
+   "verdict": "ok"
+  },
   "8829cf3aeb6e82f639b2": {
    "instead": "the bar remains a quick summary you can read without tapping",
    "quote": "the bar stays a glance you can read without tapping",
@@ -4700,6 +4721,9 @@
   "9072c5defa3a69c93458": {
    "verdict": "ok"
   },
+  "910f838c1f42f7ee8d06": {
+   "verdict": "ok"
+  },
   "913c5c5e69d22ef0bba7": {
    "verdict": "ok"
   },
@@ -4801,6 +4825,12 @@
   },
   "93b8a5fc32cd65c7df18": {
    "verdict": "ok"
+  },
+  "93d10c9c27805995751b": {
+   "instead": "C is the most energetic pose, but it is not the robot the player sees on the farm.",
+   "quote": "It",
+   "verdict": "second-look",
+   "why": "The pronoun refers to C from the previous sentence, so the reader must carry the referent across sentences."
   },
   "93e656181ceeb99c084b": {
    "verdict": "ok"
@@ -6212,6 +6242,9 @@
    "why": "“Stateless rolls” and “visible schedule cycle” are internal descriptions, so the reader must work out what changes and what repetition is being prevented."
   },
   "c085b7ce1d42754c7386": {
+   "verdict": "ok"
+  },
+  "c0c66bb97daaf918e650": {
    "verdict": "ok"
   },
   "c0e0fb430ab94714d26b": {
