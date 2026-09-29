@@ -266,9 +266,8 @@ set bold), taken from the game by `tools/capture_workbench_shelf.tscn`.
   has its reason on the same screen.
 - **Bought, the price is replaced by the item's controls, in the same place.** For the pace
   setting that is three buttons, 96 by 72: one, two and three chevrons for calm, normal and
-  bold, the robot's current step lit in the bench's brass. The picture is the Mark III with
-  two chevrons beside it; once bought the chevrons leave the picture, so the three buttons
-  are the only chevrons on the card.
+  bold, the robot's current step lit in the bench's brass. The Mark III in a rightward stride,
+  with two short trails behind it, stays beside the controls before and after purchase.
 - **Buying is the Action `buy_upgrade`**, with the bench's own square as its target, the
   robot named, and the item's key. The gateway refuses it away from a bench
   (`no_workbench`), for a machine that does not learn (`not_a_learner`), for anything not
@@ -286,9 +285,8 @@ set bold), taken from the game by `tools/capture_workbench_shelf.tscn`.
   belonged to the whole farm would need a home for it on the farm's own state; none exists
   yet, so none is written.
 
-The current card predates S-34: its robot stands still, and its single 150-gold purchase
-opens all three controls. It must be replaced by the permanent moving picture and the
-separate second and third purchases above.
+The pace card has S-34's permanent moving picture. Its single 150-gold purchase still opens
+all three controls; the separate second and third purchases remain to be built.
 
 ### The starting brain card (Q-128, built 2026-09-26; S-32)
 

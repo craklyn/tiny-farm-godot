@@ -11,9 +11,9 @@
 # tap on a packet buys it — with a coin and a numeral beside the picture, the
 # numeral red when she cannot afford it (and the card will not take the tap).
 # Bought, the price is gone and the card carries the control the upgrade gives
-# the robot on the bench. The first row is the pace setting (Q-129 a): three
-# picture buttons, one, two and three chevrons for calm, normal and bold, the lit
-# one in the bench's brass. The second is the studio's starting brain (Q-128):
+# the robot on the bench. The first row is the pace setting (Q-129 a): a moving
+# Mark III stays beside the picture buttons, one, two and three chevrons for calm,
+# normal and bold, with the lit one in the bench's brass (S-34). The second is the studio's starting brain (Q-128):
 # no control once bought, only its spark turned brass, and dark for a robot that
 # has already had a night, because the gateway refuses it one.
 #
@@ -47,10 +47,12 @@ const PACE_GAP := 16.0
 # screen. Left because the game's build tag sits in the bottom right corner.
 const PURSE_AT := Vector2(36, 548)
 
-# The Mark III's body, cut out of the 48px cell its sheet draws it in (the sprite
-# fills only the middle of the cell) so it can be shown at a whole 3x.
+# The Mark III's right-facing walk frame, cut out of the 48px cell its sheet draws
+# it in. The shelf keeps this moving pose beside the pace controls before and
+# after purchase (S-34).
 const SHEET_MK3 := preload("res://assets/sprites/generated/bot_mk3.png")
-const MK3_BODY := Rect2(14, 17, 22, 24)
+const MK3_MOVING_BODY := Rect2(64, 161, 15, 27)
+const MK3_MOVING_SCALE := 2.5
 
 # The shop's coin (`ui/menus.gd`'s `coin_icon`, column 3 of the same sheet), read
 # off the sheet the bench already holds rather than by loading the menus script.
@@ -287,27 +289,37 @@ static func pace_rect(row: int, p: int) -> Rect2:
 		r.position.y + (r.size.y - PACE_BUTTON.y) / 2.0), PACE_BUTTON)
 
 
-## An item's picture, by its `ShelfDefs` `picture` key. The pace setting is the
-## Mark III with two chevrons beside it — the robot, going. Once it is bought the
-## chevrons go, because the three pace buttons beside the robot are chevrons too
-## and a fourth set would read as a fourth button.
+## An item's picture, by its `ShelfDefs` `picture` key. The pace setting keeps its
+## moving Mark III beside the controls in every state, so the card keeps saying
+## whose pace the chevrons change (S-34).
 static func draw_picture(canvas: CanvasItem, picture: String, r: Rect2, ink: Color,
 		owned := false) -> void:
 	match picture:
 		"pace":
-			var body := Rect2(r.position, MK3_BODY.size * 3.0)
-			canvas.draw_texture_rect_region(SHEET_MK3, body, MK3_BODY, Color(1, 1, 1, ink.a))
-			if not owned:
-				draw_chevrons(canvas, 2, Rect2(Vector2(body.end.x, r.position.y),
-					Vector2(r.end.x - body.end.x, r.size.y)), ink)
+			draw_moving_mk3(canvas, r, ink)
 		# The studio's starting brain (Q-128): the Mark III with a four-point spark
 		# beside its head — the robot, already switched on. Kept once bought, in the
 		# bench's brass, so the card goes on saying this robot started from it.
 		"starter":
-			var body := Rect2(r.position, MK3_BODY.size * 3.0)
-			canvas.draw_texture_rect_region(SHEET_MK3, body, MK3_BODY, Color(1, 1, 1, ink.a))
+			var body := Rect2(r.position, Vector2(22, 24) * 3.0)
+			canvas.draw_texture_rect_region(SHEET_MK3, body, Rect2(14, 17, 22, 24), Color(1, 1, 1, ink.a))
 			var spark := Workbench.BRASS_LIT if owned else ink
 			draw_spark(canvas, Vector2(body.end.x + 22.0, r.position.y + 18.0), 14.0, spark)
+
+
+## The Mark III leaning into a rightward stride, with two trails behind it. The
+## trails belong to the pace picture, never to a purchase state, so buying does
+## not leave the chevrons without their robot (S-34).
+static func draw_moving_mk3(canvas: CanvasItem, r: Rect2, ink: Color) -> void:
+	var body_size := MK3_MOVING_BODY.size * MK3_MOVING_SCALE
+	var body := Rect2(r.position + Vector2(24, (r.size.y - body_size.y) / 2.0), body_size)
+	var trail := Color(ink.r, ink.g, ink.b, ink.a * 0.72)
+	var cy := body.get_center().y
+	canvas.draw_line(Vector2(body.position.x - 20.0, cy - 8.0),
+		Vector2(body.position.x - 5.0, cy - 8.0), trail, 3.0)
+	canvas.draw_line(Vector2(body.position.x - 14.0, cy + 8.0),
+		Vector2(body.position.x - 3.0, cy + 8.0), trail, 3.0)
+	canvas.draw_texture_rect_region(SHEET_MK3, body, MK3_MOVING_BODY, Color(1, 1, 1, ink.a))
 
 
 ## A four-point spark of radius `size` at `c`: the starting brain's mark.
