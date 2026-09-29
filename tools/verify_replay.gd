@@ -4,8 +4,9 @@
 #   godot --headless --path . --script res://tools/verify_replay.gd -- playtests/<session>
 # Loads the session's action log and the autosave — both written together at
 # each sleep — replays the log into a fresh world, and verifies the end state
-# matches the autosave. Presentation-only fields (selected tool/seed) are
-# excluded: they are not Actions and are not sim truth.
+# matches the autosave. Presentation state (selected tool/seed and the
+# once-per-farm story-loop guard) is excluded: it is not made by Actions and is
+# not sim truth.
 #
 # Which farm: the last one played (S-14 keeps three, `systems/save_slots.gd`),
 # then any other slot that has a session in it, then the root of `user://` for a
@@ -65,6 +66,9 @@ func _init() -> void:
 			print("  %s" % report["divergence"])
 		if not report.get("state_matched", false):
 			print("MISMATCH: replay end state differs from autosave.")
+			var difference := String(report.get("state_difference", ""))
+			if difference != "":
+				print("  first difference: %s" % difference)
 	quit(0 if matched else 1)
 
 

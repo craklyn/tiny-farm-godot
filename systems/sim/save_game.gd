@@ -757,9 +757,9 @@ static func save_to(path: String, world: SimWorld, gs) -> bool:
 	return true
 
 
-# Canonical string form of a capture for equality checks. Excludes
-# presentation-only fields (selected tool/seed) — they are not Actions and
-# not sim truth, so replays legitimately differ on them.
+# Canonical string form of a capture for equality checks. Excludes presentation
+# state (selected tool/seed and the once-per-farm story-loop guard) — it is not
+# made by Actions and is not sim truth, so replays legitimately differ on it.
 #
 # **The WI-3 seam is closed here** (M2.5 WI-5). WI-3 took the tick counter and
 # every actor's `pos`/`facing`/`extra` out of this comparison, because brains had
@@ -778,19 +778,66 @@ static func save_to(path: String, world: SimWorld, gs) -> bool:
 # and comparing them asserted nothing. Her tile crossings write the registry now
 # and are recorded as free-walk entries that `ReplayLog._apply_v2` applies back,
 # so the comparison is **total**: every actor the world contains, position,
-# facing, meter and scratch, plus the clock — nothing is erased here but the two
-# presentation fields below, which are not Actions and never were sim truth.
+# facing, meter and scratch, plus the clock. The selected tool, selected seed and
+# once-per-farm story-loop guard are erased because Actions do not set them and
+# they never were sim truth.
 #
 # `capture()` itself is untouched: a **save** still stores every position and the
 # tick, because a save is a snapshot and a snapshot knows where everybody was.
 static func capture_canonical(world: SimWorld, gs) -> String:
+	return JSON.stringify(_canonical_capture(world, gs))
+
+
+# The normalized value behind `capture_canonical`. Keeping it as a value lets a
+# failed equality check name the first field that differs without parsing the
+# canonical text a second time.
+static func _canonical_capture(world: SimWorld, gs) -> Dictionary:
 	var c := capture(world, gs)
 	var s: Dictionary = c.get("state", {})
 	s.erase("build_id")
 	s.erase("lineage")
 	s.erase("selected_tool")
 	s.erase("selected_seed_type")
-	return _canonical_text(c)
+	s.erase("story_loops_shown")
+	var parsed = JSON.parse_string(JSON.stringify(c))
+	return parsed if typeof(parsed) == TYPE_DICTIONARY else c
+
+
+# Walk dictionaries in sorted key order and arrays in storage order, the same
+# stable order used by the canonical comparison. The result is deliberately a
+# single difference: once the first fault is concrete, later differences are
+# usually consequences and add noise to a replay check.
+static func _first_difference(replayed, autosave, path: String = "") -> String:
+	if typeof(replayed) != typeof(autosave):
+		return "%s: replay has %s; autosave has %s" % [path, str(replayed), str(autosave)]
+	if typeof(replayed) == TYPE_DICTIONARY:
+		var keys: Array = replayed.keys()
+		for key in autosave.keys():
+			if not keys.has(key):
+				keys.append(key)
+		keys.sort_custom(func(a, b): return str(a) < str(b))
+		for key in keys:
+			var child := "%s.%s" % [path, str(key)] if path != "" else str(key)
+			if not replayed.has(key):
+				return "%s: missing from replay; autosave has %s" % [child, str(autosave[key])]
+			if not autosave.has(key):
+				return "%s: replay has %s; missing from autosave" % [child, str(replayed[key])]
+			var found := _first_difference(replayed[key], autosave[key], child)
+			if found != "":
+				return found
+		return ""
+	if typeof(replayed) == TYPE_ARRAY:
+		var shared: int = mini(replayed.size(), autosave.size())
+		for i in shared:
+			var found := _first_difference(replayed[i], autosave[i], "%s[%d]" % [path, i])
+			if found != "":
+				return found
+		if replayed.size() != autosave.size():
+			return "%s: replay has %d entries; autosave has %d" \
+				% [path, replayed.size(), autosave.size()]
+		return ""
+	return "" if replayed == autosave else \
+		"%s: replay has %s; autosave has %s" % [path, str(replayed), str(autosave)]
 
 
 # Session boundaries are the only places a farm's build history changes. A
@@ -894,9 +941,9 @@ static func replay_matches(rlog: ReplayLog, save: Dictionary) -> bool:
 # The same check with its reasons attached (M2.5 WI-5). A v2 replay can fail in
 # two different places and they mean different things: `divergence` is the
 # dual-record net — a brain recomputed something other than what it did live,
-# named down to the entry — while a bare state mismatch says the end states
-# differ without saying where. Reporting both is what makes a failure a
-# diagnosis; the tools print it.
+# named down to the entry — while `state_difference` names the first end-state
+# field, tile or actor value that disagrees. Reporting both is what makes a
+# failure a diagnosis; the tools print it.
 static func replay_report(rlog: ReplayLog, save: Dictionary) -> Dictionary:
 	var gs_replay = load("res://systems/game_state.gd").new()
 	var world_replay := SimWorld.new()
@@ -908,8 +955,10 @@ static func replay_report(rlog: ReplayLog, save: Dictionary) -> Dictionary:
 	var gs_save = load("res://systems/game_state.gd").new()
 	var world_save := SimWorld.new()
 	var restored := restore(save, world_save, gs_save)
-	var same_state := capture_canonical(world_replay, gs_replay) \
-		== capture_canonical(world_save, gs_save)
+	var replayed_state := _canonical_capture(world_replay, gs_replay)
+	var saved_state := _canonical_capture(world_save, gs_save)
+	var state_difference := _first_difference(replayed_state, saved_state)
+	var same_state := state_difference == ""
 	gs_replay.free()
 	gs_save.free()
 	return {
@@ -918,6 +967,7 @@ static func replay_report(rlog: ReplayLog, save: Dictionary) -> Dictionary:
 		"applied": applied,
 		"restored": restored,
 		"divergence": rlog.divergence,
+		"state_difference": state_difference,
 	}
 
 

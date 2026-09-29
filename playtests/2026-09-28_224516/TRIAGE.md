@@ -14,9 +14,26 @@ robot's action"): the checker compared refused robot actions against the
 recording. With only cc288db's change to `systems/sim/replay_log.gd` applied to
 1e1c1f4, the recomputation no longer diverges.
 
-**The end-state difference remains, and is not explained here.** Under 1e1c1f4 plus
-the checker fix, the verifier still reports "replay end state differs from
-autosave", without saying which part differs. It is filed as its own work card.
+**The end-state difference was presentation state, not farm state.** Under
+1e1c1f4 plus the checker fix, the first differing field is
+`state.story_loops_shown.robot_night`: the replay has no entry and the autosave
+has `true`. The presentation layer sets this once-per-farm guard when it chooses
+the robot-night animation, after the sleep Action has advanced the simulation.
+A replay applies simulation Actions without running that animation, so it
+correctly cannot reproduce the flag. The verifier now excludes the guard, as it
+already excludes the selected tool and seed, and this session matches under
+1e1c1f4 plus cc288db.
+
+This diagnosis was reproduced on 2026-09-29 in a fresh tree extracted from
+1e1c1f4, with cc288db's `systems/sim/replay_log.gd` and the diagnostic verifier
+applied. Before excluding the guard, the verifier reported:
+
+    first difference: state.story_loops_shown.robot_night: missing from replay; autosave has true
+
+After excluding the guard, a subsequent verifier run in the same preserved tree
+exited 0 and reported:
+
+    MATCH: replay reproduces the autosave state exactly.
 
 The farm itself is not affected: an install does not touch the autosave on the
 tablet, and all three files are kept here. `verification.sha256` beside this note

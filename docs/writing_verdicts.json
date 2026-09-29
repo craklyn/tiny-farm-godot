@@ -1904,6 +1904,9 @@
    "verdict": "decode",
    "why": "The structure doesn't clarify what these elements refer to; it's unclear what questions are being answered or what 'how long it will take him' measures without filling in missing context yourself."
   },
+  "36da96349179427df65a": {
+   "verdict": "ok"
+  },
   "36e85cc983473847300a": {
    "verdict": "ok"
   },

@@ -7054,6 +7054,22 @@ func test_replay_v2() -> void:
 		"the brains recompute exactly what they were recorded doing %s" % report["divergence"])
 	_assert(report["matched"],
 		"and the session reproduces its own autosave — positions, clock and all")
+	_assert(String(report["state_difference"]) == "",
+		"and a matching state has no reported difference")
+	var presentation_snapshot: Dictionary = snapshot.duplicate(true)
+	presentation_snapshot["state"]["story_loops_shown"]["robot_night"] = true
+	_assert(SaveGame.replay_report(reloaded, presentation_snapshot)["matched"],
+		"a presentation-only story-loop guard is not mistaken for sim drift")
+	var changed_snapshot: Dictionary = snapshot.duplicate(true)
+	changed_snapshot["world"]["tiles"][0][0]["watered_today"] = \
+		not bool(changed_snapshot["world"]["tiles"][0][0]["watered_today"])
+	var changed_report := SaveGame.replay_report(reloaded, changed_snapshot)
+	_assert(not changed_report["matched"]
+			and String(changed_report["state_difference"]).begins_with(
+				"world.tiles[0][0].watered_today: replay has ")
+			and String(changed_report["state_difference"]).contains("; autosave has "),
+		"a state mismatch names the first field and both values: %s"
+			% changed_report["state_difference"])
 	# The state comparison is doing real work now: the hen's tile is in it (the
 	# WI-3 seam, closed above), so this is not merely the grids agreeing.
 	var w_replay := SimWorld.new()
