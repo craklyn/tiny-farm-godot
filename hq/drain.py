@@ -735,15 +735,13 @@ def check_evidence_id(rec):
 # one CLI call
 # ---------------------------------------------------------------------------
 
-def _session_paths(phase, item_id, suffix=""):
+def _session_paths(phase, item_id):
     """Where one session is written as it runs: the event stream and the record
-    beside it, under hq/data/runs/workers/<run>/<item>-<phase><suffix>. A second
-    session of the same phase in one run (the art round's) takes a suffix, or its
-    record would overwrite the first one's usage."""
+    beside it, under hq/data/runs/workers/<run>/<item>-<phase>."""
     run = RUN_ID or (time.strftime("%Y%m%d-%H%M%S") + "-byhand")
     d = os.path.join(WORKERS, run)
     os.makedirs(d, exist_ok=True)
-    stem = os.path.join(d, f"{item_id or 'none'}-{phase}{suffix}")
+    stem = os.path.join(d, f"{item_id or 'none'}-{phase}")
     return stem + ".jsonl", stem + ".json"
 
 
@@ -765,7 +763,7 @@ def _last_assistant_text(lines):
 
 
 def run_cli(prompt, system, tools, model, cwd, timeout, turns, phase, seat, item_id,
-            attempt_id="", suffix="", mcp=None):
+            attempt_id="", mcp=None):
     """One model session, streamed to disk as it runs.
 
     Every event the CLI emits is appended to the session's file the moment it
@@ -777,7 +775,7 @@ def run_cli(prompt, system, tools, model, cwd, timeout, turns, phase, seat, item
     if not execution.launch_allowed(launch_context=context, item=item_id, phase=adapter_phase):
         return "", None, "HELD"
     started = time.time()
-    events_path, meta_path = _session_paths(phase, item_id, suffix)
+    events_path, meta_path = _session_paths(phase, item_id)
     meta = {"item": item_id, "attempt_id": attempt_id, "seat": seat, **execution.resolve_model(model),
             "phase": phase, "cwd": cwd, "turns": turns, "timeout": timeout,
             "run": RUN_ID, "started": time.strftime("%Y-%m-%dT%H:%M:%S"),

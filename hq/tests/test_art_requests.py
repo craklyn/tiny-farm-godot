@@ -259,8 +259,8 @@ class ArtTool(unittest.TestCase):
         rd = FakeRD()
 
         def session(prompt, system, tools, model, cwd, timeout, turns, phase, seat, item_id,
-                    attempt_id="", suffix="", mcp=None):
-            seen.append((phase, suffix, prompt, mcp))
+                    attempt_id="", mcp=None):
+            seen.append((phase, prompt, mcp))
             if phase == "drain-work":
                 text, _ = call(art_mcp.build(mcp["args"][1:], rd=rd), "generate_art", request())
                 return "Placed the tomato: " + text, None, ""
@@ -269,11 +269,11 @@ class ArtTool(unittest.TestCase):
         with self.drain_patches(session):
             rec = drain.do_item(item, ORG, "run", lambda _m: None)
         self.assertEqual(rec["error"], "", rec)
-        self.assertEqual([(p, s) for p, s, _, _ in seen], [("drain-work", ""), ("drain-check", "")],
+        self.assertEqual([p for p, _, _ in seen], ["drain-work", "drain-check"],
                          "no second owner session")
-        self.assertEqual(seen[0][3]["tools"], ["generate_art", "art_budget"])
-        self.assertIsNone(seen[1][3], "the checker gets no art tool")
-        self.assertIn("generate_art", seen[0][2], "the worker is told about the tool")
+        self.assertEqual(seen[0][2]["tools"], ["generate_art", "art_budget"])
+        self.assertIsNone(seen[1][2], "the checker gets no art tool")
+        self.assertIn("generate_art", seen[0][1], "the worker is told about the tool")
         self.assertEqual(len(rd.generated), 1)
         self.assertEqual(rec["art"]["generated"][0]["folder"],
                          f"assets/raw/{DAY}-wart00000001-tomato")
@@ -285,7 +285,7 @@ class ArtTool(unittest.TestCase):
         seen = []
 
         def session(prompt, system, tools, model, cwd, timeout, turns, phase, seat, item_id,
-                    attempt_id="", suffix="", mcp=None):
+                    attempt_id="", mcp=None):
             seen.append((phase, mcp, prompt))
             return "", None, "HELD"
 
@@ -423,7 +423,7 @@ class ArtTool(unittest.TestCase):
         rd = FakeRD()
 
         def session(prompt, system, tools, model, cwd, timeout, turns, phase, seat, item_id,
-                    attempt_id="", suffix="", mcp=None):
+                    attempt_id="", mcp=None):
             if phase == "drain-work":
                 call(art_mcp.build(mcp["args"][1:], rd=rd), "generate_art", request())
                 return "Done except the sprite, which the art limit refused.", None, ""
