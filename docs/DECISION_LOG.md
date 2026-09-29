@@ -581,8 +581,7 @@ wider view, a new mind, a new way of training, data to train on — is bought at
 training workbench, from a small shelf of its own beside the robot's training, and not at
 the seed box. It applies to the robot the bench is showing. Every other purchase,
 including the bench and the robots themselves, stays in the shop, so this narrows P-12
-for one kind of item rather than replacing it. Nothing is on the shelf yet; which upgrade
-comes first waits on Q-128 to Q-130. Candidates in
+for one kind of item rather than replacing it. Candidates in
 `design/mockups/mk3_learning_shop/SKETCH.md`; design in `design/14-training-workbench.md` §11.
 
 ### S-30. A Mark III given a wider view keeps what it learned
@@ -659,6 +658,20 @@ a purchase. The second and third steps are separate purchases; buying the first 
 longer unlocks all three controls. This revises S-31's single 150-gold purchase. The exact
 prices of the later purchases remain `[Playtest]`. Design in `design/14-training-workbench.md`
 §11; the current build still has the earlier single purchase and stationary robot.
+
+### S-35. Worm practice is the Mark III's first overnight lesson, and it costs next-day energy
+**Ruled 2026-09-27 (Q-130, option c); clarified 2026-09-28.** The first practice sold for a Mark III at the
+training workbench is a rare worm beside a growing crop. The worm eats crops, ignores
+scarecrows and cannot be targeted by a mark-2 robot. A player can still stomp any part of it;
+a Mark III learns to walk to it and shoo it underground. The practice card shows its lamp
+switch and all three sizes: 2, 4 or 8 runs each night. Practice consumes a size-dependent
+share of the robot's energy on the following day, making more practice a visible trade-off
+against farm work. The exact three energy shares require a measured balance recommendation
+before the build sets them. The crow prototype remains evidence that nightly runs can be
+replayed, not the first lesson. The worm practice itself is not built. Design in
+`design/06-bots-and-training.md` ("Practice runs: it rehearses at night") and
+`design/14-training-workbench.md` ("The practice cards"). Daniel also settled Q-65's
+living-farm question: worms appear rarely on farms.
 
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 

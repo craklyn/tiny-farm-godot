@@ -306,17 +306,16 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   can effectively refit a replacement brain is untested. That is a separate future
   improvement, not a condition of this sale. Card: `hq/data/decisions/Q-132.json`.
 
-- **Q-126 to Q-130 — The Mark III learning shop.** — **Ruling, open 2026-09-25; Q-126
-  and Q-127 ruled the same day, Q-129 that night and Q-128 on 2026-09-26; Q-130 still
-  open.**
+- **Q-126 to Q-130 — The Mark III learning shop.** — **Ruled 2026-09-25 to
+  2026-09-27.**
   Milo's sketch (`docs/design/mockups/mk3_learning_shop/SKETCH.md`, 4f6ae2f) lays out
   twelve options for buying new brains, training methods and training data for the
-  Mark III, and making your own. Its open questions are one card each, with no
-  recommendation because Daniel has ideas of his own: where learning upgrades are
+  Mark III, and making your own. Its questions were one card each, with no
+  recommendation because Daniel had ideas of his own: where learning upgrades are
   bought (Q-126), what a wider view does to what the robot learned (Q-127), whether
   a bigger brain waits for a pretrained base (Q-128), which new way of training
-  comes first (Q-129), and whether making your own training data starts with
-  picking your best day (Q-130). Cards: `hq/data/decisions/Q-126.json` to `Q-130.json`.
+  comes first (Q-129), and whether practice uses a worm, visible size and energy
+  (Q-130). Cards: `hq/data/decisions/Q-126.json` to `Q-130.json`.
 
   - **Q-126** ~~Where should the Mark III's learning upgrades be bought: the seed box or
     the workbench?~~ — ✅ **ruled 2026-09-25: (b), at the workbench, beside the robot's
@@ -357,8 +356,9 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
     calm is slower and steadier. Design in `design/06-bots-and-training.md` ("Its pace")
     and `design/14-training-workbench.md` §11; pictures in
     `design/mockups/workbench_shelf/`.
-  - **Q-130** Nightly practice for the Mark III: should rare worms be the first lesson, with
-    a size the player sets and no energy cost? — **revised 2026-09-26, open again.** Daniel
+  - **Q-130** ~~Nightly practice for the Mark III: should rare worms be the first lesson, with
+    a size the player sets and no energy cost?~~ — ✅ **ruled 2026-09-27: worm practice comes
+    first; the switch and size are shown; practice takes energy from the next day.** Daniel
     picked none of the three options (best day, separate features, editor) and described
     his own design on 2026-09-25: the robot practises forced situations overnight (his
     example: a bird approaches crops and the robot must learn to go and shoo it), each
@@ -370,13 +370,15 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
     recompute the runs and record nothing new except her taps on the controls. A scratch
     crow prototype on the gate's eight farms established that the nightly mechanism can
     preserve the farm score, but it did not make real birds meaningfully more common. Daniel
-    asked for the first lesson to be the worm instead: a rare crop-eating pest that ignores
+    asked for the first lesson to be the worm instead: a rare crop-eating pest that appears
+    rarely on the living farm, ignores
     scarecrows and cannot be targeted by mark-2 robots. A Mark III must learn to shoo it
     underground. The player keeps the direct stomp response. The crow evidence does not show
     whether the worm lesson works, so the build must test held-out worm runs, crop protection
-    on real farms, replay identity and the device budget. Still open: whether worms are first,
-    whether the size is shown in v1, whether practice costs energy.
-    **Strawman: worm first, size shown, no energy cost.** Design in
+    on real farms, replay identity and the device budget. The size remains three pips for 2,
+    4 or 8 runs. More pips use more of the Mark III's energy on the following day, so the
+    visible choice trades practice against farm work. The exact energy shares need a measured
+    balance recommendation before implementation. Design in
     `design/06-bots-and-training.md` ("Practice runs: it rehearses at night") and
     `design/14-training-workbench.md` ("The practice cards"). Card:
     `hq/data/decisions/Q-130.json`. Not built.
@@ -1924,11 +1926,11 @@ fit "scarecrow", and a collapse toggle for the playtest readout).*
   is the first critter in the game whose answer is a reaction rather than a decision, and
   the two numbers are the whole difficulty.* Nothing is blocked: no mole spawns in the live
   game.
-- **Q-65** — **partly reopened 2026-09-26 by Daniel's worm-practice feedback.** The first
-  question now has a proposed answer: the worm is a rare crop-eating pest that the Mark III
-  learns to shoo, because scarecrows and mark-2 robots do not answer it. It remains unspawned
-  until Q-130 is ruled and the learning check shows that this response works. The second
-  question remains parked. Original item:
+- **Q-65** — **partly settled 2026-09-28 by Daniel.** The worm is a rare crop-eating pest
+  on the living farm and in the Mark III's first overnight practice: the robot learns to
+  shoo it because scarecrows and mark-2 robots do not answer it. It remains unspawned until
+  the learning check shows that this response works. What its length means remains parked.
+  Original item:
   **A worm that eats crops, and gets longer for no reason.** Raised by M2.5 WI-8e.
   Two questions, both about what the animal *is* rather than how it works. (a) **Should a
   worm be a pest at all?** In the cozy-farming tradition a worm is good soil, not a thief;

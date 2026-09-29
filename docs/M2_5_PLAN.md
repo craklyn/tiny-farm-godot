@@ -2244,8 +2244,9 @@ pair of eyes:
 ### The M2.5 designer rulings ✅ applied 2026-08-31 (Q-57–Q-66)
 
 The designer ruled all ten M2.5 queue items in one pass. Nine are struck in
-`DESIGNER_QUEUE.md` with their reasoning; Q-65 is recorded as **parked unruled**, which was
-the designer's explicit choice and not an omission. Three of the ten asked for a build.
+`DESIGNER_QUEUE.md` with their reasoning; Q-65 was initially **parked unruled**, which was
+the designer's explicit choice and not an omission. Daniel later settled its living-farm
+question: worms appear rarely on farms. Three of the ten asked for a build.
 
 **Q-58 — rain washes everything.** `Scent.wash_all()` drops every channel's written cells;
 `SimWorld.advance_day` calls it on a rainy day turn. Fiction first — water is water — and
@@ -2353,5 +2354,6 @@ restore-vs-kept-playing tick skew on `schedule_all_brains` (pre-existing,
 code change — brain entries are still written); §8.C's live device/taste pass and
 §8.E (the designer's); every critter debut awaiting its ruling. ~~Ten taste questions
 Q-57–Q-66 in the queue~~ — **all ten answered 2026-08-31**: nine struck with their
-reasoning, Q-65 parked unruled by choice, three of them built (see *The M2.5 designer
-rulings* in §9).
+reasoning, Q-65 initially parked unruled by choice, three of them built (see *The M2.5
+designer rulings* in §9). Daniel later settled the living-farm question: worms appear
+rarely on farms.

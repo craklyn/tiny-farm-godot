@@ -80,7 +80,7 @@ point, and precisely the ache the scarecrow answers.
 
 **E — Scarecrow**: see §4.
 
-Not in phase 1: ants and the scent layer, kangaroo, worm (parked, Q-65), sprinkler,
+Not in phase 1: ants and the scent layer, kangaroo, worm (a rare living-farm pest; Q-65), sprinkler,
 barn livestock — all phase 2+. The chicken is phase 1's whole livestock presence.
 
 ## 4. The finale: the scarecrow is the first tower (Q-81)

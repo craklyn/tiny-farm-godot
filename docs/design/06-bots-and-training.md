@@ -99,7 +99,7 @@ locked shop card after an update.
    mechanism; and the specialization↔generalization tradeoff becomes play — a bot
    over-trained on drills aces its exams but turns brittle on the messy real farm,
    teaching overfitting honestly (D-4's spirit). Feasibility probe at the D-2 spike;
-   full design at M5. *First shape designed 2026-09-26 (Q-130, revised): practices bought
+   full design at M5. *First shape designed 2026-09-26 and ruled 2026-09-27 (Q-130, S-35): practices bought
    on the workbench shelf rather than built on the farm, one recipe each, with a switch and
    a size — "Practice runs: it rehearses at night", below.*
 
@@ -876,11 +876,11 @@ price should drop to fit a small head start, or whether the card comes off the s
 brain clearly beats a blank robot. Strawman: keep it as built. Pictures of the card in
 `mockups/starter_brain/`, taken from the game by `tools/capture_starter_brain.tscn`.
 
-### Practice runs: it rehearses at night (Q-130, revised 2026-09-26)
+### Practice runs: it rehearses at night (Q-130, ruled 2026-09-27; S-35)
 
 *Status: designed, not built. Owner: Milo (design); feasibility checked against the ML
-seat's rules (P-14, the budgets in `ARCHITECTURE.md`). What is still open is on the revised
-Q-130 card.*
+seat's rules (P-14, the budgets in `ARCHITECTURE.md`). The exact energy cost at each size
+needs a measured balance recommendation before implementation.*
 
 **What Daniel asked for.** Q-130 asked whether making the robot's own training examples
 should start with picking her best day or with a practice-course editor. He chose neither
@@ -896,52 +896,51 @@ owns, not a thing she builds.
 **The shape, in one paragraph.** A **practice run** is a short stretch of play the sim
 makes up overnight: a copy of her farm as she went to bed, with one situation forced into
 it, played headless with the robot's own brain. A **practice** is the recipe that makes
-runs of one kind — v1 has one, the crow: *a crow arrives and heads for one of her crops,
-near the robot*. Each practice is its own upgrade, bought on the workbench shelf (S-29) for
-the robot the bench is showing. Once bought it has a switch (on or off) and a size (how
-many runs a night). At night the runs join the robot's own day in the one nightly update it
-already has: its day teaches it about her farm, its runs teach it about the crow.
+runs of one kind — v1 has one, the worm: *a worm emerges beside a growing crop near the
+robot*. Each practice is its own upgrade, bought on the workbench shelf (S-29) for the robot
+the bench is showing. Once bought it has a switch (on or off) and a size (how many runs a
+night). At night the runs join the robot's own day in the one nightly update it already has:
+its day teaches it about her farm, its runs teach it about the worm. The runs also reduce the
+robot's energy for the following day by an amount set by the chosen size (S-35).
 
 | Part | What it is | v1 |
 | --- | --- | --- |
-| A practice | a recipe for one kind of run; one shelf upgrade each | one: the crow |
-| A run | one made-up stretch of play from that recipe, on a copy of her farm | up to 40 seconds of play; ends when the bird has gone |
+| A practice | a recipe for one kind of run; one shelf upgrade each | one: the worm |
+| A run | one made-up stretch of play from that recipe, on a copy of her farm | up to 40 seconds of play; ends when the worm is shooed or the crop is eaten |
 | The switch | whether tonight's night includes that practice at all | per robot, per practice |
-| The size | how many runs a night: 1, 2 or 3 pips = 2, 4 or 8 runs | per robot, per practice (whether she sees it is Q-130) |
+| The size | how many runs a night: 1, 2 or 3 pips = 2, 4 or 8 runs | per robot, per practice; it also sets the next day's energy cost |
 
-**Why the crow first.** Its own farm days already teach it the jobs that pay most — the
-week's gap between learning and not learning is almost all the ten-point row, crops carried
-to the bin — but the two crow rows read 0.00 over a measured week ("Its day", above). One
-bird a day, sitting still for about five seconds, is too rare for a day-by-day learner to
-see the pay-off of walking to it. A night of runs hands it the bird several times over.
+**Why the worm first.** A worm that eats a crop asks the Mark III to manage an active farm
+problem: it must reach the worm and shoo it underground before another crop is lost. Worms
+appear rarely on the living farm. A practice run forces one of those rare situations beside a
+growing crop, giving the Mark III several chances overnight. The worm ignores scarecrows and
+cannot be targeted by a mark-2 robot, so the Mark III must learn this response in the run.
+The player keeps the direct stomp response.
 
 #### One run, step by step
 
 1. **Copy her farm** as it stood when she went to bed, into a scratch world that nothing
    outside the night can see. `SaveGame.capture` and `SaveGame.restore` already do this:
    about 4 ms per copy on the desktop.
-2. **Empty it of everyone else.** The hen, the neighbour, visitors and any crow are removed;
+2. **Empty it of everyone else.** The hen, the neighbour, visitors and any other pest are removed;
    only the robot remains (and her own figure, standing still, so the rules that ask where
    she is still have an answer). Nothing else in the copy thinks, so nothing else in the
    copy draws a random number.
 3. **Force the situation.** Pick one of her crops that is still growing — inside the
    squares she gave it (S-26) when it has any, anywhere on her farm when it has none. If
    there is no growing crop, one of her tilled squares is sown in the copy only. Set the
-   robot down within three squares of it, with a full meter and a clean day's sums. Send a
-   crow in from an edge, the way a real one arrives (`CrowBrain.entry_point`), heading for
-   that crop. It is an ordinary crow — not the dawdling first one — and the same rules
-   frighten it.
-4. **Play it** on the tick clock until the bird has gone, eaten or frightened, or 40
+   robot down within three squares of it, with a full meter and a clean day's sums. Put a
+   worm beside that crop, following the worm's ordinary movement and crop-eating rules.
+4. **Play it** on the tick clock until the worm is shooed underground, eats the crop, or 40
    seconds have passed. The robot decides exactly as it does by day, earns its own reward
    table (her dials, `14`), and keeps its own sums, in the copy.
 5. **Keep the sums, drop the copy.** What survives the run is the robot's three running
    sums, its decision count and its score. The copy is thrown away. Her farm is never
    touched.
 
-A growing crop rather than a ripe one because a ripe square beside the bird is worth 11
-points to the robot (cut and sold) against the bird's 3, so the run would teach the harvest
-instead. Real crows go for any crop, growing ones included (`choose_crow_target`), so the
-run is not a scene the farm could not produce.
+A growing crop rather than a ripe one keeps the robot's lesson on the pest rather than a
+nearby harvest. The build must confirm that the forced position uses only a situation a real
+worm can produce.
 
 #### How the runs join the night
 
@@ -958,7 +957,8 @@ were more of the day:
   about her farm. Practice points are not farm points.
 
 **The run's baseline is its own**: a running mean of past runs of the same practice, kept
-with the practice on the robot. A crow run scores 0 to 3; charging it the farm day's
+with the practice on the robot. A worm run's reward range is set with the worm prototype;
+charging it the farm day's
 baseline of 20 or 60 would tell the robot that every run was a disaster.
 
 **Why the runs are added as more decisions, and not as a second update beside the day's —
@@ -978,12 +978,13 @@ allowed to shout.
 what Daniel called "dataset mix-in size": the proportion of the night's lesson that is
 practice. A day is about ninety decisions; a run is a handful.
 
-**Measured with a scratch prototype, 2026-09-26** — a probe outside the repository, built
-only to answer whether this is worth building. Not the build and not tuned. The gate's
-eight farms (`GATE_SEEDS`), one week each; the probe played 8 runs a night counted at a
-quarter, half and full weight, which in expectation is the 2, 4 and 8 full-weight runs
-above. "Test runs" are 48 crow runs played after the week with learning switched off: how
-many birds it shooed.
+**Earlier crow prototype, 2026-09-26 — mechanism evidence only.** A probe outside the
+repository used eight farms (`GATE_SEEDS`) for one week each. It played 8 crow runs a night
+counted at a quarter, half and full weight, which in expectation is the 2, 4 and 8
+full-weight runs above. "Test runs" were 48 crow runs played after the week with learning
+switched off. This established that pooling runs into one nightly update did not materially
+harm the farm score. It does not measure worm practice and must not be used to claim that the
+worm lesson works.
 
 | Open ground | Score a day, days 5-7 | Test runs: birds shooed | Days a real bird was shooed |
 | --- | --- | --- | --- |
@@ -1003,13 +1004,11 @@ What that says, plainly:
 
 - **It does no harm to her farm.** Every row is within about two points a day of no
   practice (the largest gap is 2.1), well inside how much one week varies.
-- **It helps the robot a little with a bird it can see.** More test birds shooed at every
-  size, most at two pips on open ground (11 of 48 against 4).
-- **You would barely see it on the farm in the first week.** One bird a day seldom lands
-  inside a 5×5 view, so real catches are as rare as before. The practice teaches what to do
-  when a bird is in view; the wider view (S-30) and her squares are what put a bird in view.
-  The two upgrades are worth more together than either alone, and the shelf should say so
-  by placing them side by side.
+- **It established only the nightly mechanism.** The crow result is not a measurement of the
+  worm lesson, its crop protection or its energy trade-off.
+- **The worm build must measure the lesson itself.** Held-out worm runs, crops protected on
+  real farms, replay identity and device time are the release checks. It must also measure
+  the farm-work loss at every energy size before any exact cost is set.
 
 This is deliberately a weak first version (P-13): one practice, a small effect, a clear
 story. The build must re-measure it with a committed tool and a gate on both arms before
@@ -1018,7 +1017,7 @@ it ships.
 #### Determinism, replay and saves
 
 - **Every choice a run makes is keyed, not streamed.** Which crop, where the robot is set
-  down, which edge the bird comes from: each is `SimRng.stateless(salt, index)`, with the
+  down and which legal square holds the worm: each is `SimRng.stateless(salt, index)`, with the
   salt from the robot's id and the practice's own constant, and the index from the day and
   the run number. The robot's own choices in a run are `Policy.draw_u`, keyed the same way.
   Nothing in a run reads the shared random stream. As a guard, the night records the
@@ -1031,7 +1030,7 @@ it ships.
 - **What is recorded is only what she does.** Buying a practice is the shelf's buy Action.
   Turning it on or off, and changing its size, is one new player verb, `practice`, with
   flat keys like `tune`: `{actor: player, target: the robot's tile, machine, practice:
-  "crow", on: true|false, size: 1|2|3}`. It takes effect at the next night. A bot has no
+  "worm", on: true|false, size: 1|2|3}`. It takes effect at the next night. A bot has no
   reason to emit it and no path that does. A night with no change records nothing new.
 - **Where it runs in the day turn:** at the top of `advance_day`, before the growth pass and
   before `Brains.on_new_day` runs the robot's night, so the runs see the farm she went to bed
@@ -1039,7 +1038,7 @@ it ships.
   the runs need (her seed box).
 - **Saved on the robot**, as `extra["practice"]`: one entry per practice it owns, holding
   its switch, its size, its baseline, how many nights it has run and last night's result
-  (which runs shooed the bird). Additive keys, no save version change: a robot without the
+  (which runs shooed the worm). Additive keys, no save version change: a robot without the
   key owns no practice. Picking the robot up keeps it (Q-98).
 
 #### The on-device budget
@@ -1059,14 +1058,14 @@ of robot id, so a large fleet shortens practice rather than the night running lo
 | --- | --- | --- | --- |
 | Copying her farm into a scratch world | `SaveGame.capture` / `restore` | nothing new | — |
 | Playing a stretch of the day headless | the tick clock, `advance_to_tick` | nothing new | — |
-| A crow arriving and heading for a crop | `CrowBrain.entry_point`, the crow's own brain | a way to send one at a chosen square outside the daily schedule | small |
-| The robot's day sums and nightly update | `_sleep_on_it`, `Policy` | adding runs into the sums before the night; a baseline per practice | 1 day with the run itself |
+| A worm beside a growing crop | the worm movement test | a way to place one by a chosen growing crop outside the daily schedule | small |
+| The robot's day sums and nightly update | `_sleep_on_it`, `Policy` | adding runs into the sums before the night; a baseline per practice; applying the chosen size's energy cost to the next day | 1 day with the run itself |
 | The run (copy, empty, force, play, keep sums) | — | `systems/sim/practice.gd`, pure sim; the practice list as data in `systems/practice_defs.gd` | 1.5 days (Tomás, sim) |
 | The `practice` verb, its router tap and its save keys | `tune` is the template | the verb, its checks, `extra["practice"]` | 0.5 day (Tomás) |
 | The shelf item | the shelf itself is being built with the pace setting (Q-129) | one catalogue row | small (Jade) |
-| The bench card: switch, pips, last night's crows | the bench screen (`14`) | the card and its three controls | 1 day (Jade / Sam) |
-| Art | robot, crow and crop sprites exist | the card's picture, composed from them | 0.25 day (Yuki), no generation |
-| Tests and the gate | `test_learning_robot`, the replay round trip | same seed gives same weights; replay through a night with practice; shared stream unchanged; the budget on the tablet; a committed version of the probe as a gate on both arms | 1 day (Grace) |
+| The bench card: switch, pips, last night's worms | the bench screen (`14`) | the card and its three controls | 1 day (Jade / Sam) |
+| Art | robot and crop sprites exist | worm art and the card's picture | 0.25 day (Yuki), no generation |
+| Tests and the release checks | `test_learning_robot`, the replay round trip | same seed gives same weights; replay through a night with practice; shared stream unchanged; held-out worm runs and real-farm crop protection; the energy loss at every size; the budget on the tablet | 1 day (Grace) |
 
 About four and a half days in all.
 

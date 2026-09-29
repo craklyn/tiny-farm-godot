@@ -1672,8 +1672,9 @@ recomputation MATCH / benchmark **107k× with travel modeled** (the gate failed 
 on first measurement and was earned back by the output-identical pathfinder rewrite,
 Q-67). Replay v2 is at **Phase A** — the dual-record net runs everywhere; Phase B's
 flip has four recorded prerequisites, none of them code. **Q-57–Q-66 were all ruled on
-2026-08-31** (nine struck, Q-65 parked unruled by the designer's choice); three of them
-asked for a build and got one the same day — rain washes every scent channel farm-wide
+2026-08-31** (nine struck, Q-65 initially parked unruled by the designer's choice; Daniel
+later settled the living-farm question: worms appear rarely on farms); three of them asked
+for a build and got one the same day — rain washes every scent channel farm-wide
 (Q-58), `fright_ends_visit` is a species-row field under the composition law now written
 into `ARCHITECTURE.md` (Q-63), and a bot's scare credits her capability proof like her own
 (Q-66). Remaining for the designer: the device/taste pass (§8.C/E, which now carries the

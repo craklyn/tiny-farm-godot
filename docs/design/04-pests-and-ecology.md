@@ -96,11 +96,11 @@ behind it, and the movement engine refuses to let its head enter a tile it is al
 on — so a long worm has to go *round* itself to reach anything behind it, and a long enough
 one can curl up with all four ways out being worm, at which point it gives up and goes back
 into the soil. That is the classic snake constraint, and it is the whole of the design: the
-growth is spectacle rather than mechanic today. `[Designer]` Q-65 — whether a worm should be
-a pest at all in a cozy farming game, and whether its length should ever mean anything — was
-**parked unruled on 2026-08-31 by the designer's explicit choice**: the worm stays a
-zero-dial proof that the movement engine carries a body, and its meaning is left for a phase
-that wants it.
+growth is spectacle rather than mechanic today. Daniel settled Q-65's living-farm question
+on 2026-09-28: the worm is a rare crop-eating pest on the farm. S-35 also makes it the Mark
+III's first overnight practice, where the robot learns to shoo it underground. What its
+length should mean remains parked. Until a later ruling changes that, it stays a zero-dial
+proof that the movement engine carries a body outside the practice world.
 
 **A crow on a crop flaps and turns left and right while it eats** (2026-09-10, the
 designer's call): the bird taking a crop is the farm's alarm, so it must not sit still —
