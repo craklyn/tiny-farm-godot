@@ -6106,6 +6106,12 @@
   "c119d566c2794ad712ef": {
    "verdict": "ok"
   },
+  "c12d7ffd62ca00edcd17": {
+   "instead": "The approval card links to the exact changes and plainly says what can undo your approval.",
+   "quote": "what saying yes can be undone by",
+   "verdict": "second-look",
+   "why": "The reversed construction makes the reader work out what can undo their approval."
+  },
   "c132222f8173e456bd1a": {
    "verdict": "ok"
   },

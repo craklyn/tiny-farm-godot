@@ -128,7 +128,7 @@ function qWorkEvidence(card, ownerName) {
   if (ap) {
     const docs = (ap.files || []).map(f => f.name).join(", ");
     items.push({ label: "What changes", text: [ap.summary, docs && `Documents: ${docs}.`].filter(Boolean).join("\n\n") });
-    items.push({ label: "Read the exact changes", link: ap.changes_link,
+    items.push({ label: "Read the exact changes", link: ap.changes_link, linkText: "Open the changes",
                  text: "Every line added and removed, in each document." });
     items.push({ label: "Why this needs you", text: ap.reason });
     if (ap.no) items.push({ label: "If you say no", text: ap.no });
@@ -171,7 +171,8 @@ function qWalkBack(row) {
   if (row.isDecision) return "A ruling can be changed until it is worked in; after that it is one more ruling.";
   if (row.diffApplied) return "One git revert.";
   if (row.tier === 0) return "Nothing to walk back; it is a reading.";
-  return `This is the reason it is in front of you: ${row.reason || "hard to walk back, or a matter of taste"}.`;
+  if (row.merge && (row.artifact || {}).approval) return "Nothing is added until you say yes. After that, one revert undoes it.";
+  return `This is the reason it is in front of you: ${String(row.reason || "hard to walk back, or a matter of taste").replace(/\.+$/, "")}.`;
 }
 
 /* What yes starts (§7 item 4): a one-line summary over the real follow-up
@@ -222,7 +223,7 @@ function qWorkItem(card, org, reason) {
     question, answer, why: rec.why || (ap ? ap.why : merge ? (card.check || {}).summary || "" : ""), instead: rec.instead || "",
     owner, seconds: answer ? Q_PICK_SECONDS : Q_READ_SECONDS, state: card.state, merge,
     spendingYes: card.state === "needs_approval" ? (card.spending_checkpoint || {}).yes_starts || "" : "",
-    tier: card.tier ?? 2, reason: reason || "hard to walk back, or a matter of taste",
+    tier: card.tier ?? 2, reason: (ap && ap.reason) || reason || "hard to walk back, or a matter of taste",
     diffApplied: !!(card.diff && card.diff.applied),
     options: [], followUps: followUps(card), conversation: convo,
     // A media-typed link (Q-122, Q-123) is evidence in a reference field; give
@@ -500,7 +501,7 @@ function qPaneHtml(row, org) {
     <div class="q-sec"><h3>The evidence</h3>
       ${row.evidence.length ? row.evidence.map(e =>
         `<details><summary>${esc(e.label)}</summary><div>${mdi(e.text)}${
-          e.link ? `<p><a class="plain" href="${e.link}">Open the session in the bullpen</a></p>` : ""}</div></details>`).join("")
+          e.link ? `<p><a class="plain" href="${e.link}"${e.link.startsWith("#") ? "" : ` target="_blank" rel="noopener"`}>${esc(e.linkText || "Open the session in the bullpen")}</a></p>` : ""}</div></details>`).join("")
         : `<p class="q-pane-muted">Nothing recorded yet.</p>`}
     </div>
 
