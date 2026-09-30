@@ -216,15 +216,18 @@ interior cells and leave the camera at ×1. Daniel explicitly does **not** want 
 alternative for this 4×4-building example. This choice changes the grid geometry for
 larger rooms; it does not change Q-108's ruling to draw the live yard unchanged.
 
-**What the thin boundary looks like (Q-135, open 2026-09-29).** Daniel asked for
+**What the thin boundary looks like (Q-135, ruled 2026-09-29).** The Spiral
+Tower's room uses a low stone course. Daniel chose it from four candidates after asking for
 "visual styles for creating a barrier separating an indoor from an outdoor space that
 doesn't take up a tile (just narrowly around the perimeter)". Four candidates are built
 as presentation only in `world/room_edge_style.gd` — a low stone course, a post and
 rail, a clipped hedge and a whitewashed wall — each in a band one room pixel over the
 floor and two or three over the yard, with heavier pieces framing the doorway and
-hash-driven, non-periodic variation (design/09). The default is still the 2px line, so
-players see no change until the pick; `--room-edge=<style>` after `--` switches it for
-a play session. Captures in the tower and, for scale only, a coop-sized room with its
+hash-driven, non-periodic variation (design/09). The stone course is the default;
+`--room-edge=<style>` after `--` switches it for a play session. Its pieces share the
+room's depth order: the north course sits behind the farmer's head instead of covering
+it, while the south course can pass in front of her feet. Captures in the tower and,
+for scale only, a coop-sized room with its
 ring floored over: [`mockups/thin_walls/`](mockups/thin_walls/README.md). Nothing in
 the sim or the save changes with the style. Whether the coop or home should trade
 their one-cell rings for a thin edge is a separate, unasked question, because it

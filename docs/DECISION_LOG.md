@@ -745,6 +745,16 @@ card still waiting on his page this way into the held state. Code: `hq/work.py`
 `hold_repair_checkpoints_for_chief_of_staff`); how it works is in
 `docs/HOW_WORK_ORIGINATES.md` ("A card whose repairs are used up").
 
+### S-39. The Spiral Tower's room has a low stone course
+**Ruled by Daniel on 2026-09-29 (Q-135).** The thin boundary around the Spiral Tower's
+room is a low course of uneven grey stones, with mortar between them and a larger squared
+stone at each side of the doorway. It occupies only the narrow band around the room and
+does not consume a floor square. The wall shares the room's depth order: when the farmer
+stands inside, her head draws over the north course instead of the wall covering her.
+This changes presentation only; the surrounding void still blocks movement, and saves
+and replays do not record the wall style. The coop and farmhouse keep their existing
+one-cell wall rings.
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported

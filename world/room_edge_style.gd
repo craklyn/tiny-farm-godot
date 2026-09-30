@@ -4,8 +4,8 @@
 # cells' outer edge (design/15 §3, §4a). Until 2026-09-29 that boundary was a 2px
 # grey line. Daniel asked for "visual styles for creating a barrier separating an
 # indoor from an outdoor space that doesn't take up a tile (just narrowly around
-# the perimeter)", and the four candidates below are that ask, pending his pick
-# (the decision card is Q-135; captures in docs/design/mockups/thin_walls/).
+# the perimeter)". He chose the low stone course on 2026-09-29 (Q-135; captures
+# in docs/design/mockups/thin_walls/).
 #
 # **Presentation only.** Nothing here reads or writes the sim beyond the room's
 # rectangle and its door, and nothing is saved: the VOID around the room is still
@@ -31,12 +31,13 @@
 # for capture tools (`tools/capture_thin_walls.gd`); `--room-edge=<style>` after
 # `--` on the command line picks one for a play session, e.g.
 #   godot --path . -- --room-edge=stone
-# The default stays the plain line, so nothing changes for players until the pick.
+# The low stone course is the shipped style. The other styles remain available
+# to the capture tool and command line so the decision's evidence is reproducible.
 class_name RoomEdgeStyle
 extends RefCounted
 
 const STYLES := ["plain", "stone", "timber", "hedge", "plaster"]
-const DEFAULT := "plain"
+const DEFAULT := "stone"
 
 ## Set by a capture tool; empty means "use the command line, then the default".
 static var override := ""
@@ -95,6 +96,14 @@ static func draw(canvas: CanvasItem, box: Rect2, gap_x: float, gap_w: float,
 		return
 	for piece in pieces(box, gap_x, gap_w, style):
 		canvas.draw_rect(piece[0], piece[1])
+
+
+## The depth key for one wall rectangle. Edge walls share the farm's render
+## queue with the farmer: the north course sorts behind her head, while the
+## south course can still pass in front of her feet. Using the rectangle's
+## floor-facing edge also gives vertical runs the usual top-to-bottom depth.
+static func depth_y(rect: Rect2) -> float:
+	return rect.end.y
 
 
 # The last room's pieces, kept: the wall is a pure function of the room's rectangle,

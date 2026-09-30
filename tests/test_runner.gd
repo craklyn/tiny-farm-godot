@@ -17802,8 +17802,8 @@ func test_room_edge_styles() -> void:
 	# (design/09: a repeat the eye can predict reads as wallpaper). Checked on the
 	# tower's 2x2 room (door in the southeast cell) and a coop-sized 6x6 room
 	# (door in the middle of the south wall), at a room slot's real origin.
-	_assert(RoomEdgeStyle.current() == "plain",
-		"players still get the plain line until a style is picked")
+	_assert(RoomEdgeStyle.current() == "stone",
+		"the ruled low stone course is the player's default")
 	var rooms := [
 		{ "name": "tower 2x2", "box": Rect2(160, 336, 32, 32), "gap": 176.0 },
 		{ "name": "coop 6x6", "box": Rect2(256, 336, 96, 96), "gap": 304.0 },
@@ -17853,4 +17853,20 @@ func test_room_edge_styles() -> void:
 			periodic = true
 	_assert(lengths.size() > 60 and not periodic,
 		"the pieces along an edge vary without a repeating beat")
-
+	# The wall and farmer share one y-sorted queue. At the tower's real geometry,
+	# a farmer in either row sorts after the north course, so her head is visible
+	# over it; the south course still sorts after her feet.
+	var tower: Dictionary = rooms[0]
+	var stone: Array = RoomEdgeStyle.pieces(tower["box"], tower["gap"], 16.0, "stone")
+	var north_depth := -INF
+	var south_depth := INF
+	for piece in stone:
+		var r: Rect2 = piece[0]
+		if r.position.y < tower["box"].position.y + 2.0:
+			north_depth = maxf(north_depth, RoomEdgeStyle.depth_y(r))
+		if r.end.y > tower["box"].end.y - 2.0:
+			south_depth = minf(south_depth, RoomEdgeStyle.depth_y(r))
+	_assert(north_depth < tower["box"].position.y + 8.0,
+		"the farmer's head draws over the north stone course")
+	_assert(south_depth > tower["box"].end.y - 8.0,
+		"the south stone course can still draw in front of the farmer's feet")

@@ -320,16 +320,17 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   Codex does not create filler work to use the remaining allowance. Proposal and
   measurement: `docs/hq/QUEUE_REFILL.md`. Card: `hq/data/decisions/Q-134.json`.
 
-- **Q-135 — What should the wall around the Spiral Tower's room look like?** —
-  **Open, 2026-09-29.** Daniel asked for barriers between indoors and outdoors that use
+- **Q-135** ~~What should the wall around the Spiral Tower's room look like?~~ — ✅
+  **Ruled 2026-09-29: (a), the low stone course.** Daniel asked for barriers between indoors and outdoors that use
   no floor square. Four candidates for the tower room's thin edge (design/15 §3), drawn
   in existing palette colours and captured in the real game beside today's plain line:
   A, a low stone course (recommended); B, a post and rail; C, a clipped hedge; D, a
   whitewashed wall. Each overlaps the floor by one room pixel (two at the door posts)
   and frames the doorway. Presentation only: `RoomEdgeStyle` in
-  `world/room_edge_style.gd`, default still the plain line, switchable with
+  `world/room_edge_style.gd`; the stone course is now the default, switchable with
   `--room-edge=<style>`. A coop-sized row judges scale only; the coop keeps its ring.
-  Pictures and costs: `docs/design/mockups/thin_walls/`. Card:
+  The wall shares the room's depth order, so a farmer inside draws her head over
+  the north course instead of the course covering her. Pictures and costs: `docs/design/mockups/thin_walls/`. Card:
   `hq/data/decisions/Q-135.json`.
 
 - **Q-126 to Q-130 — The Mark III learning shop.** — **Ruled 2026-09-25 to

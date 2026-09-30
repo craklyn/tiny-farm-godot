@@ -3,8 +3,8 @@
 Daniel asked on 2026-09-29 for "visual styles for creating a barrier separating an
 indoor from an outdoor space that doesn't take up a tile (just narrowly around the
 perimeter)". These are four, captured in the real game beside the plain grey line
-the Spiral Tower's room draws today. **The pick is Daniel's**; the question is on
-HQ as decision card Q-135 (`hq/data/decisions/Q-135.json`).
+the Spiral Tower's room drew before the decision. **Daniel chose A, the low stone
+course, on 2026-09-29.**
 
 ![All five side by side](comparison.png)
 
@@ -61,18 +61,18 @@ most expensive, the hedge around the larger room, is about 500 flat rectangles.
 If a tablet profile ever shows that matters, the chosen style can be drawn once
 into a small picture and reused.
 
-## A strawman
+## Daniel's choice
 
 **A, the stone course**, for the Spiral Tower. The tower is built of that stone, so
 the room's edge reads as the tower's own wall seen from inside. Grey stone also
 stands apart from both the green grass outside and the brown floor inside, at both
 room sizes, while the hedge sinks into the field's dark tufts and the rail shares
-the floor's browns. Daniel may prefer another, or today's line.
+the floor's browns.
 
 ## Trying one in the game, and remaking the pictures
 
-The style is chosen in one place, `world/room_edge_style.gd`. Today's line stays
-the default until a style is picked. To play with a candidate, start the game with
+The style is chosen in one place, `world/room_edge_style.gd`. The stone course is
+the default. To play with another candidate, start the game with
 it named after `--`:
 
     godot --path . -- --room-edge=stone      # or timber, hedge, plaster, plain

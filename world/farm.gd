@@ -1419,7 +1419,6 @@ func _queue_ripe(canvas: CanvasItem, queue: Array[Dictionary], at: Vector2i, tex
 func _draw() -> void:
 	_draw_room_backdrop()
 	_draw_pages(self, WorldLayout.PAGE_ROWS, MAP_HEIGHT)
-	_draw_edge_room_walls()
 	if _page0_node != null:
 		_page0_node.queue_redraw()
 
@@ -1427,8 +1426,11 @@ func _draw() -> void:
 # A small room keeps all four cells usable. Its boundary is drawn on the cell
 # edges; the surrounding VOID still blocks movement, and the southeast gap is
 # the same doorway that the interaction system uses. How the boundary looks is
-# `RoomEdgeStyle`'s (Q-135): today's plain line unless a style is picked.
-func _draw_edge_room_walls() -> void:
+# `RoomEdgeStyle`'s (Q-135). The pieces enter the ordinary render queue instead
+# of being painted over the completed scene: a farmer inside the room therefore
+# puts her head in front of the north course, while the south course remains in
+# front when she walks behind it.
+func _queue_edge_room_walls(render_queue: Array[Dictionary], canvas: CanvasItem) -> void:
 	if not _backdrop_active or sim == null:
 		return
 	var id: String = sim.room_of_cell(player_node().get_tile_pos())
@@ -1437,7 +1439,19 @@ func _draw_edge_room_walls() -> void:
 	var box := Rect2(Vector2(_backdrop_rect.position * TILE_SIZE),
 		Vector2(_backdrop_rect.size * TILE_SIZE))
 	var door: Vector2i = sim.rooms[id].get("door", Vector2i(-1, -1))
-	RoomEdgeStyle.draw(self, box, float(door.x * TILE_SIZE), float(TILE_SIZE))
+	var style := RoomEdgeStyle.current()
+	# The ruled style is made of rectangles. The retired plain-line comparison
+	# remains available to the capture tool and keeps its old drawing path.
+	if style == "plain":
+		RoomEdgeStyle.draw(canvas, box, float(door.x * TILE_SIZE), float(TILE_SIZE), style)
+		return
+	for piece in RoomEdgeStyle.pieces(box, float(door.x * TILE_SIZE), float(TILE_SIZE), style):
+		var rect: Rect2 = piece[0]
+		var color: Color = piece[1]
+		render_queue.append({
+			"y": RoomEdgeStyle.depth_y(rect),
+			"draw": func(): canvas.draw_rect(rect, color)
+		})
 
 
 # Every square any Mark III on the farm has been given (Q-124), read off the
@@ -1763,6 +1777,7 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 	# the `_profiling`-gated block that used to be the only reader of this
 	# count.
 	var walk_len := render_queue.size()
+	_queue_edge_room_walls(render_queue, canvas)
 
 	if _profiling:
 		draw_walk_usec = Time.get_ticks_usec() - _t0
