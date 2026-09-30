@@ -52,6 +52,9 @@ func _stamp() -> int:
 #                 below keeps it out of the dead-tap totals on purpose. The
 #                 T-19 signature to watch for is *worked-then-acknowledged*
 #                 replacing *worked-then-dead*.
+#   boundary    - she was already as close to an unreachable target as the map
+#                 allows, so the nearest wall showed the wordless marker. This
+#                 is not a dead tap: it received an answer without a new verb.
 #   unreachable - she cannot path there and is not already beside it: the tap
 #                 did nothing whatsoever. The most diagnostic outcome we record.
 #

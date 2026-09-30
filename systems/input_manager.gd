@@ -26,6 +26,12 @@ var has_click: bool = false
 var swipe_active: bool = false
 var swipe_tile: Vector2i = Vector2i(-1, -1)
 var swipe_moved: bool = false  # true for one frame when finger enters a new tile
+# A touch does not become a tap until it lifts.  Android tells us about the
+# finger-down before it can tell us whether that same finger will drag, so
+# putting a click in the game at down-time lets the first drag tile answer
+# twice.  Keep the possible tap here until the gesture has declared itself.
+var _touch_down_tile: Vector2i = Vector2i(-1, -1)
+var _touch_dragged: bool = false
 
 # --- two fingers: the camera's own gesture (design/11 row 26) -----------------
 #
@@ -103,6 +109,8 @@ func swallow_input(on: bool) -> void:
 		gesture_active = false
 		gesture_began = false
 		_span0 = -1.0
+		_touch_down_tile = Vector2i(-1, -1)
+		_touch_dragged = false
 
 
 func is_swallowing() -> bool:
@@ -211,7 +219,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				click_actor_id = ""
 				swipe_active = false
 			else:
-				_record_click(screen_to_tile(event.position))
+				# Hold this until release.  A later drag event must suppress this
+				# before Player has a chance to read it as a tap.
+				_touch_down_tile = screen_to_tile(event.position)
+				_touch_dragged = false
 				swipe_active = false
 		else:
 			touches.erase(event.index)
@@ -220,6 +231,10 @@ func _unhandled_input(event: InputEvent) -> void:
 			if touches.size() <= 1:
 				has_click = false
 				click_actor_id = ""
+				if not _touch_dragged and _touch_down_tile.x >= 0:
+					_record_click(_touch_down_tile)
+				_touch_down_tile = Vector2i(-1, -1)
+				_touch_dragged = false
 			swipe_active = false
 			swipe_tile   = Vector2i(-1, -1)
 	elif event is InputEventScreenDrag:
@@ -231,6 +246,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			click_actor_id = ""
 			swipe_active = false
 			return
+		# This is deliberately before `new_tile` is considered.  A drag event
+		# which stays inside its first square is still a drag, never a tap.
+		_touch_dragged = true
+		has_click = false
+		click_actor_id = ""
 		var new_tile := screen_to_tile(event.position)
 		if new_tile != swipe_tile:
 			swipe_tile   = new_tile
@@ -238,7 +258,11 @@ func _unhandled_input(event: InputEvent) -> void:
 			swipe_moved  = true
 
 	# Track mouse clicks
-	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+	# Godot also emits a mouse-button down for a screen touch.  It arrives after
+	# the touch branch above, so accepting it here would put the very click we
+	# deferred back into the buffer before the first drag event can suppress it.
+	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT \
+			and Time.get_ticks_msec() - _last_touch_ms > TOUCH_EMULATION_WINDOW_MS:
 		_record_click(screen_to_tile(event.position))
 
 

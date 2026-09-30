@@ -38,6 +38,17 @@ The intended boundary behaviour already says that a far tap should walk the farm
 the closest reachable edge. `Pathfinding.find_path_nearest()` could not produce that
 path in these room cases, so the player saw neither movement nor a boundary cue.
 
+**Reproduced, 2026-09-29.** Replaying the session's first 500 recorded entries puts the
+farm back at tick 64579, with her on (7,41) inside the Spiral Tower's 2×2 room at (7,40).
+The replay does not diverge before that point. From there, the trace's next taps fail
+the same way on the current build: (7,43) from (7,41) and (9,43) from (8,41) both come
+back `unreachable`, and a drag from (8,41) across (9,43)–(12,43) records five silent
+failures. In each case she was already standing on the room square nearest the tap, so
+the search had no shorter walk to offer. A tap that did have one, such as (9,43) from
+(7,41), already walked her to the wall. The fix answers the already-at-the-wall case
+with the yellow destination marker on her square, and gives a drag one answer. The
+integration suite keeps this rebuilt moment as a regression test.
+
 ### Floor taps: 2 squares
 
 | Square | What she tapped | What the game did | Smallest change |

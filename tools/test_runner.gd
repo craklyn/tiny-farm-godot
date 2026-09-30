@@ -125,6 +125,7 @@ func _run_scenarios() -> void:
 	await _scenario_ag_a_machine_is_bought_placed_and_told_what_to_do()
 	await _scenario_ah_the_mark_one_takes_exact_orders()
 	await _scenario_ai_the_house_has_a_door()
+	await _scenario_room_wall_tap_answers()
 	await _scenario_aj_the_robot_lives_in_a_stall()
 	await _scenario_ax_she_can_get_back_out_of_the_coop()
 	await _scenario_ak_she_puts_up_a_fence()
@@ -4347,6 +4348,166 @@ func _scenario_ah_the_mark_one_takes_exact_orders() -> void:
 	GameState.selected_seed_type = "wheat"
 
 
+# The September 28 tablet session, rebuilt at the moment it went wrong. Its replay
+# starts from the farm she continued and records every Action and every square she
+# walked onto, so applying its first entries puts the real farm, the real Spiral
+# Tower room and her real position back exactly (no divergence: the replay's first
+# cross-build difference is entry 704, long after this). Entry 499 is her `stop` on
+# (7,41) at tick 64579 — the trace's very next taps, (7,43) from (7,41) and then
+# (9,43) from (8,41), came back `unreachable`.
+const TABLET_ROOM_SESSION := "res://playtests/2026-09-28_224516/session_replay.json"
+const TABLET_ROOM_ENTRIES := 500
+
+
+func _tablet_room_moment() -> ReplayLog:
+	var rlog := ReplayLog.load_from(TABLET_ROOM_SESSION)
+	if rlog == null or rlog.entries.size() < TABLET_ROOM_ENTRIES:
+		return null
+	rlog.entries = rlog.entries.slice(0, TABLET_ROOM_ENTRIES)
+	rlog.end_tick = int(rlog.entries[TABLET_ROOM_ENTRIES - 1].get("tick", 0))
+	return rlog
+
+
+# One finger down, one frame, one finger up — the tablet's tap, through
+# InputManager — then wait for Player to record what it made of it.
+func _finger_tap(tile: Vector2i) -> Dictionary:
+	var since: int = farm.trace.entries.size()
+	var touch := InputEventScreenTouch.new()
+	touch.index = 0
+	touch.pressed = true
+	touch.position = InputManager.tile_to_screen(tile)
+	InputManager._unhandled_input(touch)
+	await get_tree().process_frame
+	touch.pressed = false
+	InputManager._unhandled_input(touch)
+	await _wait_until(func(): return not _last_tap_entry(since).is_empty(), 30)
+	return _last_tap_entry(since)
+
+
+func _scenario_room_wall_tap_answers() -> void:
+	print("\n--- Taps from inside the Spiral Tower room reach its wall (2026-09-28 tablet) ---")
+	var floor_t := Vector2i(7, 41)
+	var wall := Vector2i(8, 41)
+	var before := SaveGame.capture(farm.sim, GameState)
+	var rng_seed := SimRng.current_seed()
+	var rng_state := SimRng.rng.state
+	var rng_revision := SimRng.stateless_revision
+
+	var rlog := _tablet_room_moment()
+	_assert(rlog != null and rlog.apply_to(farm.sim, GameState) and rlog.divergence == "",
+		"the tablet session replays to tick 64579 without diverging (%s)"
+			% ("no replay" if rlog == null else rlog.divergence))
+	var room: Dictionary = farm.sim.rooms.get("spiral_tower_room_2", {})
+	_assert(room.get("origin", Vector2i(-1, -1)) == Vector2i(7, 40) and room.get("size", Vector2i(-1, -1)) == Vector2i(2, 2),
+		"the replayed farm has the session's own Spiral Tower room, 2x2 at (7,40) (%s)" % room)
+	_assert(farm.sim.actor_pos(SimWorld.ACTOR_PLAYER) == floor_t,
+		"the replay puts her on (7,41), where she stood (%s)" % farm.sim.actor_pos(SimWorld.ACTOR_PLAYER))
+	farm.sync_actors()
+	player.init_position(floor_t.x, floor_t.y)
+	player.path.clear()
+	player.pending_action = {}
+	player.tap_indicator = {}
+	GameState.selected_tool = 0  # the session's tool for every one of these taps
+	InputManager.has_click = false
+	InputManager.swipe_active = false
+	InputManager.swipe_moved = false
+	await get_tree().process_frame
+
+	# 1. The session's tap on (7,43) from (7,41): she is already on the room square
+	#    nearest it, so there is no walk to make. Recorded live as `unreachable`.
+	var e := await _finger_tap(Vector2i(7, 43))
+	print("  tap (7,43) from %s -> %s" % [e.get("at"), e.get("out")])
+	_assert(String(e.get("out", "")) == "boundary",
+		"a tap on (7,43) from (7,41) is answered at the wall, not unreachable (%s)" % e.get("out"))
+	_assert(not player.tap_indicator.is_empty()
+			and Vector2i(player.tap_indicator["tx"], player.tap_indicator["ty"]) == floor_t,
+		"the answer is drawn on the square she stands on (%s)" % player.tap_indicator)
+	_assert(player.get_tile_pos() == floor_t and player.path.is_empty() and player.pending_action.is_empty(),
+		"the wall answer invents no walk and no action")
+
+	# 2. A tap on (9,43) from (7,41) walks her to the nearest square toward it,
+	#    through the ordinary walk, so the crossing is recorded for the replay.
+	var walks_before: int = farm.replay.entries.size() if farm.replay != null else 0
+	e = await _finger_tap(Vector2i(9, 43))
+	print("  tap (9,43) from %s -> %s" % [e.get("at"), e.get("out")])
+	_assert(String(e.get("out", "")) == "walk", "a tap on (9,43) from (7,41) is a walk (%s)" % e.get("out"))
+	var reached := await _wait_until(func(): return player.get_tile_pos() == wall and player.path.is_empty(), 600)
+	_assert(reached and farm.sim.actor_pos(SimWorld.ACTOR_PLAYER) == wall,
+		"she walks to the room's wall square (8,41) (%s)" % farm.sim.actor_pos(SimWorld.ACTOR_PLAYER))
+	var recorded_step := false
+	if farm.replay != null:
+		for i in range(walks_before, farm.replay.entries.size()):
+			var r: Dictionary = farm.replay.entries[i]
+			if ReplayLog.is_walk(r) and String(r.get("event", "")) == "step" and r.get("from") == [wall.x, wall.y]:
+				recorded_step = true
+	_assert(recorded_step, "the step onto (8,41) is in the replay log")
+
+	# 3. The session's tap on (9,43) from (8,41), recorded five times as
+	#    `unreachable`: now the wall she is standing on answers.
+	e = await _finger_tap(Vector2i(9, 43))
+	print("  tap (9,43) from %s -> %s" % [e.get("at"), e.get("out")])
+	_assert(String(e.get("out", "")) == "boundary",
+		"a tap on (9,43) from (8,41) is answered at the wall, not unreachable (%s)" % e.get("out"))
+	_assert(not player.tap_indicator.is_empty()
+			and Vector2i(player.tap_indicator["tx"], player.tap_indicator["ty"]) == wall
+			and bool(player.tap_indicator.get("front", false)),
+		"the answer is drawn over her on the wall square (%s)" % player.tap_indicator)
+	_assert(player.get_tile_pos() == wall and player.path.is_empty() and player.pending_action.is_empty(),
+		"the wall answer does not move her or queue an action")
+
+	# 4. The session's drag from (8,41) across (9,43), (10,43), (11,43), (12,43):
+	#    four `unreachable` entries live. One finger gets one answer.
+	var since: int = farm.trace.entries.size()
+	var touch := InputEventScreenTouch.new()
+	touch.index = 0
+	touch.pressed = true
+	touch.position = InputManager.tile_to_screen(Vector2i(9, 43))
+	InputManager._unhandled_input(touch)
+	var emulated_down := InputEventMouseButton.new()
+	emulated_down.button_index = MOUSE_BUTTON_LEFT
+	emulated_down.pressed = true
+	emulated_down.position = touch.position
+	InputManager._unhandled_input(emulated_down)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_assert(_last_tap_entry(since).is_empty(),
+		"finger-down and its emulated mouse event wait to learn whether it is a drag")
+	for target in [Vector2i(9, 43), Vector2i(10, 43), Vector2i(11, 43), Vector2i(12, 43)]:
+		var drag := InputEventScreenDrag.new()
+		drag.index = 0
+		drag.position = InputManager.tile_to_screen(target)
+		InputManager._unhandled_input(drag)
+		# One frame per square, as a finger's drag events arrive on the tablet.
+		await get_tree().process_frame
+	touch.pressed = false
+	touch.position = InputManager.tile_to_screen(Vector2i(12, 43))
+	InputManager._unhandled_input(touch)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var outs: Array[String] = []
+	for i in range(since, farm.trace.entries.size()):
+		var entry: Dictionary = farm.trace.entries[i]
+		if String(entry.get("kind", "")) == "tap":
+			outs.append("%s %s" % [entry.get("tile"), entry.get("out")])
+	print("  drag (9,43)..(12,43) from (8,41) -> %s" % [outs])
+	_assert(outs.size() == 1 and outs[0].ends_with("boundary"),
+		"a four-square drag from the wall gets exactly one answer (%s)" % [outs])
+	_assert(player.get_tile_pos() == wall, "the drag leaves her on the wall square")
+
+	# Put the scenario farm back, clock and random stream included.
+	_assert(SaveGame.restore(before, farm.sim, GameState), "the scenario farm restores after the tablet check")
+	SimRng.reseed(rng_seed, rng_revision)
+	SimRng.rng.state = rng_state
+	var returned: Vector2i = farm.sim.actor_pos(SimWorld.ACTOR_PLAYER)
+	player.init_position(returned.x, returned.y)
+	player.path.clear()
+	player.pending_action = {}
+	player.tap_indicator = {}
+	farm.sync_actors()
+	farm.queue_redraw()
+	await get_tree().process_frame
+
+
 func _scenario_ai_the_house_has_a_door() -> void:
 	# The CEO, 2026-09-06: *"the player can see an entrance to their house from the
 	# outdoor space, and going inside enters a new map with their bed; a door leads
@@ -8522,8 +8683,9 @@ func _scenario_bk_the_bin_hint_hides_on_touch() -> void:
 	_assert(main_scene.hud.hint_label.text.contains("SPACE"),
 		"standing by the bin with a keyboard still reads Press SPACE")
 
-	# A finger on the bin tile: mode flips to TOUCH and the tap is recorded in
-	# the same call, exactly as a tablet's touch does.
+	# A finger on the bin tile: mode flips to TOUCH on down, then releasing the
+	# same finger supplies the tap.  Keeping the click until release is what lets
+	# a drag suppress its initial down event.
 	var touch := InputEventScreenTouch.new()
 	touch.pressed = true
 	touch.index = 0
@@ -8531,6 +8693,8 @@ func _scenario_bk_the_bin_hint_hides_on_touch() -> void:
 	InputManager._unhandled_input(touch)
 	_assert(InputManager.current_mode == InputManager.Mode.TOUCH,
 		"a tap on the bin puts the game in touch mode")
+	touch.pressed = false
+	InputManager._unhandled_input(touch)
 
 	await get_tree().process_frame
 	_assert(not main_scene.hud.hint_label.text.contains("SPACE"),

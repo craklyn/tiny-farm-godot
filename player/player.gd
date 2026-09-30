@@ -31,6 +31,10 @@ var path: Array[Vector2i] = []
 var pending_action: Dictionary = {}  # {action, tool_idx, target_t, seed_type}
 var approach_target: Vector2i = Vector2i(-1, -1)  # tile she is walking up to (Q-30)
 var drag_tool_idx: int = -1
+# A drag is one gesture, even when Godot reports its path across several tiles.
+# Once its boundary response has started, later tiles must not replace it with
+# another ring or path order.
+var boundary_drag_answered := false
 
 # Tap destination indicator
 var tap_indicator: Dictionary = {}   # {tx, ty, timer}
@@ -173,6 +177,8 @@ func get_facing_tile() -> Vector2i:
 func update_player(delta: float) -> void:
 	if farm == null:
 		return
+	if not InputManager.swipe_active:
+		boundary_drag_answered = false
 
 	# Tap indicator timer
 	if not tap_indicator.is_empty():
@@ -221,6 +227,13 @@ func update_player(delta: float) -> void:
 		# and the sweep grammar of design/11 row 3 stops at this mode's door.
 		if is_new_tap:
 			_teach_tap(target_t)
+		target_t = null
+
+	# The first blocked square a drag meets owns the gesture's one visible
+	# answer.  Later squares from that same finger movement are not resolved,
+	# traced or redrawn; dropping the target (rather than returning) keeps her
+	# walk to the wall going on the frames those squares arrive.
+	if target_t != null and is_drag and boundary_drag_answered:
 		target_t = null
 
 	if target_t != null:
@@ -425,6 +438,18 @@ func update_player(delta: float) -> void:
 					var edge := path[path.size() - 1]
 					tap_indicator = { "tx": edge.x, "ty": edge.y,
 						"timer": TAP_INDICATOR_DURATION, "r": 0.9, "g": 0.85, "b": 0.3 }
+					boundary_drag_answered = is_drag
+				else:
+					# The empty route means she is already standing at the nearest
+					# room edge, not that the tap vanished. The ordinary destination
+					# diamond is wordless and does not change simulation state. Draw it
+					# over the farmer here: the answer would otherwise be hidden under
+					# the person who is already standing on the wall square.
+					out_kind = "boundary"
+					tap_indicator = { "tx": player_t.x, "ty": player_t.y,
+						"timer": TAP_INDICATOR_DURATION, "r": 0.9, "g": 0.85, "b": 0.3,
+						"front": true }
+					boundary_drag_answered = is_drag
 
 			if farm.trace != null:
 				farm.trace.tap("drag" if is_drag else "tap", tapped_t, player_t,
@@ -997,6 +1022,6 @@ func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
 		var color = Color(ind.get("r", 0.3), ind.get("g", 1.0), ind.get("b", 0.4), alpha)
 		
 		render_queue.append({
-			"y": wy - 100, # Always below everything
+			"y": 100000.0 if bool(ind.get("front", false)) else wy - 100,
 			"draw": func(): canvas.draw_colored_polygon(pts, color)
 		})

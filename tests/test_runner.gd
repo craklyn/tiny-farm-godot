@@ -722,6 +722,37 @@ func test_pathfinding() -> void:
 	
 	t.free()
 
+	# The September 28 tablet session at the moment its room taps went unanswered,
+	# rebuilt from the session's own replay rather than from a map drawn for the
+	# test: the first 500 entries end with her `stop` on (7,41) inside the Spiral
+	# Tower room at tick 64579. The trace's next taps — (7,43) from (7,41), then
+	# (9,43) from (8,41) — were `unreachable`, because she already stood on the
+	# room square nearest each one and the nearest-edge search had nowhere to go.
+	var room_log := ReplayLog.load_from("res://playtests/2026-09-28_224516/session_replay.json")
+	_assert(room_log != null and room_log.entries.size() >= 500, "the September 28 tablet replay loads")
+	if room_log != null and room_log.entries.size() >= 500:
+		room_log.entries = room_log.entries.slice(0, 500)
+		room_log.end_tick = int(room_log.entries[499].get("tick", 0))
+		var room_farm = FarmScript.new()
+		var room_gs = load("res://systems/game_state.gd").new()
+		_assert(room_log.apply_to(room_farm.sim, room_gs) and room_log.divergence == "",
+			"the tablet session replays to tick 64579 without diverging (%s)" % room_log.divergence)
+		_assert(room_farm.sim.actor_pos(SimWorld.ACTOR_PLAYER) == Vector2i(7, 41),
+			"the replay puts her on (7,41) inside the Spiral Tower room")
+		var room: Dictionary = room_farm.sim.rooms.get("spiral_tower_room_2", {})
+		_assert(room.get("origin", Vector2i(-1, -1)) == Vector2i(7, 40)
+				and room.get("size", Vector2i(-1, -1)) == Vector2i(2, 2),
+			"the replayed room is the session's own 2x2 Spiral Tower room at (7,40)")
+		_assert(Pathfinding.find_path_nearest(room_farm, Vector2i(7, 41), Vector2i(7, 43)).is_empty(),
+			"from (7,41) there is no nearer square toward (7,43): the tap the tablet left unanswered")
+		_assert(Pathfinding.find_path_nearest(room_farm, Vector2i(8, 41), Vector2i(9, 43)).is_empty(),
+			"from (8,41) there is no nearer square toward (9,43): the tap the tablet left unanswered")
+		var room_path: Array[Vector2i] = Pathfinding.find_path_nearest(room_farm, Vector2i(7, 41), Vector2i(9, 43))
+		_assert(room_path == [Vector2i(8, 41)],
+			"from (7,41) the nearest square toward (9,43) is the wall square (8,41) (%s)" % [room_path])
+		room_farm.free()
+		room_gs.free()
+
 func test_action_router() -> void:
 	print("\n--- ActionRouter Tests ---")
 	var FarmScript = load("res://world/farm.gd")

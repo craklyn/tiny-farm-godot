@@ -1063,6 +1063,9 @@
    "verdict": "decode",
    "why": "The reader has to infer that eleven harvests were not collected because the pouch was full."
   },
+  "1d218c8a071f07a482ba": {
+   "verdict": "ok"
+  },
   "1d3cf27d4be11571524c": {
    "instead": "The proposed version is on hold; it needs to be restored",
    "quote": "Candidate held; recovery needed",
