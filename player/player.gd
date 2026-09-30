@@ -246,33 +246,9 @@ func update_player(delta: float) -> void:
 			tap_indicator = {}
 			
 		var drag_intent = drag_tool_idx if is_drag else null
-		# Ask the tapped ground first. A walkable square that has no job at any
-		# distance answers the finger itself, even beside the cot: that is a more
-		# faithful answer than treating empty soil as an attempt to sleep. A far
-		# workable square deliberately resolves empty until she is nearby, so ask
-		# once more as though she had reached it before deciding it is blank. The
-		# cot halo remains the fallback for misses that do not have their own answer.
-		var direct_resolved := ActionRouter.resolve(
-			farm, gs, target_vec, player_t, is_drag, drag_intent, tapped_machine_id)
-		var reached_resolved := ActionRouter.resolve(
-			farm, gs, target_vec, target_vec, is_drag, drag_intent, tapped_machine_id)
-		if is_new_tap and direct_resolved.is_empty() \
-				and reached_resolved.is_empty() \
-				and farm.get_object(target_vec.x, target_vec.y) == "" \
-				and farm.is_walkable(target_vec.x, target_vec.y) \
-				and ActionRouter.blocked_reason(farm, gs, target_vec) == "" \
-				and ActionRouter.satisfied_reason(farm, gs, target_vec) == "":
-			farm.soil_tap_at(target_vec)
-			path = []
-			pending_action = {}
-			tap_indicator = {}
-			approach_target = Vector2i(-1, -1)
-			return
-
 		# T-27 (box 3): the refusal-aware halo. The tapped tile still wins whenever
-		# it produces a real world change; a miss with no answer of its own, made
-		# while she is standing beside the cot, resolves as the cot tap it was meant
-		# to be.
+		# it produces a real world change; a tap that produced nothing, made while
+		# she is standing beside the cot, resolves as the cot tap it was meant to be.
 		var resolved := ActionRouter.resolve_with_halo(
 			farm, gs, target_vec, player_t, is_drag, drag_intent, tapped_machine_id)
 

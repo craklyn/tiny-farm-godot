@@ -304,23 +304,10 @@ and assert the icon/count controls used by the loop; an assertion that
 stronger rule than S-7.
 
 **Forgiveness layer** (not interactions — properties of the tap language, all ✅):
-the cot halo rescues adjacent dead taps (T-27); far taps on ground with a job degrade
-to movement instead of failing; refused taps get a voice (`blocked_reason`), satisfied
-tiles answer yes-done, never no (Q-42); pointer input is swallowed during day
-transitions (T-27); tap-ahead queueing is deferred with a trigger (D-10).
-
-**A tap on blank ground answers without acting** (2026-09-29). Every walkable ground
-square with nothing to do at any distance, including the square under the farmer or
-beside the cot, lifts three small brown soil motes for 260 ms. It has no words, sound,
-farmer motion, path or tap diamond. A distant crop or other workable ground keeps its
-ordinary walk toward the job; the mote answer is only for ground the router cannot
-work. The ground answer comes before the cot's nearby-miss fallback, so empty soil is
-not mistaken for a request to sleep. A refusal, an already-finished job and every tap
-that produces an action keep their own answer. Farm actions use an actor movement, a
-tile reaction and their own sound; the blue ring means an already-finished job. The
-short earth-coloured motes therefore say only that the finger landed, never that a job
-happened. This response is presentation only: it does not change the simulation and it
-is not recorded in the replay.
+the cot halo rescues adjacent dead taps (T-27); far taps degrade to movement instead
+of failing; refused taps get a voice (`blocked_reason`), satisfied tiles answer
+yes-done, never no (Q-42); pointer input is swallowed during day transitions (T-27);
+tap-ahead queueing is deferred with a trigger (D-10).
 
 ### Phase 2 — First Machines (📐/◻ from `phases/phase-2`, `design/03`, `design/04`)
 
