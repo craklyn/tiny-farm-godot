@@ -1419,6 +1419,9 @@ ANSI_RE = re.compile(r"\x1b\[[0-9;?]*[a-zA-Z]")
 # Ordered: the first pattern that matches the output wins, so put the specific
 # device faults above the generic "no device".
 DEPLOY_HINTS = [
+    (re.compile(r"Refusing a tablet build from a dirty checkout", re.I),
+     "The game checkout has uncommitted source changes. Commit them before deploying "
+     "so a tablet replay can name the exact build that made it."),
     (re.compile(r"INSTALL_FAILED_UPDATE_INCOMPATIBLE|signatures do not match", re.I),
      "The tablet already has a Tiny Farm that was signed with a different key. "
      "Uninstall Tiny Farm on the tablet (long-press the icon \u2192 Uninstall), then press "

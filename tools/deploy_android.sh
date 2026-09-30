@@ -29,10 +29,11 @@ if [[ "${1:-}" == "pair" ]]; then
 	exit 0
 fi
 
-# A dirty checkout cannot be reconstructed from the build id in a replay. Check
-# before any generated files or stamps are written, including untracked source.
+# A dirty game checkout cannot be reconstructed from the build id in a replay.
+# Shelved playtests are evidence, not build input: the rescue step creates them,
+# so counting them here would block the next deploy before it can run.
 step "Checking the build source"
-if [[ -n "$(git status --porcelain --untracked-files=normal)" ]]; then
+if [[ -n "$(git status --porcelain --untracked-files=normal -- . ':(exclude)playtests')" ]]; then
 	echo "Refusing a tablet build from a dirty checkout. Commit or remove the changes first." >&2
 	exit 1
 fi
