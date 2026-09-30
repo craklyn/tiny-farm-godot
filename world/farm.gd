@@ -1199,9 +1199,14 @@ func _process(_delta: float) -> void:
 	# Only runs while a reaction is in flight; cost scales with acted tiles, not
 	# map area (ARCHITECTURE guardrail).
 	if _reactions.is_empty() and _refusals.is_empty() and _acks.is_empty() \
-			and _wetting.is_empty():
+			and _wetting.is_empty() and not _tower_cloud_active:
 		set_process(false)
 		return
+	# The cloud layer is independent of the farm page.  Remember whether a page
+	# animation was present so removing its final mark still redraws that page,
+	# while a cloud-only frame redraws only its small overlay node.
+	var had_farm_animation := not _reactions.is_empty() or not _refusals.is_empty() \
+		or not _acks.is_empty() or not _wetting.is_empty()
 	var now := Time.get_ticks_msec()
 	for key in _reactions.keys():
 		if now - _reactions[key] > REACT_MS:
@@ -1216,7 +1221,10 @@ func _process(_delta: float) -> void:
 		# A held soak (t = -1) waits for release_tile_look; a finished one is done.
 		if _wetting[key]["t"] >= 0.0 and now - _wetting[key]["t"] > _wetting[key]["ms"]:
 			_wetting.erase(key)
-	queue_redraw()
+	if _tower_cloud_active and _tower_cloud_node != null:
+		_tower_cloud_node.queue_redraw()
+	if had_farm_animation:
+		queue_redraw()
 
 
 # 0 at rest, rising to 1 mid-reaction and back — a single squash-and-settle.
@@ -2139,8 +2147,24 @@ var _backdrop_pitch := 1.0
 var _backdrop_view: SubViewport = null
 var _backdrop_layer: CanvasLayer = null
 var _backdrop_node: Node2D = null
+var _tower_cloud_node: Node2D = null
 var _page0_node: Node2D = null
 const PAGE0_LAYER := 4          # the farm page's items: what the backdrop view draws
+
+# These clouds belong to the camera, not to the farm state.  Their private source
+# of variation is deliberately outside SimRng: a replay may show a different sky,
+# while every world action and result stays identical.
+const TOWER_CLOUDS := 4
+const TOWER_CLOUD_ALPHA := 0.16
+const TOWER_CLOUD_FEATHER_PX := 34.0
+# The shapes are soft all over, so they are baked at a quarter of their drawn size
+# and drawn with linear filtering: sixteen times fewer pixels to bake when the farm
+# is built (about 15 ms on the desktop instead of 220 ms), with no visible loss.
+const TOWER_CLOUD_BAKE_SCALE := 0.25
+var _tower_cloud_active := false
+var _tower_clouds_enabled := true # profiling tool only; gameplay leaves this on
+var _tower_cloud_rng := RandomNumberGenerator.new()
+var _tower_clouds: Array[Dictionary] = []
 
 func _build_views() -> void:
 	# The farm page, as an item of its own (see `_draw`).
@@ -2187,6 +2211,13 @@ func _build_views() -> void:
 	_backdrop_node.name = "RoomBackdrop"
 	_backdrop_node.draw.connect(_draw_backdrop_texture)
 	_backdrop_layer.add_child(_backdrop_node)
+	_tower_cloud_rng.randomize()
+	_make_tower_clouds()
+	_tower_cloud_node = Node2D.new()
+	_tower_cloud_node.name = "TowerCloudOverlay"
+	_tower_cloud_node.texture_filter = CanvasItem.TEXTURE_FILTER_LINEAR
+	_tower_cloud_node.draw.connect(_draw_tower_clouds)
+	_backdrop_layer.add_child(_tower_cloud_node)
 
 func _set_backdrop_live(on: bool) -> void:
 	if _backdrop_view == null:
@@ -2205,6 +2236,11 @@ func _set_backdrop_live(on: bool) -> void:
 # farm itself is the live texture `_backdrop_node` draws beneath this item.
 func _draw_room_backdrop() -> void:
 	_backdrop_active = false
+	_tower_cloud_active = false
+	if _tower_cloud_node != null:
+		# Clearing a cloud is also a redraw: CanvasItem retains its last commands
+		# until asked to draw again, including on the frame she leaves the tower.
+		_tower_cloud_node.queue_redraw()
 	if sim == null or sim.rooms.is_empty() or player_node() == null:
 		_set_backdrop_live(false)
 		return
@@ -2218,8 +2254,12 @@ func _draw_room_backdrop() -> void:
 	_backdrop_own = sim.room_building_rect(r)
 	_backdrop_pitch = float(r.get("pitch", 1))
 	_backdrop_offset = room_backdrop_offset(r, _backdrop_own)
+	_tower_cloud_active = _tower_clouds_enabled and sim.room_kind(id) == WorldLayout.SPIRAL_TOWER
+	if _tower_cloud_active:
+		set_process(true)
 	_set_backdrop_live(true)
 	_backdrop_node.queue_redraw()
+	_tower_cloud_node.queue_redraw()
 
 
 func _draw_backdrop_texture() -> void:
@@ -2234,6 +2274,92 @@ func _draw_backdrop_texture() -> void:
 			Color("b7d7d4"), true)
 	_backdrop_node.draw_texture_rect(_backdrop_view.get_texture(),
 		Rect2(Vector2.ZERO, Vector2(_backdrop_view.size)), false)
+
+
+# Four broad, low-alpha shapes are cheaper than a tile treatment and leave crops,
+# actors, and room furniture legible.  Each cloud has its own shape, gap, drift
+# speed, and phase, so their crossings do not settle into a visible rhythm.
+func _make_tower_clouds() -> void:
+	_tower_clouds.clear()
+	for i in TOWER_CLOUDS:
+		var points := PackedVector2Array()
+		var width := _tower_cloud_rng.randf_range(105.0, 160.0)
+		var height := _tower_cloud_rng.randf_range(42.0, 70.0)
+		for p in 10:
+			var angle := TAU * float(p) / 10.0
+			var wobble := _tower_cloud_rng.randf_range(0.74, 1.16)
+			points.append(Vector2(cos(angle) * width * wobble,
+				sin(angle) * height * wobble))
+		var baked := _bake_tower_cloud_texture(points)
+		_tower_clouds.append({
+			"texture": baked["texture"],
+			"origin": baked["origin"],
+			"size": baked["size"],
+			"phase": _tower_cloud_rng.randf_range(0.0, 1.0),
+			"speed": _tower_cloud_rng.randf_range(3.5, 6.5),
+			"y": _tower_cloud_rng.randf_range(20.0, 300.0),
+			"drift": _tower_cloud_rng.randf_range(8.0, 21.0),
+		})
+
+
+func _bake_tower_cloud_texture(points: PackedVector2Array) -> Dictionary:
+	var bounds := Rect2(points[0], Vector2.ZERO)
+	for point in points:
+		bounds = bounds.expand(point)
+	var origin := bounds.position - Vector2.ONE * TOWER_CLOUD_FEATHER_PX
+	var size := (bounds.size + Vector2.ONE * TOWER_CLOUD_FEATHER_PX * 2.0).ceil()
+	var baked_size := (size * TOWER_CLOUD_BAKE_SCALE).ceil()
+	var image := Image.create(int(baked_size.x), int(baked_size.y), false, Image.FORMAT_RGBA8)
+	for y in int(baked_size.y):
+		for x in int(baked_size.x):
+			var point := origin + Vector2(x + 0.5, y + 0.5) / TOWER_CLOUD_BAKE_SCALE
+			if not Geometry2D.is_point_in_polygon(point, points):
+				continue
+			var edge_distance := INF
+			for edge in points.size():
+				edge_distance = minf(edge_distance, _tower_cloud_edge_distance(point,
+					points[edge], points[(edge + 1) % points.size()]))
+			# The texture carries the falloff; tinting at draw time keeps its colour
+			# and opacity consistent across the four independently shaped clouds.
+			image.set_pixel(x, y, Color(1.0, 1.0, 1.0,
+				smoothstep(0.0, TOWER_CLOUD_FEATHER_PX, edge_distance)))
+	return { "texture": ImageTexture.create_from_image(image), "origin": origin, "size": size }
+
+
+func _tower_cloud_edge_distance(point: Vector2, a: Vector2, b: Vector2) -> float:
+	var line := b - a
+	var length_squared := line.length_squared()
+	if is_zero_approx(length_squared):
+		return point.distance_to(a)
+	var along := clampf((point - a).dot(line) / length_squared, 0.0, 1.0)
+	return point.distance_to(a + line * along)
+
+
+func _draw_tower_clouds() -> void:
+	if not _tower_cloud_active:
+		return
+	var seconds := Time.get_ticks_msec() / 1000.0
+	# A shadow falls on the farm, never on the sky beyond its edge.
+	var ground := Rect2(Vector2.ZERO, Vector2(_backdrop_view.size))
+	_tower_cloud_node.draw_set_transform(_backdrop_offset, 0.0,
+		Vector2(_backdrop_pitch, _backdrop_pitch))
+	for cloud in _tower_clouds:
+		# Each crossing starts wholly off the farm's left edge and ends wholly off
+		# its right one, so a cloud never pops in or out over the field.
+		var origin: Vector2 = cloud["origin"]
+		var span := ground.size.x + float(cloud["size"].x)
+		var x := fposmod(seconds * float(cloud["speed"]) + float(cloud["phase"]) * span,
+			span) - (origin.x + float(cloud["size"].x))
+		var y := float(cloud["y"]) + sin(seconds * 0.043 + float(cloud["phase"]) * TAU) \
+			* float(cloud["drift"])
+		var shape := Rect2(Vector2(x, y) + origin, cloud["size"])
+		var shown := shape.intersection(ground)
+		if shown.has_area():
+			var texture: Texture2D = cloud["texture"]
+			var to_texture := Vector2(texture.get_size()) / shape.size
+			_tower_cloud_node.draw_texture_rect_region(texture, shown,
+				Rect2((shown.position - shape.position) * to_texture, shown.size * to_texture),
+				Color(0.12, 0.16, 0.20, TOWER_CLOUD_ALPHA))
 
 
 func _draw_ripe_glow() -> void:

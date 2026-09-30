@@ -4,6 +4,7 @@ extends Node2D
 
 const OUTSIDE := "res://docs/design/evidence/spiral_tower_outside.png"
 const INSIDE := "res://docs/design/evidence/spiral_tower_inside.png"
+const CLOUDS := "res://docs/design/mockups/tower_clouds"
 
 func _ready() -> void:
 	var main = load("res://main.tscn").instantiate()
@@ -55,5 +56,33 @@ func _ready() -> void:
 		get_tree().quit(1)
 		return
 	get_viewport().get_texture().get_image().save_png(INSIDE)
+	# The cloud strip. The neighbour's opening days end in a night fade, so let
+	# them finish first; then four frames four seconds apart, so a slow drift is
+	# visible between neighbours, then the same view with the clouds switched off.
+	var waited := 0
+	while not ColdOpen.is_done(main.farm.sim) or main.day_cycle.is_active():
+		await get_tree().create_timer(0.5).timeout
+		waited += 1
+		if waited > 600:
+			push_error("The opening days did not finish")
+			get_tree().quit(1)
+			return
+	await get_tree().create_timer(1.0).timeout
+	if main.farm.sim.room_of_cell(main.farm.sim.actor_pos("player")) == "":
+		push_error("Player left the tower during the opening days")
+		get_tree().quit(1)
+		return
+	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(CLOUDS))
+	for frame in 4:
+		await get_tree().create_timer(4.0).timeout
+		await RenderingServer.frame_post_draw
+		get_viewport().get_texture().get_image().save_png("%s/clouds_%d.png" % [CLOUDS, frame + 1])
+	main.farm._tower_clouds_enabled = false
+	main.farm.queue_redraw()
+	for i in 3:
+		await get_tree().process_frame
+	await RenderingServer.frame_post_draw
+	get_viewport().get_texture().get_image().save_png("%s/clouds_off.png" % CLOUDS)
+	main.farm._tower_clouds_enabled = true
 	print("captured tower outside and inside: %s" % str(laid["room"]))
 	get_tree().quit(0)

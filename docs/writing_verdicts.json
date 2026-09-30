@@ -676,6 +676,9 @@
    "verdict": "decode",
    "why": "Code appears before the sentence, interrupting flow."
   },
+  "138c55241743c38ba2c6": {
+   "verdict": "ok"
+  },
   "1391c9ffbf71a12630ec": {
    "verdict": "ok"
   },

@@ -176,6 +176,41 @@ The real game captures are [outside](evidence/spiral_tower_outside.png) and
 on the same build to check their finer rooms still look as designed. The tower
 capture can be reproduced with `tools/capture_spiral_tower.tscn`.
 
+**Cloud shadows from the tower (2026-09-29).** From inside the Spiral Tower, four
+slow, soft-edged cloud shadows drift across the live farm below. No other room has
+them. They are drawn on the yard picture itself, so the ground and crops under a
+cloud darken slightly while the room and the farmer stay above them. Each shadow
+darkens what it covers by about 7% (16% opacity of a cool grey-blue), with a wide
+feathered edge; each cloud has its own outline, speed, height and slow up-and-down
+drift, so the sky never repeats in a visible rhythm. A cloud enters wholly off the
+farm's left edge and leaves wholly off its right one, and it is never drawn on the
+sky beyond the farm's edge. The variation comes from its own random numbers, never
+the simulation's, so replays are unaffected.
+
+The first version drew the shadows at 5.5% opacity with a 14-pixel edge: in real
+captures they darkened the ground by under 4% and could not be seen on the grass.
+Opacity went to 16% and the edge to 34 pixels. The shapes are now baked at a quarter
+of their drawn size and drawn smoothed, which cut the one-off cost of making them
+when the farm loads from about 220 ms to about 15 ms on the desktop.
+
+A strip from the game, four seconds apart:
+[1](mockups/tower_clouds/clouds_1.png), [2](mockups/tower_clouds/clouds_2.png),
+[3](mockups/tower_clouds/clouds_3.png), [4](mockups/tower_clouds/clouds_4.png), and
+[the same view with the clouds off](mockups/tower_clouds/clouds_off.png) straight
+after the last frame. `tools/capture_spiral_tower.tscn` regenerates them.
+
+**What the clouds cost, measured on the desktop.** The shadows add about 0.2 ms to
+a frame: the median uncapped frame in the tower went from 11.5 ms without them to
+11.7 ms with them, and GPU time rose by 0.02–0.04 ms (4 more draw calls). Method:
+`tools/profile_tower_clouds.tscn` run three times with `--disable-vsync`, each run
+five passes of 240 frames alternating clouds off and on, medians taken; desktop
+with an AMD Radeon integrated GPU (Rembrandt), Linux, Godot 4.7.2's compatibility
+renderer, 800×600 window. The added cost is almost all the per-frame redraw on the
+processor rather than drawing. The tablet was not measured; it already runs at
+22–27 ms a frame ([ripe-field benchmark](../benchmarks/ripe-field-2026-09-26.md)),
+and if the clouds cost it in the same proportion as the desktop they would add
+roughly 0.3–0.5 ms there, only while she is inside the tower.
+
 The alternative of a **2×2 walkable floor plus a one-cell wall ring** would total 4×4
 interior cells and leave the camera at ×1. Daniel explicitly does **not** want that
 alternative for this 4×4-building example. This choice changes the grid geometry for

@@ -8446,12 +8446,16 @@ func _scenario_bj_a_tap_on_the_tower_goes_inside() -> void:
 	var inside := await _wait_until(
 		func(): return _in_room_or_door(id, indoor_door), 200)
 	_assert(inside, "and she goes into the tower (%s)" % player.get_tile_pos())
+	var clouds := await _wait_until(func(): return farm._tower_cloud_active, 60)
+	_assert(clouds, "from inside the tower, cloud shadows drift over the farm below")
 
 	InputManager.click_tile = player.get_tile_pos()
 	InputManager.has_click = true
 	var outside := await _wait_until(
 		func(): return farm.sim.page_of(player.get_tile_pos()) == 0, 300)
 	_assert(outside, "and a tap on the doorway brings her back out (%s)" % player.get_tile_pos())
+	var clear_sky := await _wait_until(func(): return not farm._tower_cloud_active, 60)
+	_assert(clear_sky, "and back outside there are no cloud shadows")
 
 	# --- and "Pick up", the panel's other row (Scenario AX's path, for the coop) ---
 	#
