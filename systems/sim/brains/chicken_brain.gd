@@ -33,15 +33,6 @@ const BALKED_IDLE := [1.0, 3.0]    # when there was nowhere to go
 # deliberately not evidence of working the loop (see GameState.total_harvests).
 const EGG_CHANCE := 0.5
 
-# **A wet morning is spent indoors** (2026-09-11, the chicken coop). How long she
-# settles for before thinking again — longer than any of her wandering idles,
-# because sitting the rain out is the behaviour and a hen who re-decided every two
-# seconds would fidget. She is woken at the day turn regardless
-# (`SimWorld.schedule_all_brains`), so a clearing sky reaches her whatever she is
-# in the middle of.  [Playtest]
-const SHELTER_IDLE := [4.0, 8.0]
-
-
 func step(world: SimWorld, actor_id: String, tick: int, gs = null) -> Dictionary:
 	var e: Dictionary = world.actor(actor_id)
 	if e.is_empty():
@@ -117,17 +108,14 @@ func _think(world: SimWorld, actor_id: String, _e: Dictionary, extra: Dictionary
 	# session — no roll of her own, nothing to desync.
 	var here := world.actor_pos(actor_id)
 	var indoors := world.room_of_cell(here) != ""
+	var goal := Vector2i(-1, -1)
 	if _wants_shelter(gs):
 		if indoors:
-			# The doorway is also where the farmer arrives. Step into the room
-			# before settling, so a visit does not put both sprites on one square.
-			if here == _own_doorway(world, here):
-				var perch := _indoor_perch(world, here)
-				if perch.x >= 0 and _walk_to(world, actor_id, extra, tick, perch):
-					return
-			_idle_for(extra, tick, SHELTER_IDLE)
-			return
-		if _head_for_shelter(world, actor_id, extra, tick, here):
+			# Sheltering changes where she wanders, not how. Use the same reachable
+			# tile draw and the same idle-and-walk loop as the yard, with the doorway
+			# removed so the farmer always has a clear arrival square.
+			goal = _random_room_wander(world, here)
+		elif _head_for_shelter(world, actor_id, extra, tick, here):
 			return
 	elif indoors:
 		# **A dry morning is what lets her out**, and out is through the door she
@@ -136,7 +124,8 @@ func _think(world: SimWorld, actor_id: String, _e: Dictionary, extra: Dictionary
 		# the dark under the farm from being somewhere to walk.
 		if _head_for_the_door(world, actor_id, extra, tick, here):
 			return
-	var goal := _random_reachable(world, here)
+	if goal.x < 0:
+		goal = _random_reachable(world, here)
 	# Her route comes from the movement engine now (M2.5 WI-4), which reads the
 	# `ground` mode off her species row. Nothing about her walk changed: what she
 	# used to do by hand — find a route, re-check every tile as she reaches it,
@@ -251,29 +240,6 @@ func _nearest_doorstep(world: SimWorld, here: Vector2i) -> Vector2i:
 	return best
 
 
-# The farthest free square in her own room leaves the entrance clear. Room cells
-# are few, and this is read only when the hen has just entered in wet weather.
-func _indoor_perch(world: SimWorld, doorway: Vector2i) -> Vector2i:
-	var id := world.room_of_cell(doorway)
-	if id == "":
-		return Vector2i(-1, -1)
-	var room: Dictionary = world.rooms[id]
-	var origin: Vector2i = room.get("origin", Vector2i.ZERO)
-	var size: Vector2i = room.get("size", Vector2i.ZERO)
-	var best := Vector2i(-1, -1)
-	var best_distance := -1
-	for y in range(origin.y, origin.y + size.y):
-		for x in range(origin.x, origin.x + size.x):
-			var cell := Vector2i(x, y)
-			if cell == doorway or not world.is_walkable(x, y):
-				continue
-			var distance := absi(x - doorway.x) + absi(y - doorway.y)
-			if distance > best_distance:
-				best = cell
-				best_distance = distance
-	return best
-
-
 # ...and the doorway she leaves by, from inside: the room she is standing in.
 func _own_doorway(world: SimWorld, here: Vector2i) -> Vector2i:
 	var id := world.room_of_cell(here)
@@ -324,6 +290,18 @@ func _walk_to(world: SimWorld, actor_id: String, extra: Dictionary,
 # `Pathfinding.get_reachable_tiles` fed her before, now over sim truth.
 func _random_reachable(world: SimWorld, from: Vector2i) -> Vector2i:
 	var reachable := world.reachable_from(from)
+	if reachable.is_empty():
+		return Vector2i(-1, -1)
+	return reachable[SimRng.randi() % reachable.size()]
+
+
+# The ordinary wander draw, bounded by the room's own walls and with its doorway
+# omitted. The doorway remains reachable as part of a route, but is never where
+# she chooses to idle while the farmer may be arriving.
+func _random_room_wander(world: SimWorld, from: Vector2i) -> Vector2i:
+	var doorway := _own_doorway(world, from)
+	var reachable := world.reachable_from(from)
+	reachable.erase(doorway)
 	if reachable.is_empty():
 		return Vector2i(-1, -1)
 	return reachable[SimRng.randi() % reachable.size()]

@@ -16232,13 +16232,25 @@ func test_chicken_coop() -> void:
 	_assert(wet_spot != Vector2i(wet_room["door"]),
 		"she settles away from the coop doorway, where the farmer enters (%s)" % wet_spot)
 
-	# She stays put while it is wet, rather than wandering back out and in again.
-	var settled := true
-	for i in 6:
-		world.advance_ticks(150, GameState)
-		if world.room_of_cell(world.actor_pos("chicken")) == "":
-			settled = false
-	_assert(settled, "and stays inside as long as the rain does")
+	# Indoors is not a special perch or a shelter-only idle loop. She uses her
+	# ordinary reachable-tile wander within the room, while never choosing the
+	# doorway where the farmer arrives.
+	var indoor_positions := {}
+	var stayed_inside := true
+	var kept_door_clear := true
+	for i in 12:
+		world.advance_ticks(75, GameState)
+		var p := world.actor_pos("chicken")
+		indoor_positions[p] = true
+		if world.room_of_cell(p) == "":
+			stayed_inside = false
+		if p == Vector2i(wet_room["door"]):
+			kept_door_clear = false
+	_assert(stayed_inside and indoor_positions.size() > 1,
+		"while rain falls she wanders among reachable coop tiles and stays indoors (%s)"
+			% [indoor_positions.keys()])
+	_assert(kept_door_clear,
+		"and her indoor wander leaves the farmer's doorway clear")
 
 	# ...and the sky clearing is what lets her out. Nothing else changes.
 	GameState.weather = "sunny"

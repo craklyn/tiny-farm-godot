@@ -480,8 +480,10 @@ deep, on grounds of legibility (§6); portals survive only for exits that are no
   already had, so nothing has a private one (S-3 read from the other side). On a wet day the
   hen walks to the coop's doorstep and through it; on a dry one she walks to the doorway and
   back out. A coop with no room under it still gets the front-row shelter P-17 shipped, so
-  the fallback is a fallback rather than a failure. After entering on a wet day, she
-  walks off the doorway to an open floor square so the farmer can come in. Actors
+  the fallback is a fallback rather than a failure. While rain falls, she uses her ordinary
+  idle-and-wander behaviour among the room's reachable floor tiles; this is not a separate
+  coop pattern. She never chooses the doorway as a wander destination, so the farmer can
+  come in. Actors
   in another room stay out of the current room view, including the coop hen when
   the farmer looks out from the tower.
 - **A tap on the coop opens its panel** — *go inside* or *pick it up* — which is the machine
