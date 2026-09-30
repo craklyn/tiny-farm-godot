@@ -411,8 +411,12 @@ class SpendingCheckpoint(unittest.TestCase):
         # his yes there is his, and the record says so.
         card, hold = self.legacy_card()
         got = work.load_item(card["id"])
-        saved = work.api_post("/api/work/approve", {"id": card["id"], "_revision": got["_revision"],
-                                                    "comment": "Only the doc change."})
+        # His comment starts the owner's reply on a background thread, which kept
+        # writing into the scratch store while tearDown removed it (intermittent
+        # "Directory not empty"). The reply is not what this test is about.
+        with patch.object(work, "start_reply", lambda *a, **k: None):
+            saved = work.api_post("/api/work/approve", {"id": card["id"], "_revision": got["_revision"],
+                                                        "comment": "Only the doc change."})
         self.assertEqual(saved["state"], "for_review")
         self.assertEqual(saved["token_cap"], 5_900_000)
         self.assertEqual(saved["recommend"], self.RECOMMEND)
