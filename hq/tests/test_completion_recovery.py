@@ -289,6 +289,7 @@ class Recovery(unittest.TestCase):
         self.assertEqual(self.git('rev-parse','main'),self.r['candidate']['base'])
 
     def test_batch_rejects_stale_overlapping_candidate_without_applying(self):
+        integration.remove_candidate(str(self.repo), self.r['integration_checkout'], drain.WORKTREES)
         work.save_item(self.card)
         other=Path(self.tmp.name)/'overlap'
         self.git('worktree','add','--detach',str(other),'main')
@@ -302,12 +303,12 @@ class Recovery(unittest.TestCase):
             records,done=drain.run_verified_batch([self.card],ORG,'fixture',lambda message:None)
         self.assertFalse(records['wtest']['applied'])
         self.assertNotIn('completion',done[0])
-        self.assertIn('stale',records['wtest']['why_not'])
+        self.assertIn('conflict',records['wtest']['why_not'])
         self.assertEqual(self.git('show','main:sample.txt'),'intervening overlap')
         self.assertEqual((self.repo/'sample.txt').read_text(),'checked\n')
         self.assertEqual(len(work.load_item('wtest')['workflow']['actions']),1)
         view=work.work_view(work.load_item('wtest'))
-        self.assertEqual(view['blocker']['type'],'stale_base')
+        self.assertEqual(view['blocker']['type'],'code_conflict')
         self.assertEqual(view['next_action']['type'],'reconcile')
         self.assertEqual(view['next_action']['availability'],'runnable')
 

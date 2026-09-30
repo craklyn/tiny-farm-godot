@@ -1134,8 +1134,16 @@ def work_view(item, repo_facts=None, now=None):
         # "awaiting verification" (w134a7424547).
         blocker = None
     stalled_transition = False
+    chief_of_staff_hold = (blocker and blocker.get("owner") == "claude"
+                           and not blocker.get("action_id") and blocker.get("wake"))
     if not terminal and not active_actions:
-        if blocker and blocker["type"] in ("code_conflict", "stale_base", "missing_evidence", "dependency"):
+        if chief_of_staff_hold:
+            # A landing failure the chief of staff inspects: a visible, blocked
+            # step of its own, so the card is held with its reason, never in no
+            # lane (the same shape as the spending hold, S-38).
+            kind, summary, priority = ("chief_hold", "The chief of staff inspects this landing failure and decides.",
+                                       "reconciliation")
+        elif blocker and blocker["type"] in ("code_conflict", "stale_base", "missing_evidence", "dependency"):
             kind = "reconcile"
             summary = "Reconcile the candidate with current main and obtain fresh review and tests."
             priority = "reconciliation"
@@ -1185,7 +1193,7 @@ def work_view(item, repo_facts=None, now=None):
                                    "state": "blocked", "virtual": True}]
         if not stalled_transition:
             active_actions = [{"id": proposed_id, "type": kind,
-                           "input_id": input_id, "owner": ("daniel" if kind == "decide" else "claude" if kind in ("rebrief", "spending_hold")
+                           "input_id": input_id, "owner": ("daniel" if kind == "decide" else "claude" if kind in ("rebrief", "spending_hold", "chief_hold")
                                                            or (awaiting_approval and kind == "reconcile") else item.get("owner") or "claude"),
                            "summary": summary, "priority": priority,
                            "created_at": item.get("finished") or item.get("created") or "",
@@ -1195,7 +1203,8 @@ def work_view(item, repo_facts=None, now=None):
     # drain skip the card every tick (2026-09-27, w4afc0d9982d). Without it the
     # card stays held with its blocker's reason.
     finished_ids = {a.get("id") for a in actions if a.get("state") == "done"}
-    if not terminal and not stalled_transition and blocker and blocker["type"] in ("code_conflict", "stale_base", "missing_evidence", "dependency") \
+    if not terminal and not stalled_transition and blocker and not chief_of_staff_hold \
+            and blocker["type"] in ("code_conflict", "stale_base", "missing_evidence", "dependency") \
             and not any(a.get("type") in ("reconcile", "recover") for a in active_actions) \
             and action_key(item["id"], "reconcile", input_id) not in finished_ids:
         active_actions.append({"id": action_key(item["id"], "reconcile", input_id),
@@ -1241,7 +1250,8 @@ def work_view(item, repo_facts=None, now=None):
                                   action.get("state") == "blocked" or
                                   (blocker and action.get("type") == "build") or
                                   (blocker and blocker["type"] == "capacity" and action.get("type") != "rebrief") or
-                                  (blocker and blocker["type"] in ("art_budget", "spending_hold")) else
+                                  (blocker and blocker["type"] in ("art_budget", "spending_hold")) or
+                                  action.get("type") == "chief_hold" else
                                   "waiting_event" if exhausted_repair and not supervised_retry else "runnable")
         if claim and not running:
             action["lease_expired"] = not lease_live
@@ -1269,7 +1279,7 @@ def work_view(item, repo_facts=None, now=None):
         phase = item.get("state")
     elif next_action and next_action["availability"] == "running":
         phase = "working"
-    elif next_action and next_action["type"] in ("reconcile", "recover", "rebrief", "spending_hold"):
+    elif next_action and next_action["type"] in ("reconcile", "recover", "rebrief", "spending_hold", "chief_hold"):
         phase = "reconciliation"
     elif item.get("state") == "for_review":
         phase = "review"

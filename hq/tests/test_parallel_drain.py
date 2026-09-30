@@ -40,7 +40,8 @@ class ParallelDrain(unittest.TestCase):
         self.git('config', 'user.name', 'Fixture')
         self.git('config', 'core.hooksPath', str(self.repo / '.git/hooks'))
         (self.repo / 'sample.txt').write_text('before\n')
-        self.git('add', 'sample.txt')
+        (self.repo / 'merge.txt').write_text('one\ntwo\nthree\nfour\nfive\nsix\nseven\n')
+        self.git('add', 'sample.txt', 'merge.txt')
         self.git('commit', '-qm', 'Initial')
         host = fake_host(str(self.root / 'data'))
         host.REPO = str(self.repo)
@@ -189,7 +190,12 @@ class ParallelDrain(unittest.TestCase):
             tested.append((cwd, self.git('write-tree', cwd=cwd)))
             return GREEN
 
+        clean_review = json.dumps({'verdict': 'pass', 'complete': True, 'summary': 'clean',
+                                   'findings': [], 'unrelated_generated_files': [],
+                                   'lesson_for_owner': None, 'escalates': None,
+                                   'escalation_reason': None})
         with patch.object(drain, 'do_item', side_effect=worked), \
+                patch.object(drain, 'run_cli', return_value=(clean_review, None, '')), \
                 patch.object(drain, 'run_suites', side_effect=suites):
             records, done = drain.run_verified_batch(cards, ORG, 'fixture', lambda m: None, jobs=2)
         return base, records, done, tested
@@ -198,16 +204,15 @@ class ParallelDrain(unittest.TestCase):
         base, records, done, tested = self.run_pair(['sample.txt', 'another.txt'])
         self.assertEqual(sorted(i['state'] for i in done), ['landed', 'landed'])
         self.assertEqual(self.git('rev-list', '--count', 'main'), '3')
-        rebuilt = [i for i in done if i['attempt_outcome']['candidate'].get('rebuilt_from')]
+        rebuilt = [i for i in done if i['attempt_outcome']['candidate'].get('merged_from')]
         self.assertEqual(len(rebuilt), 1)
         card = rebuilt[0]
         first = next(i for i in done if i is not card)
         candidate = card['attempt_outcome']['candidate']
         # Rebuilt on the commit the first one made, from the reviewed base.
         self.assertEqual(candidate['base'], first['completion']['sha'])
-        self.assertEqual(candidate['rebuilt_from']['base'], base)
-        self.assertNotEqual(candidate['tree'], candidate['rebuilt_from']['tree'])
-        self.assertEqual(candidate['files'], candidate['rebuilt_from']['files'])
+        self.assertEqual(candidate['merged_from']['base'], base)
+        self.assertNotEqual(candidate['tree'], candidate['merged_from']['tree'])
         self.assertEqual(self.git('rev-parse', card['completion']['sha'] + '^'),
                          first['completion']['sha'])
         # Both suites ran on each exact tree landed, the rebuilt one included.
@@ -218,7 +223,7 @@ class ParallelDrain(unittest.TestCase):
         self.assertIsNone(card['attempt_outcome']['candidate_tests'])
         self.assertIsNone(records[card['id']]['candidate_suites'])
         row = card['workflow']['candidates'][-1]
-        self.assertEqual(row['rebuilt_from']['base'], base)
+        self.assertEqual(row['merged_from']['base'], base)
         self.assertEqual(self.git('show', 'main:sample.txt'), 'wfirst')
         self.assertEqual(self.git('show', 'main:another.txt'), 'wsecond')
 
@@ -228,12 +233,12 @@ class ParallelDrain(unittest.TestCase):
         self.assertEqual(states, ['for_review', 'landed'])
         self.assertEqual(self.git('rev-list', '--count', 'main'), '2')
         held = next(i for i in done if i['state'] == 'for_review')
-        self.assertIn('stale', records[held['id']]['why_not'])
+        self.assertIn('conflict', records[held['id']]['why_not'])
         self.assertFalse(records[held['id']]['applied'])
         self.assertNotIn('rebuilt_from', held['attempt_outcome']['candidate'])
         self.assertEqual(len(tested), 1)
         view = work.work_view(work.load_item(held['id']))
-        self.assertEqual(view['blocker']['type'], 'stale_base')
+        self.assertEqual(view['blocker']['type'], 'code_conflict')
         self.assertEqual(view['next_action']['type'], 'reconcile')
 
     # -- the evidence a rebuilt candidate may land on -------------------------
@@ -247,6 +252,7 @@ class ParallelDrain(unittest.TestCase):
                                  'Local main changed; obtain a new candidate, review, and tests.'))
         checkout, kind, why = drain.prepare_integration(rec, rebuild=True)
         self.assertEqual((kind, why), ('', ''))
+        rec['check_evidence'] = drain.check_evidence_id(rec)
         rec['integration_checkout'] = checkout
         rec['tree_evidence'] = drain.tree_evidence(rec['files'], repo=checkout)
         return base, rec
@@ -255,11 +261,11 @@ class ParallelDrain(unittest.TestCase):
         base, rec = self.rebuilt()
         card = self.card('wtest')
         checkout = rec['integration_checkout']
-        self.assertEqual(rec['candidate']['rebuilt_from']['base'], base)
+        self.assertEqual(rec['candidate']['merged_from']['base'], base)
         self.assertEqual(rec['candidate']['base'], self.git('rev-parse', 'main'))
         self.assertIsNone(rec['candidate_suites'])
         self.assertEqual(rec['superseded_candidate_suites'], GREEN)
-        # The review carries over: it is keyed to the reviewed candidate.
+        # The fresh review is keyed to the merged candidate.
         self.assertEqual(rec['check_evidence'], drain.check_evidence_id(rec))
 
         def bar(suites):
@@ -273,16 +279,167 @@ class ParallelDrain(unittest.TestCase):
         self.assertIn('not run', bar(None)[1])
         red = {'unit': {'ok': True}, 'integration': {'ok': False}}
         self.assertFalse(bar(red)[0])
-        # Nor does a rebuild whose files are not the reviewed ones.
+        # Nor does a merge whose files changed after its fresh review.
         rec['candidate']['files'] = {'another.txt': '100644 blob ' + '0' * 40}
-        self.assertEqual(bar(GREEN), (False, "the rebuilt candidate's files differ from the ones that were reviewed"))
+        rec['check_evidence'] = drain.check_evidence_id(rec)
+        self.assertEqual(bar(GREEN), (False, "the applied files differ from the checked merged candidate"))
 
-    def test_a_file_changed_on_main_is_never_rebuilt(self):
+    def test_a_real_three_way_conflict_requires_a_new_attempt(self):
         base = self.git('rev-parse', 'main')
         rec = self.candidate('wtest', 'sample.txt', base)
         self.advance('sample.txt', 'overlap\n')
-        self.assertEqual(drain.prepare_integration(rec, rebuild=True)[1], 'stale_base')
-        self.assertNotIn('rebuilt_from', rec['candidate'])
+        self.assertEqual(drain.prepare_integration(rec, rebuild=True)[1], 'code_conflict')
+        self.assertNotIn('merged_from', rec['candidate'])
+
+    def test_a_non_conflict_apply_failure_is_missing_evidence(self):
+        base = self.git('rev-parse', 'main')
+        rec = self.candidate('wtest', 'sample.txt', base)
+        self.advance('unrelated.txt', 'landed meanwhile\n')
+        failed = subprocess.CompletedProcess(
+            ['git', 'apply'], 128, '', 'error: corrupt patch at line 4')
+        real_run = subprocess.run
+
+        def fail_apply(args, **kwargs):
+            return failed if args[:2] == ['git', 'apply'] else real_run(args, **kwargs)
+
+        with patch.object(drain.subprocess, 'run', side_effect=fail_apply):
+            checkout, kind, why = drain.prepare_integration(rec, rebuild=True)
+        self.assertTrue(checkout)
+        self.assertEqual(kind, 'missing_evidence')
+        self.assertIn('corrupt patch', why)
+        self.assertNotIn('merged_from', rec['candidate'])
+
+    def test_an_apply_process_failure_is_tooling(self):
+        base = self.git('rev-parse', 'main')
+        rec = self.candidate('wtest', 'sample.txt', base)
+        self.advance('unrelated.txt', 'landed meanwhile\n')
+        real_run = subprocess.run
+
+        def fail_apply(args, **kwargs):
+            if args[:2] == ['git', 'apply']:
+                raise OSError('git unavailable')
+            return real_run(args, **kwargs)
+
+        with patch.object(drain.subprocess, 'run', side_effect=fail_apply):
+            checkout, kind, why = drain.prepare_integration(rec, rebuild=True)
+        self.assertTrue(checkout)
+        self.assertEqual(kind, 'tooling')
+        self.assertIn('git unavailable', why)
+        self.assertNotIn('merged_from', rec['candidate'])
+
+    def test_a_failed_merge_inspection_is_tooling(self):
+        base = self.git('rev-parse', 'main')
+        rec = self.candidate('wtest', 'sample.txt', base)
+        self.advance('unrelated.txt', 'landed meanwhile\n')
+        failed = subprocess.CompletedProcess(
+            ['git', 'apply'], 128, '', 'error: patch could not be applied')
+        real_run = subprocess.run
+
+        def fail_apply(args, **kwargs):
+            return failed if args[:2] == ['git', 'apply'] else real_run(args, **kwargs)
+
+        with patch.object(drain.subprocess, 'run', side_effect=fail_apply), \
+                patch.object(drain, 'sh', side_effect=RuntimeError('inspection unavailable')):
+            checkout, kind, why = drain.prepare_integration(rec, rebuild=True)
+        self.assertTrue(checkout)
+        self.assertEqual(kind, 'tooling')
+        self.assertIn('inspection unavailable', why)
+
+    def test_post_apply_git_inspection_failures_are_tooling(self):
+        failures = (
+            ('write-tree exception', ['git', 'write-tree'], subprocess.TimeoutExpired('git', 180)),
+            ('checked diff failure', ['git', 'diff', '--cached', '--name-only'],
+             subprocess.CalledProcessError(128, ['git', 'diff'])),
+        )
+        for label, command, failure in failures:
+            with self.subTest(label=label):
+                base = self.git('rev-parse', 'main')
+                rec = self.candidate('w' + label.split()[0], 'sample.txt', base)
+                self.advance('unrelated-' + label.split()[0] + '.txt', 'landed meanwhile\n')
+                original = drain.sh
+
+                def fail_inspection(args, **kwargs):
+                    if args == command:
+                        raise failure
+                    return original(args, **kwargs)
+
+                with patch.object(drain, 'sh', side_effect=fail_inspection):
+                    checkout, kind, why = drain.prepare_integration(rec, rebuild=True)
+                self.assertTrue(checkout)
+                self.assertEqual(kind, 'tooling')
+                self.assertIn('inspect the applied candidate', why)
+                self.assertNotIn('merged_from', rec['candidate'])
+
+    def test_post_apply_blob_inspection_failure_is_tooling(self):
+        base = self.git('rev-parse', 'main')
+        rec = self.candidate('wtest', 'sample.txt', base)
+        self.advance('unrelated.txt', 'landed meanwhile\n')
+        with patch.object(drain, 'git_blobs', side_effect=OSError('object database unavailable')):
+            checkout, kind, why = drain.prepare_integration(rec, rebuild=True)
+        self.assertTrue(checkout)
+        self.assertEqual(kind, 'tooling')
+        self.assertIn('object database unavailable', why)
+        self.assertNotIn('merged_from', rec['candidate'])
+
+    def test_only_a_confirmed_conflict_schedules_an_owner_reconcile(self):
+        for kind in ('missing_evidence', 'tooling', 'code_conflict'):
+            with self.subTest(kind=kind):
+                card = self.card('w' + kind)
+                rec = self.candidate(card['id'], 'sample.txt', self.git('rev-parse', 'main'))
+                drain.record_integration_blocker(card, rec, kind, kind + ' failure',
+                                                 retry_owner=kind == 'code_conflict')
+                fresh = work.load_item(card['id'])
+                open_reconciles = [a for a in fresh['workflow']['actions']
+                                   if a['type'] == 'reconcile' and a['state'] == 'open']
+                self.assertEqual(len(open_reconciles), 1 if kind == 'code_conflict' else 0)
+                blocker = fresh['workflow']['blockers'][-1]
+                self.assertEqual(blocker['type'], kind)
+                self.assertEqual(blocker['owner'], card['owner'] if open_reconciles else 'claude')
+                self.assertEqual(blocker['state'], 'open')
+                view = work.work_view(fresh)
+                if kind == 'code_conflict':
+                    self.assertEqual(view['next_action']['type'], 'reconcile')
+                    self.assertEqual(view['next_action']['owner'], card['owner'])
+                else:
+                    # Held for the chief of staff with a visible, blocked step,
+                    # never in no lane; the owner is not run again.
+                    self.assertEqual(view['next_action']['type'], 'chief_hold')
+                    self.assertEqual(view['next_action']['owner'], 'claude')
+                    self.assertEqual(view['next_action']['availability'], 'blocked')
+                    self.assertEqual(work.card_lanes(fresh, view), ['held'])
+
+    def test_merged_review_process_failure_is_a_blocker_result(self):
+        rec = self.candidate('wtest', 'sample.txt', self.git('rev-parse', 'main'))
+        card = self.card('wtest')
+        with patch.object(drain, 'record_phase'), \
+                patch.object(drain, 'run_cli', side_effect=OSError('review process unavailable')):
+            ok, why = drain.review_merged_candidate(card, rec, ORG, 'fixture', str(self.repo))
+        self.assertFalse(ok)
+        self.assertIn('review process unavailable', why)
+
+    def test_merged_review_concerns_are_a_blocker_result(self):
+        rec = self.candidate('wtest', 'sample.txt', self.git('rev-parse', 'main'))
+        card = self.card('wtest')
+        concerns = json.dumps({'verdict': 'concerns', 'complete': True,
+                               'summary': 'Needs another look', 'findings': ['problem'],
+                               'unrelated_generated_files': [], 'lesson_for_owner': None,
+                               'escalates': None, 'escalation_reason': None})
+        with patch.object(drain, 'record_phase'), \
+                patch.object(drain, 'run_cli', return_value=(concerns, None, '')):
+            ok, why = drain.review_merged_candidate(card, rec, ORG, 'fixture', str(self.repo))
+        self.assertFalse(ok)
+        self.assertEqual(why, 'Needs another look')
+
+    def test_changes_to_different_parts_of_one_file_merge_without_a_new_attempt(self):
+        base = self.git('rev-parse', 'main')
+        rec = self.candidate('wtest', 'merge.txt', base,
+                             'ONE\ntwo\nthree\nfour\nfive\nsix\nseven')
+        self.advance('merge.txt', 'one\ntwo\nthree\nfour\nfive\nsix\nSEVEN\n')
+        checkout, kind, why = drain.prepare_integration(rec, rebuild=True)
+        self.assertEqual((kind, why), ('', ''))
+        self.assertEqual((Path(checkout) / 'merge.txt').read_text(),
+                         'ONE\ntwo\nthree\nfour\nfive\nsix\nSEVEN\n')
+        self.assertIn('merged_from', rec['candidate'])
 
     def test_crash_after_committing_a_rebuilt_candidate_recovers_without_a_model(self):
         _base, rec = self.rebuilt()
@@ -301,7 +458,7 @@ class ParallelDrain(unittest.TestCase):
             with self.assertRaises(Crash):
                 drain.write_back(card, rec, True, '', GREEN, ORG)
         saved = work.load_item('wtest')
-        self.assertIn('rebuilt_from', saved['pending_landing']['candidate'])
+        self.assertIn('merged_from', saved['pending_landing']['candidate'])
         sha = self.git('rev-parse', 'HEAD', cwd=rec['integration_checkout'])
         with patch.object(drain, 'do_item', side_effect=AssertionError('No model')):
             self.assertEqual(work.recover_completion_work(), ['wtest'])

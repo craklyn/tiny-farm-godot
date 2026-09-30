@@ -190,6 +190,19 @@ class ActionDispatch(unittest.TestCase):
                          {"employees": []}, "run-1", lambda *_: None, [], True)
         self.assertEqual(work.load_item(item["id"])["started"], "")
 
+    def test_a_landing_failure_held_for_the_chief_of_staff_is_in_the_held_lane(self):
+        # 2026-09-29: the stale-candidate fix added a hold with no step, which
+        # put the card in no lane — the failure the lane check exists to catch.
+        item = self.card(state="for_review", repair_hold="", finished="2026-09-29T01:00:00-07:00")
+        work.ensure_blocker(work.load_item(item["id"]), "tooling", input_id="merge-1", owner="claude",
+                            reason="Git could not apply the reviewed patch.",
+                            wake="Chief of staff inspects the failed landing evidence.")
+        fresh = work.load_item(item["id"])
+        view = drain.project_work(fresh)
+        self.assertEqual((view["next_action"]["type"], view["next_action"]["availability"]),
+                         ("chief_hold", "blocked"))
+        self.assertEqual(work.card_lanes(fresh, view), ["held"])
+
     def test_a_live_outside_claim_is_not_released(self):
         item = self.card(state="waiting_session", repair_hold="", started="2026-09-29T01:44:24-07:00",
                          outside_claim={"by": "a session", "expires_ts": time.time() + 600})

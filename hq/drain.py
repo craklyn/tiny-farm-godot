@@ -6,9 +6,9 @@ at local main, tests that exact prospective tree, and atomically advances
 local main from the expected parent. It never edits the user's checkout.
 Since S-33 (2026-09-26) up to --jobs items are worked, checked and tested side
 by side, each from the main it started on, and they land strictly one at a
-time. One whose main moved meanwhile is rebuilt on the new main, and both
-suites rerun on that exact tree, when none of its files changed there;
-otherwise it goes back for a fresh attempt.
+time. One whose main moved meanwhile is merged onto the new main. A clean merge
+gets a fresh review and both suites on that exact tree; only a real merge
+conflict goes back for a fresh attempt.
 After a run that landed something, push_landed fast-forwards origin/main to it
 once tools/check_secrets.py passes, and never forces. A candidate that cannot pass receives an owned recovery
 action; the shared-checkout --apply path is retired.
@@ -2106,6 +2106,11 @@ def meets_landing_bar(item, rec, applied, suites, *, repo=None):
             return False, "the rebuilt candidate's files differ from the ones that were reviewed"
         if git_blobs(repo, "", files) != candidate.get("files"):
             return False, "the applied files differ from the checked candidate"
+    elif candidate.get("merged_from"):
+        # The current-main merge received its own review. Its original
+        # candidate suites no longer describe this tree; the landing suites do.
+        if git_blobs(repo, "", files) != candidate.get("files"):
+            return False, "the applied files differ from the checked merged candidate"
     elif rec.get("candidate_test_evidence") != work.evidence_id([candidate, rec.get("candidate_suites")]):
         return False, "the test record does not identify the checked candidate"
     elif files:
@@ -2408,10 +2413,12 @@ def _write_back(item, rec, applied, why_not, suites, org):
                    "tree": rec["candidate"].get("tree"),
                    "files": list(rec.get("files") or []),
                    "patch": rec["patch_artifact"]}
-            origin = rec["candidate"].get("rebuilt_from")
+            origin = (rec["candidate"].get("rebuilt_from") or
+                      rec["candidate"].get("merged_from"))
             if origin:
-                # S-33: the same reviewed patch, rebuilt on a newer main.
-                row["rebuilt_from"] = {"base": origin.get("base"), "tree": origin.get("tree")}
+                # S-33: the reviewed patch, merged on a newer main.
+                key = "merged_from" if rec["candidate"].get("merged_from") else "rebuilt_from"
+                row[key] = {"base": origin.get("base"), "tree": origin.get("tree")}
             workflow["candidates"].append(row)
     if item.get("check"):
         item["check"]["attempt_id"] = item["attempt_outcome"]["id"]
@@ -2666,30 +2673,24 @@ def cost_summary(bill):
 
 
 def rebuildable(rec, head):
-    """Whether a stale candidate can be rebuilt on `head` without a new review
-    (S-33): none of the files it changes was changed on main since its base,
-    so its reviewed patch produces byte-identical files there."""
+    """Whether a stale candidate has enough evidence for a three-way rebuild.
+
+    Git, rather than a file-level overlap check, decides whether the reviewed
+    patch can merge on `head`. A successful merge is reviewed and tested again;
+    only an actual three-way conflict requires another owner attempt (S-33).
+    """
     candidate = rec.get("candidate") or {}
     files = list(rec.get("files") or [])
-    if not files or not candidate.get("base_files"):
-        return False
-    try:
-        return git_blobs(server.REPO, head, files) == candidate["base_files"]
-    except (subprocess.SubprocessError, OSError, RuntimeError):
-        return False
+    return bool(head and files and candidate.get("base") and candidate.get("base_files"))
 
 
 def prepare_integration(rec, *, rebuild=False):
     """Reconstruct the reviewed candidate on local main, without user-tree writes.
 
-    A changed base is rebuilt only when `rebuild` is asked for and none of the
-    candidate's files changed on main since its base (S-33, `rebuildable`).
-    The exact reviewed patch is then applied to current main as a new
-    candidate — new tree, new base, the same file blobs — which replaces
-    rec["candidate"] and records the reviewed one under `rebuilt_from`. Its
-    old candidate suites are dropped: they describe a different tree, and only
-    the landing suites run on this exact tree may count. When any of its files
-    did change on main, it is stale and goes back for a fresh attempt.
+    A changed base is rebuilt only when `rebuild` is asked for. Git applies the
+    reviewed patch with its three-way merge on current main. A clean merge
+    becomes a new candidate and receives a fresh review and both suites; an
+    actual conflict goes back for a fresh owner attempt (S-33).
     """
     candidate = rec.get("candidate") or {}
     try:
@@ -2706,61 +2707,118 @@ def prepare_integration(rec, *, rebuild=False):
                                                   rec.get("attempt_id") or "", parent)
     except (RuntimeError, ValueError) as exc:
         return "", "tooling", str(exc)
-    applied = subprocess.run(["git", "apply", "--check"], cwd=tree,
-                             input=patch, capture_output=True,
-                             text=True, timeout=180)
+    apply_args = ["git", "apply", "--3way", "--index"] if rebuilding else ["git", "apply", "--index"]
+    try:
+        applied = subprocess.run(apply_args, cwd=tree,
+                                 input=patch, capture_output=True,
+                                 text=True, timeout=180)
+    except (subprocess.SubprocessError, OSError) as exc:
+        return tree, "tooling", f"Git could not apply the reviewed patch: {exc}"[:500]
     if applied.returncode:
-        return tree, "code_conflict", (applied.stderr or applied.stdout or
-                                        "The reviewed patch no longer applies to local main.").strip()[:500]
-    applied = subprocess.run(["git", "apply"], cwd=tree,
-                             input=patch, capture_output=True,
-                             text=True, timeout=180)
-    if applied.returncode:
-        return tree, "code_conflict", (applied.stderr or applied.stdout or
-                                        "The reviewed patch could not be applied.").strip()[:500]
+        reason = (applied.stderr or applied.stdout or
+                  "The reviewed patch could not be applied.").strip()[:500]
+        try:
+            unmerged = sh(["git", "ls-files", "--unmerged"], cwd=tree)
+        except (subprocess.SubprocessError, OSError, RuntimeError) as exc:
+            return tree, "tooling", f"Git could not inspect the failed merge: {exc}"[:500]
+        if unmerged.returncode:
+            detail = (unmerged.stderr or unmerged.stdout or
+                      "Git could not inspect the failed merge.").strip()[:500]
+            return tree, "tooling", detail
+        if unmerged.stdout.strip():
+            return tree, "code_conflict", reason
+        return tree, "missing_evidence", reason
     files = list(rec.get("files") or [])
-    staged = sh(["git", "add", "--"] + files, cwd=tree)
-    if staged.returncode:
-        return tree, "missing_evidence", (staged.stderr or staged.stdout or
-                                           "The candidate paths could not be staged.").strip()[:500]
-    actual_tree = sh(["git", "write-tree"], cwd=tree).stdout.strip()
-    actual_files = set(sh(["git", "diff", "--cached", "--name-only"], cwd=tree).stdout.splitlines())
+    try:
+        actual_tree = sh(["git", "write-tree"], cwd=tree, check=True).stdout.strip()
+        actual_files = set(sh(["git", "diff", "--cached", "--name-only"], cwd=tree,
+                              check=True).stdout.splitlines())
+        actual_blobs = git_blobs(tree, "", files)
+        merged_patch = (sh(["git", "diff", "--cached", "--binary"], cwd=tree,
+                           check=True).stdout if rebuilding else "")
+        base_blobs = git_blobs(tree, parent, files) if rebuilding else None
+    except (subprocess.SubprocessError, OSError, RuntimeError) as exc:
+        return tree, "tooling", f"Git could not inspect the applied candidate: {exc}"[:500]
     if actual_files != set(files) or (not rebuilding and actual_tree != candidate.get("tree")):
         return tree, "missing_evidence", "The reconstructed tree differs from the reviewed candidate."
-    if git_blobs(tree, "", files) != candidate.get("files"):
+    if not rebuilding and actual_blobs != candidate.get("files"):
         return tree, "missing_evidence", "The reconstructed file blobs differ from the reviewed candidate."
     if rebuilding:
-        rec["candidate"] = {**{key: value for key, value in candidate.items() if key != "rebuilt_from"},
-                            "tree": actual_tree, "base": parent,
-                            "rebuilt_from": reviewed_candidate(candidate)}
+        rec["patch"] = merged_patch
+        save_patch(rec.get("id") or "candidate", merged_patch)
+        rec["patch_artifact"] = patch_artifact(merged_patch)
+        rec["candidate"] = {"tree": actual_tree, "base": parent,
+                            "files": actual_blobs,
+                            "base_files": base_blobs,
+                            "merged_from": reviewed_candidate(candidate)}
         rec["superseded_candidate_suites"] = rec.get("candidate_suites")
         rec["candidate_suites"] = None
         rec["candidate_test_evidence"] = work.evidence_id([rec["candidate"], None])
     return tree, "", ""
 
 
-def record_integration_blocker(item, rec, kind, reason):
-    """One owned recovery action per immutable candidate, never a blind retry."""
+def review_merged_candidate(item, rec, org, run_id, tree):
+    """Read a three-way merged candidate on its actual current-main diff."""
+    record_phase(run_id, item, "reviewing",
+                 "The chief of staff is reading the candidate merged onto current main.")
+    cmodel = server.seat_model(org, "claude")
+    try:
+        ctext, cusage, cerr = run_cli(
+            check_prompt(item, rec.get("result"), rec.get("patch", ""), org,
+                         rec.get("execution_evidence"), None),
+            CHECK_SYSTEM, "Read,Glob,Grep", cmodel, tree, CHECK_TIMEOUT,
+            CHECK_TURNS, "drain-check", "claude", item["id"], rec["attempt_id"])
+    except (subprocess.SubprocessError, OSError, RuntimeError) as exc:
+        return False, f"The merged candidate review could not run: {exc}"[:500]
+    if cusage:
+        rec.setdefault("usage", []).append(dict(cusage, phase="drain-check", seat="claude"))
+    if cerr:
+        return False, cerr
+    rec["external_verification"] = None
+    rec["check"] = enforce_execution_claims(
+        parse_check(ctext) if ctext else None, rec.get("result", ""),
+        rec.get("execution_evidence"))
+    if not rec["check"]:
+        return False, "The merged candidate review did not return a readable verdict."
+    rec["check_evidence"] = check_evidence_id(rec)
+    if (rec["check"].get("verdict") != "pass" or rec["check"].get("complete") is not True
+            or rec["check"].get("findings")):
+        return False, (rec["check"].get("summary") or
+                       "The merged candidate did not pass its fresh review.")[:500]
+    return True, ""
+
+
+def record_integration_blocker(item, rec, kind, reason, *, retry_owner=True):
+    """Record a landing failure; only a confirmed conflict retries its owner."""
     candidate = rec.get("candidate") or {}
     input_id = work.evidence_id([rec.get("attempt_id"), candidate.get("base"),
                                  candidate.get("tree"), rec.get("patch_artifact")])
-    action = work.ensure_action(item, "reconcile", input_id=input_id,
-                                owner=item.get("owner") or "claude",
-                                summary="Rebuild this candidate on current main, then obtain fresh review and both suites.",
-                                priority="reconciliation")
-    work.ensure_blocker(item, kind, input_id=input_id,
-                        owner=item.get("owner") or "claude", reason=reason,
-                        files=rec.get("files") or [], action_id=action["id"])
+    action = None
+    if retry_owner:
+        action = work.ensure_action(
+            item, "reconcile", input_id=input_id,
+            owner=item.get("owner") or "claude",
+            summary="Resolve the confirmed merge conflict, then obtain fresh review and both suites.",
+            priority="reconciliation")
+    blocker = work.ensure_blocker(
+        item, kind, input_id=input_id,
+        owner=(item.get("owner") or "claude") if action else "claude",
+        reason=reason, files=rec.get("files") or [],
+        action_id=action["id"] if action else None,
+        wake=None if action else "Chief of staff inspects the failed landing evidence.")
     with work.mutation_lock():
         fresh = work.load_item(item["id"])
         changed = False
         for older in work._workflow(fresh)["actions"]:
-            if (older.get("id") != action["id"] and older.get("type") == "reconcile"
+            if ((not action or older.get("id") != action["id"])
+                    and older.get("type") == "reconcile"
                     and older.get("state") == "open"):
                 older["state"], older["finished_at"] = "done", work._now_iso()
                 changed = True
         for older in work._workflow(fresh)["blockers"]:
-            if older.get("action_id") != action["id"] and older.get("state") == "open":
+            if (older.get("id") != blocker["id"]
+                    and (not action or older.get("action_id") != action["id"])) \
+                    and older.get("state") == "open":
                 older["state"], older["resolved_at"] = "resolved", work._now_iso()
                 changed = True
         if changed:
@@ -3030,9 +3088,9 @@ def _land_item(ctx, rec, org, run_id, log, done, no_suites):
               and rec.get("candidate_unchanged") is True)
     # A candidate that changes no files has nothing to rebuild on a newer main.
     stale = bool(candidate and rec.get("files") and candidate.get("base") != head)
-    # S-33: a stale candidate that would otherwise land, none of whose files
-    # changed on main since its base, is rebuilt on main by prepare_integration
-    # and tested there; every other stale candidate goes back as before.
+    # S-33: let Git try the reviewed patch as a three-way merge on current
+    # main. A clean merge gets a fresh review and both suites; only a real
+    # conflict goes back for another owner attempt.
     if stale and not (passed and not rec.get("resume") and rec.get("patch", "").strip()
                       and rebuildable(rec, head)):
         why = "the candidate is stale; repository history changed before application"
@@ -3050,8 +3108,12 @@ def _land_item(ctx, rec, org, run_id, log, done, no_suites):
         if ok:
             rec["integration_checkout"] = integration_repo
             if stale:
-                log(f"{item['id']} · rebuilt on current main; none of its files changed "
-                    f"there since {candidate['base'][:8]}")
+                rec["candidate_unchanged"] = candidate_unchanged(
+                    integration_repo, rec["candidate"]["tree"])
+                ok, why = review_merged_candidate(item, rec, org, run_id, integration_repo)
+                if not ok:
+                    blocker_kind = "missing_evidence"
+                log(f"{item['id']} · merged on current main and sent through a fresh review")
     rec["applied"], rec["why_not"] = ok, "" if ok else why
     checkpoint(item, rec, "applied" if ok else "reviewed")
     suites = None
@@ -3086,7 +3148,8 @@ def _land_item(ctx, rec, org, run_id, log, done, no_suites):
         done.append(write_back(fresh, rec, ok, rec["why_not"], suites, org))
         checkpoint(item, rec, "written_back")
         if blocker_kind:
-            record_integration_blocker(done[-1], rec, blocker_kind, why)
+            record_integration_blocker(done[-1], rec, blocker_kind, why,
+                                       retry_owner=not stale or blocker_kind == "code_conflict")
         elif (done[-1].get("state") != "landed" and rec.get("files") and ok
               and not work.landing_awaits_approval(done[-1])):
             # A clean change held only for Daniel's yes is his to decide, not
@@ -3116,9 +3179,10 @@ def run_verified_batch(pool, org, run_id, log, *, no_suites=False, actions=None,
     on this thread, in the order results come back: a finished item is not
     kept waiting behind a slower one, and the order cannot matter, because
     every landing is checked against main as it is at that moment. A result
-    whose main moved meanwhile is rebuilt on the new main when none of its files
-    changed there, and otherwise goes back for a fresh attempt. A result that
-    comes back limited (the token window ran dry) starts nothing further.
+    whose main moved meanwhile is three-way merged onto the new main, freshly
+    reviewed, and retested. Only a confirmed merge conflict goes back for a
+    fresh owner attempt. A result that comes back limited (the token window ran
+    dry) starts nothing further.
     jobs=1 is the old sequential drain: claim, work and land each item in turn.
     """
     records, done = {}, []

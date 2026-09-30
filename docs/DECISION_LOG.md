@@ -642,12 +642,14 @@ studio"); card in `design/14-training-workbench.md` §11; tests `test_starter_br
 **Ruled 2026-09-26, in a Claude Code session**, after Daniel asked to "start them all
 running" and found the queue only ever works one item. Up to a few items are worked,
 reviewed and tested side by side, each from the main it started on. They still land
-strictly one at a time. An item whose starting point went out of date while it was
-worked lands anyway **when none of the files it changes were changed on main in the
-meantime**: its exact reviewed patch is rebuilt on the current main as a new candidate,
-and both suites run on that exact combined tree before it is committed, so the old test
-results are never reused. Only when its files did change on main does it go back for a
-fresh attempt, as before. This implements the merge-queue shape already described in
+strictly one at a time. An item whose starting point went out of date while it was worked
+tries its reviewed patch on current main with Git's three-way merge. A clean merge becomes
+a new candidate, receives a fresh independent review, and runs both suites on that exact
+combined tree before it is committed, so neither the old review nor the old test results
+are reused. Only an actual merge conflict sends it back for a fresh owner attempt. This
+means a malformed patch, a failed Git command or inspection, or a failed fresh review is
+held for the chief of staff to inspect and never starts another owner model attempt. This
+implements the merge-queue shape already described in
 `docs/hq/CONVERGENCE_QUEUE_DESIGN.md` and narrows the drain's earlier rule that a changed
 base is never rebuilt. Code: `hq/drain.py` (`run_verified_batch`, the landing path).
 
