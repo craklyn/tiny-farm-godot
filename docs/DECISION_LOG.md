@@ -728,6 +728,21 @@ the held state. Code: `hq/work.py` (`review_spending_checkpoint`, `extend_over_b
 `hold_checkpoints_for_chief_of_staff`); how it works is in `docs/HOW_WORK_ORIGINATES.md`
 ("A card over its token budget").
 
+**The same applies when a card's repairs are used up (same ruling, 2026-09-29).** A card
+the reviewer fails again after its repairs used to reach Daniel as a "give its owner one
+more attempt?" question wherever HQ's automatic repair review stopped. Whether to try
+again, rescope or close is the same kind of engineering-management call, so the card now
+stays in the task queue, held for the chief of staff with the reason shown ("Its repairs
+are used up after 4 tries; waiting for the chief of staff to give one more try, rescope
+or close it."). The chief of staff gives it one more supervised try with a brief for the
+owner (`python3 hq/card.py extend`, or its alias `retry`, recorded as the chief of
+staff's call), rescopes it, or closes it; a ruling's work or work that needs Daniel's
+approval is closed only through a decision card to him. HQ and each drain run move any
+card still waiting on his page this way into the held state. Code: `hq/work.py`
+(`review_exhausted_repair`, `retry_repairs_used_up`, `keep_going`,
+`hold_repair_checkpoints_for_chief_of_staff`); how it works is in
+`docs/HOW_WORK_ORIGINATES.md` ("A card whose repairs are used up").
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported

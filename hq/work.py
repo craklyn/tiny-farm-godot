@@ -1080,12 +1080,20 @@ def work_view(item, repo_facts=None, now=None):
     spending_hold = (not terminal and not checkpoint_pending
                      and isinstance(item.get("spending_checkpoint"), dict)
                      and item["spending_checkpoint"].get("held_for") == "claude")
+    # Its sibling: a card whose repairs are used up and that the automatic
+    # repair review did not retry or close waits for the chief of staff too
+    # (S-38, extended 2026-09-29), ahead of every step that would run the owner.
+    repairs_held = not terminal and not checkpoint_pending and not spending_hold and repair_held(item)
     if awaiting_approval or checkpoint_pending:
         pass
     elif spending_hold:
         blocker = {"type": "spending_hold", "files": [], "owner": "claude", "wake": CAP_HOLD_WAKE,
                    "reason": str(item["spending_checkpoint"].get("reason") or "").strip()
                    or "Over its token budget. Waiting for the chief of staff to extend, rescope or close it."}
+    elif repairs_held:
+        blocker = {"type": "repairs_used_up", "files": [], "owner": "claude", "wake": REPAIR_HOLD_WAKE,
+                   "reason": str(item["repair_checkpoint"].get("reason") or "").strip()
+                   or _repair_hold_reason(item, "")}
     elif art_hold and not terminal:
         blocker = art_hold
     elif blocked_files:
@@ -1154,6 +1162,9 @@ def work_view(item, repo_facts=None, now=None):
         elif blocker and blocker["type"] == "spending_hold":
             kind, summary, priority = ("spending_hold", "The chief of staff extends, rescopes or closes this card.",
                                        "reconciliation")
+        elif blocker and blocker["type"] == "repairs_used_up":
+            kind, summary, priority = ("repairs_used_up", "The chief of staff gives this card one more try, "
+                                       "rescopes it or closes it.", "reconciliation")
         elif awaiting_approval and landing_approved(item):
             kind, summary, priority = "reconcile", "Merge the change Daniel approved into main.", "reconciliation"
             input_id = "approved:" + patch
@@ -1193,7 +1204,7 @@ def work_view(item, repo_facts=None, now=None):
                                    "state": "blocked", "virtual": True}]
         if not stalled_transition:
             active_actions = [{"id": proposed_id, "type": kind,
-                           "input_id": input_id, "owner": ("daniel" if kind == "decide" else "claude" if kind in ("rebrief", "spending_hold", "chief_hold")
+                           "input_id": input_id, "owner": ("daniel" if kind == "decide" else "claude" if kind in ("rebrief", "spending_hold", "chief_hold", "repairs_used_up")
                                                            or (awaiting_approval and kind == "reconcile") else item.get("owner") or "claude"),
                            "summary": summary, "priority": priority,
                            "created_at": item.get("finished") or item.get("created") or "",
@@ -1250,7 +1261,7 @@ def work_view(item, repo_facts=None, now=None):
                                   action.get("state") == "blocked" or
                                   (blocker and action.get("type") == "build") or
                                   (blocker and blocker["type"] == "capacity" and action.get("type") != "rebrief") or
-                                  (blocker and blocker["type"] in ("art_budget", "spending_hold")) or
+                                  (blocker and blocker["type"] in ("art_budget", "spending_hold", "repairs_used_up")) or
                                   action.get("type") == "chief_hold" else
                                   "waiting_event" if exhausted_repair and not supervised_retry else "runnable")
         if claim and not running:
@@ -1279,7 +1290,8 @@ def work_view(item, repo_facts=None, now=None):
         phase = item.get("state")
     elif next_action and next_action["availability"] == "running":
         phase = "working"
-    elif next_action and next_action["type"] in ("reconcile", "recover", "rebrief", "spending_hold", "chief_hold"):
+    elif next_action and next_action["type"] in ("reconcile", "recover", "rebrief", "spending_hold",
+                                                 "chief_hold", "repairs_used_up"):
         phase = "reconciliation"
     elif item.get("state") == "for_review":
         phase = "review"
@@ -1573,7 +1585,8 @@ def work_reviewable(item, workflow_view=None):
     if item.get("state") not in HIS_STATES or _held_back(item):
         return False
     if (item.get("awaiting_reply") or item.get("repair_hold") or item.get("pending_landing")
-            or item.get("pending_followups") or view.get("blocker") or cap_held(item)):
+            or item.get("pending_followups") or view.get("blocker") or cap_held(item)
+            or repair_held(item)):
         return False
     if landing_awaits_approval(item):
         # Unlanded on purpose: the merge waits for exactly this verdict.
@@ -2956,7 +2969,8 @@ def _cap_extend(item, spent, caps, exceeded, reason, by="claude"):
 
 def _cap_reviewable(item):
     return (item.get("state") in CAP_REVIEW_STATES and item.get("state") not in TERMINAL_STATES
-            and not item.get("spending_checkpoint") and not landing_awaits_approval(item))
+            and not item.get("spending_checkpoint") and not repair_held(item)
+            and not landing_awaits_approval(item))
 
 
 def review_spending_checkpoint(item, org):
@@ -3112,22 +3126,10 @@ def extend_over_budget(item_id, *, by, reason):
     grants one, recorded as the chief of staff's with the brief, the brief added
     to the card's ask, the hold cleared and the card back in its queue lane.
     Raises ValueError, in plain words, when the card cannot be extended."""
-    by = " ".join(str(by or "").split())[:160]
-    reason = str(reason or "").strip()[:2000]
-    if len(by) < 3:
-        raise ValueError("Say who is extending the card, for example 'Claude chief-of-staff session'.")
-    if _BORROWED_ACTOR.search(by):
-        raise ValueError("The attribution names the session that ran the extension; it may not "
-                         "claim Daniel or a checker, because the chief of staff made this call.")
-    if len(reason) < 10:
-        raise ValueError("Give the brief for this step: what the owner should do with the extra spending.")
+    by, reason = _chief_of_staff_grant_args(
+        by, reason, "what the owner should do with the extra spending")
     with mutation_lock():
-        try:
-            item = load_item(item_id)
-        except (OSError, ValueError):
-            raise ValueError(f"There is no work card {item_id}.")
-        if item.get("state") in TERMINAL_STATES:
-            raise ValueError(f"Work card {item_id} is already {item['state']}.")
+        item = _load_open_card(item_id)
         _hold_legacy_checkpoint(item)
         if not cap_held(item):
             if item.get("spending_checkpoint") or item.get("repair_checkpoint"):
@@ -3149,20 +3151,26 @@ def extend_over_budget(item_id, *, by, reason):
 # gave one: on 2026-09-28 six cards had sat that way for a day or more. Daniel
 # approved (2026-09-28) the same shape as the spending checkpoint: the chief of
 # staff reviews one card per background pass and gives it one more supervised
-# try with a sharper brief, brings it to Daniel with a recommendation his yes
-# enacts, or closes work that is no longer needed. Each decision is recorded on
-# the card under `repair_reviews`.
+# try with a sharper brief, or closes work that is no longer needed. Each
+# decision is recorded on the card under `repair_reviews`.
+#
+# S-38 (2026-09-29) applies here as it does to spending: whether to try again,
+# rescope or close is engineering management, not taste, so where the automatic
+# review stops the card is held in the queue for the chief of staff with the
+# reason shown, and never goes to Daniel's page. Sent there, such a card was
+# also kept off it, because its code had not been verified, and sat in no lane.
+# `hq/card.py extend` (or its alias `retry`) grants the one more supervised try.
 # ---------------------------------------------------------------------------
 
 # Past this many of the chief of staff's own retries on one card, no model is
-# asked: the card goes straight to Daniel.
+# asked: the card is held for the chief of staff.
 REPAIR_AUTO_RETRIES = 2
 REPAIR_REVIEW_TRIES = 3
 REPAIR_REVIEW_STATES = CAP_REVIEW_STATES
 REPAIR_SCAN_SECONDS = 120
 _REPAIR_SCAN = {"at": 0.0}
-REPAIR_YES_STARTS = ("Gives the owner one more attempt to repair this card and puts it back in "
-                     "the queue, with the recommended answer passed to the owner as an instruction.")
+REPAIR_HOLD_WAKE = ("The chief of staff gives it one more supervised try (python3 hq/card.py extend), "
+                    "rescopes it, or closes it.")
 
 
 def exhausted_repair(item):
@@ -3234,50 +3242,98 @@ attempts that could only read) is not the owner failing.
 Return JSON only, one of:
 When the reviewer's remaining findings are concrete and the owner can fix them:
 {{"outcome":"retry","brief":"a sharper instruction for the owner's next attempt that names each remaining finding concretely and what done looks like","reason":"why one more try should work"}}
-When only Daniel can resolve it (taste, direction, a missing decision, or the same failure
-repeating so the approach needs rethinking), with all four recommendation fields in plain
-words. His yes gives the card one more supervised try with your answer passed to the owner
-as an instruction:
-{{"outcome":"daniel","reason":"why only he can resolve it","recommend":{{"question":"...","answer":"...","why":"...","instead":"..."}}}}
+When one more try as it stands would not settle it (the same failure repeating, so the
+approach needs rethinking, or a missing decision), hold it: the card waits in the queue for
+the chief of staff to give one more try with a new brief, rescope or close it. It never goes
+to Daniel; if it truly needs his taste, say so in "suggest" and the chief of staff will put
+the question to him on a decision card.
+{{"outcome":"hold","reason":"what keeps failing","suggest":"what the rework should be, or why it should close"}}
 When the work is no longer needed (superseded, or already done on main):
 {{"outcome":"close","reason":"what makes it unnecessary, with the evidence you found"}}
 """
 
 
-def _repair_fallback_recommendation(item, why):
-    return {
-        "question": f"The reviewer has failed “{item.get('title', '')}” again after its repairs. {why} "
-                    "Give its owner one more attempt?",
-        "answer": "Try once more, and fix each of the reviewer's remaining findings before anything else.",
-        "why": "The findings are recorded on the card, and one more attempt costs less than redesigning the work.",
-        "instead": "Close the card, or tell the owner in a comment what to change.",
-    }
+def _repair_tries(item):
+    """How many repairs the card has had: the automatic ones, then each
+    supervised try the chief of staff or Daniel gave it."""
+    return int(item.get("automatic_repairs") or 0) + sum(
+        1 for r in item.get("repair_reviews") or [] if r.get("decision") == "retry")
 
 
-def _repair_to_daniel(item, reason, rec):
-    """Put the card in his list with a complete recommendation his yes enacts."""
-    recommend = {k: str(rec.get(k) or "").strip()[:400] for k in REC_PARTS}
-    restore = {k: item[k] for k in ("recommend", "deliverable", "follow_ups") if k in item}
+def _repair_hold_reason(item, why):
+    """The sentence the queue shows beside a card held because its repairs are used up."""
+    tries = _repair_tries(item)
+    said = (f"Its repairs are used up after {tries} {'try' if tries == 1 else 'tries'}; waiting for "
+            "the chief of staff to give one more try, rescope or close it.")
+    why = str(why or "").strip().rstrip(".")
+    return said + (f" {why[0].upper()}{why[1:]}." if why else "")
+
+
+def repair_held(item):
+    """True when the card waits on the chief of staff because its repairs are used up."""
+    pending = item.get("repair_checkpoint")
+    return isinstance(pending, dict) and pending.get("held_for") == "claude"
+
+
+def _repair_hold(item, why, suggestion=""):
+    """Hold the card in the queue for the chief of staff (S-38): the repair hold
+    stays on the card, the reason is shown on the queue, and nothing goes to
+    Daniel. The card keeps its queue state, so the lane check reads it as held."""
+    state = item.get("state")
     item["repair_checkpoint"] = {
-        "at": _now_iso(), "return_state": item.get("state"), "attempt_id": _repair_attempt(item),
-        "repair_hold": item.get("repair_hold"), "restore": restore,
-        "yes_starts": REPAIR_YES_STARTS}
-    # The hold is what the question is about; while it waits on him it must
-    # not also read as the studio's to fix. His yes puts it back.
-    item.pop("repair_hold", None)
-    item["recommend"] = recommend
-    deliverable = dict(item.get("deliverable") or {}) if isinstance(item.get("deliverable"), dict) else {}
-    deliverable["name"] = str(deliverable.get("name") or "").strip() or f"Repairs used up: {item.get('title', '')}"
-    evidence = [e for e in (deliverable.get("evidence") or []) if isinstance(e, dict)]
-    evidence.append({"label": "Open this card, which shows the reviewer's findings on its last attempt",
-                     "href": f"#/work/{item['id']}"})
-    deliverable["evidence"] = evidence
-    item["deliverable"] = deliverable
-    item["follow_ups"] = []
-    item["state"] = "needs_approval"
-    item.setdefault("repair_reviews", []).append(_repair_review_entry("claude", "daniel", item, reason))
+        "at": _now_iso(), "held_for": "claude",
+        "return_state": state if state in REPAIR_REVIEW_STATES else "for_review",
+        "attempt_id": _repair_attempt(item), "reason": _repair_hold_reason(item, why),
+        **({"suggestion": str(suggestion).strip()[:800]} if str(suggestion or "").strip() else {}),
+        "restore": {}, "repair_hold": None}
+    item.setdefault("repair_reviews", []).append(_repair_review_entry("claude", "hold", item, why))
     item.pop("repair_review_tries", None)
     return save_item(item)
+
+
+def hold_repair_checkpoints_for_chief_of_staff():
+    """Move every card the old path sent to Daniel as a "give its owner one more
+    attempt?" question into the held-for-the-chief-of-staff state (S-38).
+    Idempotent: a held card carries `held_for`, so a second run finds nothing.
+    Run by each drain and at HQ's start. Returns the ids moved."""
+    moved = []
+    for item in items():
+        pending = item.get("repair_checkpoint")
+        if not isinstance(pending, dict) or pending.get("held_for"):
+            continue
+        with mutation_lock():
+            fresh = load_item(item["id"])
+            if _hold_legacy_repair_checkpoint(fresh):
+                save_item(fresh)
+                moved.append(fresh["id"])
+    return moved
+
+
+def _hold_legacy_repair_checkpoint(item):
+    """In memory: a repair checkpoint routed to Daniel becomes a hold for the
+    chief of staff. The fields the question borrowed are put back as they were,
+    and the repair hold it set aside returns to the card."""
+    pending = item.get("repair_checkpoint")
+    state = item.get("state")
+    if not isinstance(pending, dict) or pending.get("held_for") or state in TERMINAL_STATES:
+        return False
+    if state != "needs_approval" and state not in REPAIR_REVIEW_STATES:
+        return False
+    for key in ("recommend", "deliverable", "follow_ups"):
+        item.pop(key, None)
+    item.update(pending.get("restore") or {})
+    item["repair_hold"] = pending.get("repair_hold") or item.get("repair_hold") or \
+        "The repair still needs verification; the owner must resolve the remaining findings."
+    back = pending.get("return_state") if state == "needs_approval" else state
+    item["state"] = back if back in REPAIR_REVIEW_STATES else "for_review"
+    why = "it had been sent to Daniel before cards whose repairs are used up became the chief of staff's call"
+    item["repair_checkpoint"] = {
+        "at": _now_iso(), "held_for": "claude", "return_state": item["state"],
+        "attempt_id": pending.get("attempt_id") or _repair_attempt(item),
+        "moved_from": state, "asked_at": pending.get("at"),
+        "reason": _repair_hold_reason(item, why), "restore": {}, "repair_hold": None}
+    item.setdefault("repair_reviews", []).append(_repair_review_entry("claude", "hold", item, why))
+    return True
 
 
 def _repair_retry(item, brief, reason, by="claude"):
@@ -3314,8 +3370,8 @@ def review_exhausted_repair(item, org):
                   if r.get("by") == "claude" and r.get("decision") == "retry")
     # Hard limit: decided here, with no model call.
     if retries >= REPAIR_AUTO_RETRIES:
-        why = f"The chief of staff has already given it {retries} more tries without it passing."
-        _repair_to_daniel(item, why, _repair_fallback_recommendation(item, why))
+        _repair_hold(item, f"the automatic repair review has already given it {retries} more tries "
+                           "without it passing")
         return True
     attempt = _repair_attempt(item)
     spent, _caps, _exceeded = spending_checkpoint_state(item)
@@ -3337,7 +3393,7 @@ def review_exhausted_repair(item, org):
             return False
         if limited:
             # The allowance ran dry mid-review: nothing was judged, so the try is
-            # given back. An empty window must never put a card in front of Daniel.
+            # given back. An empty window must never hold a card for a person.
             fresh["repair_review_tries"] = max(0, int(fresh.get("repair_review_tries") or 1) - 1)
             save_item(fresh)
             item.clear(); item.update(fresh)
@@ -3345,33 +3401,30 @@ def review_exhausted_repair(item, org):
         outcome = doc.get("outcome")
         if outcome == "retry" and brief and reason:
             _repair_retry(fresh, brief, reason)
-        elif outcome == "daniel" and not recommendation_gaps(doc.get("recommend")):
-            _repair_to_daniel(fresh, reason or "The chief of staff judged it needs Daniel.", doc["recommend"])
+        elif outcome in ("hold", "daniel") and reason:
+            # "daniel" is the answer the old prompt asked for; it is read as a
+            # hold too, since nothing whose repairs are used up goes to him (S-38).
+            rec = doc.get("recommend") if isinstance(doc.get("recommend"), dict) else {}
+            _repair_hold(fresh, "the automatic repair review found one more try as it stands "
+                                "would not settle it: " + reason,
+                         doc.get("suggest") or rec.get("answer") or "")
         elif outcome == "close" and reason and _repair_closable(fresh):
             _repair_close(fresh, reason)
         elif outcome == "close" and reason:
-            why = ("It carries out one of your rulings, so only you can close it."
-                   if fresh.get("ruling_id") else "It is work that needs your approval, so only you can close it.")
-            # His yes is always one more supervised try, so the recommendation
-            # is the try that settles the doubt; his no closes the card.
-            rec = {
-                "question": f"The reviewer failed “{fresh.get('title', '')}” again after its repairs, and "
-                            f"the chief of staff thinks it may no longer be needed. {why} "
-                            "Give its owner one more attempt?",
-                "answer": "One more attempt whose first step is to check whether the work is "
-                          "already done on main, and to say so rather than redo it.",
-                "why": "The chief of staff found: " + reason[:300],
-                "instead": "Decline, which closes the card now.",
-            }
-            _repair_to_daniel(fresh, reason, rec)
+            # A ruling's work or tier-2 work closes only with Daniel's yes; the
+            # chief of staff decides whether that question is worth his time.
+            why = ("it carries out one of Daniel's rulings" if fresh.get("ruling_id")
+                   else "it is work that needs Daniel's approval")
+            _repair_hold(fresh, f"the automatic repair review thinks it may no longer be needed, but "
+                                f"{why}, so it cannot close it on its own: " + reason,
+                         "Check whether the work is already on main; if so, ask Daniel on a decision "
+                         "card to close it, otherwise give it one more try.")
         elif int(fresh.get("repair_review_tries") or 0) < REPAIR_REVIEW_TRIES:
             item.clear(); item.update(fresh)
             return False              # tried again on a later pass
         else:
-            why = (f"The chief of staff's review did not come back with a usable answer "
-                   f"after {REPAIR_REVIEW_TRIES} tries.")
-            _repair_to_daniel(fresh, why, _repair_fallback_recommendation(
-                fresh, "Nobody has yet judged whether one more try would fix it."))
+            _repair_hold(fresh, f"the automatic repair review gave no usable answer after "
+                                f"{REPAIR_REVIEW_TRIES} tries")
         item.clear(); item.update(fresh)
     return True
 
@@ -3409,33 +3462,124 @@ def review_next_exhausted_repair(org):
     return review_exhausted_repair(due[0], org) if due else False
 
 
-def grant_repair_checkpoint(item, said=""):
-    """His yes on a repairs-used-up card: one supervised try, the recommended
-    answer passed to the owner, and the borrowed fields put back."""
-    pending = item.pop("repair_checkpoint")
-    rec = item.get("recommend") or {}
-    item["decided"] = {"question": rec.get("question", ""), "answer": rec.get("answer", ""),
-                       "at": _now_iso()}
-    for key in ("recommend", "deliverable", "follow_ups"):
-        item.pop(key, None)
-    item.update(pending.get("restore") or {})
-    item["repair_hold"] = pending.get("repair_hold") or \
+def grant_repair_checkpoint(item, said="", by="daniel", brief="", via=""):
+    """One more supervised try for a card whose repairs are used up, then back
+    to its place in the queue.
+
+    `by` is whoever actually granted it, and the record says so: "daniel" for
+    his yes on a question that reached his page before S-38 covered repairs
+    (his recommended answer and comment become the owner's instruction),
+    "claude" for the chief of staff's try on a held card (`hq/card.py extend`
+    or `retry`, where `brief` is the instruction and `via` names the session
+    that ran it). The fields a question borrowed are put back."""
+    pending = item.pop("repair_checkpoint", None) or {}
+    # Only a question that reached his page borrowed the card's recommendation.
+    asked = bool(pending) and not pending.get("held_for")
+    rec = (item.get("recommend") or {}) if asked else {}
+    if asked:
+        for key in ("recommend", "deliverable", "follow_ups"):
+            item.pop(key, None)
+        item.update(pending.get("restore") or {})
+    item["repair_hold"] = pending.get("repair_hold") or item.get("repair_hold") or \
         "The repair still needs verification; the owner must resolve the remaining findings."
-    notes = []
-    if rec.get("answer"):
-        notes.append("Daniel approved this after the repairs were used up; do it before anything else:\n"
-                     + str(rec["answer"]))
-    if said:
-        notes.append("Daniel attached this when he approved it:\n" + said)
-    brief = "\n\n".join(notes) or "Daniel approved one more supervised try."
-    item["state"] = pending.get("return_state") if pending.get("return_state") in REPAIR_REVIEW_STATES \
-        else "for_review"
-    item["repair_brief"] = brief
+    if by == "daniel":
+        item["decided"] = {"question": rec.get("question", ""), "answer": rec.get("answer", ""),
+                           "at": _now_iso()}
+        notes = []
+        if rec.get("answer"):
+            notes.append("Daniel approved this after the repairs were used up; do it before anything else:\n"
+                         + str(rec["answer"]))
+        if said:
+            notes.append("Daniel attached this when he approved it:\n" + said)
+        text = "\n\n".join(notes) or "Daniel approved one more supervised try."
+        entry = _repair_review_entry("daniel", "retry", item,
+                                     "Daniel approved: " + str(rec.get("answer") or "one more try"), text)
+    else:
+        text = ("The chief of staff approved one more supervised try; do this before anything else:\n"
+                + str(brief).strip())
+        entry = _repair_review_entry(by, "retry", item, str(brief).strip(), text)
+        if via:
+            entry["via"] = str(via)[:160]
+    back = pending.get("return_state") or item.get("state")
+    item["state"] = back if back in REPAIR_REVIEW_STATES else "for_review"
+    item["repair_brief"] = text
     item["supervised_retry"] = True
-    item.setdefault("repair_reviews", []).append(
-        _repair_review_entry("daniel", "retry", item, "Daniel approved: " + str(rec.get("answer") or "one more try"), brief))
+    item.setdefault("repair_reviews", []).append(entry)
     item.pop("repair_review_tries", None)
     return item
+
+
+def _chief_of_staff_grant_args(by, reason, what):
+    """The checks every chief-of-staff grant makes on who and why, in plain words."""
+    by = " ".join(str(by or "").split())[:160]
+    reason = str(reason or "").strip()[:2000]
+    if len(by) < 3:
+        raise ValueError("Say who is granting it, for example 'Claude chief-of-staff session'.")
+    if _BORROWED_ACTOR.search(by):
+        raise ValueError("The attribution names the session that ran the command; it may not "
+                         "claim Daniel or a checker, because the chief of staff made this call.")
+    if len(reason) < 10:
+        raise ValueError(f"Give the brief for this step: {what}.")
+    return by, reason
+
+
+def _load_open_card(item_id):
+    try:
+        item = load_item(item_id)
+    except (OSError, ValueError):
+        raise ValueError(f"There is no work card {item_id}.")
+    if item.get("state") in TERMINAL_STATES:
+        raise ValueError(f"Work card {item_id} is already {item['state']}.")
+    return item
+
+
+def _at_repair_checkpoint(item):
+    """Held for the chief of staff after its repairs were used up, or used up
+    with no supervised try waiting (the automatic review has not reached it)."""
+    if repair_held(item):
+        return True
+    return (not item.get("repair_checkpoint") and item.get("state") in REPAIR_REVIEW_STATES
+            and exhausted_repair(item) and not item.get("supervised_retry")
+            and not landing_awaits_approval(item))
+
+
+def retry_repairs_used_up(item_id, *, by, reason):
+    """The chief of staff's one more supervised try on a card whose repairs are
+    used up (`hq/card.py retry`, or `extend` on such a card; S-38): recorded as
+    the chief of staff's with the brief, the brief made the owner's repair
+    instruction, the hold cleared and the card back in its queue lane. Raises
+    ValueError, in plain words, when the card cannot be retried."""
+    by, reason = _chief_of_staff_grant_args(
+        by, reason, "what the owner must do on the next try, before anything else")
+    with mutation_lock():
+        item = _load_open_card(item_id)
+        _hold_legacy_repair_checkpoint(item)
+        _hold_legacy_checkpoint(item)
+        if cap_held(item) or item.get("spending_checkpoint"):
+            raise ValueError(f"Work card {item_id} is waiting at its spending limit first; "
+                             "extend that before giving it another try.")
+        if not _at_repair_checkpoint(item):
+            why = ("already has a supervised try waiting to run" if item.get("supervised_retry")
+                   else "has not used up its repairs")
+            raise ValueError(f"Work card {item_id} is not at a repair checkpoint: it {why}.")
+        grant_repair_checkpoint(item, by="claude", brief=reason, via=by)
+        return save_item(item)
+
+
+def keep_going(item_id, *, by, reason):
+    """`hq/card.py extend`: the chief of staff's "keep going" on a card held for
+    them, whichever checkpoint holds it. A spending limit is settled first,
+    since any try would spend; otherwise a card whose repairs are used up gets
+    one more supervised try. Returns (what was granted, the saved card)."""
+    with mutation_lock():
+        item = _load_open_card(item_id)
+        _hold_legacy_checkpoint(item)
+        _hold_legacy_repair_checkpoint(item)
+        spending = cap_held(item) or not (
+            repair_held(item) or (_at_repair_checkpoint(item) and not spending_checkpoint_state(item)[2]))
+        if spending:
+            return "spending", extend_over_budget(item_id, by=by, reason=reason)
+        return "repair", retry_repairs_used_up(item_id, by=by, reason=reason)
 
 
 def _propose_follow_up(item, org):
@@ -3557,12 +3701,14 @@ def worker():
 
 
 def start():
-    # Cards an earlier HQ sent to Daniel as a "keep spending?" question are the
-    # chief of staff's now (S-38); the drain does the same at each start.
-    try:
-        hold_checkpoints_for_chief_of_staff()
-    except Exception:
-        pass
+    # Cards an earlier HQ sent to Daniel as a "keep spending?" or "one more
+    # attempt?" question are the chief of staff's now (S-38); the drain does the
+    # same at each start.
+    for migrate in (hold_checkpoints_for_chief_of_staff, hold_repair_checkpoints_for_chief_of_staff):
+        try:
+            migrate()
+        except Exception:
+            pass
     if not execution.launch_allowed():
         threading.Thread(target=worker, daemon=True).start()
         return

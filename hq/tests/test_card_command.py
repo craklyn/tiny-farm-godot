@@ -111,6 +111,60 @@ class CardCommand(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("not over its spending limit", said)
 
+    def test_retry_and_extend_give_a_card_whose_repairs_are_used_up_one_more_try(self):
+        # S-38, extended 2026-09-29: a card whose repairs are used up waits for
+        # the chief of staff, whose `retry` (or `extend`) is recorded as theirs.
+        card_file = Path(self.tmp, "work", "w0000000000d.json")
+        hold = "The repair still needs verification; the owner must resolve the remaining findings."
+        stored = json.loads(card_file.read_text())
+        stored.update(state="for_review", repair_hold=hold, automatic_repairs=2,
+                      last_recorded_attempt="att3", repair_reviews=[], repair_checkpoint={
+                          "held_for": "claude", "return_state": "for_review", "attempt_id": "att3",
+                          "reason": "Its repairs are used up after 2 tries; waiting for the chief of "
+                                    "staff to give one more try, rescope or close it.",
+                          "restore": {}, "repair_hold": None})
+        card_file.write_text(json.dumps(stored))
+        with self.assertRaises(SystemExit):
+            self.cli("retry", "w0000000000d", "--by", "Claude chief-of-staff session")
+        for by in ("Daniel", "The CEO", "checker"):
+            code, said = self.cli("retry", "w0000000000d", "--by", by, "--reason", "Fix the price test.")
+            self.assertEqual(code, 2)
+            self.assertIn("may not claim Daniel", said)
+        code, said = self.cli("retry", "w0000000000d", "--by", "Claude chief-of-staff session",
+                              "--reason", "Fix the price test first.")
+        self.assertEqual(code, 0, said)
+        self.assertIn("w0000000000d for_review: one more supervised try", said)
+        got = self.stored()
+        self.assertNotIn("repair_checkpoint", got)
+        self.assertIs(got["supervised_retry"], True)
+        self.assertEqual((got["repair_reviews"][-1]["by"], got["repair_reviews"][-1]["via"],
+                          got["repair_reviews"][-1]["decision"]),
+                         ("claude", "Claude chief-of-staff session", "retry"))
+        self.assertTrue(got["repair_brief"].endswith("do this before anything else:\nFix the price test first."))
+        code, said = self.cli("retry", "w0000000000d", "--by", "Claude chief-of-staff session",
+                              "--reason", "Fix the price test first.")
+        self.assertEqual(code, 2)
+        self.assertIn("not at a repair checkpoint", said)
+        # The same card held again: `extend` is the one "keep going" command.
+        got.pop("supervised_retry")
+        got["repair_checkpoint"] = stored["repair_checkpoint"]
+        card_file.write_text(json.dumps(got))
+        code, said = self.cli("extend", "w0000000000d", "--by", "Claude chief-of-staff session",
+                              "--reason", "Ship the single upgrade only.")
+        self.assertEqual(code, 0, said)
+        self.assertIn("one more supervised try", said)
+        got = self.stored()
+        self.assertEqual([r["decision"] for r in got["repair_reviews"]], ["retry", "retry"])
+        self.assertNotIn("cap_reviews", got)
+        self.assertNotIn("decided", got)
+        closed = dict(got, state="landed")
+        closed.pop("supervised_retry")
+        card_file.write_text(json.dumps(closed))
+        code, said = self.cli("retry", "w0000000000d", "--by", "Claude chief-of-staff session",
+                              "--reason", "Fix the price test first.")
+        self.assertEqual(code, 2)
+        self.assertIn("already landed", said)
+
     def test_an_unreachable_hq_is_reported_not_worked_around(self):
         self.stop()
         code, said = self.cli("claim", "w0000000000d", "--by", "Codex session")

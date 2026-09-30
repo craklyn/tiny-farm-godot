@@ -697,6 +697,7 @@ function repairReviewLines(it) {
     if (r.by === "daniel") return `All repair attempts are used: you gave the owner one more attempt to repair this card${why}`;
     if (r.decision === "retry") return `All repair attempts are used: the chief of staff gave the owner one more attempt to repair this card, with clearer instructions${why}`;
     if (r.decision === "close") return `All repair attempts are used: the chief of staff closed this card${why}`;
+    if (r.decision === "hold") return `All repair attempts are used: the card waits for the chief of staff to give one more try, rescope or close it${why}`;
     return `All repair attempts are used: the chief of staff brought this card to you${why}`;
   };
   return `<div class="w-cost">${reviews.map(r => `<div>${esc(line(r))}</div>`).join("")}</div>`;

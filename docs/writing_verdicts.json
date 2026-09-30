@@ -559,6 +559,12 @@
   "1047899ea5a751b33394": {
    "verdict": "ok"
   },
+  "106e58c37edb22e04d98": {
+   "instead": "Work cards that have used all their repair attempts wait for the chief of staff instead of asking Daniel",
+   "quote": "repairs are used up",
+   "verdict": "decode",
+   "why": "The reader cannot tell whether this means the card has exhausted repair attempts or something else."
+  },
   "10ad0a9d229cb5acf7eb": {
    "verdict": "ok"
   },
@@ -2783,6 +2789,12 @@
   },
   "51e3ada09d27ea3707a7": {
    "verdict": "ok"
+  },
+  "51e3dd7c325a8a742eed": {
+   "instead": "All repair attempts are used: the card waits for the chief of staff to give one more try, change the work's scope or close it…",
+   "quote": "rescope",
+   "verdict": "second-look",
+   "why": "This is internal process shorthand where a plain phrase would be clearer."
   },
   "51e6fe878831d5b54097": {
    "verdict": "ok"
@@ -7462,6 +7474,9 @@
    "verdict": "ok"
   },
   "d845cf7cf8920c9d4e25": {
+   "verdict": "ok"
+  },
+  "d869ac25d5cff900cd77": {
    "verdict": "ok"
   },
   "d87292d1fcf9d9f5b3e2": {

@@ -321,6 +321,33 @@ chief of staff decides a card needs his call and puts a decision card to him. Ev
 review, raise and hold is written on the card and shown on its Work page entry, with who
 made the call.
 
+## A card whose repairs are used up
+
+When the reviewer fails a card again after its automatic repair, the studio stops trying
+on its own. Every couple of minutes HQ's background worker picks one such card and the
+chief of staff's automatic review reads its attempts and the reviewer's findings:
+
+1. If the owner can fix the findings, the card gets one more supervised try with a
+   sharper instruction.
+2. If the work is no longer needed, the card is closed.
+3. Otherwise the card stays in the task queue, held for the chief of staff, with the
+   reason beside it, for example "Its repairs are used up after 4 tries; waiting for the
+   chief of staff to give one more try, rescope or close it." That happens when the same
+   failure keeps repeating, after two supervised tries from the review, when the review
+   gives no usable answer three times, or when the work carries out one of Daniel's
+   rulings or needs his approval and so cannot be closed without him.
+4. The chief of staff settles a held card by giving it one more supervised try, with a
+   brief the owner must follow before anything else, or by rescoping or closing it:
+   `python3 hq/card.py extend <card id> --by "<session>" --reason "<the brief>"`
+   (`retry` is the same command for this checkpoint alone; `extend` on a card that is
+   also over its token budget raises the budget first). The card goes back to its place
+   in the queue.
+
+This used to be a question on Daniel's page. It no longer reaches him (S-38, extended to
+repairs 2026-09-29), except as a decision card the chief of staff chooses to put to him,
+which is also the only way a ruling's work is closed. Every review and grant is written on
+the card and shown on its Work page entry, with who made the call.
+
 ## What a result cost
 
 Work the studio does on its own draws on the same Claude allotment Daniel draws on when he
