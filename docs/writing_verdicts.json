@@ -311,6 +311,9 @@
   "09321f12c3c3291c7a8c": {
    "verdict": "ok"
   },
+  "09389b7c53aa17316869": {
+   "verdict": "ok"
+  },
   "095ba4370aa6a15dcff3": {
    "verdict": "ok"
   },
@@ -645,6 +648,9 @@
    "verdict": "decode",
    "why": "The subject 'passed and failed' and verb 'have passed' are misaligned; the sentence doesn't parse."
   },
+  "12d67cef0f1e6b60cc35": {
+   "verdict": "ok"
+  },
   "12ffc6adcfa0f8127d02": {
    "baselined": "2026-09-19",
    "instead": "The next public release ships once the onboarding checklist passes on a session with a brand-new player, and the tag goes out.",
@@ -833,6 +839,9 @@
   "17fa447e256d0df46b18": {
    "verdict": "ok"
   },
+  "1801b16addd5ebe1259d": {
+   "verdict": "ok"
+  },
   "180baea5f57f0ea18300": {
    "verdict": "ok"
   },
@@ -1017,6 +1026,9 @@
    "quote": "Read Daniel's hand edit to Crow",
    "verdict": "decode",
    "why": "\"Hand edit\" is unclear, and \"to Crow\" doesn't specify what is being edited."
+  },
+  "1c44e29b8888aba148be": {
+   "verdict": "ok"
   },
   "1c4ac778274a65a899d9": {
    "verdict": "ok"
@@ -1292,6 +1304,9 @@
   "25766ee3624c32fcf43c": {
    "verdict": "ok"
   },
+  "25904c16835d3485c942": {
+   "verdict": "ok"
+  },
   "25a0f938faec0cd9b1b0": {
    "verdict": "ok"
   },
@@ -1430,6 +1445,9 @@
    "why": "“It” has no clear referent in the sentence."
   },
   "2979ff1f9186833b2028": {
+   "verdict": "ok"
+  },
+  "299bf929583c09d0392a": {
    "verdict": "ok"
   },
   "29e33f3581e8a757bc8b": {
@@ -1856,6 +1874,9 @@
    "why": "“Run” and “them” leave the reader to work out what process can start and what is being counted."
   },
   "3560fd62ce7705810d6c": {
+   "verdict": "ok"
+  },
+  "3561ef110332bfdd0a64": {
    "verdict": "ok"
   },
   "357b9b53edec763ac9aa": {
@@ -3162,6 +3183,9 @@
   "5ccedda7ff2f183c9c84": {
    "verdict": "ok"
   },
+  "5ce1ad453d0d67da0a9c": {
+   "verdict": "ok"
+  },
   "5cec18d6e249fecdf06a": {
    "verdict": "ok"
   },
@@ -4148,6 +4172,9 @@
   "7a82ac21391154fc5f49": {
    "verdict": "ok"
   },
+  "7a8c831aad1add921ccc": {
+   "verdict": "ok"
+  },
   "7ad995031325e86944b8": {
    "baselined": "2026-09-25",
    "instead": "saw the marks, and asked what they were and whether they were a bug",
@@ -4595,6 +4622,9 @@
    "verdict": "second-look",
    "why": "Same as 18 — word order makes this read as a statement when it is a label."
   },
+  "86376ae1756205d34797": {
+   "verdict": "ok"
+  },
   "86493d977e2263ebe6a1": {
    "verdict": "ok"
   },
@@ -4680,6 +4710,9 @@
    "verdict": "ok"
   },
   "88430935c1db539a827e": {
+   "verdict": "ok"
+  },
+  "885b477241c33e6e4da7": {
    "verdict": "ok"
   },
   "88612d46452e8faacf85": {
@@ -6819,6 +6852,9 @@
    "verdict": "second-look",
    "why": "The robot is ambiguous when multiple robots are mentioned in this list."
   },
+  "c6615ede8c0ecae31d88": {
+   "verdict": "ok"
+  },
   "c671d6c4434d8806241a": {
    "verdict": "ok"
   },
@@ -7985,6 +8021,9 @@
   "e830bd8d12d5158e3980": {
    "verdict": "ok"
   },
+  "e837b56d1e1d6fe3a6b2": {
+   "verdict": "ok"
+  },
   "e846622d523d16792663": {
    "verdict": "ok"
   },
@@ -8374,6 +8413,9 @@
    "why": "“It” could refer to the current HUD or to Elena’s new picture treatment."
   },
   "f6b68f2a1848449a1ee5": {
+   "verdict": "ok"
+  },
+  "f70e2d3523e9ed4247c5": {
    "verdict": "ok"
   },
   "f716342fa3d259298a6f": {

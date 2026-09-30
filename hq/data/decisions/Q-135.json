@@ -1,0 +1,92 @@
+{
+ "id": "Q-135",
+ "owner": "claude",
+ "title": "What should the wall around the Spiral Tower's room look like?",
+ "question": "Inside the Spiral Tower, the 4 by 4 building the player can walk into, the room's boundary is a thin grey line around the wooden floor, with a gap where the door is. You asked for styles of barrier that separate indoors from outdoors without using up a floor square. Here are four, drawn in colours the game already uses and captured in the real game next to today's line:\n\nA: a low course of uneven stones, in the tower's own greys.\nB: a wooden rail with posts, in the fence's browns.\nC: a clipped hedge, in the farm hedge's greens.\nD: a low whitewashed wall, in the farmhouse's cream.\n\nEach sits mostly outside the room and overlaps the floor by a sixteenth of a square at most, so every floor square stays whole. Each ends in a heavier piece on both sides of the door, so the gap reads as a way through. Stones, posts, clumps and marks are spaced unevenly, so no stretch repeats. The second row of the comparison shows the same styles around a coop-sized room, where the farm outside is drawn three times larger. That row is only there to judge scale: the coop keeps its own walls either way.\n\nI recommend A. The tower is built of the same stone, so the edge reads as the tower's wall seen from inside, and grey stone stands out against both the grass and the wooden floor at both room sizes.",
+ "why_now": "Nothing is waiting on this. The tower works today with the plain line, and all four styles are built and can be switched on without changing any code.",
+ "options": [
+  {
+   "key": "a",
+   "label": "A: the low stone course (Recommended)",
+   "detail": "The Spiral Tower's room is drawn with the stone edge for every player. The room's size, its door and what the player can walk through stay exactly as they are.",
+   "recommended": true
+  },
+  {
+   "key": "b",
+   "label": "B: the post and rail",
+   "detail": "The Spiral Tower's room is drawn with the wooden rail and posts for every player. Nothing else about the room changes."
+  },
+  {
+   "key": "c",
+   "label": "C: the clipped hedge",
+   "detail": "The Spiral Tower's room is drawn with the hedge for every player. Nothing else about the room changes."
+  },
+  {
+   "key": "d",
+   "label": "D: the whitewashed wall",
+   "detail": "The Spiral Tower's room is drawn with the low cream wall for every player. Nothing else about the room changes."
+  },
+  {
+   "key": "keep",
+   "label": "Keep the plain grey line",
+   "detail": "The room keeps today's line. The four styles stay in the game switched off, ready for a later room."
+  }
+ ],
+ "links": [
+  {
+   "type": "image",
+   "src": "docs/design/mockups/thin_walls/comparison.png",
+   "caption": "All five side by side. Top: the Spiral Tower's room. Bottom: a coop-sized room, for scale."
+  },
+  {
+   "type": "image",
+   "src": "docs/design/mockups/thin_walls/tower_plain.png",
+   "caption": "Today: the plain grey line, inside the Spiral Tower."
+  },
+  {
+   "type": "image",
+   "src": "docs/design/mockups/thin_walls/tower_stone.png",
+   "caption": "A: the low stone course, inside the Spiral Tower."
+  },
+  {
+   "type": "image",
+   "src": "docs/design/mockups/thin_walls/tower_timber.png",
+   "caption": "B: the post and rail, inside the Spiral Tower."
+  },
+  {
+   "type": "image",
+   "src": "docs/design/mockups/thin_walls/tower_hedge.png",
+   "caption": "C: the clipped hedge, inside the Spiral Tower."
+  },
+  {
+   "type": "image",
+   "src": "docs/design/mockups/thin_walls/tower_plaster.png",
+   "caption": "D: the whitewashed wall, inside the Spiral Tower."
+  },
+  {
+   "label": "Today's line around a coop-sized room",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/mockups/thin_walls/coop_plain.png"
+  },
+  {
+   "label": "A: the stone course around a coop-sized room",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/mockups/thin_walls/coop_stone.png"
+  },
+  {
+   "label": "B: the post and rail around a coop-sized room",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/mockups/thin_walls/coop_timber.png"
+  },
+  {
+   "label": "C: the hedge around a coop-sized room",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/mockups/thin_walls/coop_hedge.png"
+  },
+  {
+   "label": "D: the whitewashed wall around a coop-sized room",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/mockups/thin_walls/coop_plaster.png"
+  },
+  {
+   "label": "How each style is drawn and what it costs",
+   "href": "https://github.com/craklyn/tiny-farm-godot/blob/main/docs/design/mockups/thin_walls/README.md"
+  }
+ ],
+ "subject": "The Spiral Tower's room"
+}

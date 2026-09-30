@@ -1402,7 +1402,8 @@ func _draw() -> void:
 
 # A small room keeps all four cells usable. Its boundary is drawn on the cell
 # edges; the surrounding VOID still blocks movement, and the southeast gap is
-# the same doorway that the interaction system uses.
+# the same doorway that the interaction system uses. How the boundary looks is
+# `RoomEdgeStyle`'s (Q-135): today's plain line unless a style is picked.
 func _draw_edge_room_walls() -> void:
 	if not _backdrop_active or sim == null:
 		return
@@ -1411,14 +1412,8 @@ func _draw_edge_room_walls() -> void:
 		return
 	var box := Rect2(Vector2(_backdrop_rect.position * TILE_SIZE),
 		Vector2(_backdrop_rect.size * TILE_SIZE))
-	var ink := Color("6f6862")
-	draw_line(box.position, Vector2(box.end.x, box.position.y), ink, 2.0)
-	draw_line(box.position, Vector2(box.position.x, box.end.y), ink, 2.0)
-	draw_line(Vector2(box.end.x, box.position.y), box.end, ink, 2.0)
 	var door: Vector2i = sim.rooms[id].get("door", Vector2i(-1, -1))
-	var gap_x := float(door.x * TILE_SIZE)
-	draw_line(Vector2(box.position.x, box.end.y), Vector2(gap_x, box.end.y), ink, 2.0)
-	draw_line(Vector2(gap_x + TILE_SIZE, box.end.y), box.end, ink, 2.0)
+	RoomEdgeStyle.draw(self, box, float(door.x * TILE_SIZE), float(TILE_SIZE))
 
 
 # Every square any Mark III on the farm has been given (Q-124), read off the

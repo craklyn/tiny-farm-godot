@@ -249,6 +249,7 @@ func _init() -> void:
 	test_refused_brain_action_replays()
 	test_workbench_shelf()
 	test_farm_page_draw_order_merge()
+	test_room_edge_styles()
 
 	print("")
 	print(String("=").repeat(60))
@@ -17607,3 +17608,66 @@ func test_workbench_shelf() -> void:
 		"left on calm, where she left it")
 	gs_again.free()
 	live.done()
+
+
+func test_room_edge_styles() -> void:
+	print("\n--- Thin room edges stay on the edge (Q-135 candidates) ---")
+	# The candidates for the Spiral Tower's thin boundary are presentation only,
+	# but each makes three promises the pictures cannot prove on their own: it
+	# stays in a narrow band on the room's edge and never covers a square, the
+	# doorway stays open, and its variation is irregular rather than a beat
+	# (design/09: a repeat the eye can predict reads as wallpaper). Checked on the
+	# tower's 2x2 room (door in the southeast cell) and a coop-sized 6x6 room
+	# (door in the middle of the south wall), at a room slot's real origin.
+	_assert(RoomEdgeStyle.current() == "plain",
+		"players still get the plain line until a style is picked")
+	var rooms := [
+		{ "name": "tower 2x2", "box": Rect2(160, 336, 32, 32), "gap": 176.0 },
+		{ "name": "coop 6x6", "box": Rect2(256, 336, 96, 96), "gap": 304.0 },
+	]
+	for style in RoomEdgeStyle.STYLES:
+		if style == "plain":
+			continue
+		for room in rooms:
+			var box: Rect2 = room["box"]
+			var gap: float = room["gap"]
+			var got: Array = RoomEdgeStyle.pieces(box, gap, 16.0, style)
+			var core := box.grow(-2.0)          # more than two pixels in: a square
+			var reach := box.grow(5.0)          # the band's outer limit
+			var door := Rect2(gap + 1.0, box.end.y - 1.0, 14.0, 7.0)
+			var inside_ok := true
+			var reach_ok := true
+			var door_ok := true
+			for piece in got:
+				var r: Rect2 = piece[0]
+				if r.intersects(core):
+					inside_ok = false
+				if not reach.encloses(r):
+					reach_ok = false
+				if r.intersects(door):
+					door_ok = false
+			var tag := "%s on %s" % [style, room["name"]]
+			_assert(got.size() > 0 and inside_ok, tag + ": nothing lands more than two pixels over the floor")
+			_assert(reach_ok, tag + ": nothing reaches more than five pixels into the yard")
+			_assert(door_ok, tag + ": the doorway is left open")
+			# Pure: a fresh build of the same wall is the same wall.
+			RoomEdgeStyle._cache_key = ""
+			var again: Array = RoomEdgeStyle.pieces(box, gap, 16.0, style)
+			_assert(str(again) == str(got), tag + ": the same room always draws the same wall")
+	# The cut points along a long edge must have no beat: no period from 1 to 8
+	# pieces repeats all the way along.
+	var lengths: Array = []
+	for p in RoomEdgeStyle._pieces(400, 0, 0, 3, 6):
+		lengths.append(p.y)
+	var periodic := false
+	for period in range(1, 9):
+		var repeats := true
+		for i in range(lengths.size() - period - 1):
+			if lengths[i] != lengths[i + period]:
+				repeats = false
+				break
+		if repeats:
+			periodic = true
+	_assert(lengths.size() > 60 and not periodic,
+		"the pieces along an edge vary without a repeating beat")
+
