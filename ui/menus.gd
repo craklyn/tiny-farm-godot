@@ -289,11 +289,6 @@ func open_menu(menu_name: String) -> void:
 	_card_drag_exceeded = false
 	dim_overlay.visible = true
 	menu_panel.visible = true
-	menu_panel.pivot_offset = menu_panel.size / 2.0
-	menu_panel.scale = Vector2(0.8, 0.8)
-	
-	var tween = create_tween()
-	tween.tween_property(menu_panel, "scale", Vector2(1, 1), 0.2).set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
 	
 	# **While any menu is open, the world holds.** This used to pause only for the
 	# pause screen, so with the shop up the player was frozen (main._process
@@ -303,6 +298,13 @@ func open_menu(menu_name: String) -> void:
 	# A menu is not a place the game continues without you.
 	get_tree().paused = true
 	_rebuild_options()
+	# `_rebuild_options` gives each menu its own final size. Set the pivot only
+	# after that work, so the opening spring grows out from this panel's centre.
+	menu_panel.pivot_offset = menu_panel.size / 2.0
+	menu_panel.scale = Vector2(0.8, 0.8)
+
+	var tween = create_tween()
+	tween.tween_property(menu_panel, "scale", Vector2(1, 1), 0.2).set_trans(Tween.TRANS_SPRING).set_ease(Tween.EASE_OUT)
 
 
 ## Open the machine panel on the machine standing at `at`.

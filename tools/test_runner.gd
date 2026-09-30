@@ -1507,6 +1507,9 @@ func _scenario_j_wordless_shop() -> void:
 	# outgrows the screen again rather than when somebody notices.
 	var vp: Vector2 = menus.get_viewport().get_visible_rect().size
 	var panel: Control = menus.menu_panel
+	_assert(panel.pivot_offset.is_equal_approx(panel.size / 2.0),
+		"the shop opens from the centre of its final %.0f x %.0f panel"
+			% [panel.size.x, panel.size.y])
 	_assert(panel.position.y >= 0.0,
 		"the shop's header is on the screen (panel top at %.0f)" % panel.position.y)
 	_assert(panel.position.y + panel.size.y <= vp.y,
