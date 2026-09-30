@@ -1142,8 +1142,11 @@ def work_view(item, repo_facts=None, now=None):
         # "awaiting verification" (w134a7424547).
         blocker = None
     stalled_transition = False
+    # The generic landing-failure hold; the spending, repair and art holds each
+    # project their own step and take precedence.
     chief_of_staff_hold = (blocker and blocker.get("owner") == "claude"
-                           and not blocker.get("action_id") and blocker.get("wake"))
+                           and not blocker.get("action_id") and blocker.get("wake")
+                           and blocker.get("type") not in ("spending_hold", "repairs_used_up", "art_budget"))
     if not terminal and not active_actions:
         if chief_of_staff_hold:
             # A landing failure the chief of staff inspects: a visible, blocked
