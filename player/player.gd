@@ -246,22 +246,21 @@ func update_player(delta: float) -> void:
 			tap_indicator = {}
 			
 		var drag_intent = drag_tool_idx if is_drag else null
-		# Ask the tapped ground first. A walkable square that has no job at any
-		# distance answers the finger itself, even beside the cot: that is a more
-		# faithful answer than treating empty soil as an attempt to sleep. A far
-		# workable square deliberately resolves empty until she is nearby, so ask
-		# once more as though she had reached it before deciding it is blank. The
-		# cot halo remains the fallback for misses that do not have their own answer.
+		# A no-job square under her feet answers with the little soil motes.
+		# Every other walkable blank square is a destination, including yard and
+		# room floor. The same blank-ground read also keeps the cot's nearby-miss
+		# halo from turning a deliberate floor tap into sleep.
 		var direct_resolved := ActionRouter.resolve(
 			farm, gs, target_vec, player_t, is_drag, drag_intent, tapped_machine_id)
 		var reached_resolved := ActionRouter.resolve(
 			farm, gs, target_vec, target_vec, is_drag, drag_intent, tapped_machine_id)
-		if is_new_tap and direct_resolved.is_empty() \
+		var blank_ground_tap: bool = is_new_tap and direct_resolved.is_empty() \
 				and reached_resolved.is_empty() \
 				and farm.get_object(target_vec.x, target_vec.y) == "" \
 				and farm.is_walkable(target_vec.x, target_vec.y) \
 				and ActionRouter.blocked_reason(farm, gs, target_vec) == "" \
-				and ActionRouter.satisfied_reason(farm, gs, target_vec) == "":
+				and ActionRouter.satisfied_reason(farm, gs, target_vec) == ""
+		if blank_ground_tap and target_vec == player_t:
 			farm.soil_tap_at(target_vec)
 			path = []
 			pending_action = {}
@@ -273,7 +272,7 @@ func update_player(delta: float) -> void:
 		# it produces a real world change; a miss with no answer of its own, made
 		# while she is standing beside the cot, resolves as the cot tap it was meant
 		# to be.
-		var resolved := ActionRouter.resolve_with_halo(
+		var resolved := {} if blank_ground_tap else ActionRouter.resolve_with_halo(
 			farm, gs, target_vec, player_t, is_drag, drag_intent, tapped_machine_id)
 
 		# What the finger hit, kept apart from what the tap meant. The trace records

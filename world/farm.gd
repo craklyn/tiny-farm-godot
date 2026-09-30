@@ -2041,9 +2041,19 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 	# scene happened to build, which is what makes the attract loop show a
 	# populated farm without knowing anything about entities (finding F-3).
 	if actors_node != null:
+		var visible_room := ""
+		if y0 > 0 and _backdrop_active and player_node() != null:
+			visible_room = sim.room_of_cell(player_node().get_tile_pos())
 		for child in actors_node.get_children():
-			if child.has_method("queue_render") and _rows_hold(child.position.y, y0, y1):
-				child.queue_render(canvas, render_queue)
+			if not child.has_method("queue_render") or not _rows_hold(child.position.y, y0, y1):
+				continue
+			# Rooms occupy slots on the same storage page. Their tiles are hidden
+			# when she visits another room; their actors must be hidden as well.
+			# The rainy hen in the coop otherwise appears below the tower's map.
+			if visible_room != "" and sim.room_of_cell(
+					sim.actor_pos(String(child.get("actor_id")))) != visible_room:
+				continue
+			child.queue_render(canvas, render_queue)
 
 	if _profiling:
 		draw_actor_usec = Time.get_ticks_usec() - _t0

@@ -16228,6 +16228,9 @@ func test_chicken_coop() -> void:
 	# room's own floor.
 	_assert(world.room_of_cell(wet_spot) != "",
 		"and when it rains she lets herself in and stands on the floor of it (%s)" % wet_spot)
+	var wet_room: Dictionary = world.rooms[world.room_of_cell(wet_spot)]
+	_assert(wet_spot != Vector2i(wet_room["door"]),
+		"she settles away from the coop doorway, where the farmer enters (%s)" % wet_spot)
 
 	# She stays put while it is wet, rather than wandering back out and in again.
 	var settled := true

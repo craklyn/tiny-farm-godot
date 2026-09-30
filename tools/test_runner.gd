@@ -2997,10 +2997,8 @@ func _scenario_aa_the_yard_is_home() -> void:
 	#
 	#   * **the gateway refuses a till on yard ground** — S-3, so it binds a bot and
 	#     a crow the same way it binds her;
-	#   * **a tap on the yard never meets that refusal** — it gets a short soil
-	#     answer instead. The answer is presentation only, so this scenario sends
-	#     it through the live input path and checks that it cannot write a replay
-	#     entry or move the farmer.
+	#   * **a tap on the yard never meets that refusal** — a different tile
+	#     starts a walk, while her own square shows a small soil answer.
 	print("\n--- Scenario AA: the yard is home, not field (T-32) ---")
 
 	# 1. What generation makes. A detached farm, because by now the scenarios above
@@ -3072,7 +3070,7 @@ func _scenario_aa_the_yard_is_home() -> void:
 	var stand := Vector2i(7, 5)
 	var field_blank := Vector2i(10, 5)
 	var crop := Vector2i(8, 5)
-	var far_blank := Vector2i(13, 5)
+	var far_blank := Vector2i(9, 5)
 	var far_crop := Vector2i(12, 5)
 	for t in [stand, crop, far_blank]:
 		_stage_tile(t.x, t.y, WorldLayout.YARD)
@@ -3092,34 +3090,33 @@ func _scenario_aa_the_yard_is_home() -> void:
 			and ActionRouter.satisfied_reason(farm, GameState, stand) == "",
 		"with nothing to say about it either way — no 'cannot', no 'already done'")
 
-	# SaveGame is the complete persisted form of the SimWorld and its game state.
-	# Each no-job ground state takes its own snapshot, so no tile, inventory, clock,
-	# actor or other saved value may change while the presentation cue is alive.
-	for blank in [far_blank, stand]:
-		var replay_mark: int = farm.replay.entries.size()
-		var energy_before: int = GameState.energy
-		var sim_player_before: Vector2i = farm.sim.actor_pos(SimWorld.ACTOR_PLAYER)
-		# The world keeps running while the answer is awaited, and a sim tick in
-		# between changes the clock and whatever the hen did — under CPU load a
-		# tick lands on nearly every frame. Hold the clock for the exchange, so
-		# the only thing that can have changed the save is the tap itself.
-		_hold_sim_clock()
-		var saved_sim_before := SaveGame.capture(farm.sim, GameState)
-		InputManager.click_tile = blank
-		InputManager.has_click = true
-		var answered := await _wait_until(func(): return farm.soil_tap_active_at(blank), 12)
-		var saved_after := SaveGame.capture(farm.sim, GameState)
-		var replay_after: int = farm.replay.entries.size()
-		_release_sim_clock()
-		var label := "distant empty yard" if blank == far_blank else "yard beneath her"
-		_assert(answered, "a tap on %s shows the small soil answer" % label)
-		_assert(saved_after == saved_sim_before,
-			"the complete saved simulation state is identical before and after a %s tap" % label)
-		_assert(player.get_tile_pos() == stand and farm.sim.actor_pos(SimWorld.ACTOR_PLAYER) == sim_player_before \
-				and player.path.is_empty() and player.pending_action.is_empty(),
-			"a %s tap leaves the farmer and simulation where they were, with no queued movement or action" % label)
-		_assert(GameState.energy == energy_before and replay_after == replay_mark,
-			"a %s tap has no simulation cost and leaves the replay log unchanged" % label)
+	# The one square under her feet still acknowledges a tap without a walk or
+	# world change. A different blank yard square must take her there.
+	var replay_mark: int = farm.replay.entries.size()
+	_hold_sim_clock()
+	var saved_before := SaveGame.capture(farm.sim, GameState)
+	InputManager.click_tile = stand
+	InputManager.has_click = true
+	var answered := await _wait_until(func(): return farm.soil_tap_active_at(stand), 12)
+	var saved_after := SaveGame.capture(farm.sim, GameState)
+	_release_sim_clock()
+	_assert(answered and saved_after == saved_before and farm.replay.entries.size() == replay_mark
+			and player.get_tile_pos() == stand and player.path.is_empty(),
+		"a tap beneath her feet shows motes without moving or changing the farm")
+
+	InputManager.click_tile = far_blank
+	InputManager.has_click = true
+	var walking_to_yard := await _wait_until(func(): return not player.path.is_empty(), 12)
+	_assert(walking_to_yard and player.path.back() == far_blank,
+		"a tap on distant empty yard starts a walk onto that square")
+	_assert(not farm.soil_tap_active_at(far_blank),
+		"a yard destination does not show the stationary soil motes")
+	var reached_yard := await _wait_until(func(): return player.get_tile_pos() == far_blank, 180)
+	_assert(reached_yard, "she reaches the empty yard square")
+	player.pos = Vector2(stand.x * 16 + 8.0, stand.y * 16 + 8.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
 
 	# A crop receives its ordinary action response instead of the soil answer.
 	_stage_tile(crop.x, crop.y, "growing", "wheat")
@@ -3133,8 +3130,8 @@ func _scenario_aa_the_yard_is_home() -> void:
 	_assert(bool(farm.get_tile(crop.x, crop.y).get("watered_today", false)),
 		"and waters the crop through its ordinary action")
 
-	# A blank square beside the cot used to be a halo-rescued sleep tap. It must
-	# now keep its own ground answer: this is live input, not just a router query.
+	# A floor tap beside the cot is a walk order, even though the halo could
+	# interpret it as a missed cot tap. She must not fall asleep for walking.
 	var cot: Vector2i = main_scene._cot_tile
 	var cot_blank := cot + Vector2i(0, 1)
 	var cot_beside := cot + Vector2i(1, 1)
@@ -3143,28 +3140,15 @@ func _scenario_aa_the_yard_is_home() -> void:
 	player.path.clear()
 	player.pending_action = {}
 	await get_tree().process_frame
-	var halo_action := ActionRouter.resolve_with_halo(farm, GameState, cot_blank, cot_beside, false)
-	_assert(String(halo_action.get("action", "")) == "sleep",
-		"the cot fallback would rescue this blank adjacent square as sleep (%s)" % halo_action.get("action", "-"))
-	# The same held clock as the taps above: the save is compared byte for byte,
-	# so a tick between the two captures would fail it on the hen's account.
-	_hold_sim_clock()
-	var cot_saved_before := JSON.stringify(SaveGame.capture(farm.sim, GameState))
-	var cot_replay_before := JSON.stringify(farm.replay.entries)
 	var day_before_cot_blank: int = GameState.day
 	InputManager.click_tile = cot_blank
 	InputManager.has_click = true
-	var cot_answered := await _wait_until(func(): return farm.soil_tap_active_at(cot_blank), 12)
-	var cot_saved_after := JSON.stringify(SaveGame.capture(farm.sim, GameState))
-	var cot_replay_after := JSON.stringify(farm.replay.entries)
-	_release_sim_clock()
-	_assert(cot_answered, "a blank square beside the cot shows the three-mote soil answer")
+	var cot_walk := await _wait_until(
+		func(): return not player.path.is_empty() or player.get_tile_pos() == cot_blank, 12)
+	_assert(cot_walk and not farm.soil_tap_active_at(cot_blank),
+		"a different blank square beside the cot starts a walk, not motes")
 	_assert(not main_scene.day_cycle.is_active() and GameState.day == day_before_cot_blank,
-		"the cot-adjacent blank tap does not start sleep or another action")
-	_assert(cot_saved_after == cot_saved_before,
-		"the complete saved simulation state is byte-for-byte unchanged around the cot-adjacent blank tap")
-	_assert(cot_replay_after == cot_replay_before,
-		"the replay log is byte-for-byte unchanged around the cot-adjacent blank tap")
+		"a deliberate floor tap beside the cot does not start sleep")
 
 	# 3. The gateway's half. Asked directly, because a tap can no longer ask it.
 	var r: Dictionary = farm.sim.apply_action(
@@ -8746,6 +8730,8 @@ func _scenario_bj_a_tap_on_the_tower_goes_inside() -> void:
 		"the tower's panel offers going inside, picking it up and closing, as the coop's does")
 	menus.selected_option = 0      # "Go inside"
 	menus._select_current_option()
+	menus.open_structure_menu(anchor + Vector2i(1, -2))
+	_assert(not menus.is_open(), "a second tap during entry cannot open another prompt")
 	# She arrives on the tower's indoor doorway, which is its room's way out.
 	var indoor_door: Vector2i = farm.sim.rooms[id]["door"]
 	var inside := await _wait_until(
@@ -8753,6 +8739,20 @@ func _scenario_bj_a_tap_on_the_tower_goes_inside() -> void:
 	_assert(inside, "and she goes into the tower (%s)" % player.get_tile_pos())
 	var clouds := await _wait_until(func(): return farm._tower_cloud_active, 60)
 	_assert(clouds, "from inside the tower, cloud shadows drift over the farm below")
+	var room: Dictionary = farm.sim.rooms[id]
+	var floor_target: Vector2i = room["origin"]
+	if floor_target == player.get_tile_pos():
+		floor_target += Vector2i(1, 0)
+	InputManager.click_tile = floor_target
+	InputManager.has_click = true
+	var crossed_floor := await _wait_until(
+		func(): return not player.path.is_empty() or player.get_tile_pos() == floor_target, 12)
+	_assert(crossed_floor and not farm.soil_tap_active_at(floor_target),
+		"a tap on another room floor square starts walking instead of showing motes")
+	player.init_position(indoor_door.x, indoor_door.y)
+	farm.sim.set_actor_pos(SimWorld.ACTOR_PLAYER, indoor_door)
+	player.path.clear()
+	await get_tree().process_frame
 
 	InputManager.click_tile = player.get_tile_pos()
 	InputManager.has_click = true

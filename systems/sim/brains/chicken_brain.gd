@@ -119,6 +119,12 @@ func _think(world: SimWorld, actor_id: String, _e: Dictionary, extra: Dictionary
 	var indoors := world.room_of_cell(here) != ""
 	if _wants_shelter(gs):
 		if indoors:
+			# The doorway is also where the farmer arrives. Step into the room
+			# before settling, so a visit does not put both sprites on one square.
+			if here == _own_doorway(world, here):
+				var perch := _indoor_perch(world, here)
+				if perch.x >= 0 and _walk_to(world, actor_id, extra, tick, perch):
+					return
 			_idle_for(extra, tick, SHELTER_IDLE)
 			return
 		if _head_for_shelter(world, actor_id, extra, tick, here):
@@ -242,6 +248,29 @@ func _nearest_doorstep(world: SimWorld, here: Vector2i) -> Vector2i:
 		if d < best_d:
 			best = step
 			best_d = d
+	return best
+
+
+# The farthest free square in her own room leaves the entrance clear. Room cells
+# are few, and this is read only when the hen has just entered in wet weather.
+func _indoor_perch(world: SimWorld, doorway: Vector2i) -> Vector2i:
+	var id := world.room_of_cell(doorway)
+	if id == "":
+		return Vector2i(-1, -1)
+	var room: Dictionary = world.rooms[id]
+	var origin: Vector2i = room.get("origin", Vector2i.ZERO)
+	var size: Vector2i = room.get("size", Vector2i.ZERO)
+	var best := Vector2i(-1, -1)
+	var best_distance := -1
+	for y in range(origin.y, origin.y + size.y):
+		for x in range(origin.x, origin.x + size.x):
+			var cell := Vector2i(x, y)
+			if cell == doorway or not world.is_walkable(x, y):
+				continue
+			var distance := absi(x - doorway.x) + absi(y - doorway.y)
+			if distance > best_distance:
+				best = cell
+				best_distance = distance
 	return best
 
 

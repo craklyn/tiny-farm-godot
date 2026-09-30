@@ -327,6 +327,7 @@ const ENTER_DELAY_SECONDS := 0.10
 var structure_tile: Vector2i = Vector2i(-1, -1)
 var structure_item: String = ""
 var structure_options: Array = []
+var _structure_enter_pending := false
 
 
 ## Any building with a room opens this panel: the coop, and the Spiral Tower. Both
@@ -334,6 +335,10 @@ var structure_options: Array = []
 ## (`SimWorld._room_building_at`): its inside comes back as items and whoever was
 ## indoors is left standing outside.
 func open_structure_menu(at: Vector2i) -> void:
+	# A second tap in the short beat after Go inside cannot open the same
+	# prompt again and schedule a second door action after she has gone through.
+	if _structure_enter_pending:
+		return
 	if farm == null or farm.sim.room_door_at(at).is_empty():
 		return
 	structure_item = _structure_item_at(at)
@@ -1556,8 +1561,10 @@ func _select_current_option() -> void:
 				# paused by default, which is what is wanted: the resume above is
 				# handled by `main.gd` and the door should not wait on it.
 				var going_to := structure_tile
+				_structure_enter_pending = true
 				get_tree().create_timer(ENTER_DELAY_SECONDS).timeout.connect(
 					func():
+						_structure_enter_pending = false
 						var main_node := get_tree().get_first_node_in_group("Main")
 						if main_node != null and main_node.has_method("enter_structure"):
 							main_node.enter_structure(going_to),

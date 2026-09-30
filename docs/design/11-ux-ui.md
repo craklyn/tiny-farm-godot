@@ -309,13 +309,14 @@ to movement instead of failing; refused taps get a voice (`blocked_reason`), sat
 tiles answer yes-done, never no (Q-42); pointer input is swallowed during day
 transitions (T-27); tap-ahead queueing is deferred with a trigger (D-10).
 
-**A tap on blank ground answers without acting** (2026-09-29). Every walkable ground
-square with nothing to do at any distance, including the square under the farmer or
-beside the cot, lifts three small brown soil motes for 260 ms. It has no words, sound,
-farmer motion, path or tap diamond. A distant crop or other workable ground keeps its
-ordinary walk toward the job; the mote answer is only for ground the router cannot
-work. The ground answer comes before the cot's nearby-miss fallback, so empty soil is
-not mistaken for a request to sleep. A refusal, an already-finished job and every tap
+**A tap on blank ground walks there** (corrected after tablet play, 2026-09-30).
+The 2026-09-29 three-mote cue prevented walking across the house yard and inside the
+coop: every empty walkable destination showed motes and stopped. A different walkable
+square is always a walk destination, whether it is field, yard or room floor, even
+beside the cot. Only a tap on the square under the farmer shows the small brown motes
+for 260 ms without moving. Distant crops keep their ordinary walk toward the job.
+A deliberate blank-floor tap takes precedence over the cot's nearby-miss fallback,
+so it does not start sleep. A refusal, an already-finished job and every tap
 that produces an action keep their own answer. Farm actions use an actor movement, a
 tile reaction and their own sound; the blue ring means an already-finished job. The
 short earth-coloured motes therefore say only that the finger landed, never that a job
