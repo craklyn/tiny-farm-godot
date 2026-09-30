@@ -416,6 +416,9 @@ var obstacle_tree_texture: Texture2D
 var fence_texture: Texture2D
 var hedge_texture: Texture2D
 var gate_texture: Texture2D
+# The capture scene turns this off for one frame pair to preserve the old tower
+# view beside the new one. It is presentation-only and stays on in the game.
+var draw_room_exit_threshold := true
 # Which sheet a clear's chip stages come from, keyed by the clearing verb.
 var _chip_sheets: Dictionary = {}
 # Which sheet a boundary or obstacle state draws from. Every state names its own
@@ -1423,13 +1426,49 @@ func _draw() -> void:
 		_page0_node.queue_redraw()
 
 
+# The room's existing outside exit says which boundary faces the building. This
+# is presentation only: the simulation already stores the exit for `use_door`,
+# and the footprint already says where the building stands. A two-by-two room's
+# doorway cell is a corner, so the cell alone cannot tell east from south.
+static func room_exit_edge(room: Dictionary) -> String:
+	var footprint := MachineDefs.footprint_cells(String(room.get("item", "")),
+		room.get("anchor", Vector2i.ZERO))
+	if footprint.is_empty():
+		return "south"
+	var left := footprint[0].x
+	var right := footprint[0].x
+	var top := footprint[0].y
+	var bottom := footprint[0].y
+	for cell in footprint:
+		left = mini(left, cell.x)
+		right = maxi(right, cell.x)
+		top = mini(top, cell.y)
+		bottom = maxi(bottom, cell.y)
+	var exit: Vector2i = room.get("exit", Vector2i.ZERO)
+	if exit.y > bottom:
+		return "south"
+	if exit.y < top:
+		return "north"
+	if exit.x > right:
+		return "east"
+	if exit.x < left:
+		return "west"
+	return "south"
+
+
 # A small room keeps all four cells usable. Its boundary is drawn on the cell
-# edges; the surrounding VOID still blocks movement, and the southeast gap is
-# the same doorway that the interaction system uses. How the boundary looks is
-# `RoomEdgeStyle`'s (Q-135). The pieces enter the ordinary render queue instead
-# of being painted over the completed scene: a farmer inside the room therefore
-# puts her head in front of the north course, while the south course remains in
-# front when she walks behind it.
+# edges; the surrounding VOID still blocks movement, and the doorway gap is the
+# same doorway that the interaction system uses, cut in whichever edge faces the
+# room's exit. How the boundary looks is `RoomEdgeStyle`'s (Q-135). The pieces
+# enter the ordinary render queue instead of being painted over the completed
+# scene: a farmer inside the room therefore puts her head in front of the north
+# course, while the south course remains in front when she walks behind it.
+#
+# The doorway square also gets the open-gate picture the home and coop use as
+# their threshold, so the way out reads as a place to stand rather than only as
+# an absence in the wall. It is floor: drawn straight onto the canvas here, after
+# the tile walk has laid the ground and before the queue runs, so everything
+# queued — the farmer, the stones, the door posts — stands on it.
 func _queue_edge_room_walls(render_queue: Array[Dictionary], canvas: CanvasItem) -> void:
 	if not _backdrop_active or sim == null:
 		return
@@ -1439,13 +1478,21 @@ func _queue_edge_room_walls(render_queue: Array[Dictionary], canvas: CanvasItem)
 	var box := Rect2(Vector2(_backdrop_rect.position * TILE_SIZE),
 		Vector2(_backdrop_rect.size * TILE_SIZE))
 	var door: Vector2i = sim.rooms[id].get("door", Vector2i(-1, -1))
+	# The doorway and the exit are owned by the room record, not by the tower's
+	# current farm position, so a picked-up and re-placed tower marks its new exit.
+	var edge := room_exit_edge(sim.rooms[id])
+	var doorway := RoomEdgeStyle.doorway_threshold_rect(door, TILE_SIZE)
+	var gate_region: Rect2 = tile_regions.get(WorldLayout.GATE_OPEN, Rect2())
+	if draw_room_exit_threshold and gate_texture != null and gate_region.size != Vector2.ZERO:
+		canvas.draw_texture_rect_region(gate_texture, doorway, gate_region)
+	var gap_at := RoomEdgeStyle.gap_along(doorway, edge)
 	var style := RoomEdgeStyle.current()
 	# The ruled style is made of rectangles. The retired plain-line comparison
 	# remains available to the capture tool and keeps its old drawing path.
 	if style == "plain":
-		RoomEdgeStyle.draw(canvas, box, float(door.x * TILE_SIZE), float(TILE_SIZE), style)
+		RoomEdgeStyle.draw(canvas, box, gap_at, float(TILE_SIZE), style, edge)
 		return
-	for piece in RoomEdgeStyle.pieces(box, float(door.x * TILE_SIZE), float(TILE_SIZE), style):
+	for piece in RoomEdgeStyle.pieces(box, gap_at, float(TILE_SIZE), style, edge):
 		var rect: Rect2 = piece[0]
 		var color: Color = piece[1]
 		render_queue.append({

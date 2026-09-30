@@ -159,18 +159,27 @@ inside. Twice as much farm fits across each axis, or four times the area. The bo
 still registers if everything uses the same transform.
 
 The placeable **Spiral Tower** implements this target. Its 4×4 yard footprint opens
-to a 2×2 room with pitch ½. All four room cells are walkable. A thin boundary is
-drawn on the room's edge, with a gap at the doorway; the surrounding void blocks
-movement. The same fractional pitch drives the live yard backdrop, camera entry
-and exit, world-position mapping, and saved room record.
+to a 2×2 room with pitch ½. All four room cells are walkable. A low stone course
+(Q-135, below) is drawn on the room's edge, with a gap at the doorway; the surrounding
+void blocks movement. The doorway square also shows the open-gate threshold picture the
+home and coop use, so a child who cannot read yet can see the way out. The picture is
+floor: the farmer and the stones stand on it. Because a 2×2 room's doorway is a corner
+cell, the cell alone cannot say which wall it opens through. The renderer reads that
+from the room's existing outside exit and the tower's footprint, so the gap and the
+picture follow the exit when a tower is picked up and placed elsewhere, or if an exit
+ever faces another side. Nothing new goes into the simulation or the save. The same
+fractional pitch drives the live yard backdrop, camera entry and exit,
+world-position mapping, and saved room record.
 
 A tap on the tower opens the same building panel as the coop, with "Go inside" and
 "Pick up". Picking it up works exactly as it does for the coop (§9a): its room is
 emptied into the crate, a hen indoors is moved onto the squares it stood on, all
 sixteen squares clear, and the tower goes back in the crate (2026-09-25).
 
-The real game captures are [outside](evidence/spiral_tower_outside.png) and
-[inside](evidence/spiral_tower_inside.png). The existing
+The evidence captures are [outside](evidence/spiral_tower_outside.png),
+[inside](evidence/spiral_tower_inside.png),
+[before the exit mark](evidence/spiral_tower_exit_before.png), and
+[with the exit mark](evidence/spiral_tower_exit_after.png). The existing
 [coop](evidence/coop_inside_tower_regression.png) and
 [farmhouse](evidence/home_inside_tower_regression.png) captures were regenerated
 on the same build to check their finer rooms still look as designed. The tower

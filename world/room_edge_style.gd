@@ -22,8 +22,8 @@
 # from `CropPresentation.hash01` of the pixel's position along its own edge — pure,
 # so a screenshot and a replay land on the same wall, with no beat in it.
 #
-# **The doorway is framed, not merely skipped.** Each style ends the south run on
-# either side of the door with a heavier piece — a jamb stone, a post, a rounded
+# **The doorway is framed, not merely skipped.** Each style ends the doorway's run
+# (whichever edge the room's exit faces) on either side of the door with a heavier piece — a jamb stone, a post, a rounded
 # hedge end, a plaster pillar — so the gap reads as a way through rather than as a
 # missing stretch of wall.
 #
@@ -85,17 +85,25 @@ static func current() -> String:
 	return _from_cmdline if _from_cmdline != "" else DEFAULT
 
 
-## Draw the boundary of `box` (room pixels) with a one-cell doorway on its south
-## edge starting at `gap_x`, `gap_w` wide.
-static func draw(canvas: CanvasItem, box: Rect2, gap_x: float, gap_w: float,
-		style: String = "") -> void:
+## Draw the boundary of `box` (room pixels) with a one-cell doorway `gap_w` wide
+## cut in `edge`, starting at `gap_at` along that edge (x on the north and south
+## edges, y on the west and east). A two-by-two room's doorway is a corner cell, so
+## the caller names the edge (farm.gd's `room_exit_edge`) rather than it being
+## guessed from the cell; `gap_along` turns the doorway cell into `gap_at`.
+static func draw(canvas: CanvasItem, box: Rect2, gap_at: float, gap_w: float,
+		style: String = "", edge: String = "south") -> void:
 	if style == "":
 		style = current()
 	if style not in STYLES or style == "plain":
-		_draw_plain(canvas, box, gap_x, gap_w)
+		_draw_plain(canvas, box, gap_at, gap_w, edge)
 		return
-	for piece in pieces(box, gap_x, gap_w, style):
+	for piece in pieces(box, gap_at, gap_w, style, edge):
 		canvas.draw_rect(piece[0], piece[1])
+
+
+## Where the doorway cell `doorway` (room pixels) starts along `edge`.
+static func gap_along(doorway: Rect2, edge: String) -> float:
+	return doorway.position.y if edge == "east" or edge == "west" else doorway.position.x
 
 
 ## The depth key for one wall rectangle. Edge walls share the farm's render
@@ -112,66 +120,162 @@ static var _cache_key := ""
 static var _cache: Array = []
 
 ## Every rectangle a style draws, as [Rect2, Color] pairs in painting order. Pure:
-## the same room, door and style always give the same list (the unit suite holds
-## each style to its band with it). Empty for the plain line, which is lines.
-static func pieces(box: Rect2, gap_x: float, gap_w: float, style: String) -> Array:
-	var key := "%s|%s|%s|%s" % [style, str(box), gap_x, gap_w]
+## the same room, door, edge and style always give the same list (the unit suite
+## holds each style to its band with it). Empty for the plain line, which is lines.
+## `gap_at` is measured along `edge`, as for `draw`.
+static func pieces(box: Rect2, gap_at: float, gap_w: float, style: String,
+		edge: String = "south") -> Array:
+	var key := "%s|%s|%s|%s|%s" % [style, str(box), gap_at, gap_w, edge]
 	if key == _cache_key:
 		return _cache
 	var out: Array = []
 	match style:
 		"stone":
-			_draw_style(out, box, gap_x, gap_w, 3, 1, _stone_run, _stone_jamb)
+			_draw_style(out, box, gap_at, gap_w, edge, 3, 1, _stone_run, _stone_jamb)
 		"timber":
-			_draw_style(out, box, gap_x, gap_w, 3, 1, _timber_run, _timber_jamb)
+			_draw_style(out, box, gap_at, gap_w, edge, 3, 1, _timber_run, _timber_jamb)
 		"hedge":
-			_draw_style(out, box, gap_x, gap_w, 3, 1, _hedge_run, _hedge_jamb)
+			_draw_style(out, box, gap_at, gap_w, edge, 3, 1, _hedge_run, _hedge_jamb)
 		"plaster":
-			_draw_style(out, box, gap_x, gap_w, 2, 1, _plaster_run, _plaster_jamb)
+			_draw_style(out, box, gap_at, gap_w, edge, 2, 1, _plaster_run, _plaster_jamb)
 	_cache_key = key
 	_cache = out
 	return out
 
 
-# Today's line, unchanged: 2px, centred on the edge.
-static func _draw_plain(canvas: CanvasItem, box: Rect2, gap_x: float, gap_w: float) -> void:
-	canvas.draw_line(box.position, Vector2(box.end.x, box.position.y), PLAIN_INK, 2.0)
-	canvas.draw_line(box.position, Vector2(box.position.x, box.end.y), PLAIN_INK, 2.0)
-	canvas.draw_line(Vector2(box.end.x, box.position.y), box.end, PLAIN_INK, 2.0)
-	canvas.draw_line(Vector2(box.position.x, box.end.y), Vector2(gap_x, box.end.y), PLAIN_INK, 2.0)
-	canvas.draw_line(Vector2(gap_x + gap_w, box.end.y), box.end, PLAIN_INK, 2.0)
+## Return the visible boundary segments after the doorway cell has been projected
+## onto its presentation-facing edge. Every pair is on a single edge: sharing
+## this geometry lets the renderer and focused tests reject diagonal wall pieces.
+static func doorway_segments(box: Rect2, doorway: Rect2, edge: String) -> Array:
+	var top_left := box.position
+	var top_right := Vector2(box.end.x, box.position.y)
+	var bottom_left := Vector2(box.position.x, box.end.y)
+	var bottom_right := box.end
+	var gap_a: Vector2
+	var gap_b: Vector2
+	match edge:
+		"north":
+			gap_a = Vector2(doorway.position.x, box.position.y)
+			gap_b = Vector2(doorway.end.x, box.position.y)
+			return _segments_with_gap([[top_left, gap_a], [gap_b, top_right],
+				[top_right, bottom_right], [bottom_left, bottom_right], [top_left, bottom_left]])
+		"east":
+			gap_a = Vector2(box.end.x, doorway.position.y)
+			gap_b = Vector2(box.end.x, doorway.end.y)
+			return _segments_with_gap([[top_left, top_right], [top_right, gap_a],
+				[gap_b, bottom_right], [bottom_left, bottom_right], [top_left, bottom_left]])
+		"west":
+			gap_a = Vector2(box.position.x, doorway.position.y)
+			gap_b = Vector2(box.position.x, doorway.end.y)
+			return _segments_with_gap([[top_left, top_right], [top_right, bottom_right],
+				[bottom_left, bottom_right], [top_left, gap_a], [gap_b, bottom_left]])
+		_:
+			gap_a = Vector2(doorway.position.x, box.end.y)
+			gap_b = Vector2(doorway.end.x, box.end.y)
+			return _segments_with_gap([[top_left, top_right], [top_right, bottom_right],
+				[bottom_left, gap_a], [gap_b, bottom_right], [top_left, bottom_left]])
+
+
+static func _segments_with_gap(raw: Array) -> Array:
+	var out: Array = []
+	for segment: Array in raw:
+		if segment[0] != segment[1]:
+			out.append({ "from": segment[0], "to": segment[1] })
+	return out
+
+
+static func doorway_threshold_rect(door: Vector2i, tile_size: int) -> Rect2:
+	return Rect2(Vector2(door * tile_size), Vector2(tile_size, tile_size))
+
+
+# The retired 2px line, centred on the edge, kept for the capture tool.
+static func _draw_plain(canvas: CanvasItem, box: Rect2, gap_at: float, gap_w: float,
+		edge: String) -> void:
+	var doorway := Rect2(gap_at, box.position.y, gap_w, gap_w)
+	if edge == "east" or edge == "west":
+		doorway = Rect2(box.position.x, gap_at, gap_w, gap_w)
+	for segment: Dictionary in doorway_segments(box, doorway, edge):
+		canvas.draw_line(segment["from"], segment["to"], PLAIN_INK, 2.0)
 
 
 # The shared layout. A *run* is one straight stretch of band, described in its own
 # frame: `u` along the edge, `v` across it with 0 at the band's top/left side (so
 # the light, from the top-left, always lands on small `v`). `side` keys the hash,
-# so the four edges never share a sequence.
-static func _draw_style(out: Array, box: Rect2, gap_x: float, gap_w: float,
+# so the four edges never share a sequence. The doorway's run is cut in two, the
+# second half continuing the first's sequence, and each half ends in a jamb.
+static func _draw_style(out: Array, box: Rect2, gap_at: float, gap_w: float, edge: String,
 		outside: int, inside: int, run: Callable, jamb: Callable) -> void:
 	var x0 := int(box.position.x)
 	var y0 := int(box.position.y)
 	var x1 := int(box.end.x)
 	var y1 := int(box.end.y)
 	var t := outside + inside
-	var gx := int(gap_x) - x0
+	var ga := int(gap_at)
 	var gw := int(gap_w)
-	# The cast shadow, on the floor below the north run and right of the west.
-	out.append([Rect2(x0 + inside, y0 + inside, x1 - x0 - inside * 2, 1), SHADOW])
-	out.append([Rect2(x0 + inside, y0 + inside + 1, 1, y1 - y0 - inside * 2 - 1), SHADOW])
+	# The cast shadow, on the floor below the north run and right of the west,
+	# left off the doorway when the doorway is in that run.
+	_shadow(out, true, Vector2i(x0 + inside, y0 + inside), x1 - x0 - inside * 2,
+		ga - x0 - inside if edge == "north" else -1, gw)
+	_shadow(out, false, Vector2i(x0 + inside, y0 + inside + 1), y1 - y0 - inside * 2 - 1,
+		ga - y0 - inside - 1 if edge == "west" else -1, gw)
 	# West and east first, between the north and south runs' ends, so the
 	# horizontal runs sit over the corners.
-	run.call(out, false, Vector2i(x0 - outside, y0 + inside), 0, y1 - y0 - inside * 2, t, 1)
-	run.call(out, false, Vector2i(x1 - inside, y0 + inside), 0, y1 - y0 - inside * 2, t, 2)
-	run.call(out, true, Vector2i(x0 - outside, y0 - outside), 0, x1 - x0 + outside * 2, t, 0)
-	run.call(out, true, Vector2i(x0 - outside, y1 - inside), 0, gx + outside, t, 3)
-	run.call(out, true, Vector2i(x0 + gx + gw, y1 - inside), gx + gw + outside,
-		x1 - x0 - gx - gw + outside, t, 3)
-	# The door posts: one pixel taller than the run, which in this view is one
-	# pixel further up the screen — the only place any style reaches two pixels
-	# over the floor — and never wider than the stretch of wall they end.
-	jamb.call(out, _post_rect(x0 + gx, y1 - inside, t, -1, gx + outside, 5), -1)
-	jamb.call(out, _post_rect(x0 + gx + gw, y1 - inside, t, 1,
-		x1 - x0 - gx - gw + outside, 5), 1)
+	var vlen := y1 - y0 - inside * 2
+	var hlen := x1 - x0 + outside * 2
+	_edge_run(out, run, jamb, false, Vector2i(x0 - outside, y0 + inside), vlen, t, 1,
+		ga - (y0 + inside) if edge == "west" else -1, gw)
+	_edge_run(out, run, jamb, false, Vector2i(x1 - inside, y0 + inside), vlen, t, 2,
+		ga - (y0 + inside) if edge == "east" else -1, gw)
+	_edge_run(out, run, jamb, true, Vector2i(x0 - outside, y0 - outside), hlen, t, 0,
+		ga - (x0 - outside) if edge == "north" else -1, gw)
+	_edge_run(out, run, jamb, true, Vector2i(x0 - outside, y1 - inside), hlen, t, 3,
+		ga - (x0 - outside) if edge not in ["north", "west", "east"] else -1, gw)
+
+
+# One edge's run from `o`, `length` long. `gu` < 0: no doorway in it. Otherwise
+# the doorway covers `gu ..< gu + gw` along the run, which is drawn as two halves
+# on one hash sequence with a jamb closing each half at the doorway.
+static func _edge_run(out: Array, run: Callable, jamb: Callable, horiz: bool,
+		o: Vector2i, length: int, t: int, side: int, gu: int, gw: int) -> void:
+	if gu < 0:
+		run.call(out, horiz, o, 0, length, t, side)
+		return
+	var along := Vector2i(1, 0) if horiz else Vector2i(0, 1)
+	var rest := length - gu - gw
+	run.call(out, horiz, o, 0, gu, t, side)
+	run.call(out, horiz, o + along * (gu + gw), gu + gw, rest, t, side)
+	# The door posts: on a north or south wall one pixel taller than the run,
+	# which in this view is one pixel further up the screen — the only place any
+	# style reaches two pixels over the floor — and never longer than the stretch
+	# of wall they end. A post with no wall left to end (a doorway running into
+	# the corner) is not drawn: the crossing run's end is the jamb there.
+	if gu > 0:
+		jamb.call(out, _jamb_rect(horiz, o + along * gu, t, -1, gu, 5), -1)
+	if rest > 0:
+		jamb.call(out, _jamb_rect(horiz, o + along * (gu + gw), t, 1, rest, 5), 1)
+
+
+static func _jamb_rect(horiz: bool, at: Vector2i, t: int, dir: int, avail: int,
+		w: int) -> Rect2i:
+	if horiz:
+		return _post_rect(at.x, at.y, t, dir, avail, w)
+	w = mini(w, avail)
+	return Rect2i(at.x, at.y - w if dir < 0 else at.y, t, w)
+
+
+# A one-pixel shadow line from `o`, `length` long, with the doorway's stretch
+# (`gu ..< gu + gw` along it; `gu` < 0 for none) left off.
+static func _shadow(out: Array, horiz: bool, o: Vector2i, length: int, gu: int, gw: int) -> void:
+	var spans: Array = [Vector2i(0, length)]
+	if gu >= 0:
+		spans = [Vector2i(0, mini(gu, length)), Vector2i(gu + gw, length - gu - gw)]
+	for s: Vector2i in spans:
+		if s.y <= 0:
+			continue
+		if horiz:
+			out.append([Rect2(o.x + s.x, o.y, s.y, 1), SHADOW])
+		else:
+			out.append([Rect2(o.x, o.y + s.x, 1, s.y), SHADOW])
 
 
 static func _post_rect(x: int, y: int, t: int, dir: int, avail: int, w: int) -> Rect2i:

@@ -5,8 +5,23 @@ extends Node2D
 const OUTSIDE := "res://docs/design/evidence/spiral_tower_outside.png"
 const INSIDE := "res://docs/design/evidence/spiral_tower_inside.png"
 const CLOUDS := "res://docs/design/mockups/tower_clouds"
+const EXIT_BEFORE := "res://docs/design/evidence/spiral_tower_exit_before.png"
+const EXIT_AFTER := "res://docs/design/evidence/spiral_tower_exit_after.png"
+
+
+func _save_viewport(path: String) -> bool:
+	var image := get_viewport().get_texture().get_image()
+	if image == null:
+		return false
+	image.save_png(path)
+	return true
+
 
 func _ready() -> void:
+	if DisplayServer.get_name() == "headless":
+		push_error("Spiral Tower evidence needs a graphical viewport; run this scene with xvfb-run")
+		get_tree().quit(1)
+		return
 	var main = load("res://main.tscn").instantiate()
 	add_child(main)
 	for i in 30:
@@ -45,7 +60,10 @@ func _ready() -> void:
 	main.farm.queue_redraw()
 	for i in 40:
 		await get_tree().process_frame
-	get_viewport().get_texture().get_image().save_png(OUTSIDE)
+	if not _save_viewport(OUTSIDE):
+		push_error("The graphical viewport could not be captured")
+		get_tree().quit(1)
+		return
 
 	main.player._execute_resolved_action({ "action": "use_door",
 		"target_t": spot + Vector2i(1, 0) })
@@ -55,7 +73,31 @@ func _ready() -> void:
 		push_error("Player did not enter tower")
 		get_tree().quit(1)
 		return
-	get_viewport().get_texture().get_image().save_png(INSIDE)
+	_save_viewport(INSIDE)
+	# The exit mark, without and with. She steps off the doorway to the room's
+	# far corner first, or she would be standing on the picture being judged.
+	# The switch is renderer-only, so it cannot alter the room or its actions.
+	var tower_room: Dictionary = main.farm.sim.rooms[String(laid["room"])]
+	var door_cell: Vector2i = tower_room["door"]
+	var corner := Vector2i(tower_room["origin"])
+	main.farm.sim.set_actor_pos("player", corner)
+	main.player.init_position(corner.x, corner.y)
+	for i in 20:
+		await get_tree().process_frame
+	if main.farm.sim.actor_pos("player") == door_cell:
+		push_error("The farmer is still on the doorway")
+		get_tree().quit(1)
+		return
+	main.farm.draw_room_exit_threshold = false
+	main.farm.queue_redraw()
+	await RenderingServer.frame_post_draw
+	_save_viewport(EXIT_BEFORE)
+	main.farm.draw_room_exit_threshold = true
+	main.farm.queue_redraw()
+	await RenderingServer.frame_post_draw
+	_save_viewport(EXIT_AFTER)
+	main.player.init_position(door_cell.x, door_cell.y)
+	main.farm.sim.set_actor_pos("player", door_cell)
 	# The cloud strip. The neighbour's opening days end in a night fade, so let
 	# them finish first; then four frames four seconds apart, so a slow drift is
 	# visible between neighbours, then the same view with the clouds switched off.

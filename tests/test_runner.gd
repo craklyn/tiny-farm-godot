@@ -16325,8 +16325,123 @@ func test_spiral_tower_interior() -> void:
 		return
 	var room: Dictionary = world.rooms[id]
 	var origin: Vector2i = room["origin"]
+	var FarmScript = load("res://world/farm.gd")
 	_assert(is_equal_approx(float(room["pitch"]), 0.5)
 			and bool(room["edge_walls"]), "tower preserves fractional pitch and edge walls")
+	# Every tower doorway is a corner in the real two-by-two room. The room's
+	# existing outside exit and building footprint, not new simulated direction
+	# data, tell the renderer which wall loses its line.
+	var tower_size := Vector2i(2, 2)
+	var presentation_exits := {
+		"north": { "door": Vector2i(1, 0), "exit": Vector2i(1, -4) },
+		"east": { "door": Vector2i(1, 1), "exit": Vector2i(4, -1) },
+		"south": { "door": Vector2i(1, 1), "exit": Vector2i(1, 4) },
+		"west": { "door": Vector2i(0, 1), "exit": Vector2i(-1, -1) },
+	}
+	var box := Rect2(Vector2(origin * FarmScript.TILE_SIZE),
+		Vector2(tower_size * FarmScript.TILE_SIZE))
+	var p := func(x: int, y: int) -> Vector2:
+		return Vector2(origin + Vector2i(x, y)) * FarmScript.TILE_SIZE
+	# These endpoints are deliberately written as the four 2x2 room edges, not
+	# calculated by RoomEdgeStyle. A diagonal south or east fragment therefore
+	# cannot pass by merely returning a non-empty set of lines.
+	var expected_segments := {
+		"north": [{"from": p.call(0, 0), "to": p.call(1, 0)},
+			{"from": p.call(2, 0), "to": p.call(2, 2)},
+			{"from": p.call(0, 2), "to": p.call(2, 2)},
+			{"from": p.call(0, 0), "to": p.call(0, 2)}],
+		"east": [{"from": p.call(0, 0), "to": p.call(2, 0)},
+			{"from": p.call(2, 0), "to": p.call(2, 1)},
+			{"from": p.call(0, 2), "to": p.call(2, 2)},
+			{"from": p.call(0, 0), "to": p.call(0, 2)}],
+		"south": [{"from": p.call(0, 0), "to": p.call(2, 0)},
+			{"from": p.call(2, 0), "to": p.call(2, 2)},
+			{"from": p.call(0, 2), "to": p.call(1, 2)},
+			{"from": p.call(0, 0), "to": p.call(0, 2)}],
+		"west": [{"from": p.call(0, 0), "to": p.call(2, 0)},
+			{"from": p.call(2, 0), "to": p.call(2, 2)},
+			{"from": p.call(0, 2), "to": p.call(2, 2)},
+			{"from": p.call(0, 0), "to": p.call(0, 1)}],
+	}
+	for edge in presentation_exits:
+		var shown: Dictionary = room.duplicate(true)
+		var display: Dictionary = presentation_exits[edge]
+		var door: Vector2i = origin + display["door"]
+		shown["door"] = door
+		shown["exit"] = Vector2i(room["anchor"]) + display["exit"]
+		var doorway := RoomEdgeStyle.doorway_threshold_rect(door, FarmScript.TILE_SIZE)
+		var segments: Array = RoomEdgeStyle.doorway_segments(box, doorway, String(edge))
+		var straight := true
+		for segment: Dictionary in segments:
+			var a: Vector2 = segment["from"]
+			var b: Vector2 = segment["to"]
+			if a.x != b.x and a.y != b.y:
+				straight = false
+		_assert(tower_size == Vector2i(2, 2)
+				and FarmScript.room_exit_edge(shown) == edge
+				and doorway.position == Vector2(door * FarmScript.TILE_SIZE)
+				and segments == expected_segments[edge]
+				and straight,
+			"the two-by-two tower's %s doorway has the exact straight wall segments and threshold" % edge)
+		# The shipped stone course, on the same doorway. Its pieces come from a
+		# hash, so rather than every rectangle the test holds the course to the
+		# geometry written out above: a line one and a half pixels out along each
+		# edge's band is covered by stone everywhere except across the doorway
+		# cell of the named edge, where its inner fourteen pixels are bare. The
+		# two pixels at each corner are left out: there the crossing course's
+		# stones wander by a pixel, which is the laid-stone look, not a gap.
+		var gap_at := RoomEdgeStyle.gap_along(doorway, String(edge))
+		var stone: Array = RoomEdgeStyle.pieces(box, gap_at, 16.0, "stone", String(edge))
+		var shaped := stone.size() > 0
+		for piece in stone:
+			var r: Rect2 = piece[0]
+			if r.size.x <= 0.0 or r.size.y <= 0.0 or not box.grow(5.0).encloses(r) \
+					or r.intersects(box.grow(-2.0)):
+				shaped = false
+		var covered := func(pt: Vector2) -> bool:
+			for piece in stone:
+				if (piece[0] as Rect2).has_point(pt):
+					return true
+			return false
+		# Each edge's centre line and the doorway cell's stretch along it, both in
+		# the independently written corner points `p`.
+		var lines := {
+			"north": [p.call(0, 0) + Vector2(0, -1.5), Vector2(1, 0), p.call(1, 0).x],
+			"south": [p.call(0, 2) + Vector2(0, 0.5), Vector2(1, 0), p.call(1, 2).x],
+			"west": [p.call(0, 0) + Vector2(-1.5, 0), Vector2(0, 1), p.call(0, 1).y],
+			"east": [p.call(2, 0) + Vector2(0.5, 0), Vector2(0, 1), p.call(2, 1).y],
+		}
+		var walls_whole := true
+		var gap_open := true
+		for side in lines:
+			var start: Vector2 = lines[side][0]
+			var along: Vector2 = lines[side][1]
+			var cut: float = lines[side][2]
+			for i in range(2, 30):
+				var pt: Vector2 = start + along * (float(i) + 0.5)
+				var at: float = pt.dot(along)
+				var in_gap: bool = side == edge and at > cut and at < cut + 16.0
+				var in_core: bool = side == edge and at > cut + 1.0 and at < cut + 15.0
+				if in_core and covered.call(pt):
+					gap_open = false
+				if not in_gap and not covered.call(pt):
+					walls_whole = false
+		_assert(shaped and walls_whole and gap_open,
+			"the stone course is cut in the %s edge at the doorway and nowhere else" % edge)
+	# Unchanged for the doorway every tower has today: the south course is the
+	# same list whether or not the edge is named.
+	RoomEdgeStyle._cache_key = ""
+	var real_door: Vector2i = room["door"]
+	var south_named: Array = RoomEdgeStyle.pieces(box, float(real_door.x * FarmScript.TILE_SIZE),
+		16.0, "stone", "south")
+	RoomEdgeStyle._cache_key = ""
+	var south_default: Array = RoomEdgeStyle.pieces(box, float(real_door.x * FarmScript.TILE_SIZE),
+		16.0, "stone")
+	_assert(FarmScript.room_exit_edge(room) == "south" and str(south_named) == str(south_default),
+		"the placed tower's own exit is the south edge, drawn as the ruled stone course")
+	_assert(room["door"] == origin + Vector2i(1, 1)
+			and not room.has("door_edge"),
+		"the placed tower keeps its original room state")
 	for y in 2:
 		for x in 2:
 			_assert_quiet(world.is_walkable(origin.x + x, origin.y + y),
@@ -16336,7 +16451,7 @@ func test_spiral_tower_interior() -> void:
 			and not world.is_walkable(origin.x + 2, origin.y),
 		"the surrounding void blocks walking through the edge wall")
 	var building := world.room_building_rect(room)
-	var offset: Vector2 = load("res://world/farm.gd").room_backdrop_offset(room, building)
+	var offset: Vector2 = FarmScript.room_backdrop_offset(room, building)
 	_assert(building.size == Vector2i(4, 4)
 			and offset + Vector2(building.position) * 8.0 == Vector2(origin) * 16.0,
 		"the live yard maps to the tower at half scale")
@@ -16363,10 +16478,14 @@ func test_spiral_tower_interior() -> void:
 			and world.actor_pos(SimWorld.ACTOR_PLAYER) == spot + Vector2i(1, 1),
 		"the farmer can leave through the same doorway")
 	var snap: Dictionary = SaveGame.capture(world, GameState)
+	var saved_room: Dictionary = snap["world"]["rooms"][id]
+	_assert(not saved_room.has("door_edge"),
+		"the exit marker adds no doorway direction to the save")
 	var restored := SimWorld.new()
 	_assert(SaveGame.restore(snap, restored, GameState)
 			and is_equal_approx(float(restored.rooms[id]["pitch"]), 0.5)
-			and bool(restored.rooms[id]["edge_walls"]),
+			and bool(restored.rooms[id]["edge_walls"])
+			and not restored.rooms[id].has("door_edge"),
 		"the compressed room survives save and reload")
 
 
