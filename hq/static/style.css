@@ -791,6 +791,7 @@ code.ref { background: #1b1710; border: 1px solid var(--line); border-radius: 6p
   padding: 14px; max-width: 96vw; max-height: 92vh; overflow: auto;
 }
 #overlay.lightbox .shot img { display: block; image-rendering: pixelated; }
+#overlay.lightbox .shot img.fit { max-width: none; height: auto; cursor: zoom-in; }
 #overlay.lightbox .close { float: right; position: sticky; top: 0; background: transparent; color: var(--muted); font-size: 20px; padding: 0 6px; }
 .d-options { display: flex; flex-direction: column; gap: 8px; margin: 12px 0; }
 .opt { display: flex; gap: 10px; align-items: flex-start; background: var(--panel2); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; cursor: pointer; }

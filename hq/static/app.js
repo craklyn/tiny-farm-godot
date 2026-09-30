@@ -1332,14 +1332,33 @@ function findEntity(entData, path) {
 /* Any attachment picture, at the size it was drawn. A tile texture is 16px and
    a look sheet is a couple of thousand wide; both are being looked at *because*
    a small difference matters, so neither can be judged at the card's thumbnail
-   size. Click opens the file at its own scale and scrolls. */
-function showFullSize(src, caption) {
+   size. Click opens the file at its own scale and scrolls.
+
+   With `fit`, it opens scaled to the screen instead — whole-number steps up for
+   a small sprite sheet, down for a wide comparison — and a click on the picture
+   toggles between that and its own scale. */
+function showFullSize(src, caption, fit = false) {
   const ov = h(`<div id="overlay" class="lightbox"><div class="shot">
     <button class="close">✕</button>
     <img src="${esc(src)}" alt="${esc(caption || "")}">
     ${caption ? `<p class="small muted">${esc(caption)}</p>` : ""}
   </div></div>`).firstElementChild;
   document.body.appendChild(ov);
+  if (fit) {
+    const img = ov.querySelector("img");
+    const size = () => {
+      const w = img.naturalWidth, hgt = img.naturalHeight;
+      if (!w || !hgt) return;
+      const s = Math.min(innerWidth * 0.9 / w, innerHeight * 0.78 / hgt);
+      img.style.width = `${Math.round(w * (s >= 1 ? Math.floor(s) : s))}px`;
+    };
+    img.classList.add("fit");
+    img.title = "Click to switch between fitted and actual size";
+    img.addEventListener("click", () => {
+      if (img.style.width) img.style.width = ""; else size();
+    });
+    if (img.complete) size(); else img.addEventListener("load", size, {once: true});
+  }
   const shut = () => { ov.remove(); document.removeEventListener("keydown", onKey); };
   const onKey = ev => { if (ev.key === "Escape") shut(); };
   ov.addEventListener("click", ev => {

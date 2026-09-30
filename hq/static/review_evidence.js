@@ -68,10 +68,20 @@ function reviewLegacyAnimation(item) {
     slug: match[1], legacy: true};
 }
 
+/* Opening an artifact must not lose his place in the review. A picture opens
+   in the full-size viewer over the page; anything the viewer cannot show opens
+   in a new tab. Either way the href stays real, so a middle-click still works. */
+function reviewOpenAttrs(href, kind, label) {
+  return ["image", "animation"].includes(kind)
+    ? `href="${esc(href)}" data-review-full data-review-caption="${esc(label || "")}"`
+    : `href="${esc(href)}" target="_blank" rel="noopener"`;
+}
+
 function reviewHeadingArtifact(item) {
   const first = reviewArtifactEntries(item)[0] || reviewLegacyAnimation(item);
   if (!first) return "";
-  return ` <a class="review-heading-link" href="${esc(first.href)}">${esc(first.label)}</a>`;
+  const kind = first.legacy ? "image" : first.kind;
+  return ` <a class="review-heading-link" ${reviewOpenAttrs(first.href, kind, first.label)}>${esc(first.label)}</a>`;
 }
 
 function reviewMediaCard(entry, label) {
@@ -80,7 +90,7 @@ function reviewMediaCard(entry, label) {
   const role = String(entry.role || "").trim();
   let media = "";
   if (entry.kind === "animation" || entry.kind === "image")
-    media = `<img src="${esc(href)}" alt="${esc(name)}" loading="lazy">`;
+    media = `<img src="${esc(href)}" alt="${esc(name)}" loading="lazy" data-review-full data-review-caption="${esc(name)}">`;
   else if (entry.kind === "video")
     media = `<video src="${esc(href)}" controls preload="metadata" playsinline aria-label="${esc(name)}"></video>`;
   else if (entry.kind === "audio")
@@ -90,7 +100,7 @@ function reviewMediaCard(entry, label) {
   else if (entry.kind === "numeric" && Array.isArray(entry.rows))
     media = reviewNumberTable(entry.rows);
   return `<figure class="review-media"><figcaption>${role ? `<span class="review-role">${esc(role)}</span> ` : ""}${esc(name)}</figcaption>${media}
-    <a href="${esc(href)}">Open artifact</a></figure>`;
+    <a ${reviewOpenAttrs(href, entry.kind, name)}>Open artifact</a></figure>`;
 }
 
 function reviewNumberTable(rows) {
@@ -122,14 +132,14 @@ function reviewComparison(item, attachments = []) {
   const versionLabel = version ? `Reviewed version: ${esc(version)}` : "Reviewed version was not pinned in this card.";
   const creation = item && item.deliverable && item.deliverable.created_at;
   const evidenceLinks = entries.filter(e => e.kind === "link").map(e =>
-    `<a href="${esc(e.href)}">${esc(e.label)}</a>`).join(" · ");
+    `<a ${reviewOpenAttrs(e.href, e.kind, e.label)}>${esc(e.label)}</a>`).join(" · ");
   return `<section class="review-evidence" aria-label="Result evidence">
     <h4>Result to review</h4>
     <p class="review-provenance">${creation ? `Created: ${esc(creation)} · ` : ""}Displayed here: ${media.length ? "playable or readable evidence" : "linked artifact"} · ${versionLabel}</p>
     ${legacy ? `<p class="review-version-gap">This older card does not identify the exact render originally reviewed. <a href="${esc(legacy.labHref)}">Open the Animation Lab</a> for the original review controls.</p>
       <div class="review-export"><b>Currently exported game animation</b><p>This is the sheet available in the game code today. It may differ from the original review.</p>
         <canvas data-review-slug="${esc(legacy.slug)}" aria-label="Currently exported ${esc(legacy.slug.replaceAll("_", " "))} animation at game scale"></canvas>
-        <a href="/assets/anim/${esc(legacy.slug)}/sheet.png">Open exported sheet</a></div>` : ""}
+        <a ${reviewOpenAttrs(`/assets/anim/${legacy.slug}/sheet.png`, "image", "Currently exported sheet")}>Open exported sheet</a></div>` : ""}
     ${media.length ? [...new Set(media.map(e => e.group || ""))].map(name =>
       `<div class="review-media-group">${name ? `<h5>${esc(name)}</h5>` : ""}<div class="review-media-grid">${media.filter(e => (e.group || "") === name).map(e => reviewMediaCard(e)).join("")}</div></div>`).join("") : ""}
     ${copy.length ? `<div class="review-copy-grid">${copy.map(e => `<div><h5>${esc(e.label || "Version")}</h5><div class="review-copy">${esc(e.text || "")}</div></div>`).join("")}</div>` : ""}
@@ -168,6 +178,16 @@ function reviewMountPreviews(root = document) {
         textContent: "The exported preview is unavailable. Open the linked sheet to inspect it."}));
     });
   }
+}
+
+if (typeof document !== "undefined" && typeof document.addEventListener === "function") {
+  document.addEventListener("click", ev => {
+    const el = ev.target && ev.target.closest && ev.target.closest("[data-review-full]");
+    if (!el || typeof showFullSize !== "function") return;
+    if (ev.button !== 0 || ev.metaKey || ev.ctrlKey || ev.shiftKey || ev.altKey) return;
+    ev.preventDefault();
+    showFullSize(el.getAttribute("href") || el.getAttribute("src"), el.dataset.reviewCaption || "", true);
+  });
 }
 
 if (typeof document !== "undefined" && document.body && typeof MutationObserver !== "undefined") {

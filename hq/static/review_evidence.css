@@ -24,3 +24,4 @@
 .review-export p { margin: 0 0 8px; font-size: .85rem; color: var(--muted); }
 .review-export canvas { display: block; max-width: 100%; height: auto; image-rendering: pixelated; margin-bottom: 6px; }
 @media (max-width: 560px) { .review-media-grid, .review-copy-grid { grid-template-columns: 1fr; } }
+.review-media img[data-review-full] { cursor: zoom-in; }
