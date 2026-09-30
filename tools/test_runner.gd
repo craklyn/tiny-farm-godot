@@ -2957,11 +2957,10 @@ func _scenario_aa_the_yard_is_home() -> void:
 	#
 	#   * **the gateway refuses a till on yard ground** — S-3, so it binds a bot and
 	#     a crow the same way it binds her;
-	#   * **the tap never meets that refusal** — T-18. `yard` is in no tool's
-	#     `can_act_on` and in no `is_workable` state, so the router has no opinion
-	#     about it at all, and the only answer left for a tile nothing can be done
-	#     to is movement. A hoe held over the yard must produce a **walk**, not a
-	#     wobble, and this is where that is proved through the real input path.
+	#   * **a tap on the yard never meets that refusal** — it gets a short soil
+	#     answer instead. The answer is presentation only, so this scenario sends
+	#     it through the live input path and checks that it cannot write a replay
+	#     entry or move the farmer.
 	print("\n--- Scenario AA: the yard is home, not field (T-32) ---")
 
 	# 1. What generation makes. A detached farm, because by now the scenarios above
@@ -3028,13 +3027,16 @@ func _scenario_aa_the_yard_is_home() -> void:
 	fresh.queue_free()
 	await get_tree().process_frame
 
-	# 2. The tap. On the live scene, on ground this scenario lays itself — see
+	# 2. The taps. On the live scene, on ground this scenario lays itself — see
 	#    above for why the live yard is no longer pristine by now.
 	var stand := Vector2i(7, 5)
-	var near := Vector2i(8, 5)
-	var far := Vector2i(5, 2)
-	for t in [stand, near, far]:
+	var field_blank := Vector2i(10, 5)
+	var crop := Vector2i(8, 5)
+	var far_blank := Vector2i(13, 5)
+	var far_crop := Vector2i(12, 5)
+	for t in [stand, crop, far_blank]:
 		_stage_tile(t.x, t.y, WorldLayout.YARD)
+	_stage_tile(field_blank.x, field_blank.y, "cleared")
 	GameState.set_energy(GameState.max_energy)
 	GameState.selected_tool = 3            # the hoe, exactly as the fat-finger trace had it
 	player.pos = Vector2(stand.x * 16 + 8.0, stand.y * 16 + 8.0)
@@ -3042,62 +3044,127 @@ func _scenario_aa_the_yard_is_home() -> void:
 	player.pending_action = {}
 	await get_tree().process_frame
 
-	_assert(ActionRouter.resolve(farm, GameState, near, stand, false).is_empty(),
+	_assert(ActionRouter.resolve(farm, GameState, stand, stand, false).is_empty(),
 		"the router has no action for a yard tile, hoe in hand")
-	_assert(not ActionRouter.is_workable(farm, near),
-		"and does not count it workable, so she walks onto it rather than up to it")
-	_assert(ActionRouter.blocked_reason(farm, GameState, near) == ""
-			and ActionRouter.satisfied_reason(farm, GameState, near) == "",
+	_assert(ActionRouter.resolve(farm, GameState, field_blank, stand, false).is_empty(),
+		"a distant cleared field tile has no action until the farmer approaches it")
+	_assert(ActionRouter.blocked_reason(farm, GameState, stand) == ""
+			and ActionRouter.satisfied_reason(farm, GameState, stand) == "",
 		"with nothing to say about it either way — no 'cannot', no 'already done'")
 
-	var mark: int = farm.trace.entries.size()
-	InputManager.click_tile = near
-	InputManager.has_click = true
-	# Onto it, not up to it: `is_workable` is false, so this is an ordinary walk
-	# order and Q-30's stop-beside rule does not apply.
-	var stepped := await _wait_until(func(): return player.get_tile_pos() == near, 600)
-	_assert(stepped, "a tap on the yard beside her walks her onto it (tile %s)" % player.get_tile_pos())
-	var e := _last_tap_entry(mark)
-	_assert(String(e.get("out", "")) == "walk",
-		"and the trace calls it a walk, not a refusal (out=%s why=%s)"
-			% [e.get("out", ""), e.get("why", "-")])
-	_assert(int(e.get("tool", -1)) == 3 and String(e.get("verb", "")) == "",
-		"with the hoe still in her hand and no verb attached to it")
-	_assert(not e.has("halo"), "and nothing was rescued: it was simply a place to stand")
+	# SaveGame is the complete persisted form of the SimWorld and its game state.
+	# Each no-job ground state takes its own snapshot, so no tile, inventory, clock,
+	# actor or other saved value may change while the presentation cue is alive.
+	for blank in [far_blank, stand]:
+		var replay_mark: int = farm.replay.entries.size()
+		var energy_before: int = GameState.energy
+		var sim_player_before: Vector2i = farm.sim.actor_pos(SimWorld.ACTOR_PLAYER)
+		var saved_sim_before: Dictionary
+		var saved_after: Dictionary
+		var answered := false
+		# The world keeps running while the answer is awaited; a sim tick landing
+		# in between changed the clock and made the comparison fail at random.
+		# Take the before/after pair within one tick (a few tries at most).
+		for attempt in 4:
+			var tick0: int = farm.sim.clock.tick
+			saved_sim_before = SaveGame.capture(farm.sim, GameState)
+			InputManager.click_tile = blank
+			InputManager.has_click = true
+			answered = await _wait_until(func(): return farm.soil_tap_active_at(blank), 12)
+			saved_after = SaveGame.capture(farm.sim, GameState)
+			if farm.sim.clock.tick == tick0:
+				break
+			await _wait_until(func(): return not farm.soil_tap_active_at(blank), 60)
+		var label := "distant empty yard" if blank == far_blank else "yard beneath her"
+		_assert(answered, "a tap on %s shows the small soil answer" % label)
+		_assert(saved_after == saved_sim_before,
+			"the complete saved simulation state is identical before and after a %s tap" % label)
+		_assert(player.get_tile_pos() == stand and farm.sim.actor_pos(SimWorld.ACTOR_PLAYER) == sim_player_before \
+				and player.path.is_empty() and player.pending_action.is_empty(),
+			"a %s tap leaves the farmer and simulation where they were, with no queued movement or action" % label)
+		_assert(GameState.energy == energy_before and farm.replay.entries.size() == replay_mark,
+			"a %s tap has no simulation cost and leaves the replay log unchanged" % label)
 
-	var mark2: int = farm.trace.entries.size()
-	InputManager.click_tile = far
+	# A crop receives its ordinary action response instead of the soil answer.
+	_stage_tile(crop.x, crop.y, "growing", "wheat")
+	farm.sim.get_tile(crop.x, crop.y)["watered_today"] = false
+	GameState.watering_can_charges = GameState.max_watering_can_charges
+	InputManager.click_tile = crop
 	InputManager.has_click = true
-	var crossed := await _wait_until(func(): return player.get_tile_pos() == far, 1200)
-	_assert(crossed, "a far tap on the yard walks her across it (tile %s)" % player.get_tile_pos())
-	_assert(String(_last_tap_entry(mark2).get("out", "")) == "walk",
-		"and that one is a walk too — the yard's only answer is movement (T-18)")
-	_assert(_refusals_since(mark) == 0,
-		"not one refusal in the whole exchange (%d)" % _refusals_since(mark))
+	await _wait_for_action()
+	_assert(not farm.soil_tap_active_at(crop),
+		"a tap on a crop does not show the soil answer")
+	_assert(bool(farm.get_tile(crop.x, crop.y).get("watered_today", false)),
+		"and waters the crop through its ordinary action")
+
+	# A blank square beside the cot used to be a halo-rescued sleep tap. It must
+	# now keep its own ground answer: this is live input, not just a router query.
+	var cot: Vector2i = main_scene._cot_tile
+	var cot_blank := cot + Vector2i(0, 1)
+	var cot_beside := cot + Vector2i(1, 1)
+	_stage_tile(cot_blank.x, cot_blank.y, WorldLayout.YARD)
+	player.pos = Vector2(cot_beside.x * 16 + 8.0, cot_beside.y * 16 + 8.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	var halo_action := ActionRouter.resolve_with_halo(farm, GameState, cot_blank, cot_beside, false)
+	_assert(String(halo_action.get("action", "")) == "sleep",
+		"the cot fallback would rescue this blank adjacent square as sleep (%s)" % halo_action.get("action", "-"))
+	var cot_saved_before := JSON.stringify(SaveGame.capture(farm.sim, GameState))
+	var cot_replay_before := JSON.stringify(farm.replay.entries)
+	var day_before_cot_blank: int = GameState.day
+	InputManager.click_tile = cot_blank
+	InputManager.has_click = true
+	var cot_answered := await _wait_until(func(): return farm.soil_tap_active_at(cot_blank), 12)
+	_assert(cot_answered, "a blank square beside the cot shows the three-mote soil answer")
+	_assert(not main_scene.day_cycle.is_active() and GameState.day == day_before_cot_blank,
+		"the cot-adjacent blank tap does not start sleep or another action")
+	_assert(JSON.stringify(SaveGame.capture(farm.sim, GameState)) == cot_saved_before,
+		"the complete saved simulation state is byte-for-byte unchanged around the cot-adjacent blank tap")
+	_assert(JSON.stringify(farm.replay.entries) == cot_replay_before,
+		"the replay log is byte-for-byte unchanged around the cot-adjacent blank tap")
 
 	# 3. The gateway's half. Asked directly, because a tap can no longer ask it.
 	var r: Dictionary = farm.sim.apply_action(
-		{ "verb": "till", "target": near, "actor": "player" }, GameState)
+		{ "verb": "till", "target": stand, "actor": "player" }, GameState)
 	_assert(not r.get("ok", false) and String(r.get("reason", "")) == "not_tillable",
 		"the gateway refuses a till on yard ground, whoever asks (%s)" % r)
-	_assert(String(farm.get_tile(near.x, near.y).get("state", "")) == WorldLayout.YARD,
+	_assert(String(farm.get_tile(stand.x, stand.y).get("state", "")) == WorldLayout.YARD,
 		"and the ground is untouched by the asking")
 
-	# 4. And the reason this matters at the cot. The 2026-08-30 session's four
-	#    `no_energy` refusals were taps one tile below the cot resolving as
-	#    till-with-hoe; T-27 rescued them, and T-32 makes the class of mistake
-	#    structurally impossible, because the tile below the cot is not soil any
-	#    more. Asked as a pure query so nobody actually goes to bed here.
-	var cot: Vector2i = main_scene._cot_tile
+	# 4. The cot fallback still identifies an adjacent cot after the ground's own
+	#    answer has declined it. Asked as a pure query so nobody actually goes to
+	#    bed here; the live-input assertion above is what confirms blank ground
+	#    takes precedence.
 	var below := cot + Vector2i(0, 1)
 	var beside := cot + Vector2i(1, 1)
 	_stage_tile(below.x, below.y, WorldLayout.YARD)
 	var rescued := ActionRouter.resolve_with_halo(farm, GameState, below, beside, false)
 	_assert(String(rescued.get("action", "")) == "sleep",
-		"the tile below the cot is yard now, so the fat finger can only ever mean the cot (%s)"
-			% rescued.get("action", "-"))
+		"the cot fallback still identifies the adjacent cot as sleep (%s)" % rescued.get("action", "-"))
 	_assert(rescued.get("halo_from", Vector2i(-1, -1)) == below,
 		"rescued by T-27's halo, with the miss still recorded where it happened")
+
+	# The router returns no immediate Action for a far crop because the tap's
+	# existing meaning is to walk up to its job. That empty result is not blank
+	# ground: it must never be replaced by the soil answer.
+	_stage_tile(far_crop.x, far_crop.y, "growing", "wheat")
+	farm.sim.get_tile(far_crop.x, far_crop.y)["watered_today"] = false
+	GameState.watering_can_charges = GameState.max_watering_can_charges
+	player.pos = Vector2(stand.x * 16 + 8.0, stand.y * 16 + 8.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	_assert(ActionRouter.resolve(farm, GameState, far_crop, stand, false).is_empty(),
+		"a far crop keeps the router's walk-first result")
+	InputManager.click_tile = far_crop
+	InputManager.has_click = true
+	var started_for_crop := await _wait_until(func(): return not player.path.is_empty(), 12)
+	_assert(started_for_crop, "a tap on a far crop starts the ordinary walk toward it")
+	_assert(not farm.soil_tap_active_at(far_crop),
+		"a tap on a far crop does not show the soil answer")
+	var left_for_crop := await _wait_until(func(): return player.get_tile_pos() != stand, 120)
+	_assert(left_for_crop, "the farmer leaves for the far crop on its normal approach path")
 
 
 func _scenario_ab_the_stations_present_themselves() -> void:
@@ -3446,11 +3513,15 @@ func _scenario_ac_the_zoo() -> void:
 			"%s's button resolved to a real cell of a real sheet" % species)
 
 	# 200 ticks with the whole bestiary awake, in the real scene, drawing.
+	# The zoo's own _process also pumps its clock on the frames awaited below,
+	# which made this count 201 now and then; only this loop may advance it.
 	var tick_before: int = zfarm.sim.clock.tick
+	zoo.set_process(false)
 	for i in 200:
 		zoo.pump(0.1)
 		if i % 40 == 0:
 			await get_tree().process_frame
+	zoo.set_process(true)
 	_assert(zfarm.sim.clock.tick == tick_before + 200,
 		"200 ticks pass with everything running (%d)" % (zfarm.sim.clock.tick - tick_before))
 	_assert(zfarm.sim.has_actor(SimWorld.ACTOR_PLAYER), "and the farmer is still standing there")

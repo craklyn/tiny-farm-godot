@@ -1000,6 +1000,13 @@ const ACK_MS := 520.0
 const ACK_NOUN := 12.0
 var _acks: Dictionary = {}  # Vector2i -> { "t": msec, "why": String }
 
+# A tap on ordinary yard ground is still heard, even though it is not a farming
+# action. This is deliberately shorter and quieter than either an action's
+# squash or the blue already-done ring: three little earth motes lift and fall,
+# with no sound, no actor motion and no sim work behind them.
+const SOIL_TAP_MS := 260.0
+var _soil_taps: Dictionary = {}  # Vector2i -> start time in msec
+
 # The tiles a mark-1 robot has been taught, while she is teaching it (2026-09-03).
 # Set by `main.gd` on every `teach` and cleared when the mode ends; empty at every
 # other moment, so this costs a live game exactly one `is_empty()` per frame. Not
@@ -1189,6 +1196,20 @@ func acknowledge_at(t, why: String, with_sound: bool = true) -> void:
 		Engine.get_main_loop().root.get_node("AudioManager").play_sfx("click")
 
 
+## A presentation-only acknowledgement for a tap on ground that has no job.
+## It must stay outside `apply_action`: it changes no world state and must never
+## become an Action or a replay entry.
+func soil_tap_at(t: Vector2i) -> void:
+	if mute_feedback:
+		return
+	_soil_taps[t] = Time.get_ticks_msec()
+	set_process(true)
+
+
+func soil_tap_active_at(t: Vector2i) -> bool:
+	return _soil_taps.has(t)
+
+
 func react_at(t) -> void:
 	if t is Vector2i:
 		_reactions[t] = Time.get_ticks_msec()
@@ -1198,7 +1219,7 @@ func react_at(t) -> void:
 func _process(_delta: float) -> void:
 	# Only runs while a reaction is in flight; cost scales with acted tiles, not
 	# map area (ARCHITECTURE guardrail).
-	if _reactions.is_empty() and _refusals.is_empty() and _acks.is_empty() \
+	if _reactions.is_empty() and _refusals.is_empty() and _acks.is_empty() and _soil_taps.is_empty() \
 			and _wetting.is_empty() and not _tower_cloud_active:
 		set_process(false)
 		return
@@ -1206,7 +1227,7 @@ func _process(_delta: float) -> void:
 	# animation was present so removing its final mark still redraws that page,
 	# while a cloud-only frame redraws only its small overlay node.
 	var had_farm_animation := not _reactions.is_empty() or not _refusals.is_empty() \
-		or not _acks.is_empty() or not _wetting.is_empty()
+		or not _acks.is_empty() or not _soil_taps.is_empty() or not _wetting.is_empty()
 	var now := Time.get_ticks_msec()
 	for key in _reactions.keys():
 		if now - _reactions[key] > REACT_MS:
@@ -1217,6 +1238,9 @@ func _process(_delta: float) -> void:
 	for key in _acks.keys():
 		if now - _acks[key]["t"] > ACK_MS:
 			_acks.erase(key)
+	for key in _soil_taps.keys():
+		if now - _soil_taps[key] > SOIL_TAP_MS:
+			_soil_taps.erase(key)
 	for key in _wetting.keys():
 		# A held soak (t = -1) waits for release_tile_look; a finished one is done.
 		if _wetting[key]["t"] >= 0.0 and now - _wetting[key]["t"] > _wetting[key]["ms"]:
@@ -1889,6 +1913,29 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 						canvas.draw_line(tick + Vector2(-2.6, -0.4), tick + Vector2(-0.9, 1.6), col, 1.4)
 						canvas.draw_line(tick + Vector2(-0.9, 1.6), tick + Vector2(2.6, -2.4), col, 1.4)
 				})
+
+	# Ground that cannot do a job answers with its own tiny, earth-coloured motion.
+	# It has no ring, sparkle, sound or vertical tile squash, so it cannot read as
+	# a completed farming action or the blue "already done" acknowledgement.
+	for key in _soil_taps.keys():
+		if not _rows_hold(Vector2i(key).y * TILE_SIZE, y0, y1):
+			continue
+		var sk: Vector2i = key
+		var se: float = (Time.get_ticks_msec() - _soil_taps[key]) / SOIL_TAP_MS
+		if se >= 1.0:
+			continue
+		var scx := sk.x * TILE_SIZE + TILE_SIZE / 2.0
+		var scy := sk.y * TILE_SIZE + TILE_SIZE / 2.0
+		var sa: float = 0.72 * (1.0 - se)
+		render_queue.append({
+			"y": 99000.0,
+			"draw": func():
+				for i in 3:
+					var sx := scx + (i - 1) * 3.0
+					var sy := scy + 3.0 - sin(se * PI) * 3.0 - absf(i - 1) * 0.7
+					canvas.draw_circle(Vector2(sx, sy), 1.15,
+						Color(0.34, 0.22, 0.12, sa))
+		})
 
 	# The missing-thing picture rides above everything, including the farmer —
 	# it is the whole message, so it must never be the thing that gets occluded.
