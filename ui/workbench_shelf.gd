@@ -44,6 +44,10 @@ const PRICE_SIZE := 22
 const PACE_X := 152.0
 const PACE_BUTTON := Vector2(96, 72)
 const PACE_GAP := 16.0
+const PRACTICE_ROW := 2
+const PRACTICE_SWITCH := Rect2(180, 424, 72, 72)
+const PRACTICE_PIP_SIZE := Vector2(96, 72)
+const PRACTICE_PIP_X := 280.0
 # Her purse, bottom left of the page, so a red price has its reason on the same
 # screen. Left because the game's build tag sits in the bottom right corner.
 const PURSE_AT := Vector2(36, 548)
@@ -58,6 +62,7 @@ const MK3_PACE_FRAME_SIZE := Vector2(40, 30)
 const MK3_PACE_FRAME_COUNT := 8
 const MK3_PACE_FRAME_SECONDS := 0.15
 const MK3_PACE_SCALE := 3.0
+const WORM_SHEET := preload("res://assets/sprites/generated/worm.png")
 
 # The shop's coin (`ui/menus.gd`'s `coin_icon`, column 3 of the same sheet), read
 # off the sheet the bench already holds rather than by loading the menus script.
@@ -79,6 +84,8 @@ var buy_buttons: Array = []
 var pace_buttons: Array = []
 ## The price shown inside each pace button while that step is for sale.
 var pace_prices: Array = []
+var practice_switch: Button = null
+var practice_buttons: Array = []
 
 # Presentation time only: where the pace card's Mark III is in its run. It never
 # enters the sim or a replay.
@@ -144,6 +151,21 @@ func _build() -> void:
 		add_child(b)
 		pace_buttons.append(b)
 		pace_prices.append(price)
+	practice_switch = Button.new()
+	practice_switch.name = "PracticeSwitch"
+	practice_switch.position = PRACTICE_SWITCH.position
+	practice_switch.size = PRACTICE_SWITCH.size
+	practice_switch.pressed.connect(toggle_practice)
+	add_child(practice_switch)
+	for size in 3:
+		var b := Button.new()
+		b.name = "PracticeSize%d" % (size + 1)
+		b.position = Vector2(PRACTICE_PIP_X + size * (PACE_BUTTON.x + PACE_GAP), 424)
+		b.size = PRACTICE_PIP_SIZE
+		b.text = "•".repeat(size + 1)
+		b.pressed.connect(choose_practice_size.bind(size + 1))
+		add_child(b)
+		practice_buttons.append(b)
 
 
 func show_robot(farm_node: Node2D, id: String) -> void:
@@ -190,6 +212,29 @@ func _style_controls() -> void:
 			b.add_theme_stylebox_override(state, style)
 		for c in b.get_children():
 			(c as Control).queue_redraw()
+	var worm: Dictionary = (extra.get("practice", {}) as Dictionary).get("worm", {})
+	practice_switch.visible = here
+	practice_switch.text = "●" if bool(worm.get("on", false)) else "○"
+	for size in practice_buttons.size():
+		var b: Button = practice_buttons[size]
+		b.visible = here
+		b.disabled = not bool(worm.get("on", false))
+		# One to three pips lit, the pace card's brass (design/14): the size
+		# reads as a count, and a dark card lights none.
+		var lit := practice_pip_lit(size)
+		var style := StyleBoxFlat.new()
+		style.bg_color = Workbench.BRASS_LIT_BACK if lit else Color("3b3c48")
+		style.border_color = Workbench.BRASS_LIT if lit else Color("666680")
+		style.set_border_width_all(3 if lit else 2)
+		style.set_corner_radius_all(8)
+		for state in ["normal", "hover", "pressed", "focus", "disabled"]:
+			b.add_theme_stylebox_override(state, style)
+
+
+## Whether pip `i` (0-based) is lit: the practice is on and its size reaches it.
+func practice_pip_lit(i: int) -> bool:
+	var worm: Dictionary = (_extra().get("practice", {}) as Dictionary).get("worm", {})
+	return bool(worm.get("on", false)) and i < int(worm.get("size", 1))
 
 
 # --- what a tap does ----------------------------------------------------------
@@ -246,6 +291,24 @@ func choose_pace(pace: int) -> void:
 	_refresh()
 
 
+func toggle_practice() -> void:
+	var worm: Dictionary = (_extra().get("practice", {}) as Dictionary).get("worm", {})
+	_set_practice(not bool(worm.get("on", false)), int(worm.get("size", 1)))
+
+
+func choose_practice_size(size: int) -> void:
+	_set_practice(true, size)
+
+
+func _set_practice(on: bool, size: int) -> void:
+	if farm == null or actor_id == "" or not farm.sim.has_actor(actor_id):
+		return
+	var action: Dictionary = ActionRouter.practice_action(actor_id, on, size)
+	var result: Dictionary = farm.apply_action(action, GameState)
+	AudioManager.play_sfx("dial" if result.get("ok", false) else "nope")
+	_refresh()
+
+
 func _refresh() -> void:
 	var bench := get_parent()
 	if bench != null and bench.has_method("refresh"):
@@ -299,6 +362,11 @@ func _draw() -> void:
 			pace_frame() if pace_row else 0)
 		if not owned and not pace_row:
 			_draw_price(r, ShelfDefs.price_of(key), _affordable(key), _offered(key))
+	var practice_rect := row_rect(PRACTICE_ROW)
+	draw_rect(practice_rect, CARD_FILL)
+	draw_rect(practice_rect, Workbench.BRASS, false, 2.0)
+	draw_texture_rect_region(WORM_SHEET,
+		Rect2(practice_rect.position + PICTURE_AT, PICTURE_SIZE), Rect2(0, 0, 32, 32))
 	_draw_purse()
 
 

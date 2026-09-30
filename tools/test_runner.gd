@@ -1424,6 +1424,29 @@ func _press_row(container: Node, n: int) -> void:
 	(buttons[n] as Button).pressed.emit()
 
 
+# A click where she would put her finger on a Control, fed into the root
+# viewport as the OS feeds it — pointer onto the control, press, release — so
+# the engine's own GUI picking decides what was hit (a disabled or hidden
+# control takes nothing). Emulated touch reaches a Button as exactly this shape.
+func _gui_tap(control: Control) -> void:
+	var at := control.get_global_rect().get_center()
+	var vp := get_tree().root
+	var move := InputEventMouseMotion.new()
+	move.position = at
+	move.global_position = at
+	vp.push_input(move, true)
+	await get_tree().process_frame
+	for down in [true, false]:
+		var click := InputEventMouseButton.new()
+		click.button_index = MOUSE_BUTTON_LEFT
+		click.button_mask = MOUSE_BUTTON_MASK_LEFT if down else 0
+		click.pressed = down
+		click.position = at
+		click.global_position = at
+		vp.push_input(click, true)
+		await get_tree().process_frame
+
+
 func _scenario_j_wordless_shop() -> void:
 	# T-12 (Q-35). The shop was the one screen in phase 1 that **required
 	# reading** — "SEED SHOP", "5g", "Owned: N", "??? (Locked)", "Close" — and
@@ -8775,7 +8798,6 @@ func _scenario_bl_the_shelf_sells_a_pace() -> void:
 	if bench == null or bench.robot_id != mk3:
 		menus.close_menu()
 		return
-
 	# --- the sixth plate -------------------------------------------------------
 	var plate5 := _find_button(bench, "Plate5")
 	_assert(plate5 != null and plate5.size.x >= Workbench.TOUCH
@@ -8947,6 +8969,57 @@ func _scenario_bl_the_shelf_sells_a_pace() -> void:
 			and String(brained.get("sha", "")) == sha,
 		"recorded as one `buy_upgrade` naming the brain by its hash (%s)" % str(brained))
 	_assert(not starter_card.visible, "and its card no longer takes a tap as a purchase")
+
+	# --- the worm practice card, by real input (S-35) ------------------------
+	# Not `pressed.emit()`: the event goes into the root viewport, the door the
+	# OS's own events come in by, so the engine's GUI picking has to find the
+	# lamp and the pips on the card where she would put her finger. Headless
+	# picking does work when the pointer first moves onto the control (checked
+	# 2026-09-29), which is what a real mouse or emulated touch does.
+	var practice_page = bench.pages[5]
+	var lamp: Button = practice_page.practice_switch
+	var pips: Array = practice_page.practice_buttons
+	_assert(lamp != null and lamp.visible and pips.size() == 3
+			and pips.all(func(b): return b.visible and b.disabled),
+		"the practice card shows its lamp, and its three pips wait dark until it is lit")
+	InputManager.has_click = false
+	before = farm.replay.entries.size()
+	await _gui_tap(lamp)
+	var lit: Dictionary = farm.replay.entries[farm.replay.entries.size() - 1]
+	var worm_set: Dictionary = farm.sim.actor(mk3)["extra"].get("practice", {}).get("worm", {})
+	_assert(farm.replay.entries.size() == before + 1
+			and String(lit.get("verb", "")) == "practice"
+			and String(lit.get("machine", "")) == mk3
+			and bool(lit.get("on", false)) and int(lit.get("size", 0)) == 1
+			and bool(worm_set.get("on", false)) and int(worm_set.get("size", 0)) == 1,
+		"a tap on the dark lamp lights it: one `practice` Action, on, one pip (%s)" % str(lit))
+	_assert(pips.all(func(b): return not b.disabled) and practice_page.practice_pip_lit(0)
+			and not practice_page.practice_pip_lit(1),
+		"the lit lamp wakes the pips, with the first one lit")
+	before = farm.replay.entries.size()
+	await _gui_tap(pips[2])
+	var sized: Dictionary = farm.replay.entries[farm.replay.entries.size() - 1]
+	worm_set = farm.sim.actor(mk3)["extra"]["practice"]["worm"]
+	_assert(farm.replay.entries.size() == before + 1
+			and String(sized.get("verb", "")) == "practice"
+			and bool(sized.get("on", false)) and int(sized.get("size", 0)) == 3
+			and int(worm_set.get("size", 0)) == 3
+			and practice_page.practice_pip_lit(2),
+		"a tap on the third pip sets eight runs a night through the gateway (%s)" % str(sized))
+	before = farm.replay.entries.size()
+	await _gui_tap(lamp)
+	var dark: Dictionary = farm.replay.entries[farm.replay.entries.size() - 1]
+	worm_set = farm.sim.actor(mk3)["extra"]["practice"]["worm"]
+	_assert(farm.replay.entries.size() == before + 1
+			and not bool(dark.get("on", true)) and int(dark.get("size", 0)) == 3
+			and not bool(worm_set.get("on", true)) and int(worm_set.get("size", 0)) == 3,
+		"a second tap on the lamp switches it off and keeps the size (%s)" % str(dark))
+	before = farm.replay.entries.size()
+	await _gui_tap(pips[0])
+	_assert(farm.replay.entries.size() == before,
+		"a pip on a dark card takes no tap")
+	_assert(not InputManager.has_click,
+		"and none of the card's taps fell through to the farm as a tap on a square")
 
 	menus.close_menu()
 	await get_tree().process_frame

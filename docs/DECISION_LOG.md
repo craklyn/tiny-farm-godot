@@ -676,7 +676,9 @@ switch and all three sizes: 2, 4 or 8 runs each night. Practice consumes a size-
 share of the robot's energy on the following day, making more practice a visible trade-off
 against farm work. The exact three energy shares require a measured balance recommendation
 before the build sets them. The crow prototype remains evidence that nightly runs can be
-replayed, not the first lesson. The worm practice itself is not built. Design in
+replayed, not the first lesson. **Built 2026-09-29:** the worm practice runs in the sim, and
+the shares are 5%, 10% and 20% of the next day's meter for 2, 4 and 8 runs, chosen from
+`tools/measure_worm_practice.gd` (the table and the reasoning are in `design/14`). Design in
 `design/06-bots-and-training.md` ("Practice runs: it rehearses at night") and
 `design/14-training-workbench.md` ("The practice cards"). Daniel also settled Q-65's
 living-farm question: worms appear rarely on farms.

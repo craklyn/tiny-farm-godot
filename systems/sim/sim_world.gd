@@ -1612,7 +1612,7 @@ const NON_WORK_VERBS := { "sleep": true, "sell": true, "withdraw_seed": true,
 		# care about, not doing a stroke of farm work. It costs no energy, and a
 		# player who spent a minute at the bench must not come back to a field
 		# full of crows she paid for by thinking.
-		"tune": true,
+		"tune": true, "practice": true,
 		# ...and so is buying from the bench's shelf and setting a robot's pace
 		# (S-29, Q-129): an errand at the bench and an instruction to a machine.
 		"buy_upgrade": true, "buy_pace": true, "set_pace": true,
@@ -3255,6 +3255,28 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			return { "ok": true, "machine": paced, "pace": wanted_pace,
 				"previous": previous_pace }
 
+		"practice":
+			var practised := String(action.get("machine", ""))
+			if not actors.has(practised): return _fail("no_machine_here")
+			var practice_extra: Dictionary = actors[practised]["extra"]
+			if not practice_extra.has("weights"): return _fail("not_a_learner")
+			if String(action.get("practice", "")) != "worm": return _fail("bad_practice")
+			var size := int(action.get("size", 1))
+			if size < 1 or size > 3: return _fail("bad_size")
+			# Validation ends here. Everything below commits the setting together.
+			BotBrain.enable_pest_sensor(practice_extra)
+			var settings: Dictionary = practice_extra.get("practice", {})
+			var previous: Dictionary = (settings.get("worm", {}) as Dictionary).duplicate(true)
+			settings["worm"] = {
+				"on": bool(action.get("on", true)), "size": size,
+				"baseline": float(previous.get("baseline", 0.0)),
+				"runs": int(previous.get("runs", 0)),
+				"last_shooed": int(previous.get("last_shooed", 0)),
+			}
+			practice_extra["practice"] = settings
+			return { "ok": true, "machine": practised, "practice": "worm",
+				"on": settings["worm"]["on"], "size": size }
+
 		# **Teaching a mark-1 a tile** (designer, 2026-09-03). One tap, one entry in
 		# the machine's list, one recorded Action — so a session in which she
 		# taught a robot replays into a robot that knows the same eight squares.
@@ -3934,6 +3956,216 @@ func phase1_progress(gs) -> Dictionary:
 	}
 
 
+# --- worm practice (S-35; design/06 "Practice runs") ----------------------------
+#
+# A run is a scratch copy of this farm with one worm forced in beside a growing
+# crop, played on the tick clock with the robot's worm head. What survives it is
+# the scratch robot's sums; the copy is dropped. The nightly practice
+# (`_run_worm_practice`) and the held-out evaluation in
+# `tools/measure_worm_practice.gd` both call `play_worm_run`, so the thing that
+# is measured is the thing that is trained.
+
+# Up to this many seconds of play; a run ends sooner when the worm is stomped,
+# leaves, or eats the crop it came up beside (design/06, "One run").
+const WORM_RUN_SECONDS := 40
+const PRACTICE_WORM := "practice_worm"
+# Where the worm comes up, tried in order: the nearest open ground beside the
+# crop that is not itself a crop (a crop in the middle of her block has only
+# crops beside it), never more than a worm's own nose (`crop_sense` 4) away.
+const WORM_RUN_WORM_OFFSETS: Array[Vector2i] = [Vector2i(0, -1), Vector2i(0, 1),
+	Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, -2), Vector2i(0, 2), Vector2i(-2, 0),
+	Vector2i(2, 0), Vector2i(0, -3), Vector2i(0, 3), Vector2i(-3, 0), Vector2i(3, 0)]
+# Where the robot is set down, tried in order: within three squares of the crop.
+const WORM_RUN_ROBOT_OFFSETS: Array[Vector2i] = [Vector2i(2, 0), Vector2i(-2, 0),
+	Vector2i(0, 2), Vector2i(0, -2), Vector2i(1, 1), Vector2i(-1, -1),
+	Vector2i(3, 0), Vector2i(-3, 0)]
+
+
+# The scratch world a run is played in. Built from sim-owned data only, so the
+# sim does not lean on the save format to rehearse.
+func _practice_copy() -> SimWorld:
+	var out := SimWorld.new()
+	out.layout = layout
+	out.tiles = tiles.duplicate(true)
+	out.objects = objects.duplicate(true)
+	out.rooms = rooms.duplicate(true)
+	out.actors = actors.duplicate(true)
+	out.gen_seed = gen_seed
+	out.story_night = story_night
+	out.story_nights_told = story_nights_told.duplicate(true)
+	out.rungs = rungs.duplicate(true)
+	out.player_water_actions_today = player_water_actions_today
+	out.clock.reset(clock.tick)
+	out.scent.from_save(scent.to_save())
+	return out
+
+
+# The growing crops a worm run may use for this robot: inside the squares she
+# gave it when it has any (S-26), anywhere on the farm page when it has none. In
+# a fixed reading order, so a pick by index is the same pick in a replay. A scan
+# of the page once per robot per night, never per tick.
+func worm_practice_crops(robot_id: String) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	var mine := BotBrain.assigned_of(actor(robot_id).get("extra", {}))
+	if not mine.is_empty():
+		for t in mine:
+			if String(get_tile(t.x, t.y).get("state", "")) in ["seeded", "growing"]:
+				out.append(t)
+		if not out.is_empty():
+			return out
+	for y in PAGE_ROWS:
+		for x in MAP_WIDTH:
+			if String(get_tile(x, y).get("state", "")) in ["seeded", "growing"]:
+				out.append(Vector2i(x, y))
+	return out
+
+
+# Her stores as they stood at bedtime, copied for a scratch run: the gateway's
+# costed verbs read and write them (a machine sows from her seed box, and a
+# refusal with no stores at all is every verb the robot has), so a run is played
+# on a copy and the copy is dropped with the run. Typed by nothing but the
+# script variables of whatever stores object the caller handed the sim; no
+# autoload is named or reached. `null` in, `null` out.
+static func _scratch_stores(gs):
+	if gs == null:
+		return null
+	var copy = (gs.get_script() as Script).new()
+	for prop in gs.get_property_list():
+		if int(prop["usage"]) & PROPERTY_USAGE_SCRIPT_VARIABLE == 0:
+			continue
+		var value = gs.get(prop["name"])
+		if value is Dictionary or value is Array:
+			value = value.duplicate(true)
+		copy.set(prop["name"], value)
+	return copy
+
+
+static func _drop_stores(copy) -> void:
+	if copy != null and not (copy is RefCounted):
+		copy.free()
+
+
+## One worm run for `robot_id` beside `crop`, on a scratch copy of this world
+## and of her stores `gs`. `salt` separates this run's policy draws from every
+## other run's. Returns
+## `{ "ran", "stomped", "eaten", "energy_spent", "extra": the scratch robot }`.
+## Leaves this world, and the shared random stream, exactly as it found them.
+func play_worm_run(robot_id: String, crop: Vector2i, salt: int, gs) -> Dictionary:
+	var none := { "ran": false, "stomped": 0, "eaten": false, "energy_spent": 0,
+		"extra": {} }
+	var live_extra: Dictionary = actor(robot_id).get("extra", {})
+	if not live_extra.has("pest_weights") or gs == null:
+		return none
+	var rng_state := SimRng.rng.state
+	var scratch := _practice_copy()
+	for raw_id in scratch.actors.keys().duplicate():
+		var id := String(raw_id)
+		if id != robot_id and id != ACTOR_PLAYER:
+			scratch.despawn_actor(id)
+	var worm_at := Vector2i(-1, -1)
+	for d in WORM_RUN_WORM_OFFSETS:
+		var candidate: Vector2i = crop + d
+		if scratch.is_walkable(candidate.x, candidate.y) and not scratch.has_crop(candidate.x, candidate.y):
+			worm_at = candidate
+			break
+	var robot_at := Vector2i(-1, -1)
+	for d in WORM_RUN_ROBOT_OFFSETS:
+		var candidate: Vector2i = crop + d
+		if candidate != worm_at and scratch.is_walkable(candidate.x, candidate.y):
+			robot_at = candidate
+			break
+	if worm_at.x < 0 or robot_at.x < 0:
+		return none
+	var sx: Dictionary = scratch.actor(robot_id)["extra"]
+	sx["practice"] = {}
+	sx["spec"] = (live_extra["pest_spec"] as Dictionary).duplicate(true)
+	sx["weights"] = (live_extra["pest_weights"] as Array).duplicate()
+	sx["salt"] = int(live_extra.get("salt", 0)) ^ salt
+	sx["score"] = 0.0
+	sx["decisions"] = 0
+	sx["worm_stomped"] = 0
+	sx["trace"] = BotBrain._scaled(sx["weights"], 0.0)
+	sx["acc"] = BotBrain._scaled(sx["weights"], 0.0)
+	sx["base_trace"] = BotBrain._scaled(sx["weights"], 0.0)
+	sx["job"] = ""
+	sx["pending"] = ""
+	Movement.place_on_tile(scratch, robot_id, robot_at)
+	scratch.spawn_actor(PRACTICE_WORM, SpeciesDefs.WORM, worm_at, {
+		"state": "hunting", "home_x": worm_at.x, "home_y": worm_at.y,
+		"tgt_x": -1, "tgt_y": -1, "meals": 0, "tries": 0,
+		"stuck": 0, "detours": 0,
+	})
+	scratch.actor(robot_id)["energy"] = ACTOR_MAX_ENERGY
+	scratch.schedule_all_brains()
+	var stores = _scratch_stores(gs)
+	var eaten := false
+	for _second in WORM_RUN_SECONDS:
+		scratch.advance_ticks(SimClock.RATE, stores)
+		if not scratch.has_actor(PRACTICE_WORM):
+			break
+		# Its first mouthful ends the run, whichever crop it was: the lesson is
+		# lost the moment the worm has eaten.
+		if int(scratch.actor(PRACTICE_WORM)["extra"].get("meals", 0)) > 0:
+			eaten = true
+			break
+	_drop_stores(stores)
+	var spent := ACTOR_MAX_ENERGY - scratch.energy_of(robot_id)
+	SimRng.rng.state = rng_state
+	return { "ran": true, "stomped": int(sx.get("worm_stomped", 0)),
+		"eaten": eaten, "energy_spent": spent, "extra": sx }
+
+
+# The night's practice for every Mark III that has it switched on. Played with
+# the worm head the robot had all day; the runs join one update of that head and
+# nothing else — the day's policy, its sums and its score are not touched.
+func _run_worm_practice(gs) -> void:
+	if gs == null:
+		return
+	for robot_id in learners():
+		var live_extra: Dictionary = actor(robot_id)["extra"]
+		var settings: Dictionary = live_extra.get("practice", {})
+		var worm: Dictionary = settings.get("worm", {})
+		if not bool(worm.get("on", false)):
+			continue
+		var size := clampi(int(worm.get("size", 1)), 1, 3)
+		var count: int = BotBrain.PRACTICE_RUNS[size - 1]
+		var crops := worm_practice_crops(robot_id)
+		if crops.is_empty():
+			# Nothing growing for a worm to come up beside: no runs, and so no
+			# charge on tomorrow's meter.
+			worm["last_ran"] = 0
+			worm["last_shooed"] = 0
+			settings["worm"] = worm
+			live_extra["practice"] = settings
+			continue
+		var baseline := float(worm.get("baseline", 0.0))
+		var night := int(live_extra.get("days", 0))
+		var total_score := 0.0
+		var stomped := 0
+		var ran := 0
+		for run_index in count:
+			var pick := SimRng.stateless(BotBrain.WORM_PICK_SALT + night, run_index)
+			var run := play_worm_run(robot_id, crops[pick % crops.size()],
+				Policy.salt_of("worm_practice:%d:%d" % [night, run_index]), gs)
+			if not bool(run["ran"]):
+				continue
+			var sx: Dictionary = run["extra"]
+			BotBrain.merge_practice(live_extra, sx, baseline)
+			total_score += float(sx.get("score", 0.0))
+			stomped += int(run["stomped"])
+			ran += 1
+		if ran > 0:
+			BotBrain.finish_practice(live_extra)
+			var old_runs := int(worm.get("runs", 0))
+			worm["baseline"] = (baseline * float(old_runs) + total_score) / float(old_runs + ran)
+			worm["runs"] = old_runs + ran
+			worm["stomped_total"] = int(worm.get("stomped_total", 0)) + stomped
+		worm["last_ran"] = ran
+		worm["last_shooed"] = stomped
+		settings["worm"] = worm
+		live_extra["practice"] = settings
+
+
 func _parcel_with_gate(gate: Vector2i) -> Dictionary:
 	for p in WorldLayout.parcels(layout):
 		if p.get("gate", Vector2i(-1, -1)) == gate:
@@ -3959,6 +4191,9 @@ func advance_day(weather: String, gs = null) -> void:
 	# with the crow night's conditions for the same reason: what the night is about
 	# is what the farm was when she went to bed.
 	var robot_night := robot_night_due()
+	# Practice sees the farm as she went to bed (S-35). Each run leaves the shared
+	# random stream where it found it, so the live night draws what it always drew.
+	_run_worm_practice(gs)
 	# Everyone wakes rested, the player included (GameState.start_new_day does
 	# hers). An NPC's tiredness is a within-day thing, same as the farmer's.
 	# Every *registered* actor, which since M2.5 WI-2 is the same set that used to
@@ -3968,6 +4203,13 @@ func advance_day(weather: String, gs = null) -> void:
 		if _is_player(id):
 			continue  # hers is GameState's, and hers is also the clock
 		actors[id]["energy"] = ACTOR_MAX_ENERGY
+		# Last night's practice is paid for out of today's meter (S-35), and only
+		# when runs were actually played.
+		var px: Dictionary = actors[id].get("extra", {})
+		var worm: Dictionary = (px.get("practice", {}) as Dictionary).get("worm", {})
+		if bool(worm.get("on", false)) and int(worm.get("last_ran", 0)) > 0:
+			actors[id]["energy"] = ACTOR_MAX_ENERGY \
+				- BotBrain.practice_energy(int(worm.get("size", 1)))
 	# A new morning is a fact each brain acts on the *next time it thinks*, never
 	# inside the day turn itself (M2.5 WI-3). The hen's egg is the case that makes
 	# the rule: a replay re-applies the sleep but does not run brains, so a coin

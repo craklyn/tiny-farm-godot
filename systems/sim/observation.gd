@@ -96,6 +96,8 @@ static func spec_default() -> Dictionary:
 # error rather than a zero nobody notices — see `_channel_ids` below.
 const CHANNELS := ["needs_water", "wet", "walkable", "crop", "bare", "ripe",
 	"crow", "bin"]
+const KNOWN_CHANNELS := ["needs_water", "wet", "walkable", "crop", "bare", "ripe",
+	"crow", "bin", "pest"]
 
 const CH_NEEDS_WATER := 0
 const CH_WET := 1
@@ -105,6 +107,7 @@ const CH_BARE := 4
 const CH_RIPE := 5
 const CH_CROW := 6
 const CH_BIN := 7
+const CH_PEST := 8
 
 # What "bare" means, in one place. Ground that has been cleared and not yet
 # opened: the one state a hoe turns into soil that can want water (Q-99). The
@@ -338,6 +341,7 @@ static func build(world: SimWorld, actor_id: String, spec: Dictionary, gs = null
 	var want_ripe := ids.has(CH_RIPE)
 	var want_crow := ids.has(CH_CROW)
 	var want_bin := ids.has(CH_BIN)
+	var want_pest := ids.has(CH_PEST)
 	var in_order: bool = nch == 8 and ids[0] == CH_NEEDS_WATER and ids[1] == CH_WET \
 			and ids[2] == CH_WALKABLE and ids[3] == CH_CROP and ids[4] == CH_BARE \
 			and ids[5] == CH_RIPE and ids[6] == CH_CROW and ids[7] == CH_BIN
@@ -347,6 +351,7 @@ static func build(world: SimWorld, actor_id: String, spec: Dictionary, gs = null
 	# Never a pass over the map: this is a fact about actors, and actors are a
 	# short list whatever the size of the farm (ground rule 8).
 	var crows: Dictionary = _crow_tiles(world) if want_crow else {}
+	var pests: Dictionary = _pest_tiles(world) if want_pest else {}
 	# **The squares she has given it, if any** (Q-124). Outside them the four
 	# channels that say "there is work here" — needs water, crop, bare, ripe — read
 	# zero, because the robot may not work there and a channel that showed it work
@@ -401,6 +406,7 @@ static func build(world: SimWorld, actor_id: String, spec: Dictionary, gs = null
 				# which way it is; this says "it is this square", which is what
 				# the last step of a walk to the bin needs.
 				var v_bin := 1.0 if (want_bin and String(objects_row[tx]) == BIN_OBJECT) else 0.0
+				var v_pest := 1.0 if (want_pest and pests.has(ty * SimWorld.MAP_WIDTH + tx)) else 0.0
 				if masked and not mine.has(ty * SimWorld.MAP_WIDTH + tx):
 					v_needs_water = 0.0
 					v_crop = 0.0
@@ -426,6 +432,7 @@ static func build(world: SimWorld, actor_id: String, spec: Dictionary, gs = null
 							CH_RIPE: out[base + k] = v_ripe
 							CH_CROW: out[base + k] = v_crow
 							CH_BIN: out[base + k] = v_bin
+							CH_PEST: out[base + k] = v_pest
 							# An unknown channel keeps its slot at the zero the
 							# array was filled with, so nothing after it shifts.
 			base += nch
@@ -456,6 +463,16 @@ static func _crow_tiles(world: SimWorld) -> Dictionary:
 	return out
 
 
+# Ground pests are a separate, opt-in channel. Old saved specs keep `crow`
+# meaning birds only; enabling worm practice migrates a robot to this channel.
+static func _pest_tiles(world: SimWorld) -> Dictionary:
+	var out: Dictionary = {}
+	for id in world.actors_of_species(SpeciesDefs.WORM):
+		for at in Movement.occupied_tiles(world, id):
+			out[at.y * SimWorld.MAP_WIDTH + at.x] = true
+	return out
+
+
 # Resolve channel names to the small ints the tile loop switches on, once per
 # build rather than once per tile.
 #
@@ -467,10 +484,10 @@ static func _crow_tiles(world: SimWorld) -> Dictionary:
 static func _channel_ids(channels: Array) -> Array:
 	var ids: Array = []
 	for channel_name in channels:
-		var idx: int = CHANNELS.find(String(channel_name))
+		var idx: int = KNOWN_CHANNELS.find(String(channel_name))
 		if idx < 0:
 			push_error("Observation: unknown channel '%s' — reads as zeros. Known: %s"
-					% [String(channel_name), ", ".join(CHANNELS)])
+					% [String(channel_name), ", ".join(KNOWN_CHANNELS)])
 		ids.append(idx)
 	return ids
 

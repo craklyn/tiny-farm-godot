@@ -233,7 +233,8 @@ func _init() -> void:
 # **`assign` gives it `MINE` before its first morning** (Q-124). Off by default, so
 # the week the gate is measured on is the week it always was.
 static func run(days := 7, farm_seed := SEED, learn := true, assign := false,
-		pace := BotBrain.PACE_NORMAL) -> Dictionary:
+		pace := BotBrain.PACE_NORMAL, practice_size := 0,
+		keep_world := false) -> Dictionary:
 	var gs = load("res://systems/game_state.gd").new()
 	gs.reset()
 	SimRng.reseed(farm_seed)
@@ -261,6 +262,10 @@ static func run(days := 7, farm_seed := SEED, learn := true, assign := false,
 	# is bought at a bench and set with `set_pace`; this farm has no bench, and a
 	# bench standing in the yard would be one more thing the week measured.
 	BotBrain.set_pace(world.actor(robot)["extra"], pace)
+	if practice_size > 0:
+		world.apply_action({ "verb": "practice", "machine": robot,
+			"practice": "worm", "on": true, "size": practice_size,
+			"actor": "player" }, gs)
 	if assign:
 		var flat: Array = []
 		for y in range(MINE.position.y, MINE.end.y):
@@ -366,7 +371,14 @@ static func run(days := 7, farm_seed := SEED, learn := true, assign := false,
 		# The robot itself, at the end of the week. Two runs of this function agree
 		# here or the week was never reproducible.
 		"weights": (world.actor(robot)["extra"]["weights"] as Array).duplicate(),
+		# Worm practice (S-35), when `practice_size` switched it on: the robot's
+		# practice record at the end of the week.
+		"practice": (world.actor(robot)["extra"].get("practice", {}) as Dictionary).duplicate(true),
 	}
+	# The farm itself at the end of the week, for a caller that evaluates the
+	# robot on it afterwards (`tools/measure_worm_practice.gd`).
+	if keep_world:
+		out["world"] = world
 	gs.free()
 	return out
 

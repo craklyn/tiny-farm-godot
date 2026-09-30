@@ -35,6 +35,13 @@ const HALO_OBJECTS := { "cot": true, "house_door": true }
 ## mode serves a Mark III (Q-124), where the tap is an `assign_tiles` instead.
 var teaching_machine: String = ""
 
+# Workbench practice controls use the same intent boundary as a tile tap. Kept
+# here so the card cannot silently swap pip number for run count or mutate the
+# robot directly.
+func practice_action(machine: String, on: bool, size: int) -> Dictionary:
+	return { "verb": "practice", "machine": machine, "practice": "worm",
+		"on": on, "size": size, "actor": "player", "walk_to": false }
+
 const SPECIAL_OBJECTS := {
 	"cot":          "sleep",
 	"well":         "refill",

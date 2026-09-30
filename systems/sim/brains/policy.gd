@@ -66,6 +66,29 @@ static func new_weights(n_in: int, n_out: int) -> Array:
 	return w
 
 
+# Carry a linear policy from one named observation spec to another. Inputs in
+# groups with the same name retain their weights; newly introduced groups start
+# at zero. Biases are preserved. This is the save migration for opt-in sensors.
+static func remap_inputs(w: Array, old_spec: Dictionary, new_spec: Dictionary,
+		n_out: int) -> Array:
+	var old_n := Observation.size(old_spec)
+	var new_n := Observation.size(new_spec)
+	var out := new_weights(new_n, n_out)
+	var old_groups: Dictionary = {}
+	for group in Observation.input_groups(old_spec):
+		old_groups[String(group.get("name", ""))] = group.get("indices", [])
+	for group in Observation.input_groups(new_spec):
+		var old_indices: Array = old_groups.get(String(group.get("name", "")), [])
+		var new_indices: Array = group.get("indices", [])
+		for j in n_out:
+			for k in mini(old_indices.size(), new_indices.size()):
+				out[j * (new_n + 1) + int(new_indices[k])] = \
+					w[j * (old_n + 1) + int(old_indices[k])]
+	for j in n_out:
+		out[j * (new_n + 1) + new_n] = w[j * (old_n + 1) + old_n]
+	return out
+
+
 # The score of each action for this observation, before the softmax.
 static func logits(w: Array, n_in: int, n_out: int, obs: Array) -> Array:
 	var out: Array = []

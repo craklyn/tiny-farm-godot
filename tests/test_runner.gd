@@ -225,6 +225,8 @@ func _init() -> void:
 	test_robot_ladder()
 	test_robot_story_night()
 	test_learning_robot()
+	test_worm_practice()
+	test_worm_practice_measurement()
 	test_wider_view()
 	test_starter_brain()
 	test_world_pages()
@@ -14197,6 +14199,156 @@ func test_robot_ladder() -> void:
 # standing is a story night like the crow raid's, told once per farm, and it is
 # the night the Mark III first appears on the shelf — which is what presentation
 # plays the seeder-robot loop over.
+func test_worm_practice() -> void:
+	print("\n--- The Mark III rehearses worms overnight (S-35) Tests ---")
+
+	# --- the switch and the size are one Action, validated before anything moves
+	var gs = load("res://systems/game_state.gd").new()
+	gs.reset()
+	SimRng.reseed(350035)
+	var world := SimWorld.new()
+	world.generate()
+	var crop := Vector2i(14, 10)
+	world.set_tile_state(crop.x, crop.y, "seeded", "wheat")
+	BotBrain.deploy(world, "practice_bot", BotBrain.CONFIG_LEARN, Vector2i(12, 10))
+	var old_extra: Dictionary = world.actor("practice_bot")["extra"]
+	var old_spec: Dictionary = old_extra["spec"].duplicate(true)
+	var old_weights: Array = old_extra["weights"].duplicate()
+	var before_bad := old_extra.duplicate(true)
+	var bad := world.apply_action({ "verb": "practice", "machine": "practice_bot",
+		"practice": "worm", "on": true, "size": 9, "actor": "player" }, gs)
+	_assert(not bad.get("ok", false) and old_extra == before_bad,
+		"a rejected practice size leaves the robot byte-for-byte unchanged")
+	var set := world.apply_action({ "verb": "practice", "machine": "practice_bot",
+		"practice": "worm", "on": true, "size": 1, "actor": "player" }, gs)
+	_assert(set.get("ok", false) and int(set.get("size", 0)) == 1,
+		"the practice Action carries the card's one-pip size into the robot")
+	_assert(not (old_spec["channels"] as Array).has("pest")
+			and not (old_extra["spec"]["channels"] as Array).has("pest")
+			and (old_extra["pest_spec"]["channels"] as Array).has("pest"),
+		"worm practice gets a pest sensor without reinterpreting the crow sensor")
+	_assert(old_extra["weights"] == old_weights,
+		"enabling worm practice leaves every crow-policy weight byte-identical")
+	var stream_state := SimRng.rng.state
+	var pouch_before: Dictionary = gs.pouch.duplicate(true)
+	world.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, gs)
+	var extra: Dictionary = world.actor("practice_bot")["extra"]
+	var worm: Dictionary = extra.get("practice", {}).get("worm", {})
+	_assert(int(worm.get("runs", 0)) == 2 and int(worm.get("last_ran", 0)) == 2,
+		"one pip plays two worm runs overnight (%s)" % str(worm))
+	_assert(world.energy_of("practice_bot")
+			== SimWorld.ACTOR_MAX_ENERGY - BotBrain.practice_energy(1)
+			and BotBrain.practice_energy(1) > 0,
+		"and the night is paid for out of tomorrow's meter (%d of %d)"
+			% [world.energy_of("practice_bot"), SimWorld.ACTOR_MAX_ENERGY])
+	_assert(SimRng.rng.state == stream_state,
+		"practice leaves the shared random stream where it found it")
+	_assert(gs.pouch == pouch_before,
+		"and her stores untouched: the runs play on a copy of them")
+	_assert(extra["weights"] == old_weights,
+		"a night of worm rehearsal leaves every crow-policy weight byte-identical")
+	gs.free()
+
+	# --- a real lesson: the gateway's stomp, paid only when it lands ------------
+	# A robot certain to shoo, on the same farm: the worm is reachable in a run, and
+	# the reward is booked on the stomp and nowhere else.
+	var gs2 = load("res://systems/game_state.gd").new()
+	gs2.reset()
+	SimRng.reseed(350036)
+	var w2 := SimWorld.new()
+	w2.generate()
+	for x in range(12, 18):
+		w2.set_tile_state(x, 10, "growing", "wheat")
+	BotBrain.deploy(w2, "keen_bot", BotBrain.CONFIG_LEARN, Vector2i(12, 12))
+	var kx: Dictionary = w2.actor("keen_bot")["extra"]
+	BotBrain.enable_pest_sensor(kx)
+	var width: int = Observation.size(kx["pest_spec"])
+	var keen := Policy.new_weights(width, BotBrain.LEARN_ACTIONS)
+	keen[BotBrain.LEARN_SHOO * (width + 1) + width] = 1000.0
+	kx["pest_weights"] = keen
+	var tiles_before := JSON.stringify(w2.tiles)
+	var stomped := 0
+	var paid := 0.0
+	for i in 4:
+		var run := w2.play_worm_run("keen_bot", Vector2i(13 + i, 10), 700 + i, gs2)
+		stomped += int(run["stomped"])
+		paid += float((run["extra"] as Dictionary).get("score", 0.0))
+	_assert(stomped >= 3 and is_equal_approx(paid, stomped * BotBrain.WORM_PRACTICE_REWARD),
+		"a robot that goes for the worm stomps it through the gateway, and is paid for each stomp only (%d stomps, %.1f paid)"
+			% [stomped, paid])
+	_assert(JSON.stringify(w2.tiles) == tiles_before and not w2.has_actor(SimWorld.PRACTICE_WORM),
+		"and the farm the runs were copied from is exactly as it was")
+	gs2.free()
+
+	# --- a practice night beside a night without one ---------------------------
+	# The same farm, the same day of play, one robot with eight runs a night: after
+	# the night the crow policy is the same bytes, and only the worm head moved.
+	var arms: Array = []
+	for size in [0, 3]:
+		var s := _mk3_yard(35035)
+		var bot := _mk3_place(s, MK3_SPOT)
+		if size > 0:
+			s.act({ "verb": "practice", "machine": bot, "practice": "worm",
+				"on": true, "size": size, "actor": "player" })
+		s.tick(SimClock.RATE * 60)
+		s.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+		arms.append((s.world.actor(bot)["extra"] as Dictionary).duplicate(true))
+		s.done()
+	var plain: Dictionary = arms[0]
+	var practised: Dictionary = arms[1]
+	_assert(int(plain.get("days", 0)) == 1 and plain["weights"] != Policy.new_weights(
+			Observation.size(plain["spec"]), BotBrain.LEARN_ACTIONS),
+		"the plain robot's night did update its crow policy (the comparison is not of two blanks)")
+	_assert(JSON.stringify(practised["weights"]) == JSON.stringify(plain["weights"]),
+		"a night with eight worm runs leaves the crow policy byte-identical to a night without")
+	var pest_start := Policy.remap_inputs(Policy.new_weights(Observation.size(plain["spec"]),
+		BotBrain.LEARN_ACTIONS), plain["spec"], practised["pest_spec"], BotBrain.LEARN_ACTIONS)
+	_assert(int(practised["practice"]["worm"].get("runs", 0)) == 8
+			and practised["pest_weights"] != pest_start,
+		"and the eight runs did teach the worm head something (%d runs)"
+			% int(practised["practice"]["worm"].get("runs", 0)))
+
+	# --- a day with practice replays to its autosave ----------------------------
+	var r := _mk3_yard(35037)
+	var rbot := _mk3_place(r, MK3_SPOT)
+	# Continued from the arranged farm as `main.gd` continues from an autosave: the
+	# live world is the one read back from the save, not the one the fixture built,
+	# so its actors are in the order a restore gives them — the order the replay's
+	# world has too (the day turn re-arms brains in that order).
+	var arranged = JSON.parse_string(JSON.stringify(SaveGame.capture(r.world, r.gs)))
+	r.world = SimWorld.new()
+	_assert(SaveGame.restore(arranged, r.world, r.gs), "the arranged farm reads back from its save")
+	r.rebase()
+	r.act({ "verb": "practice", "machine": rbot, "practice": "worm",
+		"on": true, "size": 2, "actor": "player" })
+	r.tick(SimClock.RATE * 45)
+	r.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	r.tick(SimClock.RATE * 20)
+	var rx: Dictionary = r.world.actor(rbot)["extra"]
+	_assert(int(rx["practice"]["worm"].get("runs", 0)) == 4,
+		"the recorded night played its four runs")
+	var end_save = JSON.parse_string(JSON.stringify(SaveGame.capture(r.world, r.gs)))
+	var report := SaveGame.replay_report(r.log, end_save)
+	_assert(report["matched"],
+		"and a day with worm practice replays to its autosave %s" % report["divergence"])
+	r.done()
+
+
+# The measurement S-35's three shares were set from
+# (`tools/measure_worm_practice.gd`) must be the same table every time it runs,
+# or the shares in `design/14` were chosen from noise. Two runs of a small version
+# in one process, compared as text.
+func test_worm_practice_measurement() -> void:
+	print("\n--- The worm practice measurement is reproducible (S-35) Tests ---")
+	var measure = load("res://tools/measure_worm_practice.gd")
+	var first: String = measure.table([LearningRobot.SEED], 2, 4)
+	var second: String = measure.table([LearningRobot.SEED], 2, 4)
+	_assert(first == second,
+		"two identical runs of the measurement print byte-identical tables\n%s\n%s" % [first, second])
+	_assert(first.split("\n").size() == 8 and first.contains("| 8 |"),
+		"with a row for no practice and for each of the three sizes")
+
+
 func test_robot_story_night() -> void:
 	print("\n--- The night the training bench went up (S-12, P-15) Tests ---")
 

@@ -323,7 +323,12 @@ Pictures (for sale and bought):
 - **The price is 200**, a quarter of the robot. `[Playtest]`; the measured effect argues
   for less.
 
-### The practice cards (Q-130, ruled 2026-09-27; S-35; not built)
+### The practice cards (Q-130, ruled 2026-09-27; S-35; partly built)
+
+*Built 2026-09-29: the worm practice in the sim, its energy shares, and the card's lamp and
+three pips on the shelf's third row (`ui/workbench_shelf.gd`). Not built yet: buying the
+card (it is on for every Mark III, with no price), the composed picture (the card shows the
+worm alone), the row of last night's worms, and the plate line.*
 
 A practice is a shelf item of a second kind. The wider view and the pretrained starting
 brain (Q-128) are bought once and are then simply part of the robot. A practice is bought
@@ -354,8 +359,51 @@ plate line.
 
 **The size is shown in v1.** Daniel chose the switch and all three pips. Each larger size
 uses more of the robot's energy on the following day, so the pips are a choice between more
-practice tonight and more farm work tomorrow. The exact three energy shares need a measured
-balance recommendation before the build fixes them.
+practice tonight and more farm work tomorrow.
+
+**The three shares are 5%, 10% and 20% of the next day's meter** (30, 60 and 120 of its
+600 units): one fortieth of the meter for each run, whatever the size. They were set from
+`tools/measure_worm_practice.gd`, run 2026-09-29, which plays the learning robot's
+measurement week (`tools/demo_learning_robot.gd`, open ground) on the eight farms of the
+learning gate, once with no practice and once at each size. After the week, every
+size's worm lesson is tested on the same farm, the no-practice week's own, in 16 worm
+situations per farm that the nightly practice never picks. Nothing from that test is
+learned from.
+
+| Runs a night | Next-day energy used | Farm work lost a day, days 2–7 | Held-out worms stomped | Crop eaten first | Energy a run spends while played |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| none | 0 of 600 (0%) | 0.00 points | 40 of 121 | 81 of 121 | 31.2 |
+| 2 | 30 of 600 (5%) | −0.25 points | 70 of 121 | 51 of 121 | 64.0 |
+| 4 | 60 of 600 (10%) | 1.97 points | 76 of 121 | 45 of 121 | 61.2 |
+| 8 | 120 of 600 (20%) | 4.03 points | 82 of 121 | 39 of 121 | 52.1 |
+
+The robot does 19.12 points of farm work a day with no practice, days 2–7. Seven of the
+128 situations had no open ground beside the crop, so 121 were played. The tool prints the
+table from the implementation, and two runs of it give the same bytes. The unit suite
+checks this on a small version (`test_worm_practice_measurement`).
+
+How the shares were chosen:
+
+- **Every unit taken is farm work lost.** On these farms the robot empties its meter
+  every day, so what the night takes comes straight out of the next day's work: about
+  0.2 points a day for each percent of the meter, 4 points at 20%. At 5% the loss is
+  smaller than the difference between two farms (−0.25).
+- **The lesson has diminishing returns.** Two runs a night take the held-out result from
+  33% of worms stomped to 58%; four take it to 63%; eight to 68%.
+- **So each run costs the same, and the sizes are a real choice.** At a fortieth of the
+  meter a run, the smallest size is almost free and buys most of the lesson, and eight runs
+  cost about a fifth of a day's farm work for the last ten points of it. A cheaper rate
+  would make eight runs the obvious pick; a dearer one would make the smallest size cost a
+  noticeable share of the day.
+- **Deliberately less than a run spends while it is played.** A run uses 52 to 64 units of
+  the robot's meter in play. Charging that would take a fifth of the next day for two runs
+  and most of it for eight.
+
+A run ends when the worm is stomped, when it takes its first mouthful of any crop, or after
+40 seconds. It stomps the worm with the player's own clear verb, and the lesson is paid only
+when the gateway confirms the stomp. The worm comes up on the nearest open ground beside the
+crop, at most three squares away, which is within the distance a real worm smells a crop
+from.
 
 **Each control is an Action.** A tap on the lamp or a pip is the player verb `practice`
 (`06`), recorded like a dial turn, taking effect at the next night. The ledger draws the

@@ -376,6 +376,70 @@ const LEARN_HISTORY_DAYS := 30
 # (ground rule 8).
 const LEARN_PARKED_SECONDS := 3600.0
 
+# S-35: measured by `tools/measure_worm_practice.gd`. Kept as shares so a later
+# meter-size change preserves the trade-off rather than freezing old units.
+const PRACTICE_ENERGY_SHARE_2 := 0.05
+const PRACTICE_ENERGY_SHARE_4 := 0.10
+const PRACTICE_ENERGY_SHARE_8 := 0.20
+const PRACTICE_RUNS := [2, 4, 8]
+const WORM_OUTCOME := "worm_cleared"
+# What a stomped worm is worth to the worm head: a crow caught eating's three
+# (Q-100), the other pest that is caught in the act. Paid only on a real stomp.
+const WORM_PRACTICE_REWARD := 3.0
+# Which of her growing crops each night's runs use (`SimRng.stateless` key).
+const WORM_PICK_SALT := 0x57524D00
+
+## Units of tomorrow's meter a night of practice at this size costs.
+static func practice_energy(size: int) -> int:
+	return roundi(SimWorld.ACTOR_MAX_ENERGY * practice_energy_share(size))
+
+static func practice_energy_share(size: int) -> float:
+	match size:
+		1: return PRACTICE_ENERGY_SHARE_2
+		2: return PRACTICE_ENERGY_SHARE_4
+		3: return PRACTICE_ENERGY_SHARE_8
+	return 0.0
+
+static func merge_practice(into: Dictionary, run: Dictionary, baseline: float) -> void:
+	# A run carries its own baseline; convert its accumulator before pooling it
+	# into the worm head's nightly update. The daytime/crow head is not touched.
+	Policy.add_into(into["pest_acc"], run.get("acc", []), 1.0)
+	Policy.add_into(into["pest_acc"], run.get("base_trace", []), -baseline)
+	Policy.add_into(into["pest_base_trace"], run.get("base_trace", []), 1.0)
+	into["pest_decisions"] = int(into.get("pest_decisions", 0)) \
+		+ int(run.get("decisions", 0))
+
+static func finish_practice(extra: Dictionary) -> void:
+	var weights: Array = extra.get("pest_weights", [])
+	var decisions := int(extra.get("pest_decisions", 0))
+	if weights.is_empty() or decisions <= 0:
+		return
+	var scale := 1.0 / float(decisions)
+	extra["pest_weights"] = Policy.night_update(weights,
+		_scaled(extra.get("pest_acc", []), scale),
+		_scaled(extra.get("pest_base_trace", []), scale),
+		0.0, LEARN_RATE)
+	extra["pest_acc"] = _scaled(weights, 0.0)
+	extra["pest_base_trace"] = _scaled(weights, 0.0)
+	extra["pest_decisions"] = 0
+
+static func enable_pest_sensor(extra: Dictionary) -> void:
+	if extra.has("pest_weights"):
+		return
+	var old_spec: Dictionary = extra.get("spec", {}).duplicate(true)
+	var channels: Array = old_spec.get("channels", []).duplicate()
+	channels.append("pest")
+	var new_spec := old_spec.duplicate(true)
+	new_spec["channels"] = channels
+	# Worm rehearsal owns a second policy head. In particular, enabling it never
+	# changes the bytes or the input meaning of the shipped daytime/crow policy.
+	extra["pest_spec"] = new_spec
+	extra["pest_weights"] = Policy.remap_inputs(
+		extra.get("weights", []), old_spec, new_spec, LEARN_ACTIONS)
+	extra["pest_acc"] = _scaled(extra["pest_weights"], 0.0)
+	extra["pest_base_trace"] = _scaled(extra["pest_weights"], 0.0)
+	extra["pest_decisions"] = 0
+
 
 # --- deployment ----------------------------------------------------------------
 #
@@ -1896,6 +1960,15 @@ func _bird_in_view(world: SimWorld, actor_id: String, extra: Dictionary) -> Stri
 		if d < best_d:
 			best_d = d
 			best = id
+	if (extra.get("spec", {}).get("channels", []) as Array).has("pest"):
+		for id in world.actors_of_species(SpeciesDefs.WORM):
+			for at in Movement.occupied_tiles(world, id):
+				if absi(at.x - here.x) > r or absi(at.y - here.y) > r:
+					continue
+				var d := _manhattan(at, here)
+				if d < best_d:
+					best_d = d
+					best = id
 	return best
 
 
@@ -1952,6 +2025,12 @@ func _reach_bird(world: SimWorld, actor_id: String, extra: Dictionary, tick: int
 		target: String) -> Dictionary:
 	_drop_job(world, actor_id, extra)
 	extra["wake"] = tick + SimClock.RATE
+	if world.species_of(target) == SpeciesDefs.WORM:
+		# The player's stomp is an ordinary clear verb; the gateway resolves the
+		# body under that tile before it touches the ground.
+		extra["pending"] = WORM_OUTCOME
+		return { "verb": "clear_weed", "target": world.actor_pos(target),
+			"actor": actor_id }
 	if not SpeciesDefs.may(world.species_of(target), "crow_scared"):
 		return {}
 	var state := String(world.actor(target).get("extra", {}).get("state", ""))
@@ -2228,6 +2307,12 @@ func on_result(world: SimWorld, actor_id: String, action: Dictionary,
 	extra["pending"] = ""
 	if pending == "" or not bool(result.get("ok", false)):
 		return
+	# A clear that found no worm under it cleared ground instead; only the stomp
+	# is the worm lesson's outcome (S-35).
+	if pending == WORM_OUTCOME:
+		if not bool(result.get("stomped", false)):
+			return
+		extra["worm_stomped"] = int(extra.get("worm_stomped", 0)) + 1
 	# A harvest of a square with nothing on it is accepted by the gateway and cuts
 	# nothing at all — `crop_type` is what says a crop actually came up, and it is
 	# the same fact `world/farm.gd` uses to decide whether to play the sound.
@@ -2262,6 +2347,8 @@ func on_result(world: SimWorld, actor_id: String, action: Dictionary,
 # wrong length is read the same way, because an array that does not line up with
 # `KEYS` is an array whose fifth entry does not mean what the fifth key says.
 static func _reward_of(extra: Dictionary, outcome: String) -> float:
+	if outcome == WORM_OUTCOME:
+		return WORM_PRACTICE_REWARD
 	var rows: Array = extra.get("rewards", [])
 	if rows.size() == (Rewards.KEYS as Array).size():
 		var slot := Rewards.index_of(outcome)

@@ -876,9 +876,30 @@ playtesting. Pictures of the card in `mockups/starter_brain/`, taken from the ga
 
 ### Practice runs: it rehearses at night (Q-130, ruled 2026-09-27; S-35)
 
-*Status: designed, not built. Owner: Milo (design); feasibility checked against the ML
-seat's rules (P-14, the budgets in `ARCHITECTURE.md`). The exact energy cost at each size
-needs a measured balance recommendation before implementation.*
+*Status: the worm practice is built in the sim (2026-09-29). Owner: Milo (design);
+feasibility checked against the ML seat's rules (P-14, the budgets in `ARCHITECTURE.md`).
+The energy shares are 5%, 10% and 20% of the next day's meter, measured and chosen in
+`14-training-workbench.md` ("The practice cards").*
+
+**How the build differs from the plan below, and the gap it leaves.**
+
+- **The worm lesson has its own policy.** Adding worms to the robot's `crow` sense, or
+  pooling worm runs into the day's update, would change what its existing weights mean.
+  So the first time a robot's practice is switched on it gains a second policy, the
+  worm head. The worm head starts as a copy of the day policy with one more sense,
+  `pest`, and the night's runs train only that head. A worm night leaves the day policy
+  the same bytes as a night without practice (`test_worm_practice`).
+- **The copy of her farm is made by the sim itself** (`SimWorld._practice_copy`), not
+  through the save format, and her stores are copied for each run, so a robot that sows
+  in a run takes no seed from her box.
+- **A run ends at the worm's first mouthful of any crop**, not only of the crop it came
+  up beside. The worm comes up on the nearest open ground beside that crop, at most
+  three squares away.
+- **Nothing uses the worm head by day yet.** No worm comes to the living farm
+  (`SimWorld.WORM_VISITS_PER_DAY` is 0), so there is nothing for it to answer. When worms
+  start to visit, the day brain has to switch to the worm head while a worm is in view,
+  or the practice stays a lesson the robot never uses. That switch is part of the work
+  of letting worms visit.
 
 **What Daniel asked for.** Q-130 asked whether making the robot's own training examples
 should start with picking her best day or with a practice-course editor. He chose neither
@@ -1306,8 +1327,8 @@ she would have made herself.
 
 A stall or home; vision beyond radius 2 (designed, not built: bought at the workbench,
 S-29, and keeping what it learned, S-30 — "A wider view keeps what it learned"); choosing which seed to plant (it plants what she
-has most of); carrying more than one crop; practice runs at night (designed, not built:
-bought at the workbench, Q-130 — "Practice runs: it rehearses at night"); learning from her
+has most of); carrying more than one crop; practice runs at night (the worm practice is built in the sim, but the card is not yet sold
+at the workbench, Q-130 — "Practice runs: it rehearses at night"); learning from her
 recorded days (the next rung, P-5 as amended); a bigger brain (Q-128 (a): it waits for a
 pretrained base worth growing from, and the v1 starting brain is only a small head start —
 S-32, "A starting brain from the studio"); sharing weights between robots (P-7); any night surface beyond the panel
@@ -1381,7 +1402,7 @@ that reads as broken.
 | A wider view keeping what it learned (S-30): the proposed mapping `widen` and the 24-farm measurement; not built | `tools/measure_wider_view.gd` + `test_wider_view()` |
 | Its pace (S-31): the three steps and the night's use of them; the `set_pace` verb; the shelf's `buy_upgrade` and catalogue; the bench card | `bot_brain.gd` (`PACE_SCALES`, `_sleep_on_it`), `sim_world.gd`, `systems/shelf_defs.gd`, `ui/workbench_shelf.gd`; tests `test_workbench_shelf()` and Scenario BL; the pace table in `tools/demo_learning_robot.gd`; pictures `tools/capture_workbench_shelf.tscn` |
 | The studio's starting brain (S-32): the brain file and its hash, the shelf row, the purchase's checks and the install, the training and held-out measurement | `systems/starter_brains.gd`, `assets/brains/`, `systems/shelf_defs.gd` (`starter_brain`), `sim_world.gd` (`buy_upgrade`, `_starter_refusal`), `bot_brain.gd` (`install_brain`), `ui/workbench_shelf.gd`; `tools/pretrain_mk3.gd` + `test_starter_brain()` |
-| Practice runs (Q-130): the run and the night's pooling, the practice list; not built | `systems/sim/practice.gd` and `systems/practice_defs.gd` (both new) |
+| Practice runs (Q-130): the worm run, the night's update of the worm head, the next day's energy | `systems/sim/sim_world.gd` (`play_worm_run`, `_run_worm_practice`), `systems/sim/brains/bot_brain.gd` (the shares, `merge_practice`, `finish_practice`); measured by `tools/measure_worm_practice.gd` |
 
 The build plan, with interfaces and acceptance criteria per work item, is
 `docs/V0_2_1_PLAN.md`.
