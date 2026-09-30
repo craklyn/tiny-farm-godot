@@ -462,6 +462,30 @@ func _wait_for_action() -> void:
 		await get_tree().process_frame
 
 
+# One press of the action button on a tile the scenario staged in the same
+# frame, read before the world can put anything on that tile.
+#
+# The press is read by `main._process` later in the frame it lands in, and that
+# same `_process` pumps the sim clock first. So a tick can land between the
+# staging and the read — and the first tick after a day turns is the one where
+# the hen lays her morning egg, on any of the ~50 yard squares she can reach.
+# An egg on the staged crop turns the press into a collect (the T-30
+# object-wins rule): no swing, no energy, the crop still ripe, and the router
+# answering "harvest" again a frame later because the egg is gone. That was
+# Scenario E's once-in-thousands failure (w06942484ad3): in 240 instrumented
+# runs the egg landed in the press frame 6 times, and one in 50 of those is on
+# the crop. A player pressing at that instant gets the egg, which is the rule
+# working; the scenario is asking about the crop, so it holds the clock for
+# the one frame the press is read in.
+func _press_action_on_staged_tile() -> void:
+	_hold_sim_clock()
+	Input.action_press("action")
+	await get_tree().process_frame
+	_release_sim_clock()
+	await _wait_for_action()
+	Input.action_release("action")
+
+
 # Stage a tile for a scenario: the state it needs, and **nothing on it**.
 #
 # The under-load flake (M2.5 plan §9 item 12 — scenario E's harvest asserts,
@@ -649,20 +673,10 @@ func _scenario_e() -> void:
 	player.facing = "right"
 	
 	GameState.selected_tool = 0 # Hands
-	# The press is "just pressed" for the one frame it lands in. That frame has
-	# been seen to come and go with no action at all — once in CI (run
-	# 36657135640, before any scenario had tapped anything) and once in about
-	# four thousand local runs of scenarios A-E, where the square was still
-	# ripe, no energy was spent and the router still answered "harvest" eight
-	# frames later. A second press is what a player would do; this scenario is
-	# about the economy, not about a single frame of keyboard input.
-	for attempt in 3:
-		Input.action_press("action")
-		await _wait_for_action()
-		Input.action_release("action")
-		if farm.get_tile(6, 5).state != "ready":
-			break
-		await get_tree().process_frame
+	# Scenario D has just turned the day, so the hen's morning egg is usually
+	# still to come, and it can land on this crop in the frame the press is read
+	# (CI run 36657135640) — held off for that frame, see the helper.
+	await _press_action_on_staged_tile()
 
 	_assert(farm.get_tile(6, 5).state == "cleared", "Harvested tile returned to 'cleared'")
 	# Four remained after planting; this harvest adds three.
@@ -7973,8 +7987,16 @@ func _scenario_bd_the_shop_shelf_scrolls() -> void:
 	var last_card: Control = shelf.get_child(last_idx)
 	shop_scroll.scroll_vertical = 1000000  # past the end; Godot clamps to the real max
 	await get_tree().process_frame
-	var window_rect := Rect2(shop_scroll.global_position, shop_scroll.size)
-	var card_rect := Rect2(last_card.global_position, last_card.size)
+	# Measured in the window's own frame, never in screen space. The panel pops
+	# in on a spring (0.8 → 1.0 in 0.2s, overshooting past 1.0), and a global
+	# position carries that scale while `size` does not — so on a slow frame
+	# the check landed mid-overshoot, saw the card's top pushed 1–2% further
+	# down with its unscaled height added on, and failed a card that sat
+	# exactly at the window's bottom edge (w06942484ad3, CPU-pinned runs). The
+	# card and the window scale together on screen, so the player sees it
+	# inside the whole time; this frame is the one the claim is about.
+	var window_rect := Rect2(Vector2.ZERO, shop_scroll.size)
+	var card_rect := Rect2(shelf.position + last_card.position, last_card.size)
 	_assert(window_rect.encloses(card_rect),
 		"scrolling to the end brings the once-unreachable last card fully inside the window")
 
