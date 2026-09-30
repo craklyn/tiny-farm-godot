@@ -895,11 +895,12 @@ The energy shares are 5%, 10% and 20% of the next day's meter, measured and chos
 - **A run ends at the worm's first mouthful of any crop**, not only of the crop it came
   up beside. The worm comes up on the nearest open ground beside that crop, at most
   three squares away.
-- **Nothing uses the worm head by day yet.** No worm comes to the living farm
-  (`SimWorld.WORM_VISITS_PER_DAY` is 0), so there is nothing for it to answer. When worms
-  start to visit, the day brain has to switch to the worm head while a worm is in view,
-  or the practice stays a lesson the robot never uses. That switch is part of the work
-  of letting worms visit.
+- **The living day uses the worm head only while a worm is in view.** Worms receive one
+  deterministic chance to visit in every ten eligible play-days, provisionally, after
+  play-day 2 and once two crops are planted. A Mark III with the worm lesson switches its
+  complete policy state to the worm head when it can see one, then switches back to its
+  unchanged day policy after the worm leaves. The two policies never share weights,
+  traces, or nightly updates.
 
 **What Daniel asked for.** Q-130 asked whether making the robot's own training examples
 should start with picking her best day or with a practice-course editor. He chose neither

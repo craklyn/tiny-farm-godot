@@ -420,6 +420,7 @@ static func finish_practice(extra: Dictionary) -> void:
 		_scaled(extra.get("pest_base_trace", []), scale),
 		0.0, LEARN_RATE)
 	extra["pest_acc"] = _scaled(weights, 0.0)
+	extra["pest_trace"] = _scaled(weights, 0.0)
 	extra["pest_base_trace"] = _scaled(weights, 0.0)
 	extra["pest_decisions"] = 0
 
@@ -436,9 +437,24 @@ static func enable_pest_sensor(extra: Dictionary) -> void:
 	extra["pest_spec"] = new_spec
 	extra["pest_weights"] = Policy.remap_inputs(
 		extra.get("weights", []), old_spec, new_spec, LEARN_ACTIONS)
+	extra["pest_trace"] = _scaled(extra["pest_weights"], 0.0)
 	extra["pest_acc"] = _scaled(extra["pest_weights"], 0.0)
 	extra["pest_base_trace"] = _scaled(extra["pest_weights"], 0.0)
 	extra["pest_decisions"] = 0
+
+static func _ensure_pest_head_state(extra: Dictionary) -> void:
+	# Saves written by the first worm-practice build can already hold the learned
+	# head without its running daytime state. Complete that saved head only when
+	# it is first needed; existing sums remain untouched.
+	var weights: Array = extra.get("pest_weights", [])
+	if not extra.has("pest_trace"):
+		extra["pest_trace"] = _scaled(weights, 0.0)
+	if not extra.has("pest_acc"):
+		extra["pest_acc"] = _scaled(weights, 0.0)
+	if not extra.has("pest_base_trace"):
+		extra["pest_base_trace"] = _scaled(weights, 0.0)
+	if not extra.has("pest_decisions"):
+		extra["pest_decisions"] = 0
 
 
 # --- deployment ----------------------------------------------------------------
@@ -1519,14 +1535,24 @@ func _learn(world: SimWorld, actor_id: String, extra: Dictionary, tick: int,
 
 	# Her stores go in with the world (v0.2.1 WI-9a): the seed box is one of the
 	# robot's inputs, and it is the one thing it can see that is not grid truth.
-	var obs := Observation.build(world, actor_id, extra.get("spec", {}), gs)
+	# Worm practice owns a separate policy. Use that complete head while a worm
+	# is visible, then return to the day head on the first decision after it goes.
+	var pest_head := extra.has("pest_weights") and _worm_in_view(world, actor_id, extra)
+	if pest_head:
+		_ensure_pest_head_state(extra)
+	var spec_key := "pest_spec" if pest_head else "spec"
+	var weights_key := "pest_weights" if pest_head else "weights"
+	var trace_key := "pest_trace" if pest_head else "trace"
+	var base_trace_key := "pest_base_trace" if pest_head else "base_trace"
+	var decisions_key := "pest_decisions" if pest_head else "decisions"
+	var obs := Observation.build(world, actor_id, extra.get(spec_key, {}), gs)
 	var n_in := obs.size()
-	var chances := Policy.probs(Policy.logits(extra["weights"], n_in, LEARN_ACTIONS, obs))
+	var chances := Policy.probs(Policy.logits(extra[weights_key], n_in, LEARN_ACTIONS, obs))
 	# How undecided it was, in bits, added to the day's running sum — once per
 	# decision, off the probabilities already in hand, so a day of it costs eight
 	# multiplies per errand and nothing per tick (v0.2.2 ground rule 5).
 	extra["entropy_sum"] = float(extra.get("entropy_sum", 0.0)) + Policy.entropy_bits(chances)
-	var decisions := int(extra.get("decisions", 0))
+	var decisions := int(extra.get(decisions_key, 0))
 	# The day is part of the salt so that a robot which has learned nothing yet
 	# does not repeat yesterday's exact wander today; the decision number is the
 	# index, so consecutive decisions are consecutive draws. `draw_u` rather than
@@ -1534,7 +1560,8 @@ func _learn(world: SimWorld, actor_id: String, extra: Dictionary, tick: int,
 	# happens without the scramble.
 	var salt: int = int(extra.get("salt", 0)) ^ (int(extra.get("days", 0)) * LEARN_DAY_STRIDE)
 	var choice := Policy.sample(chances, Policy.draw_u(salt, decisions))
-	extra["decisions"] = decisions + 1
+	extra[decisions_key] = decisions + 1
+	extra["policy_head"] = "pest" if pest_head else "day"
 	# What it just chose, for the workbench's eyes — the one bar that is lit is
 	# the decision rather than the distribution it came from.
 	extra["last_action"] = choice
@@ -1544,14 +1571,14 @@ func _learn(world: SimWorld, actor_id: String, extra: Dictionary, tick: int,
 	# back over everything the robot did before earning it, which is the only way
 	# *walking towards the bin* is ever learned when only the sale pays.
 	var grad := Policy.grad_log_prob(obs, chances, choice, n_in, LEARN_ACTIONS)
-	Policy.add_into(extra["trace"], grad, 1.0)
+	Policy.add_into(extra[trace_key], grad, 1.0)
 	# **And the same term again, scaled by how much of the day is left in its
 	# arms.** This is the trace the night charges the baseline against, and the
 	# whole reason it is a second sum: a decision made on a full meter still has a
 	# day's worth of work ahead of it, while one made on the last thirty units has
 	# almost nothing ahead of it and should be measured against almost nothing.
 	# Read before the action, because the action is what spends it.
-	Policy.add_into(extra["base_trace"], grad,
+	Policy.add_into(extra[base_trace_key], grad,
 		float(world.energy_of(actor_id)) / float(SimWorld.ACTOR_MAX_ENERGY))
 
 	extra["pending"] = ""
@@ -1960,7 +1987,8 @@ func _bird_in_view(world: SimWorld, actor_id: String, extra: Dictionary) -> Stri
 		if d < best_d:
 			best_d = d
 			best = id
-	if (extra.get("spec", {}).get("channels", []) as Array).has("pest"):
+	if extra.has("pest_weights") \
+			or (extra.get("spec", {}).get("channels", []) as Array).has("pest"):
 		for id in world.actors_of_species(SpeciesDefs.WORM):
 			for at in Movement.occupied_tiles(world, id):
 				if absi(at.x - here.x) > r or absi(at.y - here.y) > r:
@@ -1970,6 +1998,16 @@ func _bird_in_view(world: SimWorld, actor_id: String, extra: Dictionary) -> Stri
 					best_d = d
 					best = id
 	return best
+
+
+func _worm_in_view(world: SimWorld, actor_id: String, extra: Dictionary) -> bool:
+	var here := world.actor_pos(actor_id)
+	var r := _view_radius(extra)
+	for id in world.actors_of_species(SpeciesDefs.WORM):
+		for at in Movement.occupied_tiles(world, id):
+			if absi(at.x - here.x) <= r and absi(at.y - here.y) <= r:
+				return true
+	return false
 
 
 # Walking a bird down. The mark-2's `_chase` with its patch radius swapped for a
@@ -2327,7 +2365,10 @@ func on_result(world: SimWorld, actor_id: String, action: Dictionary,
 	# of 0.0, and a robot whose dial is at zero should still show the outcome
 	# happening.
 	var earned := _reward_of(extra, pending)
-	Policy.add_into(extra["acc"], extra["trace"], earned)
+	if String(extra.get("policy_head", "day")) == "pest":
+		Policy.add_into(extra["pest_acc"], extra["pest_trace"], earned)
+	else:
+		Policy.add_into(extra["acc"], extra["trace"], earned)
 	extra["score"] = float(extra.get("score", 0.0)) + earned
 	# ...and the same point again in its own column, so a week can say which of
 	# the eight rows it actually reached. Report only; nothing decides on it.

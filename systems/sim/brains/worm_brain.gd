@@ -81,9 +81,8 @@ const STATE_LEAVE := "leaving"
 # The `Brain.arrive` hook (M2.5 WI-8c), reached from the gateway when the day's
 # action clock hits one of this species' appointments. One worm at a time.
 #
-# **Nothing calls this in a real game**: `SimWorld.WORM_VISITS_PER_DAY` is 0, so no
-# schedule ever holds an appointment to reach; a test writes one number into
-# `gs.visitor_schedules` and the whole path runs.
+# The living farm calls this on the worm's rare scheduled day (S-35/Q-65); tests
+# may also write an appointment directly to isolate the lifecycle.
 func arrive(world: SimWorld, gs, species: String, arrival: int) -> String:
 	if gs == null:
 		return ""

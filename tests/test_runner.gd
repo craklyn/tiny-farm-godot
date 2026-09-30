@@ -5633,6 +5633,8 @@ func test_brains() -> void:
 	# T-2's mercy, retargeted by T-15: the first crow to go for a **crop** eats
 	# nothing at all. It still flies in, still perches, and leaves empty-beaked.
 	var mercy := _crow_ready_session(4242)
+	# This is the crow's mercy test; a rare worm is a separate legitimate loss.
+	mercy.gs.visitor_schedules[SpeciesDefs.WORM] = []
 	for ty in SimWorld.MAP_HEIGHT:
 		for tx in SimWorld.MAP_WIDTH:
 			if mercy.world.objects[ty][tx] == "acorn":
@@ -8317,13 +8319,14 @@ func test_songbird() -> void:
 	for species in SimWorld.visitors().keys():
 		_assert_quiet(SpeciesDefs.has(String(species)),
 			"%s is a species the table knows" % species)
-		_assert_quiet(int(SimWorld.visitors()[species]["per_day"]) == 0,
-			"%s is scheduled zero times a day" % species)
+		var expected := 1 if String(species) == SpeciesDefs.WORM else 0
+		_assert_quiet(int(SimWorld.visitors()[species]["per_day"]) == expected,
+			"%s has its shipping daily ceiling" % species)
 		_assert_quiet(Brains.of_species(String(species)).arrive(null, null, String(species), 0) == "",
 			"%s's arrival hook refuses a null world" % species)
-	_flush_quiet("every row in the visitors' table names a real species, ships at zero, and is safe")
+	_flush_quiet("every row in the visitors' table names a real species, has its shipping rate, and is safe")
 
-	# A fresh day rolls a book for everybody in the table, and it is empty.
+	# A fresh day rolls the same book the public scheduler describes.
 	var fresh = load("res://systems/game_state.gd").new()
 	fresh.reset()
 	fresh.takeover_day = 1
@@ -8331,10 +8334,10 @@ func test_songbird() -> void:
 	fresh.start_new_day()
 	_assert(fresh.visitor_schedules.size() == SimWorld.visitors().size(),
 		"start_new_day rolls one book per visiting species")
-	var owed := 0
 	for species in fresh.visitor_schedules.keys():
-		owed += fresh.visitor_schedules[species].size()
-	_assert(owed == 0, "and every one of them is empty in a real game")
+		_assert(fresh.visitor_schedules[species]
+				== SimWorld.roll_visitor_schedule(String(species), fresh.play_day()),
+			"and %s's live book uses that species' deterministic roll" % species)
 	fresh.free()
 
 	# The book survives a save, because a reload mid-day must neither resurrect a
@@ -8611,8 +8614,8 @@ func test_mole() -> void:
 		+ (SimWorld.RABBIT_VISITS_PER_DAY + SimWorld.KANGAROO_VISITS_PER_DAY) * SimWorld.GRAZER_BITES \
 		+ SimWorld.MOLE_VISITS_PER_DAY * SimWorld.MOLE_STEALS \
 		+ SimWorld.WORM_VISITS_PER_DAY * SimWorld.WORM_MEALS
-	_assert(bound == SimWorld.CROWS_PER_DAY,
-		"in a shipping build the last two mouths add nothing to it: no visit is ever scheduled")
+	_assert(bound == SimWorld.CROWS_PER_DAY + SimWorld.WORM_MEALS,
+		"the shipping daily ceiling includes one rare worm's bounded meal")
 	var budget := _meadow_session(88)
 	_sow(budget, [Vector2i(8, SEED_ROW_Y), Vector2i(9, SEED_ROW_Y), Vector2i(10, SEED_ROW_Y),
 		Vector2i(11, SEED_ROW_Y), Vector2i(12, SEED_ROW_Y), Vector2i(13, SEED_ROW_Y)])
@@ -8707,12 +8710,24 @@ func test_worm() -> void:
 		"its 6 px/s converts, and makes it the slowest thing in the game")
 	_assert(Brains.of_species(SpeciesDefs.WORM) is WormBrain, "and the row binds to a brain")
 	_assert(SpeciesDefs.is_stompable(SpeciesDefs.WORM), "a boot answers it")
-	_assert(SimWorld.WORM_VISITS_PER_DAY == 0,
-		"and nothing schedules one in a shipping build")
-	for day in range(1, 21):
-		_assert_quiet(SimWorld.roll_visitor_schedule(SpeciesDefs.WORM, day).is_empty(),
-			"day %d schedules no worm" % day)
-	_flush_quiet("on any day of any real game")
+	_assert(SimWorld.WORM_VISITS_PER_DAY == 1 and SimWorld.WORM_VISIT_DAY_RATE == 10,
+		"and the living farm gives it one deterministic chance in ten eligible days")
+	SimRng.reseed(350038)
+	var visit_days: Array[int] = []
+	var appointments: Array[int] = []
+	for day in range(1, 103):
+		var first := SimWorld.roll_visitor_schedule(SpeciesDefs.WORM, day)
+		var again := SimWorld.roll_visitor_schedule(SpeciesDefs.WORM, day)
+		_assert_quiet(first == again, "day %d rolls the same appointment twice" % day)
+		if not first.is_empty():
+			visit_days.append(day)
+			appointments.append(int(first[0]))
+	_assert(SimWorld.roll_visitor_schedule(SpeciesDefs.WORM, 1).is_empty()
+			and SimWorld.roll_visitor_schedule(SpeciesDefs.WORM, 2).is_empty(),
+		"a new player's first two days have no worm")
+	_assert(visit_days == [14, 32, 38, 45, 46, 53, 56, 66, 67, 90]
+			and appointments == [12, 16, 18, 11, 8, 10, 16, 12, 15, 21],
+		"and seed 350038 pins the exact hundred-day visit book and action times")
 
 	# --- the arrival ----------------------------------------------------------
 	var booked := _meadow_session(7)
@@ -8728,6 +8743,29 @@ func test_worm() -> void:
 			booked.world, booked.gs, SpeciesDefs.WORM, 9) == "",
 		"a second worm is refused while the first is still here")
 	booked.done()
+
+	# A written appointment cannot bypass either readiness rule. It is still
+	# consumed, so a farm does not accumulate an overdue pest for later.
+	var one_crop := _meadow_session(8, false)
+	one_crop.world.set_tile_state(12, MEADOW_ROW_Y, "growing", "wheat")
+	one_crop.gs.day = 9
+	one_crop.gs.takeover_day = 1
+	one_crop.gs.visitor_schedules = { SpeciesDefs.WORM: [1] }
+	_work_until_actions(one_crop, 1)
+	_assert(not one_crop.world.has_actor(SpeciesDefs.WORM)
+			and one_crop.gs.visitor_schedules[SpeciesDefs.WORM].is_empty(),
+		"a booked worm is spent but cannot arrive for fewer than two planted crops")
+	one_crop.done()
+
+	var second_day := _meadow_session(9)
+	second_day.gs.day = 2
+	second_day.gs.takeover_day = 1
+	second_day.gs.visitor_schedules = { SpeciesDefs.WORM: [1] }
+	_work_until_actions(second_day, 1)
+	_assert(not second_day.world.has_actor(SpeciesDefs.WORM)
+			and second_day.gs.visitor_schedules[SpeciesDefs.WORM].is_empty(),
+		"a booked worm is spent but cannot arrive before play-day 3")
+	second_day.done()
 
 	# --- the mechanic: one segment per crop ----------------------------------
 	#
@@ -14279,6 +14317,58 @@ func test_worm_practice() -> void:
 	_assert(JSON.stringify(w2.tiles) == tiles_before and not w2.has_actor(SimWorld.PRACTICE_WORM),
 		"and the farm the runs were copied from is exactly as it was")
 	gs2.free()
+
+	# --- the two heads in a living day, including a scheduled visitor ---------
+	var live := _meadow_session(350038)
+	var live_bot := "live_worm_bot"
+	BotBrain.deploy(live.world, live_bot, BotBrain.CONFIG_LEARN, Vector2i(2, 2))
+	var lx: Dictionary = live.world.actor(live_bot)["extra"]
+	BotBrain.enable_pest_sensor(lx)
+	var day_width := Observation.size(lx["spec"])
+	var day_wait := Policy.new_weights(day_width, BotBrain.LEARN_ACTIONS)
+	day_wait[BotBrain.LEARN_WAIT * (day_width + 1) + day_width] = 1000.0
+	lx["weights"] = day_wait
+	lx["trace"] = Policy.new_weights(day_width, BotBrain.LEARN_ACTIONS)
+	lx["acc"] = Policy.new_weights(day_width, BotBrain.LEARN_ACTIONS)
+	lx["base_trace"] = Policy.new_weights(day_width, BotBrain.LEARN_ACTIONS)
+	var pest_width := Observation.size(lx["pest_spec"])
+	var pest_shoo := Policy.new_weights(pest_width, BotBrain.LEARN_ACTIONS)
+	pest_shoo[BotBrain.LEARN_SHOO * (pest_width + 1) + pest_width] = 1000.0
+	lx["pest_weights"] = pest_shoo
+	# Shape written by the earlier worm-practice build: its learned weights and
+	# observation spec were saved, but the daytime running fields were not.
+	lx.erase("pest_trace")
+	lx.erase("pest_acc")
+	lx.erase("pest_base_trace")
+	lx.erase("pest_decisions")
+	live.gs.day = 9
+	live.gs.takeover_day = 1
+	live.gs.visitor_schedules = { SpeciesDefs.WORM: [1] }
+	_work_until_actions(live, 1)
+	_assert(live.world.has_actor(SpeciesDefs.WORM),
+		"the worm in the test came through the living farm's visitor book")
+	var arrived_at := live.world.actor_pos(SpeciesDefs.WORM)
+	Movement.place_on_tile(live.world, live_bot, arrived_at)
+	live.world.schedule_all_brains()
+	var waited := 0
+	while waited < SimClock.RATE * 45 and live.world.has_actor(SpeciesDefs.WORM):
+		live.tick(SimClock.RATE)
+		waited += SimClock.RATE
+	_assert(not live.world.has_actor(SpeciesDefs.WORM)
+			and int(lx.get("worm_stomped", 0)) == 1,
+		"a Mark III saved with the earlier practised-bot shape initializes its worm head and stomps a scheduled visitor")
+	_assert((lx.get("pest_trace", []) as Array).size() == pest_shoo.size()
+			and (lx.get("pest_acc", []) as Array).size() == pest_shoo.size()
+			and (lx.get("pest_base_trace", []) as Array).size() == pest_shoo.size()
+			and lx.has("pest_decisions"),
+		"the compatibility path restores every missing worm-policy running field")
+	_assert(String(lx.get("policy_head", "")) == "pest",
+		"the worm decision used only the worm policy")
+	live.tick(SimClock.RATE * 2)
+	_assert(String(lx.get("policy_head", "")) == "day"
+			and int(lx.get("last_action", -1)) == BotBrain.LEARN_WAIT,
+		"and its next decision after the worm leaves uses the day policy again")
+	live.done()
 
 	# --- a practice night beside a night without one ---------------------------
 	# The same farm, the same day of play, one robot with eight runs a night: after

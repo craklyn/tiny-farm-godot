@@ -2532,6 +2532,12 @@
    "verdict": "decode",
    "why": "“Alias” is administrative shorthand for an email address used for this purpose."
   },
+  "4a698731a2df799be334": {
+   "instead": "Worms now visit the farm occasionally, and a Mark III stomps them.",
+   "quote": "a Mark III that practised stomps them",
+   "verdict": "decode",
+   "why": "The construction leaves it unclear whether the Mark III practised stomping worms or simply stomps them now."
+  },
   "4a76ed7e1db9817ac3ff": {
    "instead": "Explicitly postpone the recording session.",
    "quote": "Park it explicitly",
@@ -8653,6 +8659,9 @@
    "why": "“Jump into real income” is a figurative description of the later increase in gold earnings."
   },
   "fc8f3b5aa1e95d7bfcbd": {
+   "verdict": "ok"
+  },
+  "fc9d94edc9375d65005b": {
    "verdict": "ok"
   },
   "fcb00bd5802c4e3630fc": {

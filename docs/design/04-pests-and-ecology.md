@@ -102,6 +102,13 @@ III's first overnight practice, where the robot learns to shoo it underground. W
 length should mean remains parked. Until a later ruling changes that, it stays a zero-dial
 proof that the movement engine carries a body outside the practice world.
 
+The living farm gets one deterministic chance of a worm visit in every ten eligible
+play-days,
+never before play-day 3 and never until at least two crops are planted. The appointment's
+day and action are both derived through `SimRng`, so the rate is rare without making a
+replay depend on the shared random stream. Neither this chapter nor the training design
+set a number for “rare,” so one in ten is the provisional working rate `[Playtest]`.
+
 **A crow on a crop flaps and turns left and right while it eats** (2026-09-10, the
 designer's call): the bird taking a crop is the farm's alarm, so it must not sit still —
 the meal used to hold a single frame for its whole five seconds, which made the most

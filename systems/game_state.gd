@@ -132,8 +132,8 @@ var ant_schedule: Array[int]
 # dictionary rather than a field per species because the crow's and the raid's
 # already cost a field, a roll, a save key and a `_send_due_*` each, and the
 # bestiary is not going to stop at five — a new critter is a row in
-# `SimWorld.visitors()` and nothing here changes. Always empty in a real game:
-# every `per_day` in that table is 0.
+# `SimWorld.visitors()` and nothing here changes. Usually empty in a real game:
+# the worm is the only visitor with a live rate.
 var visitor_schedules: Dictionary
 var total_shipped: int  # Q-12 proof counter (crops sold, any route)
 var bin_deposits: int  # Successful player bin errands, including reserve-only deposits.

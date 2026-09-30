@@ -291,17 +291,17 @@ static func may_start_raid(day: int, planted: int) -> bool:
 # `earliest` keeps an arrival out of the first few actions of a day, and `salt`
 # separates this species' `SimRng.stateless` draws from every other species'.
 #
-# **Every `per_day` is 0, and that is the shipping value.** The whole lifecycle —
-# scheduled, gated, spawned, fed and gone — exists and is tested; no real game has
-# ever contained a rabbit, a kangaroo or a songbird. Turning one on is one integer
-# and a designer's ruling (the Q-56 pattern).
+# Every row except the worm remains latent. The worm's daily ceiling is one and
+# `roll_visitor_schedule` thins that to its provisional rare one-in-ten rate
+# (S-35/Q-65; design/04).
 const RABBIT_VISITS_PER_DAY := 0
 const KANGAROO_VISITS_PER_DAY := 0
 const SONGBIRDS_PER_DAY := 0
 # ...and the last two of tier 1 (M2.5 WI-8d/8e), which added two rows to the table
 # below and nothing else: no field, no roll, no loop, no save key.
 const MOLE_VISITS_PER_DAY := 0
-const WORM_VISITS_PER_DAY := 0
+const WORM_VISITS_PER_DAY := 1
+const WORM_VISIT_DAY_RATE := 10
 
 # How many crops one visiting grazer takes before it has had its fill and leaves.
 # This is the daily-loss identity's new term (T-15/T-20, plan §4): a visit costs
@@ -374,6 +374,9 @@ static func roll_visitor_schedule(species: String, day: int) -> Array[int]:
 	var out: Array[int] = []
 	var rule: Dictionary = visitors().get(species, {})
 	if rule.is_empty() or day < int(rule["min_day"]):
+		return out
+	if species == SpeciesDefs.WORM \
+			and SimRng.stateless(day, int(rule["salt"]) - 1) % WORM_VISIT_DAY_RATE != 0:
 		return out
 	for i in int(rule["per_day"]):
 		out.append(int(rule["earliest"]) + SimRng.stateless(day, int(rule["salt"]) + i) % 20)
@@ -3891,9 +3894,8 @@ func _send_due_ants(gs) -> void:
 # species the arriving actor is *is* the dispatch: `Brains.of_species(...).arrive`
 # means the gateway never learns what a rabbit is.
 #
-# **Empty in every real game**: every `per_day` in the table is 0, so
-# `GameState.start_new_day` rolls an empty book for each of them on every day of
-# every session, and this loop finds nothing to do.
+# Usually empty in a real game: the worm is the only live row and receives an
+# appointment on one eligible day in ten. The same loop consumes that appointment.
 func _send_due_visitors(gs) -> void:
 	if gs == null or not ("visitor_schedules" in gs):
 		return
@@ -4080,6 +4082,15 @@ func play_worm_run(robot_id: String, crop: Vector2i, salt: int, gs) -> Dictionar
 	sx["practice"] = {}
 	sx["spec"] = (live_extra["pest_spec"] as Dictionary).duplicate(true)
 	sx["weights"] = (live_extra["pest_weights"] as Array).duplicate()
+	# A run presents the worm head as its only head. Otherwise `_learn` would
+	# select the copied robot's nested pest head and the run's ordinary sums —
+	# the ones returned to `merge_practice` — would stay empty.
+	sx.erase("pest_spec")
+	sx.erase("pest_weights")
+	sx.erase("pest_trace")
+	sx.erase("pest_acc")
+	sx.erase("pest_base_trace")
+	sx.erase("pest_decisions")
 	sx["salt"] = int(live_extra.get("salt", 0)) ^ salt
 	sx["score"] = 0.0
 	sx["decisions"] = 0

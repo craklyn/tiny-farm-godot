@@ -437,9 +437,9 @@ static var ROWS: Dictionary = {
 	# below contains a line of movement code, and everything strange about how
 	# these animals get about is in the two `movement` dictionaries here.
 	#
-	# **Nothing spawns either.** `SimWorld.MOLE_VISITS_PER_DAY` and
-	# `WORM_VISITS_PER_DAY` are 0, so no schedule in any real game holds an
-	# appointment for one; the debut is content sequencing (the Q-56 pattern).
+	# **The mole remains latent; the worm now visits rarely.**
+	# `SimWorld.MOLE_VISITS_PER_DAY` is 0, while the worm's live schedule and
+	# readiness rules are in `SimWorld.visitors()` (S-35/Q-65).
 
 	# The one you cannot tap. It travels **under** the farm, where a rock, a hedge
 	# and a closed gate are all equally irrelevant, comes up on a tile somebody has
