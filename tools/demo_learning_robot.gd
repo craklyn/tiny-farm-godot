@@ -263,6 +263,10 @@ static func run(days := 7, farm_seed := SEED, learn := true, assign := false,
 	# bench standing in the yard would be one more thing the week measured.
 	BotBrain.set_pace(world.actor(robot)["extra"], pace)
 	if practice_size > 0:
+		# This is a staged measurement farm, not a shop-flow test.  The shelf
+		# purchase is covered through its Action elsewhere; here, grant the one
+		# owned lesson before asking the gateway to switch it on.
+		BotBrain.add_upgrade(world.actor(robot)["extra"], "worm_practice")
 		world.apply_action({ "verb": "practice", "machine": robot,
 			"practice": "worm", "on": true, "size": practice_size,
 			"actor": "player" }, gs)

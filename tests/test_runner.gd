@@ -14250,6 +14250,11 @@ func test_worm_practice() -> void:
 	world.set_tile_state(crop.x, crop.y, "seeded", "wheat")
 	BotBrain.deploy(world, "practice_bot", BotBrain.CONFIG_LEARN, Vector2i(12, 10))
 	var old_extra: Dictionary = world.actor("practice_bot")["extra"]
+	var unbought := world.apply_action({ "verb": "practice", "machine": "practice_bot",
+		"practice": "worm", "on": true, "size": 1, "actor": "player" }, gs)
+	_assert(not unbought.get("ok", true) and unbought.get("reason", "") == "not_owned",
+		"a worm lesson cannot run until this robot bought its practice card")
+	BotBrain.add_upgrade(old_extra, "worm_practice")
 	var old_spec: Dictionary = old_extra["spec"].duplicate(true)
 	var old_weights: Array = old_extra["weights"].duplicate()
 	var before_bad := old_extra.duplicate(true)
@@ -14378,6 +14383,7 @@ func test_worm_practice() -> void:
 		var s := _mk3_yard(35035)
 		var bot := _mk3_place(s, MK3_SPOT)
 		if size > 0:
+			BotBrain.add_upgrade(s.world.actor(bot)["extra"], "worm_practice")
 			s.act({ "verb": "practice", "machine": bot, "practice": "worm",
 				"on": true, "size": size, "actor": "player" })
 		s.tick(SimClock.RATE * 60)
@@ -14401,6 +14407,7 @@ func test_worm_practice() -> void:
 	# --- a day with practice replays to its autosave ----------------------------
 	var r := _mk3_yard(35037)
 	var rbot := _mk3_place(r, MK3_SPOT)
+	BotBrain.add_upgrade(r.world.actor(rbot)["extra"], "worm_practice")
 	# Continued from the arranged farm as `main.gd` continues from an autosave: the
 	# live world is the one read back from the save, not the one the fixture built,
 	# so its actors are in the order a restore gives them — the order the replay's
@@ -14435,7 +14442,8 @@ func test_worm_practice_measurement() -> void:
 	var second: String = measure.table([LearningRobot.SEED], 2, 4)
 	_assert(first == second,
 		"two identical runs of the measurement print byte-identical tables\n%s\n%s" % [first, second])
-	_assert(first.split("\n").size() == 8 and first.contains("| 8 |"),
+	_assert(first.contains("| none |") and first.contains("| 2 |")
+			and first.contains("| 4 |") and first.contains("| 8 |"),
 		"with a row for no practice and for each of the three sizes")
 
 

@@ -3264,6 +3264,8 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			var practice_extra: Dictionary = actors[practised]["extra"]
 			if not practice_extra.has("weights"): return _fail("not_a_learner")
 			if String(action.get("practice", "")) != "worm": return _fail("bad_practice")
+			if not BotBrain.has_upgrade(practice_extra, "worm_practice"):
+				return _fail("not_owned")
 			var size := int(action.get("size", 1))
 			if size < 1 or size > 3: return _fail("bad_size")
 			# Validation ends here. Everything below commits the setting together.
@@ -3274,7 +3276,12 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				"on": bool(action.get("on", true)), "size": size,
 				"baseline": float(previous.get("baseline", 0.0)),
 				"runs": int(previous.get("runs", 0)),
-				"last_shooed": int(previous.get("last_shooed", 0)),
+				"last_ran": int(previous.get("last_ran", 0)),
+				# Older saves called this count `last_shooed`.  A completed run is a
+				# stomp in the simulation and on the bench, so save the new name while
+				# continuing to read the old one.
+				"last_stomped": int(previous.get("last_stomped", previous.get("last_shooed", 0))),
+				"last_size": int(previous.get("last_size", 0)),
 			}
 			practice_extra["practice"] = settings
 			return { "ok": true, "machine": practised, "practice": "worm",
@@ -4145,7 +4152,8 @@ func _run_worm_practice(gs) -> void:
 			# Nothing growing for a worm to come up beside: no runs, and so no
 			# charge on tomorrow's meter.
 			worm["last_ran"] = 0
-			worm["last_shooed"] = 0
+			worm["last_stomped"] = 0
+			worm["last_size"] = size
 			settings["worm"] = worm
 			live_extra["practice"] = settings
 			continue
@@ -4172,7 +4180,10 @@ func _run_worm_practice(gs) -> void:
 			worm["runs"] = old_runs + ran
 			worm["stomped_total"] = int(worm.get("stomped_total", 0)) + stomped
 		worm["last_ran"] = ran
-		worm["last_shooed"] = stomped
+		worm["last_stomped"] = stomped
+		# The morning card reports the night that just happened. Keep its chosen
+		# size alongside its counts so a later setting change cannot rewrite it.
+		worm["last_size"] = size
 		settings["worm"] = worm
 		live_extra["practice"] = settings
 

@@ -35,8 +35,8 @@ extends Control
 const PLATE_RECT := Rect2(48, 174, 704, 310)
 const LABEL_X := 88.0
 const VALUE_X := 210.0
-const LINE_Y := 240.0        # the baseline of the first line
-const LINE_STRIDE := 46.0
+const LINE_Y := 220.0        # the baseline of the first line
+const LINE_STRIDE := 38.0
 const SCREW_INSET := Vector2(20, 12)
 
 const LABEL_SIZE := 13
@@ -141,6 +141,20 @@ func _engrave() -> void:
 	# nothing she does during the day changes its mind.
 	lines.append(["Updated", "at the day turn · nights practised: %d"
 		% int(extra.get("days", 0))])
+
+	# The practice card is wordless, but this plate is where an adult can read the
+	# result of last night. It is state, not a claim: the night writes its size and
+	# both counts.
+	var worm: Dictionary = (extra.get("practice", {}) as Dictionary).get("worm", {})
+	# Last night's result belongs to the saved night, not today's switch.  Turning
+	# practice off leaves its result readable until the next saved practice night.
+	if int(worm.get("last_ran", 0)) > 0:
+		var size := clampi(int(worm.get("last_size", worm.get("size", 1))), 1,
+			BotBrain.PRACTICE_RUNS.size())
+		var runs := int(BotBrain.PRACTICE_RUNS[size - 1])
+		var stomped := int(worm.get("last_stomped", worm.get("last_shooed", 0)))
+		lines.append(["Practice", "worm · %d runs a night · %d of %d stomped"
+			% [runs, stomped, int(worm.get("last_ran", runs))]])
 
 	# **Exploration.** How undecided it still is, against the most undecided it
 	# could possibly be — eight equally likely actions, which is three bits. A

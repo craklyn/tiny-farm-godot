@@ -58,11 +58,20 @@ static var TYPES: Dictionary = {
 		"scope": "robot",
 		"picture": "starter",
 	},
+	# The worm lesson gives a Mark III a separate pest head to rehearse with at
+	# night. It still costs tomorrow's energy every night it is switched on, so it
+	# is below the pace setting: this buys a lesson, not a permanent faster robot.
+	# [Playtest]
+	"worm_practice": {
+		"price": 100,
+		"scope": "robot",
+		"picture": "worm_practice",
+	},
 }
 
 # The shelf's order, and — as with `MachineDefs.ORDER` — the list of what is
 # actually for sale. A row missing from here exists and cannot be bought.
-static var ORDER: Array[String] = ["pace", "starter_brain"]
+static var ORDER: Array[String] = ["pace", "starter_brain", "worm_practice"]
 
 # S-34 split the pace row into separately owned steps. Only the first price has
 # been ruled; -1 means the step is shown but cannot yet be bought. The old

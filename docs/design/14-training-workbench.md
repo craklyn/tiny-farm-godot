@@ -323,12 +323,11 @@ Pictures (for sale and bought):
 - **The price is 200**, a quarter of the robot. `[Playtest]`; the measured effect argues
   for less.
 
-### The practice cards (Q-130, ruled 2026-09-27; S-35; partly built)
+### The practice cards (Q-130, ruled 2026-09-27; S-35)
 
-*Built 2026-09-29: the worm practice in the sim, its energy shares, and the card's lamp and
-three pips on the shelf's third row (`ui/workbench_shelf.gd`). Not built yet: buying the
-card (it is on for every Mark III, with no price), the composed picture (the card shows the
-worm alone), the row of last night's worms, and the plate line.*
+*Built 2026-09-29: the worm practice, its energy shares, and its shelf card. The card costs
+100 gold per Mark III. It costs less than the 150-gold pace setting because every night it is
+on also takes energy from the robot's next farm day. [Playtest]*
 
 A practice is a shelf item of a second kind. The wider view and the pretrained starting
 brain (Q-128) are bought once and are then simply part of the robot. A practice is bought
@@ -346,20 +345,22 @@ controls, in the same place, so she finds the controls where she bought the prac
 | The picture | the robot beside a worm over a sprout, composed from sprites the game already has (the paired-sprite vocabulary of Q-87) | nothing; it names the practice without a word |
 | The switch | a lamp above the picture: lit when the practice is on, dark when off; the picture itself dims with it | turns the practice on or off |
 | The size | three pips under the picture, one to three lit | sets how many runs a night: 2, 4 or 8 |
-| Last night | a row of small worms under the pips, one per run last night; a worm drawn underground for each worm the robot shooed, a worm drawn eating for each crop it ate | nothing; it is the result |
+| Last night | a row of small worms under the pips, one per run last night; a worm drawn underground for each worm the robot stomped, a worm drawn eating for each crop it ate | nothing; it is the result |
 
 **How the size reads to a young child.** The row of worms under the pips is as long as the
 pips say: one pip, two worms; three pips, eight. So "more pips" is visibly "more worms to
-practise on", and the next morning the same row shows how many of them it shooed. She needs
+practise on", and the next morning the same row shows how many of them it stomped. She needs
 no number and no word, and the row changes as the robot improves. More pips also leave the
 robot with less energy the next day. For the adult, the same card says "this much of its night
-is practice"; the plate (§4) gains one line when any practice is on, for example *"Practice:
-worm · 4 runs a night · 2 of 4 shooed"*, read from the robot's saved state like every other
-plate line.
+is practice"; the plate (§4) shows one line for the last saved practice result, for example
+*"Practice: worm · 4 runs a night · 2 of 4 stomped"*, read from the robot's saved state like
+every other plate line. It remains there when practice is off.
 
 **The size is shown in v1.** Daniel chose the switch and all three pips. Each larger size
 uses more of the robot's energy on the following day, so the pips are a choice between more
-practice tonight and more farm work tomorrow.
+practice tonight and more farm work tomorrow. The row and the plate save the size that
+was used last night with their run and stomp counts. They remain that night's result
+after she switches practice off or picks a different size for tonight.
 
 **The three shares are 5%, 10% and 20% of the next day's meter** (30, 60 and 120 of its
 600 units): one fortieth of the meter for each run, whatever the size. They were set from

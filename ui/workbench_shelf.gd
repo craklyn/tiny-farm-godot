@@ -44,10 +44,19 @@ const PRICE_SIZE := 22
 const PACE_X := 152.0
 const PACE_BUTTON := Vector2(96, 72)
 const PACE_GAP := 16.0
+const PRACTICE_KEY := "worm_practice"
 const PRACTICE_ROW := 2
-const PRACTICE_SWITCH := Rect2(180, 424, 72, 72)
-const PRACTICE_PIP_SIZE := Vector2(96, 72)
-const PRACTICE_PIP_X := 280.0
+# The third card has room for the picture, lamp, three pips, and last night's
+# result. The other shelf cards keep their 104-pixel rows.
+const PRACTICE_ROW_SIZE := Vector2(744, 152)
+const PRACTICE_PICTURE_AT := Vector2(18, 46)
+const PRACTICE_PICTURE_SIZE := Vector2(120, 56)
+const PRACTICE_SWITCH := Rect2(78, 392, 56, 40)
+const PRACTICE_PIP_SIZE := Vector2(64, 48)
+const PRACTICE_PIP_X := 190.0
+const PRACTICE_PIP_Y := 440.0
+const PRACTICE_WORMS_AT := Vector2(18, 128)
+const PRACTICE_WORM_SIZE := Vector2(14, 14)
 # Her purse, bottom left of the page, so a red price has its reason on the same
 # screen. Left because the game's build tag sits in the bottom right corner.
 const PURSE_AT := Vector2(36, 548)
@@ -160,9 +169,9 @@ func _build() -> void:
 	for size in 3:
 		var b := Button.new()
 		b.name = "PracticeSize%d" % (size + 1)
-		b.position = Vector2(PRACTICE_PIP_X + size * (PACE_BUTTON.x + PACE_GAP), 424)
+		b.position = Vector2(PRACTICE_PIP_X + size * (PRACTICE_PIP_SIZE.x + 8.0), PRACTICE_PIP_Y)
 		b.size = PRACTICE_PIP_SIZE
-		b.text = "•".repeat(size + 1)
+		b.text = "●"
 		b.pressed.connect(choose_practice_size.bind(size + 1))
 		add_child(b)
 		practice_buttons.append(b)
@@ -212,12 +221,13 @@ func _style_controls() -> void:
 			b.add_theme_stylebox_override(state, style)
 		for c in b.get_children():
 			(c as Control).queue_redraw()
+	var practice_owned := here and BotBrain.has_upgrade(extra, PRACTICE_KEY)
 	var worm: Dictionary = (extra.get("practice", {}) as Dictionary).get("worm", {})
-	practice_switch.visible = here
+	practice_switch.visible = practice_owned
 	practice_switch.text = "●" if bool(worm.get("on", false)) else "○"
 	for size in practice_buttons.size():
 		var b: Button = practice_buttons[size]
-		b.visible = here
+		b.visible = practice_owned
 		b.disabled = not bool(worm.get("on", false))
 		# One to three pips lit, the pace card's brass (design/14): the size
 		# reads as a count, and a dark card lights none.
@@ -235,6 +245,18 @@ func _style_controls() -> void:
 func practice_pip_lit(i: int) -> bool:
 	var worm: Dictionary = (_extra().get("practice", {}) as Dictionary).get("worm", {})
 	return bool(worm.get("on", false)) and i < int(worm.get("size", 1))
+
+
+## One entry per worm that ran last night. `true` means the robot stomped it;
+## the shelf's draw path turns those entries into underground worms.
+func last_night_worms() -> Array[bool]:
+	var worm: Dictionary = (_extra().get("practice", {}) as Dictionary).get("worm", {})
+	var ran := int(worm.get("last_ran", 0))
+	var stomped := clampi(int(worm.get("last_stomped", worm.get("last_shooed", 0))), 0, ran)
+	var out: Array[bool] = []
+	for i in ran:
+		out.append(i < stomped)
+	return out
 
 
 # --- what a tap does ----------------------------------------------------------
@@ -363,10 +385,17 @@ func _draw() -> void:
 		if not owned and not pace_row:
 			_draw_price(r, ShelfDefs.price_of(key), _affordable(key), _offered(key))
 	var practice_rect := row_rect(PRACTICE_ROW)
-	draw_rect(practice_rect, CARD_FILL)
-	draw_rect(practice_rect, Workbench.BRASS, false, 2.0)
-	draw_texture_rect_region(WORM_SHEET,
-		Rect2(practice_rect.position + PICTURE_AT, PICTURE_SIZE), Rect2(0, 0, 32, 32))
+	var practice_owned := BotBrain.has_upgrade(extra, PRACTICE_KEY)
+	var practice_can := practice_owned or _affordable(PRACTICE_KEY)
+	draw_rect(practice_rect, CARD_FILL if practice_can else CARD_FILL_OFF)
+	draw_rect(practice_rect, Workbench.BRASS if practice_owned else CARD_EDGE, false, 2.0)
+	var practice_picture := Rect2(practice_rect.position + PRACTICE_PICTURE_AT, PRACTICE_PICTURE_SIZE)
+	_draw_practice_picture(practice_picture, practice_can, practice_owned and bool(
+		(extra.get("practice", {}) as Dictionary).get("worm", {}).get("on", false)))
+	if not practice_owned:
+		_draw_price(practice_rect, ShelfDefs.price_of(PRACTICE_KEY), _affordable(PRACTICE_KEY), true)
+	else:
+		_draw_last_night(practice_rect, (extra.get("practice", {}) as Dictionary).get("worm", {}))
 	_draw_purse()
 
 
@@ -414,7 +443,42 @@ func _text(s: String, at: Vector2, size: int, ink: Color) -> void:
 
 ## Where card `i` of the shelf sits.
 static func row_rect(i: int) -> Rect2:
+	if i == PRACTICE_ROW:
+		return Rect2(Vector2(ROW_X, 388), PRACTICE_ROW_SIZE)
 	return Rect2(Vector2(ROW_X, ROW_Y + ROW_STRIDE * i), ROW_SIZE)
+
+
+# The practice's name is the familiar paired picture: the robot, the worm, and
+# the crop it threatens. It uses the game sheets directly, not a one-off icon.
+func _draw_practice_picture(r: Rect2, can: bool, on: bool) -> void:
+	var alpha := 1.0 if on else 0.45
+	if not can:
+		alpha *= Workbench.INK_DIM.a
+	var ink := Color(1, 1, 1, alpha)
+	var bot := Rect2(r.position + Vector2(0, 8), Vector2(44, 48))
+	draw_texture_rect_region(SHEET_MK3, bot, Rect2(14, 17, 22, 24), ink)
+	# A green crop head says what the worm is threatening without adding a label.
+	draw_texture_rect_region(Workbench.SHEET_WHEAT,
+		Rect2(r.position + Vector2(82, 28), Vector2(28, 28)), Rect2(48, 0, 16, 16), ink)
+	draw_texture_rect_region(WORM_SHEET,
+		Rect2(r.position + Vector2(49, 34), Vector2(28, 14)), Rect2(0, 0, 32, 16), ink)
+
+
+# One small worm per run last night. Underground worms are dim and lowered; a
+# worm that reached the crop is bright beside the crop head. The saved counts,
+# rather than an animation, make the row an honest morning result.
+func _draw_last_night(r: Rect2, worm: Dictionary) -> void:
+	var ran := int(worm.get("last_ran", 0))
+	var stomped := clampi(int(worm.get("last_stomped", worm.get("last_shooed", 0))), 0, ran)
+	for i in ran:
+		var at := r.position + PRACTICE_WORMS_AT + Vector2(float(i) * 18.0, 0)
+		var cleared := i < stomped
+		var y := 4.0 if cleared else 0.0
+		draw_texture_rect_region(WORM_SHEET, Rect2(at + Vector2(0, y), PRACTICE_WORM_SIZE),
+			Rect2(0, 0, 32, 16), Workbench.INK_DIM if cleared else Workbench.INK)
+		if not cleared:
+			draw_texture_rect_region(Workbench.SHEET_WHEAT,
+				Rect2(at + Vector2(8, -2), Vector2(9, 9)), Rect2(48, 0, 16, 16), Workbench.INK)
 
 
 ## Where pace button `p` sits on card `row`.

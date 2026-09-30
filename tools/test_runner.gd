@@ -9073,12 +9073,27 @@ func _scenario_bl_the_shelf_sells_a_pace() -> void:
 	# picking does work when the pointer first moves onto the control (checked
 	# 2026-09-29), which is what a real mouse or emulated touch does.
 	var practice_page = bench.pages[5]
+	var practice_card := _find_button(practice_page, "ShelfBuy2")
 	var lamp: Button = practice_page.practice_switch
 	var pips: Array = practice_page.practice_buttons
-	_assert(lamp != null and lamp.visible and pips.size() == 3
-			and pips.all(func(b): return b.visible and b.disabled),
-		"the practice card shows its lamp, and its three pips wait dark until it is lit")
+	_assert(practice_card != null and practice_card.visible and not practice_card.disabled
+			and lamp != null and not lamp.visible and pips.size() == 3
+			and pips.all(func(b): return not b.visible),
+		"the worm lesson is a 100-gold shelf card before this robot owns it")
 	InputManager.has_click = false
+	before = farm.replay.entries.size()
+	var gold_before_practice: int = GameState.gold
+	await _gui_tap(practice_card)
+	var practice_purchase: Dictionary = farm.replay.entries[farm.replay.entries.size() - 1]
+	_assert(farm.replay.entries.size() == before + 1
+			and String(practice_purchase.get("verb", "")) == "buy_upgrade"
+			and String(practice_purchase.get("item", "")) == "worm_practice"
+			and BotBrain.has_upgrade(farm.sim.actor(mk3).get("extra", {}), "worm_practice")
+			and GameState.gold == gold_before_practice - ShelfDefs.price_of("worm_practice"),
+		"a tap buys the worm lesson through the gateway at its shelf price")
+	_assert(not practice_card.visible and lamp.visible
+			and pips.all(func(b): return b.visible and b.disabled),
+		"after buying it, its lamp and three dark pips replace the price")
 	before = farm.replay.entries.size()
 	await _gui_tap(lamp)
 	var lit: Dictionary = farm.replay.entries[farm.replay.entries.size() - 1]
@@ -9102,6 +9117,48 @@ func _scenario_bl_the_shelf_sells_a_pace() -> void:
 			and int(worm_set.get("size", 0)) == 3
 			and practice_page.practice_pip_lit(2),
 		"a tap on the third pip sets eight runs a night through the gateway (%s)" % str(sized))
+
+	# The row is last night's result, so give the practice one crop and go to bed
+	# by the same cot input path the player uses.  A direct gateway call here
+	# would not cover the handoff from player input to the morning refresh.
+	farm.sim.set_tile_state(17, 13, "growing", "wheat")
+	menus.close_menu()
+	var cot: Vector2i = main_scene._cot_tile
+	var beside_cot := cot + Vector2i(1, 1)
+	GameState.set_energy(GameState.max_energy)
+	player.pos = Vector2(beside_cot.x * 16 + 8.0, beside_cot.y * 16 + 8.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	var practice_day_before: int = GameState.day
+	InputManager.click_tile = cot
+	InputManager.has_click = true
+	var practice_slept := await _wait_until(
+		func(): return GameState.day == practice_day_before + 1, 200)
+	_assert(practice_slept,
+		"a cot tap through player input turns the practice night")
+	await _wait_until(func(): return not main_scene.day_cycle.is_active(), 12000)
+	menus.open_workbench(bench_spot)
+	var reopened_bench := await _wait_until(
+		func(): return menus.active_menu == "workbench", 60)
+	_assert(reopened_bench, "the workbench opens after the practice night")
+	bench.refresh()
+	for i in 3: await get_tree().process_frame
+	worm_set = farm.sim.actor(mk3)["extra"]["practice"]["worm"]
+	_assert(int(worm_set.get("last_ran", 0)) == 8
+			and worm_set.has("last_stomped")
+			and practice_page.last_night_worms().size() == 8,
+		"after a night, the card has one saved worm result and its stomp count for each of its eight runs")
+	var saved_stomps := int(worm_set["last_stomped"])
+	bench.select_plate(2)
+	for i in 2: await get_tree().process_frame
+	var practice_plate = bench.pages[2]
+	var practice_line: Array = practice_plate.lines.filter(func(line): return String(line[0]) == "Practice")
+	_assert(practice_line.size() == 1
+			and String(practice_line[0][1]) == "worm · 8 runs a night · %d of 8 stomped" % saved_stomps,
+		"the plate reports that night's exact saved stomp count")
+	bench.select_plate(5)
+	for i in 2: await get_tree().process_frame
 	before = farm.replay.entries.size()
 	await _gui_tap(lamp)
 	var dark: Dictionary = farm.replay.entries[farm.replay.entries.size() - 1]
@@ -9110,6 +9167,34 @@ func _scenario_bl_the_shelf_sells_a_pace() -> void:
 			and not bool(dark.get("on", true)) and int(dark.get("size", 0)) == 3
 			and not bool(worm_set.get("on", true)) and int(worm_set.get("size", 0)) == 3,
 		"a second tap on the lamp switches it off and keeps the size (%s)" % str(dark))
+	bench.select_plate(2)
+	for i in 2: await get_tree().process_frame
+	practice_line = practice_plate.lines.filter(func(line): return String(line[0]) == "Practice")
+	_assert(practice_line.size() == 1
+			and String(practice_line[0][1]) == "worm · 8 runs a night · %d of 8 stomped" % saved_stomps,
+		"turning practice off keeps last night's result on the plate")
+	bench.select_plate(5)
+	for i in 2: await get_tree().process_frame
+	# Today's control can now name a smaller next lesson without changing the
+	# completed eight-run lesson the row and plate report. This is an Action,
+	# just as a card tap is; the cot turn above is deliberately real input.
+	farm.apply_action({ "verb": "practice", "machine": mk3, "practice": "worm",
+		"on": false, "size": 1, "actor": "player" }, GameState)
+	bench.refresh()
+	for i in 2: await get_tree().process_frame
+	worm_set = farm.sim.actor(mk3)["extra"]["practice"]["worm"]
+	_assert(not bool(worm_set.get("on", true)) and int(worm_set.get("size", 0)) == 1
+			and int(worm_set.get("last_size", 0)) == 3
+			and practice_page.last_night_worms().size() == 8,
+		"today's off, one-pip choice leaves the saved eight-run row alone")
+	bench.select_plate(2)
+	for i in 2: await get_tree().process_frame
+	practice_line = practice_plate.lines.filter(func(line): return String(line[0]) == "Practice")
+	_assert(practice_line.size() == 1
+			and String(practice_line[0][1]) == "worm · 8 runs a night · %d of 8 stomped" % saved_stomps,
+		"the plate keeps last night's size and stomps after today's size changes")
+	bench.select_plate(5)
+	for i in 2: await get_tree().process_frame
 	before = farm.replay.entries.size()
 	await _gui_tap(pips[0])
 	_assert(farm.replay.entries.size() == before,
