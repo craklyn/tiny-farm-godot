@@ -436,6 +436,18 @@ func _placement_blocker(anchor: Vector2i, item: String) -> String:
 	return ""
 
 
+# Stop the live scene's sim clock from ticking while a check compares the saved
+# world before and after something that must not change it. Only the scene's
+# frame-time debt is touched — no tick is taken or skipped inside the sim, and
+# releasing starts the debt again from zero.
+func _hold_sim_clock() -> void:
+	main_scene._tick_debt = -1.0e9
+
+
+func _release_sim_clock() -> void:
+	main_scene._tick_debt = 0.0
+
+
 # The action lock, waited out by condition on both edges rather than assumed to
 # appear within exactly one frame. The begin-poll is bounded because instant
 # verbs (sell, refill, collect) and refused actions never raise is_acting at
@@ -637,10 +649,21 @@ func _scenario_e() -> void:
 	player.facing = "right"
 	
 	GameState.selected_tool = 0 # Hands
-	Input.action_press("action")
-	await _wait_for_action()
-	Input.action_release("action")
-	
+	# The press is "just pressed" for the one frame it lands in. That frame has
+	# been seen to come and go with no action at all — once in CI (run
+	# 36657135640, before any scenario had tapped anything) and once in about
+	# four thousand local runs of scenarios A-E, where the square was still
+	# ripe, no energy was spent and the router still answered "harvest" eight
+	# frames later. A second press is what a player would do; this scenario is
+	# about the economy, not about a single frame of keyboard input.
+	for attempt in 3:
+		Input.action_press("action")
+		await _wait_for_action()
+		Input.action_release("action")
+		if farm.get_tile(6, 5).state != "ready":
+			break
+		await get_tree().process_frame
+
 	_assert(farm.get_tile(6, 5).state == "cleared", "Harvested tile returned to 'cleared'")
 	# Four remained after planting; this harvest adds three.
 	_assert(GameState.pouch["wheat"] == 7, "Harvested crop adds three plantable units")
@@ -3059,22 +3082,18 @@ func _scenario_aa_the_yard_is_home() -> void:
 		var replay_mark: int = farm.replay.entries.size()
 		var energy_before: int = GameState.energy
 		var sim_player_before: Vector2i = farm.sim.actor_pos(SimWorld.ACTOR_PLAYER)
-		var saved_sim_before: Dictionary
-		var saved_after: Dictionary
-		var answered := false
-		# The world keeps running while the answer is awaited; a sim tick landing
-		# in between changed the clock and made the comparison fail at random.
-		# Take the before/after pair within one tick (a few tries at most).
-		for attempt in 4:
-			var tick0: int = farm.sim.clock.tick
-			saved_sim_before = SaveGame.capture(farm.sim, GameState)
-			InputManager.click_tile = blank
-			InputManager.has_click = true
-			answered = await _wait_until(func(): return farm.soil_tap_active_at(blank), 12)
-			saved_after = SaveGame.capture(farm.sim, GameState)
-			if farm.sim.clock.tick == tick0:
-				break
-			await _wait_until(func(): return not farm.soil_tap_active_at(blank), 60)
+		# The world keeps running while the answer is awaited, and a sim tick in
+		# between changes the clock and whatever the hen did — under CPU load a
+		# tick lands on nearly every frame. Hold the clock for the exchange, so
+		# the only thing that can have changed the save is the tap itself.
+		_hold_sim_clock()
+		var saved_sim_before := SaveGame.capture(farm.sim, GameState)
+		InputManager.click_tile = blank
+		InputManager.has_click = true
+		var answered := await _wait_until(func(): return farm.soil_tap_active_at(blank), 12)
+		var saved_after := SaveGame.capture(farm.sim, GameState)
+		var replay_after: int = farm.replay.entries.size()
+		_release_sim_clock()
 		var label := "distant empty yard" if blank == far_blank else "yard beneath her"
 		_assert(answered, "a tap on %s shows the small soil answer" % label)
 		_assert(saved_after == saved_sim_before,
@@ -3082,7 +3101,7 @@ func _scenario_aa_the_yard_is_home() -> void:
 		_assert(player.get_tile_pos() == stand and farm.sim.actor_pos(SimWorld.ACTOR_PLAYER) == sim_player_before \
 				and player.path.is_empty() and player.pending_action.is_empty(),
 			"a %s tap leaves the farmer and simulation where they were, with no queued movement or action" % label)
-		_assert(GameState.energy == energy_before and farm.replay.entries.size() == replay_mark,
+		_assert(GameState.energy == energy_before and replay_after == replay_mark,
 			"a %s tap has no simulation cost and leaves the replay log unchanged" % label)
 
 	# A crop receives its ordinary action response instead of the soil answer.
@@ -3110,18 +3129,24 @@ func _scenario_aa_the_yard_is_home() -> void:
 	var halo_action := ActionRouter.resolve_with_halo(farm, GameState, cot_blank, cot_beside, false)
 	_assert(String(halo_action.get("action", "")) == "sleep",
 		"the cot fallback would rescue this blank adjacent square as sleep (%s)" % halo_action.get("action", "-"))
+	# The same held clock as the taps above: the save is compared byte for byte,
+	# so a tick between the two captures would fail it on the hen's account.
+	_hold_sim_clock()
 	var cot_saved_before := JSON.stringify(SaveGame.capture(farm.sim, GameState))
 	var cot_replay_before := JSON.stringify(farm.replay.entries)
 	var day_before_cot_blank: int = GameState.day
 	InputManager.click_tile = cot_blank
 	InputManager.has_click = true
 	var cot_answered := await _wait_until(func(): return farm.soil_tap_active_at(cot_blank), 12)
+	var cot_saved_after := JSON.stringify(SaveGame.capture(farm.sim, GameState))
+	var cot_replay_after := JSON.stringify(farm.replay.entries)
+	_release_sim_clock()
 	_assert(cot_answered, "a blank square beside the cot shows the three-mote soil answer")
 	_assert(not main_scene.day_cycle.is_active() and GameState.day == day_before_cot_blank,
 		"the cot-adjacent blank tap does not start sleep or another action")
-	_assert(JSON.stringify(SaveGame.capture(farm.sim, GameState)) == cot_saved_before,
+	_assert(cot_saved_after == cot_saved_before,
 		"the complete saved simulation state is byte-for-byte unchanged around the cot-adjacent blank tap")
-	_assert(JSON.stringify(farm.replay.entries) == cot_replay_before,
+	_assert(cot_replay_after == cot_replay_before,
 		"the replay log is byte-for-byte unchanged around the cot-adjacent blank tap")
 
 	# 3. The gateway's half. Asked directly, because a tap can no longer ask it.
