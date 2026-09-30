@@ -87,6 +87,53 @@ class IntegrationHandoff(unittest.TestCase):
         self.assertEqual((owner / "candidate.txt").read_text(), "checked\n")
         self.assertEqual(git(owner, "status", "--porcelain"), "")
 
+    def test_rescued_playtest_stays_put_while_clean_main_owner_advances(self):
+        self.assertEqual(integration.handoff_main(str(self.repo), "codex/user",
+                                                  confirmed_idle=True), (True, ""))
+        owner = Path(self.tmp.name, "main-owner")
+        git(self.repo, "worktree", "add", "--", str(owner), "main")
+        session = owner / "playtests" / "2026-09-30_004036" / "session_trace.jsonl"
+        session.parent.mkdir(parents=True)
+        session.write_bytes(b'{"kind":"tap"}\n')
+        self.assertEqual(integration.handoff_status(str(self.repo)), (True, ""))
+        tree = integration.candidate_checkout(str(self.repo), self.tmp.name, "a1", self.base)
+        (Path(tree) / "candidate.txt").write_text("checked\n")
+        git(tree, "add", "candidate.txt")
+        git(tree, "commit", "-qm", "Candidate")
+        commit = git(tree, "rev-parse", "HEAD")
+        self.assertTrue(integration.advance_main(str(self.repo), commit, self.base))
+        self.assertEqual(session.read_bytes(), b'{"kind":"tap"}\n')
+        self.assertEqual((owner / "candidate.txt").read_text(), "checked\n")
+        self.assertEqual(integration.handoff_status(str(self.repo)), (True, ""))
+
+    def test_other_untracked_file_still_blocks_dedicated_main_owner(self):
+        self.assertEqual(integration.handoff_main(str(self.repo), "codex/user",
+                                                  confirmed_idle=True), (True, ""))
+        owner = Path(self.tmp.name, "main-owner")
+        git(self.repo, "worktree", "add", "--", str(owner), "main")
+        (owner / "scratch.txt").write_text("keep me\n")
+        self.assertFalse(integration.handoff_status(str(self.repo))[0])
+
+    def test_candidate_cannot_replace_untracked_rescued_playtest(self):
+        self.assertEqual(integration.handoff_main(str(self.repo), "codex/user",
+                                                  confirmed_idle=True), (True, ""))
+        owner = Path(self.tmp.name, "main-owner")
+        git(self.repo, "worktree", "add", "--", str(owner), "main")
+        relative = Path("playtests/2026-09-30_004036/session_trace.jsonl")
+        session = owner / relative
+        session.parent.mkdir(parents=True)
+        session.write_text("tablet evidence\n")
+        tree = integration.candidate_checkout(str(self.repo), self.tmp.name, "a1", self.base)
+        candidate_file = Path(tree) / relative
+        candidate_file.parent.mkdir(parents=True)
+        candidate_file.write_text("candidate data\n")
+        git(tree, "add", str(relative))
+        git(tree, "commit", "-qm", "Candidate")
+        commit = git(tree, "rev-parse", "HEAD")
+        self.assertFalse(integration.advance_main(str(self.repo), commit, self.base))
+        self.assertEqual(integration.main_head(str(self.repo)), self.base)
+        self.assertEqual(session.read_text(), "tablet evidence\n")
+
     def test_dirty_dedicated_main_owner_blocks_cas_without_overwrite(self):
         self.assertEqual(integration.handoff_main(str(self.repo), "codex/user",
                                                   confirmed_idle=True), (True, ""))

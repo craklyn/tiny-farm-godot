@@ -77,7 +77,9 @@ laptop's.
 - **Shelved playtests do not dirty the build source.** Rescue writes them under
   `playtests/` before installing. The source check excludes that directory so
   the next deploy can proceed, while still refusing edits to game or tooling
-  files that a replay's build id could not reconstruct.
+  files that a replay's build id could not reconstruct. HQ's main-checkout gate
+  likewise leaves rescued sessions in place while allowing unrelated work to land;
+  a landing that would overwrite a rescued file is refused before main moves.
 - **Deploying from a clean checkout needs three gitignored things from the repo root**
   (2026-09-11, found deploying main from a worktree so nobody's uncommitted edits rode
   along): `android/build/` (the Android build template, 1.2 GB, installed from the

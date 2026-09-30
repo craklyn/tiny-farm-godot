@@ -42,13 +42,33 @@ def _primary_checkout(repo):
     return ""
 
 
+def _untracked_build_inputs(holder):
+    """Untracked files other than rescued play sessions can change a landing."""
+    # Tablet rescue writes evidence under playtests/ before the next install.
+    # Like the Android source gate, this checkout gate must keep that evidence
+    # in place without mistaking it for an uncommitted build input.
+    return git(holder, "ls-files", "--others", "--exclude-standard", "--", ".",
+               ":(exclude)playtests").stdout.strip()
+
+
+def _playtest_collision(holder, parent, commit):
+    """Refuse a landing that would write over a rescued, untracked session file."""
+    rescued = set(git(holder, "ls-files", "--others", "--exclude-standard", "-z",
+                      "--", "playtests").stdout.split("\0")) - {""}
+    if not rescued:
+        return False
+    changed = set(git(holder, "diff-tree", "--no-commit-id", "--name-only", "-r",
+                      "-z", parent, commit).stdout.split("\0")) - {""}
+    return bool(rescued & changed)
+
+
 def _owner_state(holder, parent):
-    """A clean dedicated main checkout at the expected old commit."""
+    """A dedicated main checkout with no uncommitted build input."""
     if git(holder, "rev-parse", "HEAD").stdout.strip() != parent:
         return False
     if git(holder, "diff", "--quiet", check=False).returncode or \
             git(holder, "diff", "--cached", "--quiet", check=False).returncode or \
-            git(holder, "ls-files", "--others", "--exclude-standard").stdout.strip():
+            _untracked_build_inputs(holder):
         return False
     return True
 
@@ -159,6 +179,8 @@ def advance_main(repo, commit, parent):
     if holder:
         if os.path.realpath(holder) == _primary_checkout(repo) or not _owner_state(holder, parent):
             return False
+        if _playtest_collision(holder, parent, commit):
+            return False
     updated = git(repo, "update-ref", "refs/heads/main", commit, parent, check=False)
     if updated.returncode:
         return False
@@ -172,7 +194,8 @@ def synchronize_main(repo, commit, parent, holder=None):
 
     This may run again after a crash between the ref CAS and checkout update.
     It never overwrites a user edit: index must still be the old tree, worktree
-    must equal that index, and no untracked file may be present.
+    must equal that index. Rescued play sessions may remain untracked, but any
+    other untracked file blocks synchronization.
     """
     holder = holder or main_checkout(repo)
     if not holder or os.path.realpath(holder) == _primary_checkout(repo):
@@ -186,7 +209,7 @@ def synchronize_main(repo, commit, parent, holder=None):
     old_tree = git(repo, "rev-parse", parent + "^{tree}").stdout.strip()
     if indexed_tree != old_tree or \
             git(holder, "diff", "--quiet", check=False).returncode or \
-            git(holder, "ls-files", "--others", "--exclude-standard").stdout.strip():
+            _untracked_build_inputs(holder):
         return False
     # Merge the known old and new trees into the clean dedicated checkout.
     # read-tree refuses an unexpected worktree change rather than forcing it.
