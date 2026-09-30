@@ -2,11 +2,14 @@
 """The chief of staff reviews a card stopped at its per-card spending cap.
 
 Daniel's policy (2026-09-28): the cap is a checkpoint, not a wall. Spending that
-buys progress runs on one bounded step; a card that is not converging goes to
-him with what it spent. No model runs here: the review call is stubbed.
+buys progress runs on one bounded step. His ruling of 2026-09-29 (S-38): a card
+the automatic review does not extend is the chief of staff's to extend, rescope
+or close. It waits in the queue's held lane with its reason and never reaches his
+page. No model runs here: the review call is stubbed.
 """
 import json
 import os
+import re
 import sys
 import tempfile
 import unittest
@@ -26,6 +29,9 @@ DANIEL = json.dumps({"outcome": "daniel", "reason": "The same failure repeated t
                                    "why": "Three checks failed on the same point.",
                                    "instead": "Give it one more step as it stands.",
                                    "move": "rethink"}})
+
+
+HOLD_TAIL = "Waiting for the chief of staff to extend, rescope or close it."
 
 
 class SpendingCheckpoint(unittest.TestCase):
@@ -62,6 +68,8 @@ class SpendingCheckpoint(unittest.TestCase):
                   encoding="utf-8") as sink:
             json.dump({"usage": {"tokens": tokens, "fresh": fresh, "list_usd": None}}, sink)
 
+    RECOMMEND = {"question": "Q", "answer": "A", "why": "W", "instead": "I"}
+
     def card(self, item_id="wcab000000001", **over):
         base = {"id": item_id, "title": "Record the worm ruling", "level": "task", "owner": "sam",
                 "tier": 1, "tier_reason": "docs", "ask": "Record it.", "first_action": "Read it.",
@@ -73,6 +81,48 @@ class SpendingCheckpoint(unittest.TestCase):
                                  {"verdict": "fail", "summary": "One contradiction."}]}
         base.update(over)
         return work.save_item(base)
+
+    def lanes(self, item):
+        got = work.load_item(item["id"])
+        return work.card_lanes(got, drain.project_work(got, head="", active={}))
+
+    def waiting(self):
+        with patch.object(server, "api_queue", lambda **kw: {"curated": [], "decided": [], "rulings": {}}):
+            return server.waiting_on_you()
+
+    def assert_held_for_chief_of_staff(self, item_id, reason_has):
+        """Held in the queue with a plain reason, owned by the chief of staff:
+        one lane (held), a healthy lane check, and nothing on Daniel's page."""
+        got = work.load_item(item_id)
+        self.assertIn(got["state"], work.CAP_REVIEW_STATES)
+        self.assertTrue(work.cap_held(got))
+        view = drain.project_work(got, head="", active={})
+        self.assertEqual(view["blocker"]["type"], "spending_hold")
+        self.assertEqual(view["blocker"]["owner"], "claude")
+        self.assertTrue(view["blocker"]["reason"].startswith("Over its token budget"), view["blocker"]["reason"])
+        self.assertTrue(view["blocker"]["reason"].endswith(HOLD_TAIL), view["blocker"]["reason"])
+        self.assertIn(reason_has, view["blocker"]["reason"])
+        self.assertEqual(view["next_action"]["owner"], "claude")
+        self.assertNotEqual(view["next_action"]["availability"], "runnable")
+        self.assertEqual(work.card_lanes(got, view), ["held"])
+        health = work.card_health([(got, view)], ["sam", "claude"])
+        self.assertTrue(health["ok"], health["problems"])
+        self.assertEqual(health["counts"]["held"], 1)
+        self.assertFalse(work.work_ready_for_daniel(got, view))
+        waiting = self.waiting()
+        self.assertNotIn(item_id, {row["source_id"] for row in waiting["ready"]})
+        self.assertEqual(waiting["count"], 0)
+        # The drain's queue lists it as held with the same reason, and neither
+        # the drain nor the automatic review picks it up again.
+        with patch.object(drain.server, "drain_entry", lambda active, item_id: False):
+            queue = drain.queue_view()
+        held = {row["work_id"]: row["reason"] for row in queue["held"]}
+        self.assertEqual(held.get(item_id), view["blocker"]["reason"])
+        self.assertNotIn(item_id, [row["work_id"] for row in queue["eligible"]])
+        self.assertNotIn(item_id, [i["id"] for i in work.spending_checkpoints_due()])
+        self.assertEqual(got["cap_reviews"][-1]["by"], "claude")
+        self.assertEqual(got["cap_reviews"][-1]["decision"], "hold")
+        return got
 
     def next_step(self, item):
         return (drain.project_work(work.load_item(item["id"]), head="", active={})
@@ -123,61 +173,52 @@ class SpendingCheckpoint(unittest.TestCase):
         self.assertEqual(got["fresh_token_cap"], 350_000)
         self.assertNotIn("token_cap", got)
 
-    def test_not_converging_goes_to_daniel_and_his_yes_requeues(self):
+    def test_not_converging_is_held_for_the_chief_of_staff_not_daniel(self):
+        # S-38 (2026-09-29): this used to put a "keep spending?" question on his page.
         item = self.card()
         self.spend(item["id"], 4_900_000, 120_000)
         work.save_item(dict(work.load_item(item["id"]), token_cap=4_000_000))
         self.reply = (DANIEL, False)
         self.assertTrue(work.review_next_spending_checkpoint(ORG))
-        got = work.load_item(item["id"])
-        self.assertEqual(got["state"], "needs_approval")
-        self.assertFalse(work.recommendation_gaps(got["recommend"]))
-        self.assertTrue(got["recommend"]["question"].startswith("This card has spent 4.9 million tokens"))
-        self.assertEqual(got["cap_reviews"][-1]["decision"], "daniel")
-        view = drain.project_work(got, head="", active={})
-        self.assertTrue(work.work_ready_for_daniel(got, view))
-        self.assertEqual(work.card_lanes(got, view), ["daniel"])
-        with patch.object(server, "api_queue", lambda **kw: {"curated": [], "decided": [], "rulings": {}}):
-            waiting = server.waiting_on_you()
-        self.assertIn(item["id"], {row["source_id"] for row in waiting["ready"]})
-        # Nothing reviews it again while it waits on him.
+        got = self.assert_held_for_chief_of_staff(item["id"], "The same failure repeated three times.")
+        self.assertEqual(got["state"], "waiting_session")
+        self.assertEqual(got["token_cap"], 4_000_000)
+        self.assertEqual(got["recommend"], self.RECOMMEND, "the card's own recommendation is untouched")
+        self.assertEqual(got["spending_checkpoint"]["suggestion"], "Rework the approach first.")
+        # Nothing reviews it again while it waits on the chief of staff.
         self.calls.clear()
         self.assertFalse(work.review_next_spending_checkpoint(ORG))
         self.assertEqual(self.calls, [])
-        # His yes grants one bounded step and puts the card back in the queue.
-        saved = work.api_post("/api/work/approve", {"id": item["id"], "_revision": got["_revision"]})
-        self.assertEqual(saved["state"], "waiting_session")
-        self.assertEqual(saved["token_cap"], 5_900_000)
-        self.assertEqual(saved["recommend"], {"question": "Q", "answer": "A", "why": "W", "instead": "I"})
-        self.assertNotIn("spending_checkpoint", saved)
-        self.assertIn("Rework the approach first.", saved["ask"])
-        self.assertEqual((saved["cap_reviews"][-1]["by"], saved["cap_reviews"][-1]["decision"]),
-                         ("daniel", "extend"))
-        self.assertEqual(self.next_step(saved), "build")
 
-    def test_a_card_held_for_repair_still_reaches_daniel_at_its_checkpoint(self):
-        # w3b629423e60, 2026-09-28: the checkpoint sent a card with a repair hold
-        # to Daniel but left the hold on it, so his page never listed the card
-        # while its next step was his answer, and it sat in no lane for a day.
+    def test_a_hold_answer_is_held_too(self):
+        item = self.card()
+        self.spend(item["id"], 1_200_000, 100_000)
+        self.reply = ('{"outcome":"hold","reason":"Each check fails on the missing display.",'
+                      '"suggest":"Close it; the capture needs a display."}', False)
+        self.assertTrue(work.review_next_spending_checkpoint(ORG))
+        got = self.assert_held_for_chief_of_staff(item["id"], "Each check fails on the missing display")
+        self.assertEqual(got["spending_checkpoint"]["suggestion"], "Close it; the capture needs a display.")
+
+    def test_a_card_held_for_repair_keeps_its_repair_hold_while_held(self):
+        # w3b629423e60, 2026-09-28: the old path took the repair hold off the
+        # card and sent it to Daniel. Held for the chief of staff, the card
+        # keeps the hold; the spending hold is what the queue shows.
         hold = "This worker cannot reach itch.io, so the comparison cannot be recorded."
         item = self.card(state="for_review", repair_hold=hold, automatic_repairs=1)
         self.spend(item["id"], 4_900_000, 120_000)
         work.save_item(dict(work.load_item(item["id"]), token_cap=4_000_000))
         self.reply = (DANIEL, False)
         self.assertTrue(work.review_next_spending_checkpoint(ORG))
-        got = work.load_item(item["id"])
-        self.assertNotIn("repair_hold", got)
-        self.assertEqual(got["spending_checkpoint"]["repair_hold"], hold)
-        view = drain.project_work(got, head="", active={})
-        self.assertTrue(work.work_ready_for_daniel(got, view))
-        self.assertEqual(work.card_lanes(got, view), ["daniel"])
-        # His yes puts the hold back and lets one supervised try run past it.
-        saved = work.api_post("/api/work/approve", {"id": item["id"], "_revision": got["_revision"]})
+        got = self.assert_held_for_chief_of_staff(item["id"], "not converging")
+        self.assertEqual((got["state"], got["repair_hold"]), ("for_review", hold))
+        self.assertEqual(work.exhausted_repairs_due(), [], "the spending hold is settled first")
+        # The chief of staff's extension gives the spending back; the repair
+        # hold then goes to its own review, not straight to another try.
+        saved = work.extend_over_budget(item["id"], by="Claude chief-of-staff session",
+                                        reason="Give it one step to record why itch.io is unreachable.")
+        self.assertEqual((saved["state"], saved["repair_hold"]), ("for_review", hold))
+        self.assertNotIn("supervised_retry", saved)
         self.assertNotIn("spending_checkpoint", saved)
-        self.assertEqual(saved["repair_hold"], hold)
-        self.assertTrue(saved["supervised_retry"])
-        view = drain.project_work(work.load_item(item["id"]), head="", active={})
-        self.assertEqual((view.get("next_action") or {}).get("availability"), "runnable")
 
     def test_a_checkpoint_on_code_that_has_not_landed_stays_with_the_studio(self):
         # wbecb4f98af1, 2026-09-29: the navbar badge counted a checkpoint card
@@ -192,13 +233,12 @@ class SpendingCheckpoint(unittest.TestCase):
         work.save_item(dict(work.load_item(item["id"]), token_cap=4_000_000))
         self.reply = (DANIEL, False)
         self.assertTrue(work.review_next_spending_checkpoint(ORG))
-        got = work.load_item(item["id"])
+        # 2026-09-29: six cards sat in exactly this shape in no lane. Held for
+        # the chief of staff, the lane check counts it held with its reason.
+        got = self.assert_held_for_chief_of_staff(item["id"], "not converging")
         view = drain.project_work(got, head="", active={})
-        self.assertEqual(view.get("candidate_status"), "unverified")
-        self.assertFalse(work.work_ready_for_daniel(got, view))
-        self.assertNotIn("daniel", work.card_lanes(got, view))
-        with patch.object(server, "api_queue", lambda **kw: {"curated": [], "decided": [], "rulings": {}}):
-            waiting = server.waiting_on_you()
+        self.assertEqual(view.get("candidate_status"), "held")
+        waiting = self.waiting()
         self.assertNotIn(item["id"], {row["source_id"] for row in waiting["ready"]})
         self.assertEqual(waiting["count"], 0)
         row = next(r for r in waiting["items"] if r["source_id"] == item["id"])
@@ -211,18 +251,17 @@ class SpendingCheckpoint(unittest.TestCase):
         self.spend(item["id"], 4_100_000, 100_000)
         self.assertTrue(work.review_spending_checkpoint(work.load_item(item["id"]), ORG))
         self.assertEqual(self.calls, [])
-        got = work.load_item(item["id"])
-        self.assertEqual(got["state"], "needs_approval")
-        self.assertFalse(work.recommendation_gaps(got["recommend"]))
-        self.assertIn("3 extensions", got["recommend"]["question"])
+        got = self.assert_held_for_chief_of_staff(item["id"], "after 3 extensions")
+        self.assertEqual(got["spending_checkpoint"]["reason"],
+                         "Over its token budget; after 3 extensions. " + HOLD_TAIL)
+        self.assertEqual(got["token_cap"], 4_000_000)
 
         high = self.card("wcab000000002", token_cap=9_500_000)
         self.spend(high["id"], 9_600_000, 100_000)
         self.assertTrue(work.review_spending_checkpoint(work.load_item(high["id"]), ORG))
         self.assertEqual(self.calls, [])
-        high = work.load_item(high["id"])
-        self.assertEqual((high["state"], high["token_cap"]), ("needs_approval", 9_500_000))
-        self.assertIn("most the studio may allow", high["recommend"]["question"])
+        high = self.assert_held_for_chief_of_staff(high["id"], "most the studio lets a card spend")
+        self.assertEqual(high["token_cap"], 9_500_000)
 
     def test_paused_or_dry_does_nothing(self):
         item = self.card()
@@ -263,7 +302,7 @@ class SpendingCheckpoint(unittest.TestCase):
         self.assertEqual((got["state"], got.get("cap_review_tries", 0)), ("waiting_session", 0))
         self.assertEqual(len(self.calls), 5)
 
-    def test_a_failing_review_retries_then_goes_to_daniel(self):
+    def test_a_failing_review_retries_then_is_held_for_the_chief_of_staff(self):
         item = self.card()
         self.spend(item["id"], 1_200_000, 100_000)
         self.reply = ("not json", False)
@@ -272,12 +311,119 @@ class SpendingCheckpoint(unittest.TestCase):
             got = work.load_item(item["id"])
             self.assertEqual((got["state"], got["cap_review_tries"]), ("waiting_session", tries))
         self.assertTrue(work.review_next_spending_checkpoint(ORG))
-        got = work.load_item(item["id"])
         self.assertEqual(len(self.calls), 3)
-        self.assertEqual(got["state"], "needs_approval")
-        self.assertFalse(work.recommendation_gaps(got["recommend"]))
-        self.assertEqual(got["cap_reviews"][-1]["decision"], "daniel")
+        got = self.assert_held_for_chief_of_staff(item["id"], "no usable answer after 3 tries")
         self.assertNotIn("cap_review_tries", got)
+
+    # -- The cards an earlier HQ sent to Daniel (S-38 migration) -------------
+
+    def legacy_card(self, item_id="wcab000000009"):
+        """A card in the shape the old path left: a spending question on his page."""
+        hold = "The rendered capture test needs a display this worker does not have."
+        card = self.card(item_id, state="needs_approval", attempt_outcome={
+            "version": 1, "status": "blocked", "reason": hold, "id": "attempt-1",
+            "candidate": {"tree": "t1", "base": "b1", "files": ["systems/shelf_defs.gd"]}},
+            token_cap=4_000_000, automatic_repairs=1,
+            recommend={"question": "This card has spent 4.9 million tokens. Keep going?",
+                       "answer": "Rework the approach first.", "why": "W2", "instead": "I2"},
+            deliverable={"name": "Spending checkpoint: Record the worm ruling", "evidence": []},
+            follow_ups=[],
+            spending_checkpoint={"at": "2026-09-29T08:00", "return_state": "for_review",
+                                 "move": "rethink", "exceeded": ["tokens"],
+                                 "restore": {"recommend": self.RECOMMEND}, "repair_hold": hold,
+                                 "yes_starts": "Raises this card's spending limit..."},
+            cap_reviews=[{"by": "claude", "decision": "daniel", "reason": "Not converging."}])
+        self.spend(card["id"], 4_900_000, 120_000)
+        return card, hold
+
+    def test_the_migration_holds_cards_left_on_daniels_page_and_is_idempotent(self):
+        card, hold = self.legacy_card()
+        before = drain.project_work(work.load_item(card["id"]), head="", active={})
+        self.assertEqual(work.card_lanes(work.load_item(card["id"]), before), [],
+                         "the broken shape: in no lane")
+        self.assertEqual(work.hold_checkpoints_for_chief_of_staff(), [card["id"]])
+        got = self.assert_held_for_chief_of_staff(card["id"], "sent to Daniel before")
+        self.assertEqual((got["state"], got["repair_hold"]), ("for_review", hold))
+        self.assertEqual(got["recommend"], self.RECOMMEND, "the borrowed fields are put back")
+        self.assertNotIn("deliverable", got)
+        self.assertNotIn("follow_ups", got)
+        self.assertEqual(got["spending_checkpoint"]["moved_from"], "needs_approval")
+        revision = got["_revision"]
+        self.assertEqual(work.hold_checkpoints_for_chief_of_staff(), [])
+        self.assertEqual(work.load_item(card["id"])["_revision"], revision, "a second run changes nothing")
+
+    def test_extend_on_a_card_still_in_the_old_shape_moves_it_first(self):
+        card, _hold = self.legacy_card()
+        saved = work.extend_over_budget(card["id"], by="Claude chief-of-staff session",
+                                        reason="Split the capture test out; land the rest.")
+        self.assertEqual(saved["state"], "for_review")
+        self.assertEqual(saved["token_cap"], 5_900_000)
+        self.assertEqual(saved["recommend"], self.RECOMMEND)
+        self.assertEqual((saved["cap_reviews"][-1]["by"], saved["cap_reviews"][-1]["decision"]),
+                         ("claude", "extend"))
+
+    # -- The chief of staff's extension (hq/card.py extend) -----------------
+
+    def test_extend_through_the_work_api_puts_the_card_back_in_the_runner_lane(self):
+        three = [{"decision": "extend", "by": "claude"}] * 3
+        item = self.card(cap_reviews=three, token_cap=4_000_000)
+        self.spend(item["id"], 4_100_000, 100_000)
+        self.assertTrue(work.review_spending_checkpoint(work.load_item(item["id"]), ORG))
+        self.assert_held_for_chief_of_staff(item["id"], "after 3 extensions")
+        brief = "Drop the second capture and land the doc change alone."
+        saved = work.extend_over_budget(item["id"], by="Claude chief-of-staff session", reason=brief)
+        self.assertEqual(saved["state"], "waiting_session")
+        self.assertEqual(saved["token_cap"], 5_100_000)
+        self.assertNotIn("spending_checkpoint", saved)
+        review = saved["cap_reviews"][-1]
+        self.assertEqual((review["by"], review["decision"], review["reason"]), ("claude", "extend", brief))
+        self.assertEqual(review["via"], "Claude chief-of-staff session")
+        self.assertEqual((review["old_caps"]["token_cap"], review["new_caps"]["token_cap"]),
+                         (4_000_000, 5_100_000))
+        self.assertTrue(saved["ask"].endswith("The chief of staff's brief for this step: " + brief))
+        self.assertNotIn("Daniel", saved["ask"])
+        self.assertNotIn("decided", saved)
+        self.assertEqual(self.lanes(saved), ["runner"])
+        self.assertEqual(self.next_step(saved), "build")
+
+    def test_extend_refuses_what_it_cannot_honestly_do(self):
+        item = self.card()
+        self.spend(item["id"], 200_000, 10_000)
+        cases = [
+            (dict(by="Daniel", reason="Keep going on this card."), "may not claim Daniel"),
+            (dict(by="CEO session", reason="Keep going on this card."), "may not claim Daniel"),
+            (dict(by="x", reason="Keep going on this card."), "Say who"),
+            (dict(by="Claude chief-of-staff session", reason=""), "Give the brief"),
+            (dict(by="Claude chief-of-staff session", reason="Keep going on this card."),
+             "not over its spending limit"),
+        ]
+        for kwargs, said in cases:
+            with self.assertRaisesRegex(ValueError, re.escape(said)):
+                work.extend_over_budget(item["id"], **kwargs)
+        closed = self.card("wcab000000004", state="landed")
+        with self.assertRaisesRegex(ValueError, "already landed"):
+            work.extend_over_budget(closed["id"], by="Claude chief-of-staff session",
+                                    reason="Keep going on this card.")
+        self.assertEqual(work.load_item(item["id"]).get("cap_reviews"), None)
+
+    def test_daniels_own_yes_on_an_old_checkpoint_is_still_recorded_as_his(self):
+        # Before the migration runs, his page may still show an old question;
+        # his yes there is his, and the record says so.
+        card, hold = self.legacy_card()
+        got = work.load_item(card["id"])
+        saved = work.api_post("/api/work/approve", {"id": card["id"], "_revision": got["_revision"],
+                                                    "comment": "Only the doc change."})
+        self.assertEqual(saved["state"], "for_review")
+        self.assertEqual(saved["token_cap"], 5_900_000)
+        self.assertEqual(saved["recommend"], self.RECOMMEND)
+        self.assertEqual(saved["repair_hold"], hold)
+        self.assertTrue(saved["supervised_retry"])
+        review = saved["cap_reviews"][-1]
+        self.assertEqual((review["by"], review["decision"]), ("daniel", "extend"))
+        self.assertTrue(review["reason"].startswith("Daniel approved: "))
+        self.assertIn("Rework the approach first.", saved["ask"])
+        self.assertIn("Daniel attached this when he approved it:\nOnly the doc change.", saved["ask"])
+        self.assertNotIn("chief of staff's brief", saved["ask"])
 
 
 if __name__ == "__main__":

@@ -295,6 +295,32 @@ the results. That second session re-read everything the first had read, often ov
 million tokens a card, and the worker could not try again when an image came out wrong,
 so Daniel approved the tool the same day.
 
+## A card over its token budget
+
+Each card has its own token budget: 1 million tokens, 150,000 of them new, or $20 at API
+list price, unless the card sets its own. Reaching it pauses the card rather than ending
+it. Every couple of minutes HQ's background worker picks one paused card and the chief of
+staff's automatic review reads its attempts and the reviewer's checks:
+
+1. If later attempts are getting closer, it raises only the budget that was reached, by
+   one step (1 million tokens, 150,000 new tokens, or $20), and the card runs on.
+2. If the same failure keeps repeating, or after three raises, or when a raise would pass
+   10 million tokens (1.5 million new, $200), or when the review gives no usable answer
+   three times, the budget stays as it is. The card stays in the task queue, held for the
+   chief of staff, with the reason beside it, for example "Over its token budget; after
+   3 extensions. Waiting for the chief of staff to extend, rescope or close it."
+3. The chief of staff settles a held card by extending it or closing it. Extending gives
+   it one more step with a brief for the owner, and a brief that narrows the work is how
+   a card is rescoped:
+   `python3 hq/card.py extend <card id> --by "<session>" --reason "<the brief>"`.
+   The brief is added to the card's instructions and the card goes back to its place in
+   the queue.
+
+None of this reaches Daniel's page (S-38, ruled 2026-09-29). It reaches him only if the
+chief of staff decides a card needs his call and puts a decision card to him. Every
+review, raise and hold is written on the card and shown on its Work page entry, with who
+made the call.
+
 ## What a result cost
 
 Work the studio does on its own draws on the same Claude allotment Daniel draws on when he

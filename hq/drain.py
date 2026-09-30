@@ -3352,6 +3352,12 @@ def main():
                   f"{len(cleared)} card(s): {', '.join(cleared)}.")
         released = settle_lost_claims()
         art_released = art_requests.settle_holds()
+        # A spending question an earlier HQ put on Daniel's page is the chief of
+        # staff's now (S-38): the card waits in the queue, held with its reason.
+        cap_held = work.hold_checkpoints_for_chief_of_staff()
+        if cap_held:
+            print(f"Held {len(cap_held)} card(s) over their token budget for the chief of staff "
+                  f"instead of Daniel: {', '.join(cap_held)}.")
         if art_released:
             print(f"Released {len(art_released)} card(s) whose art limit no longer applies: "
                   f"{', '.join(art_released)}.")

@@ -677,6 +677,7 @@ function checkpointLines(it) {
   const line = r => {
     const spent = `${m(r.spent_tokens)} tokens`;
     if (r.decision === "daniel") return `Spending limit reached at ${spent}: the chief of staff left the limit unchanged and asked you whether to keep spending on this card — ${r.reason || ""}`;
+    if (r.decision === "hold") return `Spending limit reached at ${spent}: the limit was left unchanged, and the card waits for the chief of staff to extend, rescope or close it — ${r.reason || ""}`;
     const now = r.new_caps || {}, before = r.old_caps || {};
     const raised = now.token_cap !== before.token_cap ? `${m(now.token_cap)} tokens`
       : now.fresh_token_cap !== before.fresh_token_cap ? `${m(now.fresh_token_cap)} new tokens`

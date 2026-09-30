@@ -236,6 +236,9 @@
    "verdict": "decode",
    "why": "'thing' is introduced without being defined, and 'mine' is a bare pronoun with no referent in the sentence."
   },
+  "0783eefa5bc9c317c9f8": {
+   "verdict": "ok"
+  },
   "078e32f38485ddc543b2": {
    "verdict": "ok"
   },
@@ -3634,6 +3637,12 @@
   "6b8a79b8c20ce3a8c5bd": {
    "verdict": "ok"
   },
+  "6bac307b5f2e5122248e": {
+   "instead": "Spending limit reached at …: the limit was left unchanged, and the card waits for the chief of staff to increase it, change what the work covers, or close it — …",
+   "quote": "extend, rescope or close it",
+   "verdict": "second-look",
+   "why": "“Rescope” is internal process shorthand; a reader has to work out that it means changing what the work covers."
+  },
   "6bb9b357f4af59cc77cf": {
    "instead": "a harvested wheat or tomato is the same unit the player plants again",
    "quote": "a harvested wheat or tomato is the same unit she plants again",
@@ -6429,6 +6438,12 @@
   },
   "bcaecb46f79eb3fd78d8": {
    "verdict": "ok"
+  },
+  "bcb9b7927d331b02863c": {
+   "instead": "Cards with requests that are too long wait for the chief of staff instead of going to Daniel",
+   "quote": "over their token budget",
+   "verdict": "decode",
+   "why": "“Token budget” is internal technical shorthand, so the reader must work out that these cards contain requests that are too long."
   },
   "bcbe8561b6647684bcce": {
    "verdict": "ok"

@@ -7370,6 +7370,20 @@ class Handler(BaseHTTPRequestHandler):
                 return self._send(409, {"error": str(e), "id": e.item_id, "revision": e.actual})
             except Exception as e:
                 return self._send(500, {"error": str(e)[:300]})
+        if path == "/api/work/extend":
+            # S-38: a card over its budget is the chief of staff's to extend.
+            try:
+                item_id = str(payload.get("id") or "")
+                if not re.fullmatch(work.WORK_ID, item_id):
+                    return self._send(400, {"error": "Give a work card id such as w0123456789a."})
+                return self._send(200, {"ok": True, "item": work.extend_over_budget(
+                    item_id, by=payload.get("by"), reason=payload.get("reason"))})
+            except work.RecordConflict as e:
+                return self._send(409, {"error": str(e), "id": e.item_id, "revision": e.actual})
+            except ValueError as e:
+                return self._send(400, {"error": str(e)[:300]})
+            except Exception as e:
+                return self._send(500, {"error": str(e)[:300]})
         if path.startswith("/api/work"):
             try:
                 return self._send(200, work.api_post(path, payload))

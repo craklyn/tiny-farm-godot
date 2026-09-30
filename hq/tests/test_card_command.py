@@ -73,6 +73,44 @@ class CardCommand(unittest.TestCase):
         self.assertEqual(code, 2)
         self.assertIn("work card id", said)
 
+    def test_extend_goes_through_the_api_and_records_the_chief_of_staff(self):
+        # S-38: `card.py extend` is the chief of staff's call on a card held at
+        # its spending limit; the card records it as theirs, never Daniel's.
+        import drain
+        workers = os.path.join(self.tmp, "workers", "run1")
+        os.makedirs(workers)
+        Path(workers, "w0000000000d-drain-work.json").write_text(
+            json.dumps({"usage": {"tokens": 1_200_000, "fresh": 100_000, "list_usd": None}}))
+        card_file = Path(self.tmp, "work", "w0000000000d.json")
+        stored = json.loads(card_file.read_text())
+        stored.update(ask="Record it.", spending_checkpoint={
+            "held_for": "claude", "return_state": "waiting_session", "exceeded": ["tokens"],
+            "reason": "Over its token budget; after 3 extensions. Waiting for the chief of staff "
+                      "to extend, rescope or close it.", "restore": {}, "repair_hold": None})
+        card_file.write_text(json.dumps(stored))
+        saved_workers = drain.WORKERS
+        drain.WORKERS = os.path.join(self.tmp, "workers")
+        self.addCleanup(setattr, drain, "WORKERS", saved_workers)
+        with self.assertRaises(SystemExit):
+            self.cli("extend", "w0000000000d", "--by", "Claude chief-of-staff session")
+        code, said = self.cli("extend", "w0000000000d", "--by", "Daniel", "--reason", "Keep going on it.")
+        self.assertEqual(code, 2)
+        self.assertIn("may not claim Daniel", said)
+        code, said = self.cli("extend", "w0000000000d", "--by", "Claude chief-of-staff session",
+                              "--reason", "Land the doc change alone.")
+        self.assertEqual(code, 0, said)
+        self.assertIn("w0000000000d waiting_session: token limit 2200000", said)
+        got = self.stored()
+        self.assertNotIn("spending_checkpoint", got)
+        self.assertEqual(got["token_cap"], 2_200_000)
+        self.assertEqual((got["cap_reviews"][-1]["by"], got["cap_reviews"][-1]["via"]),
+                         ("claude", "Claude chief-of-staff session"))
+        self.assertTrue(got["ask"].endswith("The chief of staff's brief for this step: Land the doc change alone."))
+        code, said = self.cli("extend", "w0000000000d", "--by", "Claude chief-of-staff session",
+                              "--reason", "Land the doc change alone.")
+        self.assertEqual(code, 2)
+        self.assertIn("not over its spending limit", said)
+
     def test_an_unreachable_hq_is_reported_not_worked_around(self):
         self.stop()
         code, said = self.cli("claim", "w0000000000d", "--by", "Codex session")

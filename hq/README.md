@@ -383,11 +383,15 @@ HQ's background worker has the chief of staff review it (`work.review_spending_c
 one card every couple of minutes, never while he has paused the studio or the
 allowance is dry). If later attempts are getting closer, the review raises only the
 limit that was reached, by one step (1 million tokens, 150,000 new tokens, or $20),
-and the card runs on. If the same failure keeps repeating, the card goes to his
-list with what it has spent and a recommendation; his yes grants one step and puts
-it back in the queue. After three raises, or when a raise would pass 10 million
-tokens (1.5 million new, $200), no model is asked: the card goes straight to him.
-Every review is written on the card as `cap_reviews` and shown on the Work page.
+and the card runs on. If the same failure keeps repeating, after three raises, when a
+raise would pass 10 million tokens (1.5 million new, $200), or when the review gives
+no usable answer three times, the card is not sent to him (S-38, 2026-09-29): it stays
+in the task queue, held for the chief of staff with the reason shown, until the chief
+of staff extends it (`python3 hq/card.py extend <id> --by "<session>" --reason
+"<brief>"`, one step, with the brief added to the card's ask; a narrower brief is how
+it is rescoped) or closes it. HQ and each drain run move any card an earlier HQ sent to his page this way into
+that held state. Every review is written on the card as `cap_reviews` and shown on
+the Work page.
 
 A card the reviewer fails again after its automatic repair stops on its own, and
 used to wait for a supervised retry that nothing ever gave. Daniel approved

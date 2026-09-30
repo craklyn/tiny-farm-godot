@@ -708,6 +708,24 @@ result. Code: `hq/art_requests.py` (the caps), `hq/art_mcp.py` (the tool),
 `hq/execution.py` (attaching it); how it works is in `docs/HOW_WORK_ORIGINATES.md`
 ("Art the queue can generate").
 
+### S-38. Over-budget cards are the chief of staff's call, never a question for Daniel
+**Ruled by Daniel in chat 2026-09-29.** A work card that has spent past its token budget
+is the chief of staff's to extend, rescope or close. It never goes to Daniel's page as a
+"keep spending?" question, and it never sits in no lane. HQ's automatic spending review
+keeps its automatic extensions: up to three raises of one bounded step each, while a
+raise stays under the most a card may spend on its own. Where that review stops (the
+raises are used up, a raise would pass that ceiling, the review judges the card is not
+converging, or the review gives no usable answer three times) the card stays in the task
+queue, held for the chief of staff, with the reason shown beside it. The chief of staff
+then extends it one step with a brief for the owner (`python3 hq/card.py extend`, recorded
+on the card as the chief of staff's call), rescopes it, or closes it. It reaches Daniel
+only if the chief of staff chooses to put a decision card to him. The same day six cards
+sat in no lane: sent to his page with a spending question, then kept off it because
+their code had not landed. HQ and each drain run move any card still in that shape into
+the held state. Code: `hq/work.py` (`review_spending_checkpoint`, `extend_over_budget`,
+`hold_checkpoints_for_chief_of_staff`); how it works is in `docs/HOW_WORK_ORIGINATES.md`
+("A card over its token budget").
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported
