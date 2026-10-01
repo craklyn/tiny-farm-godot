@@ -1040,6 +1040,12 @@ def work_view(item, repo_facts=None, now=None):
         input_id = action_key(item["id"], "supervised_retry",
                               str(item.get("last_recorded_attempt") or input_id))
     terminal = item.get("state") in TERMINAL_STATES
+    ci_undo_hold = next((dict(b) for b in reversed(workflow.get("blockers") or [])
+                         if b.get("type") == "ci_undo" and b.get("state") == "open"), None)
+    if ci_undo_hold and not terminal:
+        # The old CI poll is evidence, not the next step on a card whose
+        # automatic revert could not be completed safely.
+        active_actions = []
     # A clean result held only for Daniel's yes: earlier attempts' build and
     # reconcile actions, their blockers, the finished run's `started`, a stale
     # base (the merge rebuilds it) and the cost cap (his yes starts no model)
@@ -1084,7 +1090,9 @@ def work_view(item, repo_facts=None, now=None):
     # repair review did not retry or close waits for the chief of staff too
     # (S-38, extended 2026-09-29), ahead of every step that would run the owner.
     repairs_held = not terminal and not checkpoint_pending and not spending_hold and repair_held(item)
-    if awaiting_approval or checkpoint_pending:
+    if ci_undo_hold and not terminal:
+        blocker = ci_undo_hold
+    elif awaiting_approval or checkpoint_pending:
         pass
     elif spending_hold:
         blocker = {"type": "spending_hold", "files": [], "owner": "claude", "wake": CAP_HOLD_WAKE,
@@ -2752,6 +2760,7 @@ CAP_STEPS = {"tokens": 1_000_000, "fresh": 150_000, "usd": 20.0}
 CAP_CEILINGS = {"tokens": 10_000_000, "fresh": 1_500_000, "usd": 200.0}
 CAP_AUTO_EXTENSIONS = 3
 CAP_REVIEW_TRIES = 3
+CHIEF_AUTOMATIC_TRIES = 2
 CAP_REVIEW_STATES = ("waiting_session", "for_review")
 # How often the background worker looks for a card at its checkpoint.
 CAP_SCAN_SECONDS = 120
@@ -3065,6 +3074,248 @@ def review_next_spending_checkpoint(org):
         return False
     due = spending_checkpoints_due()
     return review_spending_checkpoint(due[0], org) if due else False
+
+
+def _chief_review_prompt(item):
+    pending = item.get("spending_checkpoint") or item.get("repair_checkpoint") or {}
+    findings = ((item.get("check") or {}).get("findings") or [])[-6:]
+    return f"""You are Tiny Farm Studio's chief of staff, running automatically on Codex.
+This card is held for your judgement. Move it if an engineering-management answer is possible.
+Taste, player-facing direction, dates, money, and credentials belong to Daniel: identify those as taste.
+
+WORK: {item.get('title', '')}
+ASK: {str(item.get('ask') or '')[:2400]}
+HOLD: {str(pending.get('reason') or '')[:1200]}
+SUGGESTION: {str(pending.get('suggestion') or '')[:800]}
+REVIEWER FINDINGS: {json.dumps(findings)}
+LATEST RESULT: {str(item.get('result') or '')[:2400]}
+
+Return JSON only, one of:
+{{"outcome":"extend","reason":"why","brief":"instruction quoting the concrete reviewer finding"}}
+{{"outcome":"rescope","reason":"why","ask":"complete narrower ask that can pass","brief":"first concrete step"}}
+{{"outcome":"close","reason":"why it is superseded or landed","evidence":"the current landing SHA or superseding card ID recorded on this card"}}
+{{"outcome":"taste","reason":"why only Daniel can decide","question":"the choice in Daniel's terms","recommend":"recommended answer","why":"one deciding reason","instead":"honest alternative"}}
+"""
+
+
+def _file_taste_decision(item, doc):
+    """Keep a draft on the live work card until normal curation can review it."""
+    item["decision_draft"] = {
+        "by": "claude", "at": _now_iso(), "source_work": item["id"],
+        "finding": _chief_finding(item),
+        "question": str(doc["question"]).strip()[:500],
+        "reason": str(doc["reason"]).strip()[:800],
+        "options": [str(doc["recommend"]).strip()[:500],
+                    str(doc["instead"]).strip()[:500]],
+        "recommend": str(doc["recommend"]).strip()[:500],
+        "why": str(doc["why"]).strip()[:800],
+    }
+    return item["decision_draft"]
+
+
+def _chief_finding(item):
+    check = item.get("check") or {}
+    findings = check.get("findings") or []
+    for finding in findings:
+        value = finding.get("what") if isinstance(finding, dict) else finding
+        if str(value or "").strip():
+            return str(value).strip()[:400]
+    return str(check.get("summary") or item.get("repair_hold") or
+               (item.get("spending_checkpoint") or {}).get("reason") or
+               (item.get("repair_checkpoint") or {}).get("reason") or "").strip()[:400]
+
+
+def _chief_brief_grounded(item, brief):
+    finding = _chief_finding(item)
+    return bool(finding and finding.lower() in brief.lower())
+
+
+def _chief_close_evidence(item, doc):
+    evidence = str(doc.get("evidence") or "").strip()
+    # Prose in an old result or check is not proof that this card's work is on
+    # current main. Require a durable landing SHA, or a named canonical card
+    # that has itself landed.
+    completion = item.get("completion") or {}
+    sha = str(completion.get("sha") or (item.get("landed") or {}).get("sha") or "").strip()
+    if sha and evidence == sha:
+        return _chief_sha_on_main(sha)
+    canonical_id = str(item.get("superseded_by") or "").strip()
+    if canonical_id and evidence == canonical_id and canonical_id != item["id"]:
+        try:
+            canonical = load_item(canonical_id)
+        except (OSError, ValueError):
+            return False
+        canonical_sha = str((canonical.get("completion") or {}).get("sha") or "").strip()
+        return canonical.get("state") == "landed" and _chief_sha_on_main(canonical_sha)
+    return False
+
+
+def _chief_sha_on_main(sha):
+    """Check a recorded full commit ID against main, not a prose claim."""
+    if not re.fullmatch(r"[0-9a-fA-F]{40}|[0-9a-fA-F]{64}", str(sha or "")):
+        return False
+    import drain
+    return drain.sh(["git", "merge-base", "--is-ancestor", sha, "main"],
+                    cwd=drain.REPO, timeout=10).returncode == 0
+
+
+def _chief_hold_matches(item, hold_kind):
+    if item.get("state") in TERMINAL_STATES or item.get("decision_draft"):
+        return False
+    if hold_kind == "spending_hold":
+        return cap_held(item)
+    if hold_kind == "repairs_used_up":
+        return repair_held(item)
+    if hold_kind in ("chief_hold", "art_budget"):
+        return any(b.get("state") == "open" and
+                   (b.get("type") == "art_budget" if hold_kind == "art_budget" else
+                    b.get("owner") == "claude" and b.get("wake") and not b.get("action_id")
+                    and b.get("type") not in ("spending_hold", "repairs_used_up", "art_budget", "ci_undo"))
+                   for b in _workflow(item).get("blockers") or [])
+    return not hold_kind and (cap_held(item) or repair_held(item))
+
+
+def _chief_spending_step_allowed(item):
+    spent, caps, exceeded = spending_checkpoint_state(item)
+    exceeded = exceeded or [k for k in (item.get("spending_checkpoint") or {}).get("exceeded") or []
+                            if k in CAP_FIELDS]
+    extensions = sum(r.get("decision") == "extend" for r in item.get("cap_reviews") or [])
+    raised = raised_caps(spent, caps, exceeded)
+    return (extensions < CAP_AUTO_EXTENSIONS
+            and all(raised[key] <= CAP_CEILINGS[key] for key in exceeded))
+
+
+def review_chief_hold(item, org, hold_kind=""):
+    """Give a Codex chief-of-staff review a held card's ordinary moves.
+
+    Two unusable reviews leave the card held for a live session. Taste always
+    stays held and receives a decision-card draft rather than an invented call.
+    """
+    if not execution.launch_allowed() or hold_kind in ("no_lane", "ci_undo"):
+        return False
+    with mutation_lock():
+        fresh = load_item(item["id"])
+        if (fresh.get("_revision") != item.get("_revision")
+                or not _chief_hold_matches(fresh, hold_kind)
+                or int(fresh.get("chief_review_tries") or 0) >= CHIEF_AUTOMATIC_TRIES):
+            item.clear(); item.update(fresh)
+            return False
+        fresh["chief_review_tries"] = int(fresh.get("chief_review_tries") or 0) + 1
+        save_item(fresh)
+        item.clear(); item.update(fresh)
+        launched_revision = fresh["_revision"]
+    text, limited = _run_cli(_chief_review_prompt(item), HOST.build_system_prompt(org, "claude"),
+                             "Read,Glob,Grep", 8, 300, model="gpt-6-astra",
+                             phase="chief-review", seat="claude", item=item["id"])
+    doc = {} if limited else (_json_reply(text) or {})
+    with mutation_lock():
+        fresh = load_item(item["id"])
+        if (fresh.get("_revision") != launched_revision
+                or not _chief_hold_matches(fresh, hold_kind)):
+            item.clear(); item.update(fresh)
+            return False
+        if limited:
+            item.clear(); item.update(fresh)
+            return False
+        outcome = doc.get("outcome")
+        reason, brief = str(doc.get("reason") or "").strip(), str(doc.get("brief") or "").strip()
+        moved = False
+        if (outcome == "extend" and reason and _chief_brief_grounded(fresh, brief)
+                and (not cap_held(fresh) or _chief_spending_step_allowed(fresh))):
+            if cap_held(fresh):
+                grant_spending_checkpoint(fresh, by="claude", reason=brief, via="automatic chief-of-staff review (Codex)")
+            elif repair_held(fresh):
+                grant_repair_checkpoint(fresh, by="claude", brief=brief, via="automatic chief-of-staff review (Codex)")
+            else:
+                release_chief_hold_for_capability(fresh, brief, decision="extend")
+            fresh.pop("chief_review_tries", None)
+            save_item(fresh)
+            moved = True
+        elif (outcome == "rescope" and reason and str(doc.get("ask") or "").strip()
+              and _chief_brief_grounded(fresh, brief)
+              and (not cap_held(fresh) or _chief_spending_step_allowed(fresh))):
+            fresh["ask"] = str(doc["ask"]).strip()[:6000]
+            fresh["first_action"] = brief[:1200]
+            if cap_held(fresh):
+                grant_spending_checkpoint(fresh, by="claude", reason=brief, via="automatic chief-of-staff review (Codex)")
+                fresh.setdefault("cap_reviews", []).append(_cap_review_entry("claude", "rescope", *spending_checkpoint_state(fresh)[:2], spending_checkpoint_state(fresh)[1], reason))
+            elif repair_held(fresh):
+                grant_repair_checkpoint(fresh, by="claude", brief=brief, via="automatic chief-of-staff review (Codex)")
+                fresh.setdefault("repair_reviews", []).append(_repair_review_entry("claude", "rescope", fresh, reason, brief))
+            else:
+                release_chief_hold_for_capability(fresh, brief, decision="rescope")
+            fresh.pop("chief_review_tries", None)
+            save_item(fresh)
+            moved = True
+        elif (outcome == "close" and reason and _repair_closable(fresh)
+              and _chief_close_evidence(fresh, doc)):
+            evidence = str(doc["evidence"]).strip()
+            if cap_held(fresh):
+                spent, caps, _ = spending_checkpoint_state(fresh)
+                fresh.setdefault("cap_reviews", []).append(_cap_review_entry("claude", "close", spent, caps, caps, reason + " Evidence: " + evidence))
+            if repair_held(fresh):
+                fresh.setdefault("repair_reviews", []).append(_repair_review_entry("claude", "close", fresh, reason + " Evidence: " + evidence))
+            fresh.setdefault("chief_reviews", []).append({"at": _now_iso(), "by": "claude",
+                "decision": "close", "reason": reason[:800], "evidence": evidence[:800],
+                "via": "automatic chief-of-staff review (Codex)"})
+            forget_owner_memory(fresh)
+            fresh["result"] = ((fresh.get("result") or "").rstrip() +
+                "\n\nClosed by the chief of staff: " + reason[:800] + " Evidence: " + evidence[:800]).strip()
+            fresh["state"] = "dropped"
+            fresh["closed"] = _now_iso()
+            fresh.pop("chief_review_tries", None)
+            save_item(fresh)
+            moved = True
+        elif outcome == "taste" and all(str(doc.get(k) or "").strip()
+                                          for k in ("reason", "question", "recommend", "why", "instead")):
+            _file_taste_decision(fresh, doc)
+            fresh.setdefault("chief_reviews", []).append({"at": _now_iso(), "by": "claude",
+                                                            "decision": "taste", "reason": reason})
+            fresh.pop("chief_review_tries", None)
+            save_item(fresh)
+            moved = True
+        else:
+            save_item(fresh)
+        item.clear(); item.update(fresh)
+    return moved
+
+
+def release_chief_hold_for_capability(item, brief, decision="capability"):
+    """Make a held capability card runnable through the ordinary drain lane.
+
+    This only removes the queue hold that prevented an owner attempt. The
+    ordinary review and landing checks still decide whether its candidate can
+    reach main.
+    """
+    if cap_held(item):
+        if not _chief_spending_step_allowed(item):
+            raise ValueError("This card has reached its automatic spending extension limit.")
+        grant_spending_checkpoint(item, by="claude", reason=brief,
+                                  via="automatic chief-of-staff capability dispatch (Codex)")
+        save_item(item)
+    elif repair_held(item):
+        grant_repair_checkpoint(item, by="claude", brief=brief,
+                                via="automatic chief-of-staff capability dispatch (Codex)")
+        save_item(item)
+    else:
+        flow = _workflow(item)
+        open_blockers = [b for b in flow["blockers"] if b.get("state") == "open"]
+        if any(b.get("type") not in ("art_budget", "chief_hold") for b in open_blockers):
+            return item
+        for blocker in flow["blockers"]:
+            generic_chief_hold = (blocker.get("owner") == "claude" and blocker.get("wake")
+                                  and not blocker.get("action_id"))
+            if blocker.get("state") == "open" and (blocker.get("type") == "art_budget"
+                                                     or generic_chief_hold):
+                blocker["state"] = "resolved"
+                blocker["resolved_at"] = _now_iso()
+        item["state"] = "waiting_session"
+        item["started"] = ""
+        item.setdefault("chief_reviews", []).append({
+            "at": _now_iso(), "by": "claude", "decision": decision,
+            "reason": str(brief).strip()[:1200]})
+        save_item(item)
+    return item
 
 
 def grant_spending_checkpoint(item, said="", by="daniel", reason="", via=""):
@@ -3855,7 +4106,7 @@ def recover_completion_work():
         lock.close()
 
 
-def undo_landing(item):
+def undo_landing(item, *, actor="daniel", run_id=None):
     """Put back what a landing changed, and give the card back to Daniel.
 
     The commit is reverted rather than reset: other work has landed on top of
@@ -3885,11 +4136,14 @@ def undo_landing(item):
     if integration.git(HOST.REPO, "merge-base", "--is-ancestor", sha, parent,
                        check=False).returncode:
         return False, "The landing commit is not on local main."
+    if actor == "ci" and (parent != sha or
+            (item.get("completion") or {}).get("sha") != sha):
+        return False, "Main or the work card moved since the failed CI commit."
     marker = "HQ-Undo: " + item["id"] + ":" + sha
     checkout = os.path.join(drain.WORKTREES, "integration-undo-" + item["id"])
     item["pending_undo"] = {"version": 1, "reverted": sha, "parent": parent,
                             "checkout": checkout, "marker": marker,
-                            "at": _now_iso()}
+                            "at": _now_iso(), "actor": actor, "run_id": run_id}
     # The obligation is durable before any Git side effect. The drain lock
     # held by the API or startup recovery serializes this with normal landings.
     save_item(item)
@@ -3968,9 +4222,17 @@ def recover_pending_undo(item):
     forget_owner_memory(item)
     item["state"] = "for_review"
     item["landing_undone"] = {"at": _now_iso(), "reverted": tx["reverted"],
-                              "commit": commit}
+                              "commit": commit, "actor": tx.get("actor", "daniel"),
+                              "run_id": tx.get("run_id")}
+    if tx.get("actor") == "ci":
+        for blocker in _workflow(item).get("blockers") or []:
+            if blocker.get("type") == "ci_undo" and blocker.get("state") == "open":
+                blocker["state"], blocker["resolved_at"] = "resolved", _now_iso()
     item.setdefault("conversation", []).append(
-        {"role": "daniel", "text": "Undid this landing.", "at": _now_iso(), "with": "undo"})
+        {"role": tx.get("actor", "daniel"),
+         "text": (f"CI run {tx['run_id']} failed; reverted this landing."
+                  if tx.get("actor") == "ci" else "Undid this landing."),
+         "at": _now_iso(), "with": "undo"})
     item.pop("landed", None)
     item.pop("pending_undo", None)
     save_item(item)

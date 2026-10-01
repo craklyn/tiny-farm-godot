@@ -18,8 +18,8 @@ import unittest
 from unittest.mock import patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
-import work, drain, integration, server  # noqa: E402
-from test_completion import record  # noqa: E402
+import work, drain, integration, server, action_dispatch  # noqa: E402
+from test_completion import record, result  # noqa: E402
 from test_drain import fake_host, ORG  # noqa: E402
 
 GREEN = {'unit': {'ok': True}, 'integration': {'ok': True}}
@@ -172,6 +172,64 @@ class ParallelDrain(unittest.TestCase):
         with patch.object(drain, 'do_item', side_effect=worked):
             drain.run_verified_batch(cards, ORG, 'fixture', lambda m: None, jobs=1)
         self.assertEqual(order, [('start', 'wa', True), ('start', 'wb', True)])
+
+    def test_capability_dispatch_passes_review_both_suites_and_secret_scan_before_push(self):
+        origin = self.root / 'origin.git'
+        self.git('init', '-q', '--bare', '-b', 'main', str(origin))
+        self.git('remote', 'add', 'origin', str(origin))
+        self.git('push', '-q', 'origin', 'main')
+        card = self.card('wcapability')
+        card['needs'] = ['display']
+        work.save_item(card)
+        selected = action_dispatch.choose(drain, ids=[card['id']])
+        self.assertEqual(len(selected), 1)
+        self.assertEqual(selected[0][1]['type'], 'build')
+        events = []
+        suite_calls = []
+        clean_review = json.dumps({'verdict': 'pass', 'complete': True, 'summary': 'clean',
+                                   'findings': [], 'unrelated_generated_files': [],
+                                   'lesson_for_owner': None, 'escalates': None,
+                                   'escalation_reason': None})
+        original_sh = drain.sh
+
+        def tracked_sh(command, *args, **kwargs):
+            if any('check_secrets.py' in str(part) for part in command):
+                events.append('secret_scan')
+            return original_sh(command, *args, **kwargs)
+
+        def session(*args, **kwargs):
+            phase = args[7]
+            if phase == 'drain-work':
+                (Path(args[4]) / 'capability.txt').write_text('captured\n')
+                return result(), None, ''
+            self.assertEqual(phase, 'drain-check')
+            events.append('review')
+            return clean_review, None, ''
+
+        def suites(cwd=None, files=None):
+            self.assertEqual(files, ['capability.txt'])
+            suite_calls.append(self.git('write-tree', cwd=cwd))
+            if len(suite_calls) == 2:
+                events.append('both_suites')
+            return GREEN
+
+        with patch.object(drain.execution, 'launch_allowed', return_value=True), \
+                patch.object(drain.art_requests, 'mcp_server', return_value=None), \
+                patch.object(drain, 'run_cli', side_effect=session), \
+                patch.object(drain, 'run_suites', side_effect=suites), \
+                patch.object(drain, 'sh', side_effect=tracked_sh):
+            records, done = drain.run_verified_batch([selected[0][0]], ORG, 'capability',
+                                                     lambda _message: None,
+                                                     actions={card['id']: selected[0][1]})
+            self.assertEqual(done[0]['state'], 'landed')
+            self.assertEqual(drain.push_landed(str(self.repo)), '')
+        self.assertEqual([name for name in events if name in
+                          ('review', 'both_suites', 'secret_scan')],
+                         ['review', 'both_suites', 'secret_scan'])
+        self.assertEqual(len(suite_calls), 2)
+        self.assertEqual(self.git('rev-parse', 'main'),
+                         self.git('rev-parse', 'main', cwd=origin))
+        self.assertTrue(records[card['id']]['check']['complete'])
 
     # -- B: serial landing, and the rebuild -----------------------------------
 

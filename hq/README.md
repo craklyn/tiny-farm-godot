@@ -412,6 +412,21 @@ instruction) or rescopes or closes it. HQ and each drain run move any card an ea
 HQ sent to his page this way into that held state. Every decision is written on the
 card as `repair_reviews` and shown on the Work page.
 
+Every drain startup also scans the projected queue in code for work held for the chief of
+staff. No match means no model call. A match at a spending or repair checkpoint receives
+an automatic Codex chief-of-staff review; after two unusable reviews it remains held for a
+live session. The review can extend with a concrete brief, rescope, close ordinary work,
+or save a Daniel decision draft on the held work card when the unresolved question is taste.
+
+Cards with `needs: [display]`, `needs: [tablet]`, or `needs: [network]` use the Codex
+capability profile in their own worktree. This profile passes `DISPLAY=:0.0` when requested
+and strips every name in `execution.SECRET_ENV` and credential-like environment keys.
+It has full host access; a card's `needs` value is an instruction, not a sandbox boundary.
+The card brief forbids touching the
+release Android package or its saves. A capability session does not bypass review or
+landing: its candidate follows the same checker, test, secret-scan, integration, and CI
+path as every other worker.
+
 Nothing here is written by a request handler. A tracked file written on page
 render leaves the tree dirty, and `git describe --dirty` is where playtest build
 ids come from — which is exactly how two recorded sessions became impossible to

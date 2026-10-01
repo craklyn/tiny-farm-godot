@@ -703,6 +703,17 @@ function repairReviewLines(it) {
   return `<div class="w-cost">${reviews.map(r => `<div>${esc(line(r))}</div>`).join("")}</div>`;
 }
 
+function decisionDraftLine(it) {
+  const draft = it.decision_draft;
+  if (!draft || typeof draft !== "object") return "";
+  const choices = Array.isArray(draft.options) ? draft.options.map(esc).join(" / ") : "";
+  return `<div class="w-cost"><b>Decision draft for the chief of staff</b><br>
+    Finding: ${esc(draft.finding || "")}<br>
+    ${esc(draft.question || "")}<br>
+    Choices: ${choices}<br>
+    Recommended: ${esc(draft.recommend || "")} — ${esc(draft.why || "")}</div>`;
+}
+
 /* The Work page's own header line: what the company's unattended work has spent
    in the trailing five hours, against the only measured ceiling this machine
    has — what it had spent the last time a window actually ran dry. */
@@ -841,6 +852,7 @@ function workCard(it, org, pol) {
       ${costLine(it)}
       ${checkpointLines(it)}
       ${repairReviewLines(it)}
+      ${decisionDraftLine(it)}
       ${convoBlock(it, org)}
       ${childrenNote(it, org)}
       ${spawnedNote(it)}

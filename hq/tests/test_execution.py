@@ -126,6 +126,26 @@ class ExecutionTests(unittest.TestCase):
             self.assertNotIn('--dangerously-bypass-approvals-and-sandbox', cmd)
         with self.assertRaises(ValueError):
             e.command_for('', '', 'Bash', route, 1)
+        capability = e.command_for('p', 's', 'Read,Glob,Grep,Edit,Write,Bash', route, 1,
+                                   profile='capability')
+        self.assertIn('danger-full-access', capability)
+
+    def test_capability_session_gets_display_but_not_secrets(self):
+        event = ('import json,os\n'
+                 'print(json.dumps({"type":"item.completed","item":{"type":"agent_message",'
+                 '"phase":"final_answer","text":json.dumps({"display":os.getenv("DISPLAY"),'
+                 '"secret":os.getenv("RETRODIFFUSION_API_KEY")})}}),flush=True)\n'
+                 'print(json.dumps({"type":"turn.completed","usage":{}}),flush=True)\n')
+        with tempfile.TemporaryDirectory() as folder:
+            cli = Path(folder) / 'codex'
+            cli.write_text('#!/usr/bin/env python3\n' + event)
+            cli.chmod(0o755)
+            with patch.dict(os.environ, {'PATH': folder + os.pathsep + os.environ['PATH'],
+                                         'RETRODIFFUSION_API_KEY': 'must-not-leak'}):
+                result = e.run_session('p', 's', 'Read,Glob,Grep,Edit,Write,Bash', 'haiku',
+                                       folder, 3, 1, launch_context='writing_hook',
+                                       profile='capability', env_extra={'DISPLAY': ':0.0'})
+        self.assertEqual(json.loads(result['text']), {'display': ':0.0', 'secret': None})
 
     def run_fake(self, events, code=0, delay=0, timeout=3):
         with tempfile.TemporaryDirectory() as folder:
