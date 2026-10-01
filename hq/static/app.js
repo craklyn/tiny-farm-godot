@@ -81,6 +81,9 @@ function workflowStatus(item) {
   const view = workflowView(item);
   const action = view.next_action || {};
   const reason = (view.blocker || {}).reason || "";
+  if ((view.blocker || {}).type === "checkout_busy" && view.candidate_status !== "none") {
+    return "Built; waiting for the main project folder to be free — another work session is using it";
+  }
   if (workflowOutcomeBlocked(item)) {
     const recovery = action.availability === "running" ? "recovery is running"
       : action.availability === "runnable" ? "recovery is ready" : "";

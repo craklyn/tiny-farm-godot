@@ -14,6 +14,11 @@ const items = [
   { id: 'running', title: 'Running build', state: 'waiting_session', owner: 'rin', started: '2026-09-21T21:00' },
   { id: 'weather', title: 'Weather reconciliation', state: 'waiting_session', tier: 1,
     owner: 'rin', workflow_view: blockedView },
+  { id: 'checkout', title: 'Finished coop rain behavior', state: 'for_review', tier: 1,
+    owner: 'rin', workflow_view: { version: 1, phase: 'ready', availability: 'blocked',
+      blocker: { type: 'checkout_busy', reason: 'Local main is still checked out elsewhere.' },
+      next_action: { type: 'handoff', priority: 'ordinary', availability: 'blocked' },
+      candidate_status: 'held', shipped_evidence: { landed_sha: '', ci_confirmed: false } } },
   // A clean design-document change held only for his yes (the Q-130 card,
   // 2026-09-27): his to decide, not "Reviewed, waiting to be merged".
   { id: 'design', title: 'Design change', state: 'for_review', tier: 1, owner: 'rin',
@@ -59,10 +64,12 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/queue.js'), 'utf
   assert.deepEqual(Array.from(data.pendingCompletion, x => x.card.id), ['prospective']);
   assert.deepEqual(Array.from(data.waitingToStart, x => x.card.id), ['queued', 'accepted']);
   assert.deepEqual(Array.from(data.studioWork, x => x.card.id), ['failed', 'running']);
-  assert.deepEqual(Array.from(data.heldToStart, x => x.card.id), ['weather']);
+  assert.deepEqual(Array.from(data.heldToStart, x => x.card.id), ['weather', 'checkout']);
   assert.deepEqual(Array.from(data.hisWork, x => x.card.id), ['design']);
-  assert.equal(context.workflowStatus(items[7]), 'Reviewed; waiting for your yes to merge it');
-  const merge = context.qWorkItem(items[7], {}, '');
+  assert.equal(context.workflowStatus(items[8]), 'Reviewed; waiting for your yes to merge it');
+  assert.equal(context.workflowStatus(items[7]), 'Built; waiting for the main project folder to be free — another work session is using it');
+  assert.doesNotMatch(context.workflowStatus(items[3]), /reconciliation|main checkout/);
+  const merge = context.qWorkItem(items[8], {}, '');
   assert.equal(merge.merge, true);
   assert.match(merge.question, /^Merge this reviewed change into the main code branch\? It changes docs\/design\/06/);
   assert.equal(merge.answer, 'Merge it');
@@ -70,7 +77,7 @@ vm.runInContext(fs.readFileSync(path.join(__dirname, '../static/queue.js'), 'utf
   assert.match(context.qYesCauses(merge), /adds this exact change .*; then one piece of work starts\.$/);
   // With the server's plain brief (2026-09-28, "What does the title mean?"),
   // the card asks in his words and leads with what changes and how to read it.
-  const briefed = context.qWorkItem({ ...items[7], approval: {
+  const briefed = context.qWorkItem({ ...items[8], approval: {
     question: "Add Tomás's write-up of your Q-131 ruling (you chose: Show a moving Mark III beside the chevrons) to the bots and training design doc?",
     summary: 'Recorded the ruling.', files: [{ path: 'docs/design/06-bots-and-training.md', name: 'the bots and training design doc' }],
     why: 'The reviewer read it and found nothing wrong: The ruling is consistently recorded.',

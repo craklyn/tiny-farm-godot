@@ -42,24 +42,17 @@ def _primary_checkout(repo):
     return ""
 
 
-def _untracked_build_inputs(holder):
-    """Untracked files other than rescued play sessions can change a landing."""
-    # Tablet rescue writes evidence under playtests/ before the next install.
-    # Like the Android source gate, this checkout gate must keep that evidence
-    # in place without mistaking it for an uncommitted build input.
-    return git(holder, "ls-files", "--others", "--exclude-standard", "--", ".",
-               ":(exclude)playtests").stdout.strip()
-
-
-def _playtest_collision(holder, parent, commit):
-    """Refuse a landing that would write over a rescued, untracked session file."""
-    rescued = set(git(holder, "ls-files", "--others", "--exclude-standard", "-z",
-                      "--", "playtests").stdout.split("\0")) - {""}
-    if not rescued:
+def _untracked_collision(holder, parent, commit):
+    """Refuse when a landing path overlaps an untracked file or its parents."""
+    untracked = set(git(holder, "ls-files", "--others", "--exclude-standard", "-z").stdout.split("\0")) - {""}
+    if not untracked:
         return False
     changed = set(git(holder, "diff-tree", "--no-commit-id", "--name-only", "-r",
                       "-z", parent, commit).stdout.split("\0")) - {""}
-    return bool(rescued & changed)
+    return any(untracked_path == changed_path or
+               untracked_path.startswith(changed_path + "/") or
+               changed_path.startswith(untracked_path + "/")
+               for untracked_path in untracked for changed_path in changed)
 
 
 def _owner_state(holder, parent):
@@ -67,10 +60,15 @@ def _owner_state(holder, parent):
     if git(holder, "rev-parse", "HEAD").stdout.strip() != parent:
         return False
     if git(holder, "diff", "--quiet", check=False).returncode or \
-            git(holder, "diff", "--cached", "--quiet", check=False).returncode or \
-            _untracked_build_inputs(holder):
+            git(holder, "diff", "--cached", "--quiet", check=False).returncode:
         return False
     return True
+
+
+def _origin_matches(holder, parent):
+    """A fetched origin/main, when present, must name the same commit."""
+    origin = git(holder, "rev-parse", "--verify", "refs/remotes/origin/main", check=False)
+    return origin.returncode != 0 or origin.stdout.strip() == parent
 
 
 # The start of handoff_status's refusal, so a hold it caused can be recognised.
@@ -84,7 +82,8 @@ def handoff_status(repo):
         # worktree deliberately assigned main may own it, but only while clean
         # and synchronized with the ref it claims to represent.
         if os.path.realpath(holder) != _primary_checkout(repo) and \
-                _owner_state(holder, main_head(repo)):
+                _owner_state(holder, main_head(repo)) and \
+                _origin_matches(holder, main_head(repo)):
             return True, ""
         return False, (HANDOFF_REFUSAL + holder + "; a confirmed-idle "
                        "branch handoff or clean main-worktree synchronization is required before integration.")
@@ -143,10 +142,7 @@ def handoff_main(repo, branch, *, confirmed_idle=False):
 
 
 def candidate_checkout(repo, scratch, attempt_id, expected_parent):
-    """Create one detached checkout after proving local main is unowned."""
-    ready, reason = handoff_status(repo)
-    if not ready:
-        raise RuntimeError(reason)
+    """Create a detached candidate; the shared-checkout guard belongs at landing."""
     if main_head(repo) != expected_parent:
         raise RuntimeError("Local main changed; this candidate needs fresh review and tests.")
     safe_id = "".join(c for c in attempt_id if c.isalnum() or c in "-_")[:80]
@@ -177,9 +173,10 @@ def advance_main(repo, commit, parent):
     """CAS local main and synchronize its clean dedicated owner, if present."""
     holder = main_checkout(repo)
     if holder:
-        if os.path.realpath(holder) == _primary_checkout(repo) or not _owner_state(holder, parent):
+        if os.path.realpath(holder) == _primary_checkout(repo) or not _owner_state(holder, parent) \
+                or not _origin_matches(holder, parent):
             return False
-        if _playtest_collision(holder, parent, commit):
+        if _untracked_collision(holder, parent, commit):
             return False
     updated = git(repo, "update-ref", "refs/heads/main", commit, parent, check=False)
     if updated.returncode:
@@ -209,7 +206,7 @@ def synchronize_main(repo, commit, parent, holder=None):
     old_tree = git(repo, "rev-parse", parent + "^{tree}").stdout.strip()
     if indexed_tree != old_tree or \
             git(holder, "diff", "--quiet", check=False).returncode or \
-            _untracked_build_inputs(holder):
+            _untracked_collision(holder, parent, commit):
         return False
     # Merge the known old and new trees into the clean dedicated checkout.
     # read-tree refuses an unexpected worktree change rather than forcing it.

@@ -2441,7 +2441,11 @@ def _write_back(item, rec, applied, why_not, suites, org):
         item["state"] = "for_review"
     item["finished"] = work._now_iso()
     work.finish_revision(item)
-    if not landed_ok:
+    # A checkout refusal did not invalidate the reviewed candidate. It needs
+    # an ordinary handoff once the shared checkout is free, not another owner
+    # build. _land_item records that handoff immediately after this write.
+    checkout_busy = str(why_not_landed or "").startswith(integration.HANDOFF_REFUSAL)
+    if not landed_ok and not checkout_busy:
         work.queue_one_repair(item)
     work.save_item(item)
     return item
@@ -2827,17 +2831,17 @@ def record_integration_blocker(item, rec, kind, reason, *, retry_owner=True):
 
 
 def record_handoff_blocker(item, reason):
-    """A process action, not another costly owner build attempt."""
+    """A finished build waiting only for the shared checkout."""
     action = work.ensure_action(item, "handoff", input_id=integration.main_head(server.REPO),
-                                owner="claude", priority="reconciliation",
-                                summary="Confirm the checkout is idle and transfer its dirty files to a named branch.")
-    work.ensure_blocker(item, "tooling", input_id=action["input_id"], owner="claude",
+                                owner="claude", priority="ordinary",
+                                summary="Land the finished build when the main checkout is free.")
+    work.ensure_blocker(item, "checkout_busy", input_id=action["input_id"], owner="claude",
                         reason=reason, action_id=action["id"],
-                        wake="The primary checkout is confirmed idle.")
+                        wake="The main checkout is free.")
 
 
 def settle_handoffs():
-    """Clear every open handoff once local main is in a state a landing may use.
+    """Release pre-build handoffs now; release finished builds when main is ready.
 
     A run records a handoff when local main is held by a checkout it may not
     land into, and _claim_item cleared it only when it claimed that card. But a
@@ -2846,14 +2850,20 @@ def settle_handoffs():
     from 2026-09-28 to 09-29 while main had long been a clean linked checkout.
     Returns the ids of the cards it cleared."""
     ready, _reason = integration.handoff_status(REPO)
-    if not ready:
-        return []
     cleared = []
     for item in work.items():
         if item.get("state") in work.FINAL_STATES:
             continue
         workflow = item.get("workflow") or {}
         handoffs = {a.get("id") for a in workflow.get("actions") or [] if a.get("type") == "handoff"}
+        # Old versions created this hold before the owner had produced any
+        # candidate. Leaving it until main is free prevents the very build
+        # that now runs safely in an isolated worktree.
+        built = bool((item.get("diff") or {}).get("files") or workflow.get("candidates")
+                     or item.get("pending_landing") or
+                     ((item.get("attempt_outcome") or {}).get("candidate") or {}).get("files"))
+        if built and not ready:
+            continue
         # A hold can outlive its step, and a run that met the refusal used to
         # block the card's own step for operator review with the same reason:
         # on 2026-09-29 two cards sat on such holds long after main was ready.
@@ -3006,20 +3016,6 @@ def _claim_item(selected, actions, run_id, records, done):
                 done.append(work.load_item(item["id"]))
             return None
     if int(item.get("tier") or 0) >= 1:
-        ready, reason = integration.handoff_status(server.REPO)
-        if not ready:
-            rec = {"id": item["id"], "held": True, "error": reason,
-                   "usage": [], "check": None, "applied": False}
-            records[item["id"]] = rec
-            record_handoff_blocker(item, reason)
-            if claim_id:
-                # A deferral, like a pause or a dry allowance: the step goes back
-                # to open and the handoff hold alone keeps the card, until
-                # settle_handoffs releases it. Blocking the step for operator
-                # review instead left holds nothing ever cleared (2026-09-29).
-                action_dispatch.finish(work, item, action, claim_id,
-                                       progressed=False, deferred=True, reason=reason)
-            return None
         resolve_handoff_action(item)
     return {"item": item, "action": action, "claim_id": claim_id}
 
@@ -3154,9 +3150,13 @@ def _land_item(ctx, rec, org, run_id, log, done, no_suites):
               and not work.landing_awaits_approval(done[-1])):
             # A clean change held only for Daniel's yes is his to decide, not
             # a repair for its owner (2026-09-27, wbc6377da200).
-            record_integration_blocker(done[-1], rec, "missing_evidence",
-                                       (done[-1].get("diff") or {}).get("why_not_landed") or
-                                       "The candidate needs new landing evidence.")
+            landing_reason = (done[-1].get("diff") or {}).get("why_not_landed") or ""
+            if landing_reason.startswith(integration.HANDOFF_REFUSAL):
+                record_handoff_blocker(done[-1], landing_reason)
+            else:
+                record_integration_blocker(done[-1], rec, "missing_evidence",
+                                           landing_reason or
+                                           "The candidate needs new landing evidence.")
         art_requests.after_write_back(done[-1], rec)
         if integration_repo and os.path.isdir(integration_repo) and not done[-1].get("pending_landing"):
             _remove_candidate(integration_repo)
@@ -3412,7 +3412,7 @@ def main():
     if lock:
         cleared = settle_handoffs()
         if cleared:
-            print(f"Local main can take landings again; cleared the checkout handoff on "
+            print(f"Cleared obsolete pre-build or ready-to-land checkout handoffs on "
                   f"{len(cleared)} card(s): {', '.join(cleared)}.")
         released = settle_lost_claims()
         art_released = art_requests.settle_holds()

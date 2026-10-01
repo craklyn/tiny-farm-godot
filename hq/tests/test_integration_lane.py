@@ -67,8 +67,8 @@ class IntegrationHandoff(unittest.TestCase):
         ready, reason = integration.handoff_status(str(self.repo))
         self.assertFalse(ready)
         self.assertIn("handoff", reason)
-        with self.assertRaises(RuntimeError):
-            integration.candidate_checkout(str(self.repo), self.tmp.name, "a1", self.base)
+        tree = integration.candidate_checkout(str(self.repo), self.tmp.name, "a1", self.base)
+        self.assertEqual(git(tree, "rev-parse", "HEAD"), self.base)
         self.assertEqual(integration.main_head(str(self.repo)), self.base)
 
     def test_clean_dedicated_main_owner_advances_with_exact_candidate(self):
@@ -106,12 +106,23 @@ class IntegrationHandoff(unittest.TestCase):
         self.assertEqual((owner / "candidate.txt").read_text(), "checked\n")
         self.assertEqual(integration.handoff_status(str(self.repo)), (True, ""))
 
-    def test_other_untracked_file_still_blocks_dedicated_main_owner(self):
+    def test_unrelated_untracked_file_does_not_block_dedicated_main_owner(self):
         self.assertEqual(integration.handoff_main(str(self.repo), "codex/user",
                                                   confirmed_idle=True), (True, ""))
         owner = Path(self.tmp.name, "main-owner")
         git(self.repo, "worktree", "add", "--", str(owner), "main")
         (owner / "scratch.txt").write_text("keep me\n")
+        self.assertEqual(integration.handoff_status(str(self.repo)), (True, ""))
+
+    def test_local_commit_not_on_origin_main_blocks_dedicated_owner(self):
+        git(self.repo, "update-ref", "refs/remotes/origin/main", self.base)
+        self.assertEqual(integration.handoff_main(str(self.repo), "codex/user",
+                                                  confirmed_idle=True), (True, ""))
+        owner = Path(self.tmp.name, "main-owner")
+        git(self.repo, "worktree", "add", "--", str(owner), "main")
+        (owner / "local.txt").write_text("local commit\n")
+        git(owner, "add", "local.txt")
+        git(owner, "commit", "-qm", "Local only")
         self.assertFalse(integration.handoff_status(str(self.repo))[0])
 
     def test_candidate_cannot_replace_untracked_rescued_playtest(self):
@@ -133,6 +144,46 @@ class IntegrationHandoff(unittest.TestCase):
         self.assertFalse(integration.advance_main(str(self.repo), commit, self.base))
         self.assertEqual(integration.main_head(str(self.repo)), self.base)
         self.assertEqual(session.read_text(), "tablet evidence\n")
+
+    def test_candidate_directory_cannot_replace_untracked_file(self):
+        self.assertEqual(integration.handoff_main(str(self.repo), "codex/user",
+                                                  confirmed_idle=True), (True, ""))
+        owner = Path(self.tmp.name, "main-owner")
+        git(self.repo, "worktree", "add", "--", str(owner), "main")
+        collision = owner / "evidence"
+        collision.write_text("keep this file\n")
+        before = integration._checkout_fingerprint(str(owner))
+        tree = integration.candidate_checkout(str(self.repo), self.tmp.name, "a1", self.base)
+        candidate_file = Path(tree) / "evidence" / "session.jsonl"
+        candidate_file.parent.mkdir()
+        candidate_file.write_text("candidate data\n")
+        git(tree, "add", "evidence/session.jsonl")
+        git(tree, "commit", "-qm", "Candidate")
+        commit = git(tree, "rev-parse", "HEAD")
+
+        self.assertFalse(integration.advance_main(str(self.repo), commit, self.base))
+        self.assertEqual(integration.main_head(str(self.repo)), self.base)
+        self.assertEqual(integration._checkout_fingerprint(str(owner)), before)
+
+    def test_candidate_file_cannot_replace_untracked_directory(self):
+        self.assertEqual(integration.handoff_main(str(self.repo), "codex/user",
+                                                  confirmed_idle=True), (True, ""))
+        owner = Path(self.tmp.name, "main-owner")
+        git(self.repo, "worktree", "add", "--", str(owner), "main")
+        collision = owner / "evidence" / "session.jsonl"
+        collision.parent.mkdir()
+        collision.write_text("keep this directory\n")
+        before = integration._checkout_fingerprint(str(owner))
+        tree = integration.candidate_checkout(str(self.repo), self.tmp.name, "a1", self.base)
+        candidate_file = Path(tree) / "evidence"
+        candidate_file.write_text("candidate data\n")
+        git(tree, "add", "evidence")
+        git(tree, "commit", "-qm", "Candidate")
+        commit = git(tree, "rev-parse", "HEAD")
+
+        self.assertFalse(integration.advance_main(str(self.repo), commit, self.base))
+        self.assertEqual(integration.main_head(str(self.repo)), self.base)
+        self.assertEqual(integration._checkout_fingerprint(str(owner)), before)
 
     def test_dirty_dedicated_main_owner_blocks_cas_without_overwrite(self):
         self.assertEqual(integration.handoff_main(str(self.repo), "codex/user",

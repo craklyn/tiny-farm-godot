@@ -62,7 +62,8 @@ class ActionDispatch(unittest.TestCase):
         # 2026-09-29: three cards sat on a recorded handoff long after main had
         # become a clean linked checkout, because only claiming a card cleared
         # it and a card whose next step is a handoff is never claimed.
-        item = self.card(state="waiting_session", repair_hold="")
+        item = self.card(state="waiting_session", repair_hold="",
+                         diff={"files": ["weather.gd"]})
         with patch.object(drain.integration, "main_head", return_value="abc"):
             drain.record_handoff_blocker(item, "Local main is still checked out at /somewhere.")
         with patch.object(drain.integration, "handoff_status", return_value=(False, "still held")):
@@ -113,8 +114,6 @@ class ActionDispatch(unittest.TestCase):
                             reason=drain.integration.HANDOFF_REFUSAL + "/somewhere; a handoff is required.",
                             action_id=action["id"], wake="operator review")
         with patch.object(drain.integration, "handoff_status", return_value=(False, "still held")):
-            self.assertEqual(drain.settle_handoffs(), [])
-        with patch.object(drain.integration, "handoff_status", return_value=(True, "")):
             self.assertEqual(drain.settle_handoffs(), [item["id"]])
             self.assertEqual(drain.settle_handoffs(), [])
         workflow = work.load_item(item["id"])["workflow"]

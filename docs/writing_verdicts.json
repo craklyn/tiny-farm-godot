@@ -4994,6 +4994,12 @@
   "8f84737cf7612b374168": {
    "verdict": "ok"
   },
+  "8fad645528a8082ee0ee": {
+   "instead": "Built; waiting for the main project folder to be free — another work session is using it",
+   "quote": "main checkout",
+   "verdict": "decode",
+   "why": "The reader may not know that this means the main copy of the project files."
+  },
   "8fb5aa8447551f2d7991": {
    "verdict": "ok"
   },
@@ -8735,6 +8741,9 @@
    "verdict": "ok"
   },
   "fe673babfb78ac63e0d2": {
+   "verdict": "ok"
+  },
+  "fe69b2e6c23c9827900c": {
    "verdict": "ok"
   },
   "fe84346a546f0078d0e8": {

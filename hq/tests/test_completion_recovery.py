@@ -251,17 +251,59 @@ class Recovery(unittest.TestCase):
         self.assertTrue(records['wtest']['held'])
         self.assertEqual(work.load_item('wtest')['ask'],'Changed while the worker ran')
 
-    def test_unowned_main_stops_before_any_owner_model_call(self):
+    def test_unowned_main_allows_new_build_to_start(self):
         work.save_item(self.card)
-        with patch.object(integration,'handoff_status',return_value=(False,'Handoff required')), \
-             patch.object(drain,'do_item',side_effect=AssertionError('No worker before handoff')):
-            for _ in range(2):
-                records,done=drain.run_verified_batch([self.card],ORG,'fixture',lambda message:None)
-                self.assertEqual(done,[])
-                self.assertTrue(records['wtest']['held'])
+        refusal = integration.HANDOFF_REFUSAL + '/another/session; wait before integration.'
+        paused = {'id': 'wtest', 'held': True, 'error': 'Fixture paused after starting',
+                  'usage': [], 'check': None, 'applied': False}
+        with patch.object(integration,'handoff_status',return_value=(False,refusal)), \
+             patch.object(drain,'do_item',return_value=paused) as owner:
+            records,done=drain.run_verified_batch([self.card],ORG,'fixture',lambda message:None)
+        owner.assert_called_once()
+        self.assertTrue(records['wtest']['held'])
+        self.assertEqual(done,[])
         saved=work.load_item('wtest')
-        self.assertEqual([a['type'] for a in saved['workflow']['actions']],['handoff'])
-        self.assertEqual(len(saved['workflow']['blockers']),1)
+        self.assertFalse((saved.get('workflow') or {}).get('actions'))
+
+    def test_old_prebuild_handoff_releases_while_main_is_busy(self):
+        work.save_item(self.card)
+        refusal = integration.HANDOFF_REFUSAL + '/another/session; wait before integration.'
+        drain.record_handoff_blocker(self.card, refusal)
+        held = work.load_item('wtest')
+        self.assertEqual(work.work_view(held)['next_action']['type'], 'handoff')
+        with patch.object(integration, 'handoff_status', return_value=(False, refusal)), \
+             patch.object(drain, 'do_item', return_value={
+                 'id': 'wtest', 'held': True, 'error': 'Fixture paused after starting',
+                 'usage': [], 'check': None, 'applied': False}) as owner:
+            self.assertEqual(drain.settle_handoffs(), ['wtest'])
+            ready = work.load_item('wtest')
+            self.assertEqual(work.work_view(ready)['next_action']['type'], 'build')
+            drain.run_verified_batch([ready], ORG, 'fixture', lambda message: None)
+        owner.assert_called_once()
+        settled = work.load_item('wtest')
+        self.assertFalse(any(b['state'] == 'open' for b in settled['workflow']['blockers']))
+
+    def test_finished_build_waiting_for_checkout_has_only_ordinary_handoff(self):
+        integration.remove_candidate(str(self.repo), self.r['integration_checkout'], drain.WORKTREES)
+        work.save_item(self.card)
+        refusal = integration.HANDOFF_REFUSAL + '/another/session; wait before integration.'
+        with patch.object(drain, 'do_item', return_value=self.r), \
+             patch.object(drain, 'run_suites', return_value=self.suites), \
+             patch.object(integration, 'handoff_status', return_value=(False, refusal)):
+            records, done = drain.run_verified_batch(
+                [self.card], ORG, 'fixture', lambda message: None)
+        self.assertTrue(records['wtest']['applied'])
+        self.assertEqual(len(done), 1)
+        saved = work.load_item('wtest')
+        self.assertNotIn('completion', saved)
+        open_actions = [action for action in saved['workflow']['actions']
+                        if action['state'] == 'open']
+        self.assertEqual([(action['type'], action['priority']) for action in open_actions],
+                         [('handoff', 'ordinary')])
+        view = work.work_view(saved)
+        self.assertEqual(view['blocker']['type'], 'checkout_busy')
+        self.assertEqual(view['next_action']['type'], 'handoff')
+        self.assertEqual(view['next_action']['priority'], 'ordinary')
 
     def test_failed_prospective_suite_keeps_main_and_creates_one_recovery_action(self):
         integration.remove_candidate(str(self.repo),self.r['integration_checkout'],drain.WORKTREES)
