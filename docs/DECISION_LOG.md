@@ -745,6 +745,25 @@ card still waiting on his page this way into the held state. Code: `hq/work.py`
 `hold_repair_checkpoints_for_chief_of_staff`); how it works is in
 `docs/HOW_WORK_ORIGINATES.md` ("A card whose repairs are used up").
 
+**The chief of staff's queue work runs on Codex when the drain finds it (same ruling,
+2026-09-29).** Each drain run uses code, with no model call, to find spending holds,
+used-up repairs, failed-landing holds, art-budget holds, and open cards in no lane. An
+empty result starts nothing. A held spending or repair card receives an automatic Codex
+chief-of-staff review with the same choices as the chief of staff has by hand: extend
+with a brief grounded in the reviewer's findings, narrow the ask, or close work that is
+superseded or done enough. The decision is recorded as by `claude`, with Codex named as
+the automatic review. Two unusable automatic reviews leave the card held for a live
+chief-of-staff session. Claude is reserved for Daniel's live conversation and that
+fallback. Taste never moves automatically: Codex saves a decision draft on the held
+work card for the chief of staff to curate and put to Daniel; no Q-number is allocated.
+
+A card can explicitly require `display`, `tablet`, or `network`. That card's owner runs
+on Codex in its ordinary isolated worktree with the named capability and no service key.
+The capability profile has full host access; the need is an instruction, not a sandbox boundary.
+Display sessions receive `DISPLAY=:0.0`; tablet sessions use only profile builds and must
+never touch `com.daniel.tinyfarm` or its saves. Their changes are candidates, not
+landings: the usual independent review and landing checks still apply.
+
 ### S-39. The Spiral Tower's room has a low stone course
 **Ruled by Daniel on 2026-09-29 (Q-135).** The thin boundary around the Spiral Tower's
 room is a low course of uneven grey stones, with mortar between them and a larger squared

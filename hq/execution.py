@@ -102,11 +102,13 @@ ART_REQUEST_TIMEOUT_SEC = 900       # must stay comfortably below MCP_TOOL_TIMEO
 MCP_STARTUP_TIMEOUT_SEC = 30
 
 
-def command_for(prompt, system, tools, route, turns, mcp=None):
+def command_for(prompt, system, tools, route, turns, mcp=None, profile=None):
     """The CLI argv for one session. `mcp` attaches one stdio tool server
     ({name, command, args, tools}); only a session that may write gets one."""
     if mcp and not {'Write', 'Edit', 'Bash'} <= set(filter(None, re.split(r'[,\s]+', tools or ''))):
         raise ValueError('A tool server is attached only to a session that may write')
+    if profile == 'capability' and route['provider'] != 'codex':
+        raise ValueError('Capability profile requires Codex')
     if route['provider'] == 'claude':
         cmd = ['claude', '-p', prompt, '--append-system-prompt', system,
                '--allowedTools', tools, '--max-turns', str(turns),
@@ -119,6 +121,9 @@ def command_for(prompt, system, tools, route, turns, mcp=None):
                 'type': 'stdio', 'command': mcp['command'], 'args': list(mcp['args'])}}})]
         return cmd
     allowed = set(filter(None, re.split(r'[,\s]+', tools or '')))
+    if profile not in (None, 'capability'):
+        raise ValueError(f'Unknown execution profile: {profile!r}')
+    requested_profile = profile
     if not allowed:
         profile = 'none'
     elif allowed <= {'Read', 'Glob', 'Grep'}:
@@ -129,9 +134,14 @@ def command_for(prompt, system, tools, route, turns, mcp=None):
         profile = 'write'
     else:
         raise ValueError(f'Unsupported Codex tool restriction: {tools!r}')
+    if requested_profile == 'capability':
+        if profile != 'write':
+            raise ValueError('Capability profile requires a build session')
+        profile = 'capability'
     cmd = ['codex', 'exec', '--json', '--ignore-user-config', '--ignore-rules',
            '--ephemeral', '--skip-git-repo-check', '--sandbox',
-           'workspace-write' if profile == 'write' else 'read-only', '--model', route['model']]
+           ('danger-full-access' if profile == 'capability' else
+            'workspace-write' if profile == 'write' else 'read-only'), '--model', route['model']]
     disabled = ['view_image', 'apps', 'plugins', 'multi_agent', 'browser_use',
                 'computer_use', 'image_generation', 'hooks', 'unbounded_connection_retries',
                 'skill_mcp_dependency_install', 'remote_plugin', 'standalone_web_search']
@@ -271,10 +281,28 @@ class Normalizer:
 
 # Keys the drain itself uses (hq/art_requests.py, S-37) never reach a model session.
 SECRET_ENV = ("RETRODIFFUSION_API_KEY",)
+_CREDENTIAL_ENV = re.compile(r'(?:SECRET|TOKEN|PASSWORD|PASSWD|API_KEY|PRIVATE_KEY|ACCESS_KEY|CREDENTIAL|AUTH|COOKIE|BEARER|PASSPHRASE|KUBECONFIG|_PAT$)', re.I)
+_CAPABILITY_ENV = {'HOME', 'PATH', 'LANG', 'LC_ALL', 'LC_CTYPE', 'TERM', 'USER',
+                   'LOGNAME', 'TMPDIR', 'XDG_RUNTIME_DIR', 'XAUTHORITY', 'DISPLAY'}
+
+
+def _session_env(env_extra=None, *, profile=None):
+    """Capability sessions receive only an explicit display value, never credentials."""
+    extra = env_extra or {}
+    if set(extra) - {'DISPLAY'}:
+        raise ValueError('Only DISPLAY may be passed to a model session')
+    env = {k: v for k, v in os.environ.items()
+           if k not in SECRET_ENV and not _CREDENTIAL_ENV.search(k)
+           and (profile != 'capability' or k in _CAPABILITY_ENV)}
+    env['CLAUDE_CODE_DISABLE_AUTOUPDATE'] = '1'
+    if 'DISPLAY' in extra:
+        env['DISPLAY'] = str(extra['DISPLAY'])
+    return env
 
 
 def run_session(prompt, system, tools, model, cwd, timeout, turns, *, phase='', seat='',
-                item='', on_event=None, on_start=None, launch_context='automatic', mcp=None):
+                item='', on_event=None, on_start=None, launch_context='automatic', mcp=None,
+                profile=None, env_extra=None):
     started = time.monotonic()
     route = resolve_model(model)
     result = {**route, 'text': '', 'usage': {**route, 'list_usd': None}, 'error': '',
@@ -284,9 +312,8 @@ def run_session(prompt, system, tools, model, cwd, timeout, turns, *, phase='', 
     try:
         if route['provider'] == 'codex':
             check_mcp_config(cwd)
-        command = command_for(prompt, system, tools, route, turns, mcp)
-        env = {**{k: v for k, v in os.environ.items() if k not in SECRET_ENV},
-               'CLAUDE_CODE_DISABLE_AUTOUPDATE': '1'}
+        command = command_for(prompt, system, tools, route, turns, mcp, profile=profile)
+        env = _session_env(env_extra, profile=profile)
         if mcp and route['provider'] == 'claude':
             env['MCP_TOOL_TIMEOUT'] = str(MCP_TOOL_TIMEOUT_SEC * 1000)
         proc = subprocess.Popen(command, cwd=cwd, stdout=subprocess.PIPE, stderr=subprocess.PIPE,

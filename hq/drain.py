@@ -194,6 +194,15 @@ WRITE_TOOLS = ("Read,Glob,Grep,Edit,Write,MultiEdit,NotebookEdit,Bash,TodoWrite,
 # the repo and answers. The one executor runs both lanes, because two executors
 # with different context is how a studio ends up with two answers.
 READ_TOOLS = "Read,Glob,Grep"
+CAPABILITY_NEEDS = ("display", "tablet", "network")
+
+
+def capability_needs(item):
+    """Validated external abilities explicitly granted to this card."""
+    raw = item.get("needs") or []
+    if isinstance(raw, str):
+        raw = [raw]
+    return [name for name in CAPABILITY_NEEDS if name in raw]
 
 
 def sh(args, cwd=None, timeout=120, check=False):
@@ -763,7 +772,7 @@ def _last_assistant_text(lines):
 
 
 def run_cli(prompt, system, tools, model, cwd, timeout, turns, phase, seat, item_id,
-            attempt_id="", mcp=None):
+            attempt_id="", mcp=None, profile=None, env_extra=None):
     """One model session, streamed to disk as it runs.
 
     Every event the CLI emits is appended to the session's file the moment it
@@ -790,9 +799,13 @@ def run_cli(prompt, system, tools, model, cwd, timeout, turns, phase, seat, item
         with open(events_path, "a", encoding="utf-8") as f:
             f.write(json.dumps(event) + "\n")
     save_meta()
-    result = execution.run_session(prompt, system, tools, model, cwd, timeout, turns,
-        phase=adapter_phase, seat=seat, item=item_id, on_event=on_event, on_start=on_start,
-        launch_context=context, mcp=mcp)
+    options = dict(phase=adapter_phase, seat=seat, item=item_id, on_event=on_event,
+                   on_start=on_start, launch_context=context, mcp=mcp)
+    if profile:
+        options["profile"] = profile
+    if env_extra:
+        options["env_extra"] = env_extra
+    result = execution.run_session(prompt, system, tools, model, cwd, timeout, turns, **options)
     usage = result.get("usage")
     if usage:
         server.record_model_usage(phase, seat, result["model"], usage, item_id)
@@ -1297,6 +1310,11 @@ def do_item(item, org, run_id, log, action=None):
         return {"id": item["id"], "held": True, "error": "HELD", "usage": [], "files": [], "limited": False, "patch": "", "check": None}
     seat = item["owner"]
     model = item.get("model") or server.seat_model(org, seat)
+    needs = capability_needs(item)
+    if needs:
+        # Capability work is the Codex lane even when the seat's ordinary route
+        # still names a Claude alias.
+        model = execution.MODELS.get(model, model)
     thinking = int(item.get("tier") or 0) == 0
     rec = {"id": item["id"], "attempt_id": work.uuid.uuid4().hex, "seat": seat, **execution.resolve_model(model), "usage": [],
            "patch": "", "stat": "", "files": [], "result": "", "check": None,
@@ -1335,15 +1353,29 @@ def do_item(item, org, run_id, log, action=None):
         brief = task_prompt(item, org, resumed=committed_prior, continuing=bool(resumed),
                             turns=turns, action=action,
                             blocker=project_work(item).get("blocker") if action else None)
+        if needs:
+            brief += ("\n\nCAPABILITY LANE\nThis card is explicitly allowed: " + ", ".join(needs) +
+                      ". This Codex session has full host access; the named need does not "
+                      "limit its sandbox. Use only those capabilities. Tablet work must use a profile build and "
+                      "must never install, clear, overwrite, or otherwise touch "
+                      "com.daniel.tinyfarm or its saves. The adb target is in .adb_target and "
+                      "adb is at ~/Android/Sdk/platform-tools/adb. Do not push or commit to main.")
         # A build session gets the art tool (S-37); a read-only one does not.
         art_tool = (None if thinking else
                     art_requests.mcp_server(item, tree, run_id, rec["attempt_id"], REPO))
+        launch_options = {"mcp": art_tool}
+        if needs:
+            launch_options["profile"] = "capability"
+            rec["sandbox"] = "danger-full-access"
+            rec["capability_needs"] = list(needs)
+        if "display" in needs:
+            launch_options["env_extra"] = {"DISPLAY": os.environ.get("DISPLAY", ":0.0")}
         text, usage, err = run_cli(brief,
                                    seat_prompt(org, seat, thinking),
                                    READ_TOOLS if thinking else WRITE_TOOLS,
                                    model, tree, WORKER_TIMEOUT,
                                    turns, "drain-work", seat, item["id"], rec["attempt_id"],
-                                   mcp=art_tool)
+                                   **launch_options)
         if usage:
             rec["usage"].append(dict(usage, phase="drain-work", seat=seat))
         if art_tool:
@@ -2951,6 +2983,75 @@ def settle_lost_claims():
     return released
 
 
+CHIEF_HOLD_TYPES = {"spending_hold", "repairs_used_up", "chief_hold", "art_budget"}
+
+
+def chief_of_staff_queue():
+    """Return cards the drain must route to Adam, without starting a model.
+
+    This deliberately uses the same projection and lanes as the queue page.
+    A non-terminal card in no lane is included because that shape otherwise has
+    no process capable of recovering it.
+    """
+    held = []
+    for item in work.items():
+        if item.get("state") in work.TERMINAL_STATES:
+            continue
+        view = project_work(item)
+        blocker = view.get("blocker") or {}
+        lanes = work.card_lanes(item, view)
+        kind = blocker.get("type")
+        if kind in CHIEF_HOLD_TYPES or not lanes:
+            held.append({"item": item, "view": view,
+                         "path": "capability" if capability_needs(item) else
+                                 "judgement",
+                         "reason": kind or "no_lane"})
+    held.sort(key=lambda row: row["item"].get("created_ts", 0))
+    return held
+
+
+def mark_capability_needs(item, view):
+    """Promote explicit reviewer evidence into the card's capability field."""
+    text = " ".join(str(x) for x in (
+        (view.get("blocker") or {}).get("reason", ""), item.get("repair_hold", ""),
+        (item.get("check") or {}).get("summary", ""),
+        *[(finding.get("what", "") if isinstance(finding, dict) else finding)
+          for finding in (item.get("check") or {}).get("findings", [])]))
+    found = set(capability_needs(item))
+    low = text.lower()
+    if any(word in low for word in ("no display", "display unavailable", "capture not produced",
+                                    "captures not produced",
+                                    "screenshot not produced")):
+        found.add("display")
+    if "adb" in low or "tablet" in low:
+        found.add("tablet")
+    if any(word in low for word in ("no network", "network unavailable", "cannot reach itch.io")):
+        found.add("network")
+    ordered = [name for name in CAPABILITY_NEEDS if name in found]
+    if ordered != capability_needs(item):
+        item["needs"] = ordered
+        work.save_item(item)
+        return True
+    return False
+
+
+def route_chief_of_staff_queue(org):
+    """Route every chief-of-staff hold before ordinary action selection."""
+    routed = []
+    for row in chief_of_staff_queue():
+        mark_capability_needs(row["item"], row["view"])
+        fresh = work.load_item(row["item"]["id"])
+        moved = work.review_chief_hold(fresh, org, hold_kind=row["reason"])
+        routed.append((fresh["id"], "reviewed" if moved else "held"))
+    return routed
+
+
+def chief_routing_enabled(args):
+    """Only an ordinary drain run may launch automatic held-card reviews."""
+    return not any((args.brief, args.repair, args.recover_only, args.retry_once,
+                    args.finish_verified, args.dry_run, args.list, args.list_json))
+
+
 def resolve_handoff_action(item):
     with work.mutation_lock():
         fresh = work.load_item(item["id"])
@@ -3427,6 +3528,11 @@ def main():
         if repair_held:
             print(f"Held {len(repair_held)} card(s) whose repairs are used up for the chief of staff "
                   f"instead of Daniel: {', '.join(repair_held)}.")
+        # Code does the empty-queue check. A model is called only for a card
+        # actually held for Adam; two unusable Codex reviews leave it held for
+        # his live session.
+        if chief_routing_enabled(args):
+            route_chief_of_staff_queue(org)
         if art_released:
             print(f"Released {len(art_released)} card(s) whose art limit no longer applies: "
                   f"{', '.join(art_released)}.")

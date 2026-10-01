@@ -250,6 +250,29 @@ The timer-driven processes that are the queue's own machinery do not become card
 drain itself, HQ's recovery and bookkeeping threads, the CI poller (which files an urgent
 card when a run on main fails), the goal journal and the itch.io probe.
 
+### The drain picks up the chief of staff's queue
+
+At startup the drain projects every open card through the same lane calculation the Work
+page uses. Plain code selects spending holds, cards whose repairs are used up,
+failed-landing holds, art-budget holds, and open cards in no lane. When that list is empty,
+no chief-of-staff model session starts.
+
+Held spending and repair cards go to an automatic Codex review. It can grant one bounded
+attempt with a brief quoting the reviewer's concrete finding, narrow the ask to the part
+that can pass, or close ordinary work as superseded or done enough. Two reviews that
+cannot produce a usable move leave the card held for the chief of staff's live session.
+If the choice is Daniel's taste or direction, the review saves a decision draft on the
+held work card for curation and leaves the work held.
+
+A card's `needs` field may name `display`, `tablet`, or `network`. Reviewer findings such
+as “no display” or “captures not produced” add the corresponding need. The next owner
+attempt runs through Codex's capability profile in the card's isolated worktree. Display
+gets `DISPLAY=:0.0`; tablet work reads `.adb_target`, uses the Android SDK's `adb`, and may
+install only profile builds. The release package and its saves are off limits. This
+profile has full host access; the need is an instruction, not a sandbox boundary. Capability
+work produces the same candidate as any other attempt and reaches main only through the
+normal independent review and landing checks.
+
 ### Art the queue can generate
 
 Ruled by the CEO on 2026-09-29 (S-37). A build worker has no network and never holds
