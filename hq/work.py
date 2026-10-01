@@ -3130,17 +3130,25 @@ def _chief_close_evidence(item, doc):
     completion = item.get("completion") or {}
     sha = str(completion.get("sha") or (item.get("landed") or {}).get("sha") or "").strip()
     if sha and evidence == sha:
-        import drain
-        return drain.sh(["git", "merge-base", "--is-ancestor", sha, "main"],
-                        cwd=drain.REPO, timeout=10).returncode == 0
+        return _chief_sha_on_main(sha)
     canonical_id = str(item.get("superseded_by") or "").strip()
     if canonical_id and evidence == canonical_id and canonical_id != item["id"]:
         try:
             canonical = load_item(canonical_id)
         except (OSError, ValueError):
             return False
-        return canonical.get("state") == "landed" and bool(canonical.get("completion"))
+        canonical_sha = str((canonical.get("completion") or {}).get("sha") or "").strip()
+        return canonical.get("state") == "landed" and _chief_sha_on_main(canonical_sha)
     return False
+
+
+def _chief_sha_on_main(sha):
+    """Check a recorded full commit ID against main, not a prose claim."""
+    if not re.fullmatch(r"[0-9a-fA-F]{40}|[0-9a-fA-F]{64}", str(sha or "")):
+        return False
+    import drain
+    return drain.sh(["git", "merge-base", "--is-ancestor", sha, "main"],
+                    cwd=drain.REPO, timeout=10).returncode == 0
 
 
 def _chief_hold_matches(item, hold_kind):

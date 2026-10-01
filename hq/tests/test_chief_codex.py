@@ -2,6 +2,7 @@ import json
 import argparse
 import os
 from pathlib import Path
+import subprocess
 import sys
 import tempfile
 import types
@@ -141,6 +142,23 @@ class ChiefCodex(unittest.TestCase):
             spending_checkpoint={"held_for": "claude", "return_state": "waiting_session",
                                  "exceeded": ["tokens"], "reason": "No display."}, **over)
 
+    def _scratch_git(self):
+        repo = Path(self.tmp.name, "git")
+        repo.mkdir()
+        def git(*args):
+            return subprocess.run(["git", *args], cwd=repo, check=True,
+                                  capture_output=True, text=True).stdout.strip()
+        git("init", "-b", "main")
+        git("-c", "user.name=Test", "-c", "user.email=test@example.invalid",
+            "commit", "--allow-empty", "-m", "Base")
+        main_sha = git("rev-parse", "main")
+        git("switch", "-c", "side")
+        git("-c", "user.name=Test", "-c", "user.email=test@example.invalid",
+            "commit", "--allow-empty", "-m", "Side")
+        side_sha = git("rev-parse", "side")
+        git("switch", "main")
+        return repo, main_sha, side_sha
+
     def test_extend_records_finding_and_attribution(self):
         card = self._held_card()
         answer = {"outcome": "extend", "reason": "A display is available now.",
@@ -164,8 +182,9 @@ class ChiefCodex(unittest.TestCase):
         self.assertEqual(saved["cap_reviews"][-1]["by"], "claude")
 
     def test_close_needs_recorded_completion_evidence(self):
+        repo, main_sha, _ = self._scratch_git()
         canonical = self.card("wc0dec0000099", state="landed",
-                              completion={"sha": "abc", "at": "2026-09-29T02:00"})
+                              completion={"sha": main_sha, "at": "2026-09-29T02:00"})
         card = self._held_card(result="The reviewed capture already landed on main.",
                                superseded_by=canonical["id"])
         bad = {"outcome": "close", "reason": "It is done.", "evidence": "I guessed it is done."}
@@ -173,12 +192,37 @@ class ChiefCodex(unittest.TestCase):
         self.assertTrue(work.cap_held(work.load_item(card["id"])))
         good = {"outcome": "close", "reason": "The canonical card landed.",
                 "evidence": canonical["id"]}
-        self.assertTrue(self._review(card, good))
+        with patch.object(drain, "REPO", str(repo)):
+            self.assertTrue(self._review(card, good))
         saved = work.load_item(card["id"])
         self.assertEqual(saved["state"], "dropped")
         self.assertIn(good["evidence"], saved["result"])
         self.assertEqual(saved["chief_reviews"][-1]["by"], "claude")
         self.assertIn("Codex", saved["chief_reviews"][-1]["via"])
+
+    def test_superseding_card_requires_its_current_main_commit(self):
+        repo, main_sha, side_sha = self._scratch_git()
+        canonical = self.card("wc0dec0000099", state="landed",
+                              completion={"sha": side_sha})
+        card = self._held_card(superseded_by=canonical["id"])
+        claim = {"evidence": canonical["id"]}
+        with patch.object(drain, "REPO", str(repo)):
+            self.assertFalse(work._chief_close_evidence(card, claim))
+            canonical["completion"]["sha"] = "not-a-commit"
+            work.save_item(canonical)
+            self.assertFalse(work._chief_close_evidence(card, claim))
+            canonical["completion"]["sha"] = ""
+            work.save_item(canonical)
+            self.assertFalse(work._chief_close_evidence(card, claim))
+            canonical["completion"]["sha"] = main_sha
+            canonical["state"] = "waiting_session"  # HQ undo cleared its landing.
+            work.save_item(canonical)
+            self.assertFalse(work._chief_close_evidence(card, claim))
+            canonical["state"] = "landed"
+            work.save_item(canonical)
+            self.assertTrue(work._chief_close_evidence(card, claim))
+            direct = self._held_card(item_id="wc0dec0000088", completion={"sha": main_sha})
+            self.assertTrue(work._chief_close_evidence(direct, {"evidence": main_sha}))
 
     def test_old_result_keyword_cannot_close(self):
         card = self._held_card(result="Work was done and merged last week.")
