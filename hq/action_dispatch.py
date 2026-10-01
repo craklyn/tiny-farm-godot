@@ -178,7 +178,8 @@ def record_ci(work, item, run, *, now=None, provider_available=True, contains=No
         return False
     instant = time.time() if now is None else now
     if run:
-        ci = {"status": "confirmed" if run.get("conclusion") == "success" else "failed",
+        ci = {"status": ("confirmed" if run.get("conclusion") == "success" else
+                          "failed" if run.get("conclusion") == "failure" else "inconclusive"),
               "confirmed": run.get("conclusion") == "success", "commit_sha": sha,
               "run_id": run.get("databaseId"), "url": run.get("url", ""),
               "conclusion": run.get("conclusion"), "observed_at": work._now_iso()}
@@ -230,7 +231,7 @@ def poll_ci(work, items, fetch_runs, *, now=None, contains=None):
         ci = (item.get("workflow") or {}).get("ci") or {}
         if ci.get("commit_sha") == sha and ci.get("status") == "confirmed":
             continue
-        if ci.get("commit_sha") == sha and ci.get("status") in ("unavailable", "failed") \
+        if ci.get("commit_sha") == sha and ci.get("status") in ("unavailable", "failed", "inconclusive") \
                 and ci.get("next_poll_after", 0) > instant:
             continue
         exact = [r for r in completed if r.get("headSha") == sha]
@@ -261,15 +262,16 @@ def undo_failed_ci(work, items, runs, *, repo, contains=None):
         item = work.load_item(original["id"])
         ci = (item.get("workflow") or {}).get("ci") or {}
         sha = landed_sha(item)
-        if item.get("state") != "landed" or ci.get("status") != "failed" or not sha:
+        if item.get("state") != "landed" or ci.get("status") != "failed" or \
+                ci.get("conclusion") != "failure" or not sha:
             continue
         run_id = ci.get("run_id")
         if ci.get("commit_sha") != sha or (item.get("completion") or {}).get("sha") != sha or \
                 (item.get("landed") or {}).get("sha") != sha or not run_id:
             reason = "The failed CI run does not identify this card's current landing commit."
-        elif any(r.get("databaseId") == run_id and r.get("headSha") == sha and
-                 r.get("status") == "completed" and r.get("conclusion") != "success"
-                 for r in runs) is False:
+        elif not any(r.get("databaseId") == run_id and r.get("headSha") == sha and
+                     r.get("status") == "completed" and r.get("conclusion") == "failure"
+                     for r in runs):
             reason = "The failed CI run could not be confirmed again."
         elif any(r.get("status") == "completed" and r.get("conclusion") == "success" and
                  (r.get("headSha") == sha or contains(sha, r.get("headSha") or ""))
@@ -286,6 +288,14 @@ def undo_failed_ci(work, items, runs, *, repo, contains=None):
                 continue
         work.ensure_blocker(item, "ci_undo", input_id=sha, owner="claude",
                             reason=reason, wake="chief-of-staff review")
+        # A landed card is terminal in the work projection, which would hide
+        # even a persisted blocker. Keep the landing evidence, but reopen the
+        # card in a held review state until the chief can assess the race.
+        with work.mutation_lock():
+            fresh = work.load_item(item["id"])
+            if fresh.get("state") == "landed":
+                fresh["state"] = "for_review"
+                work.save_item(fresh)
         outcomes.append((item["id"], False, reason))
     return outcomes
 

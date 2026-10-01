@@ -2983,7 +2983,7 @@ def settle_lost_claims():
     return released
 
 
-CHIEF_HOLD_TYPES = {"spending_hold", "repairs_used_up", "chief_hold", "art_budget"}
+CHIEF_HOLD_TYPES = {"spending_hold", "repairs_used_up", "chief_hold", "art_budget", "ci_undo"}
 
 
 def chief_of_staff_queue():

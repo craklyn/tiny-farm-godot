@@ -114,6 +114,16 @@ class UndoIntegration(unittest.TestCase):
         self.assertEqual(self.poll_and_undo([self.ci_run(), self.ci_run("success", run_id=43)]), [])
         self.assertEqual(integration.main_head(self.main), self.landed)
 
+    def test_nonfailure_conclusions_never_trigger_undo(self):
+        for run_id, conclusion in enumerate(("cancelled", "skipped", "neutral"), start=50):
+            with self.subTest(conclusion=conclusion):
+                run = self.ci_run(conclusion, run_id=run_id)
+                self.assertTrue(action_dispatch.record_ci(work, work.load_item(self.card["id"]), run))
+                self.assertEqual(action_dispatch.undo_failed_ci(
+                    work, [work.load_item(self.card["id"])], [run], repo=str(self.main)), [])
+                self.assertEqual(work.load_item(self.card["id"])["state"], "landed")
+                self.assertEqual(integration.main_head(self.main), self.landed)
+
     def test_wrong_sha_refuses_red_ci_undo(self):
         self.assertEqual(self.poll_and_undo([self.ci_run(sha="another")]), [])
         self.assertEqual(integration.main_head(self.main), self.landed)
@@ -140,8 +150,40 @@ class UndoIntegration(unittest.TestCase):
         self.assertFalse(got[0][1])
         self.assertIn("moved", got[0][2])
         card = work.load_item(self.card["id"])
+        self.assertEqual(card["state"], "for_review")
         self.assertEqual(card["workflow"]["blockers"][-1]["type"], "ci_undo")
+        with mock.patch.object(drain, "REPO", str(self.main)):
+            view = drain.project_work(card)
+            self.assertEqual(view["blocker"]["type"], "ci_undo")
+            self.assertEqual(work.card_lanes(card, view), ["held"])
+            self.assertIn(card["id"], [row["item"]["id"] for row in drain.chief_of_staff_queue()])
+            with mock.patch.object(work, "review_chief_hold", return_value=False) as review:
+                self.assertEqual(drain.route_chief_of_staff_queue({}), [(card["id"], "held")])
+                self.assertEqual(review.call_args.kwargs["hold_kind"], "ci_undo")
         self.assertEqual(integration.main_head(self.main), head)
+        self.assertEqual((self.user / "private.txt").read_bytes(), self.user_bytes)
+
+    def test_revert_conflict_holds_red_ci_for_chief_review(self):
+        original = integration.git
+
+        def conflict(repo, *args, **kwargs):
+            if args[:2] == ("revert", "--no-commit"):
+                return subprocess.CompletedProcess(args, 1, "", "revert conflict")
+            return original(repo, *args, **kwargs)
+
+        with mock.patch.object(integration, "git", side_effect=conflict):
+            got = self.poll_and_undo([self.ci_run()])
+        self.assertEqual(len(got), 1)
+        self.assertFalse(got[0][1])
+        self.assertIn("conflict", got[0][2])
+        card = work.load_item(self.card["id"])
+        self.assertEqual(card["state"], "for_review")
+        with mock.patch.object(drain, "REPO", str(self.main)):
+            view = drain.project_work(card)
+            self.assertEqual(view["blocker"]["type"], "ci_undo")
+            self.assertEqual(work.card_lanes(card, view), ["held"])
+            self.assertIn(card["id"], [row["item"]["id"] for row in drain.chief_of_staff_queue()])
+        self.assertEqual(integration.main_head(self.main), self.landed)
         self.assertEqual((self.user / "private.txt").read_bytes(), self.user_bytes)
 
     def test_busy_drain_refuses_undo_without_touching_main_or_card(self):

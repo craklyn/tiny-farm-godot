@@ -1040,6 +1040,12 @@ def work_view(item, repo_facts=None, now=None):
         input_id = action_key(item["id"], "supervised_retry",
                               str(item.get("last_recorded_attempt") or input_id))
     terminal = item.get("state") in TERMINAL_STATES
+    ci_undo_hold = next((dict(b) for b in reversed(workflow.get("blockers") or [])
+                         if b.get("type") == "ci_undo" and b.get("state") == "open"), None)
+    if ci_undo_hold and not terminal:
+        # The old CI poll is evidence, not the next step on a card whose
+        # automatic revert could not be completed safely.
+        active_actions = []
     # A clean result held only for Daniel's yes: earlier attempts' build and
     # reconcile actions, their blockers, the finished run's `started`, a stale
     # base (the merge rebuilds it) and the cost cap (his yes starts no model)
@@ -1084,7 +1090,9 @@ def work_view(item, repo_facts=None, now=None):
     # repair review did not retry or close waits for the chief of staff too
     # (S-38, extended 2026-09-29), ahead of every step that would run the owner.
     repairs_held = not terminal and not checkpoint_pending and not spending_hold and repair_held(item)
-    if awaiting_approval or checkpoint_pending:
+    if ci_undo_hold and not terminal:
+        blocker = ci_undo_hold
+    elif awaiting_approval or checkpoint_pending:
         pass
     elif spending_hold:
         blocker = {"type": "spending_hold", "files": [], "owner": "claude", "wake": CAP_HOLD_WAKE,
@@ -3158,6 +3166,9 @@ def _chief_hold_matches(item, hold_kind):
         return cap_held(item)
     if hold_kind == "repairs_used_up":
         return repair_held(item)
+    if hold_kind == "ci_undo":
+        return any(b.get("type") == "ci_undo" and b.get("state") == "open"
+                   for b in _workflow(item).get("blockers") or [])
     if hold_kind in ("chief_hold", "art_budget"):
         return any(b.get("state") == "open" and
                    (b.get("type") == "art_budget" if hold_kind == "art_budget" else
@@ -3212,7 +3223,7 @@ def review_chief_hold(item, org, hold_kind=""):
         outcome = doc.get("outcome")
         reason, brief = str(doc.get("reason") or "").strip(), str(doc.get("brief") or "").strip()
         moved = False
-        if (outcome == "extend" and reason and _chief_brief_grounded(fresh, brief)
+        if (hold_kind != "ci_undo" and outcome == "extend" and reason and _chief_brief_grounded(fresh, brief)
                 and (not cap_held(fresh) or _chief_spending_step_allowed(fresh))):
             if cap_held(fresh):
                 grant_spending_checkpoint(fresh, by="claude", reason=brief, via="automatic chief-of-staff review (Codex)")
@@ -3223,7 +3234,7 @@ def review_chief_hold(item, org, hold_kind=""):
             fresh.pop("chief_review_tries", None)
             save_item(fresh)
             moved = True
-        elif (outcome == "rescope" and reason and str(doc.get("ask") or "").strip()
+        elif (hold_kind != "ci_undo" and outcome == "rescope" and reason and str(doc.get("ask") or "").strip()
               and _chief_brief_grounded(fresh, brief)
               and (not cap_held(fresh) or _chief_spending_step_allowed(fresh))):
             fresh["ask"] = str(doc["ask"]).strip()[:6000]
@@ -3239,7 +3250,7 @@ def review_chief_hold(item, org, hold_kind=""):
             fresh.pop("chief_review_tries", None)
             save_item(fresh)
             moved = True
-        elif (outcome == "close" and reason and _repair_closable(fresh)
+        elif (hold_kind != "ci_undo" and outcome == "close" and reason and _repair_closable(fresh)
               and _chief_close_evidence(fresh, doc)):
             evidence = str(doc["evidence"]).strip()
             if cap_held(fresh):
@@ -4216,6 +4227,10 @@ def recover_pending_undo(item):
     item["landing_undone"] = {"at": _now_iso(), "reverted": tx["reverted"],
                               "commit": commit, "actor": tx.get("actor", "daniel"),
                               "run_id": tx.get("run_id")}
+    if tx.get("actor") == "ci":
+        for blocker in _workflow(item).get("blockers") or []:
+            if blocker.get("type") == "ci_undo" and blocker.get("state") == "open":
+                blocker["state"], blocker["resolved_at"] = "resolved", _now_iso()
     item.setdefault("conversation", []).append(
         {"role": tx.get("actor", "daniel"),
          "text": (f"CI run {tx['run_id']} failed; reverted this landing."
