@@ -157,9 +157,11 @@ class UndoIntegration(unittest.TestCase):
             self.assertEqual(view["blocker"]["type"], "ci_undo")
             self.assertEqual(work.card_lanes(card, view), ["held"])
             self.assertIn(card["id"], [row["item"]["id"] for row in drain.chief_of_staff_queue()])
+            self.assertIn(card["id"], [row["work_id"] for row in drain.queue_view()["held"]])
             with mock.patch.object(work, "review_chief_hold", return_value=False) as review:
-                self.assertEqual(drain.route_chief_of_staff_queue({}), [(card["id"], "held")])
-                self.assertEqual(review.call_args.kwargs["hold_kind"], "ci_undo")
+                self.assertEqual(drain.route_chief_of_staff_queue({}),
+                                 [(card["id"], "operator_review")])
+                review.assert_not_called()
         self.assertEqual(integration.main_head(self.main), head)
         self.assertEqual((self.user / "private.txt").read_bytes(), self.user_bytes)
 
@@ -183,6 +185,11 @@ class UndoIntegration(unittest.TestCase):
             self.assertEqual(view["blocker"]["type"], "ci_undo")
             self.assertEqual(work.card_lanes(card, view), ["held"])
             self.assertIn(card["id"], [row["item"]["id"] for row in drain.chief_of_staff_queue()])
+            self.assertIn(card["id"], [row["work_id"] for row in drain.queue_view()["held"]])
+            with mock.patch.object(work, "review_chief_hold") as review:
+                self.assertEqual(drain.route_chief_of_staff_queue({}),
+                                 [(card["id"], "operator_review")])
+                review.assert_not_called()
         self.assertEqual(integration.main_head(self.main), self.landed)
         self.assertEqual((self.user / "private.txt").read_bytes(), self.user_bytes)
 

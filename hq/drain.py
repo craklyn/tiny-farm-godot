@@ -3041,6 +3041,11 @@ def route_chief_of_staff_queue(org):
         if row["reason"] == "no_lane":
             routed.append((row["item"]["id"], "structural_fault"))
             continue
+        if row["reason"] == "ci_undo":
+            # A changed main or failed revert needs a person to inspect Git
+            # evidence. The generic model review cannot resolve that race.
+            routed.append((row["item"]["id"], "operator_review"))
+            continue
         mark_capability_needs(row["item"], row["view"])
         fresh = work.load_item(row["item"]["id"])
         moved = work.review_chief_hold(fresh, org, hold_kind=row["reason"])

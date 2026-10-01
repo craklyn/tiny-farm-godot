@@ -3166,14 +3166,11 @@ def _chief_hold_matches(item, hold_kind):
         return cap_held(item)
     if hold_kind == "repairs_used_up":
         return repair_held(item)
-    if hold_kind == "ci_undo":
-        return any(b.get("type") == "ci_undo" and b.get("state") == "open"
-                   for b in _workflow(item).get("blockers") or [])
     if hold_kind in ("chief_hold", "art_budget"):
         return any(b.get("state") == "open" and
                    (b.get("type") == "art_budget" if hold_kind == "art_budget" else
                     b.get("owner") == "claude" and b.get("wake") and not b.get("action_id")
-                    and b.get("type") not in ("spending_hold", "repairs_used_up", "art_budget"))
+                    and b.get("type") not in ("spending_hold", "repairs_used_up", "art_budget", "ci_undo"))
                    for b in _workflow(item).get("blockers") or [])
     return not hold_kind and (cap_held(item) or repair_held(item))
 
@@ -3194,7 +3191,7 @@ def review_chief_hold(item, org, hold_kind=""):
     Two unusable reviews leave the card held for a live session. Taste always
     stays held and receives a decision-card draft rather than an invented call.
     """
-    if not execution.launch_allowed() or hold_kind == "no_lane":
+    if not execution.launch_allowed() or hold_kind in ("no_lane", "ci_undo"):
         return False
     with mutation_lock():
         fresh = load_item(item["id"])
@@ -3223,7 +3220,7 @@ def review_chief_hold(item, org, hold_kind=""):
         outcome = doc.get("outcome")
         reason, brief = str(doc.get("reason") or "").strip(), str(doc.get("brief") or "").strip()
         moved = False
-        if (hold_kind != "ci_undo" and outcome == "extend" and reason and _chief_brief_grounded(fresh, brief)
+        if (outcome == "extend" and reason and _chief_brief_grounded(fresh, brief)
                 and (not cap_held(fresh) or _chief_spending_step_allowed(fresh))):
             if cap_held(fresh):
                 grant_spending_checkpoint(fresh, by="claude", reason=brief, via="automatic chief-of-staff review (Codex)")
@@ -3234,7 +3231,7 @@ def review_chief_hold(item, org, hold_kind=""):
             fresh.pop("chief_review_tries", None)
             save_item(fresh)
             moved = True
-        elif (hold_kind != "ci_undo" and outcome == "rescope" and reason and str(doc.get("ask") or "").strip()
+        elif (outcome == "rescope" and reason and str(doc.get("ask") or "").strip()
               and _chief_brief_grounded(fresh, brief)
               and (not cap_held(fresh) or _chief_spending_step_allowed(fresh))):
             fresh["ask"] = str(doc["ask"]).strip()[:6000]
@@ -3250,7 +3247,7 @@ def review_chief_hold(item, org, hold_kind=""):
             fresh.pop("chief_review_tries", None)
             save_item(fresh)
             moved = True
-        elif (hold_kind != "ci_undo" and outcome == "close" and reason and _repair_closable(fresh)
+        elif (outcome == "close" and reason and _repair_closable(fresh)
               and _chief_close_evidence(fresh, doc)):
             evidence = str(doc["evidence"]).strip()
             if cap_held(fresh):

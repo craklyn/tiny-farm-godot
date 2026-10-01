@@ -34,6 +34,7 @@
 - For a superseding card, `state="landed"` alone is insufficient: its recorded completion SHA must still be an ancestor of current main. An empty, malformed, reverted, or off-branch SHA cannot justify closing the held card.
 - A display smoke may read `DISPLAY=:0.0`; a tablet smoke may inspect adb target without installing or overwriting anything. The capability worker never pushes or commits to main.
 - A red CI run may trigger automatic undo only when its exact commit is still main HEAD, the card is still landed on that SHA, and there is no later green run. Reuse the durable undo transaction and record `ci` as actor with the run ID. On a race, conflict, unknown CI, or newer main, hold for chief review. Never reset or force-push; scan the revert commit for secrets before pushing. `hq/tests/test_undo_integration.py:18-140` supplies scratch Git fixtures.
+- A failed automatic CI undo becomes a visible operator hold on the work queue. The generic chief-of-staff model review does not run for that hold; a person must inspect the Git and CI evidence before deciding how to proceed.
 
 ## Work items and acceptance
 
