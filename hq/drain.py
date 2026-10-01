@@ -3011,22 +3011,21 @@ def chief_of_staff_queue():
 
 
 def mark_capability_needs(item, view):
-    """Promote explicit reviewer evidence into the card's capability field."""
-    text = " ".join(str(x) for x in (
-        (view.get("blocker") or {}).get("reason", ""), item.get("repair_hold", ""),
-        (item.get("check") or {}).get("summary", ""),
-        *[(finding.get("what", "") if isinstance(finding, dict) else finding)
-          for finding in (item.get("check") or {}).get("findings", [])]))
+    """Grant host capabilities only from structured, affirmative needs fields."""
+    def declared(record):
+        if not isinstance(record, dict):
+            return set()
+        raw = record.get("needs") or []
+        if isinstance(raw, str):
+            raw = [raw]
+        return {name for name in raw if name in CAPABILITY_NEEDS} if isinstance(raw, list) else set()
+
     found = set(capability_needs(item))
-    low = text.lower()
-    if any(word in low for word in ("no display", "display unavailable", "capture not produced",
-                                    "captures not produced",
-                                    "screenshot not produced")):
-        found.add("display")
-    if "adb" in low or "tablet" in low:
-        found.add("tablet")
-    if any(word in low for word in ("no network", "network unavailable", "cannot reach itch.io")):
-        found.add("network")
+    found.update(declared(view.get("blocker")))
+    check = item.get("check") or {}
+    found.update(declared(check))
+    for finding in check.get("findings") or []:
+        found.update(declared(finding))
     ordered = [name for name in CAPABILITY_NEEDS if name in found]
     if ordered != capability_needs(item):
         item["needs"] = ordered
@@ -3039,6 +3038,9 @@ def route_chief_of_staff_queue(org):
     """Route every chief-of-staff hold before ordinary action selection."""
     routed = []
     for row in chief_of_staff_queue():
+        if row["reason"] == "no_lane":
+            routed.append((row["item"]["id"], "structural_fault"))
+            continue
         mark_capability_needs(row["item"], row["view"])
         fresh = work.load_item(row["item"]["id"])
         moved = work.review_chief_hold(fresh, org, hold_kind=row["reason"])

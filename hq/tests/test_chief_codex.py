@@ -64,13 +64,21 @@ class ChiefCodex(unittest.TestCase):
             got = drain.chief_of_staff_queue()
         self.assertEqual([row["reason"] for row in got], kinds[:-1] + ["no_lane"])
 
-    def test_reviewer_evidence_marks_display(self):
-        card = self.card(check={"summary": "captures not produced", "findings": []})
+    def test_structured_reviewer_need_marks_display(self):
+        card = self.card(check={"summary": "captures not produced", "needs": ["display"],
+                                "findings": []})
         self.assertTrue(drain.mark_capability_needs(card, {"blocker": {}}))
         self.assertEqual(work.load_item(card["id"])["needs"], ["display"])
 
+    def test_negated_adb_and_incidental_words_never_grant_host_access(self):
+        card = self.card(check={"summary": "No adb or tablet access is needed.",
+                                "findings": [{"what": "Display tests already passed."}]})
+        self.assertFalse(drain.mark_capability_needs(card, {"blocker": {
+            "reason": "Do not run adb on the tablet or use a display."}}))
+        self.assertEqual(drain.capability_needs(work.load_item(card["id"])), [])
+
     def test_capability_hold_requires_review_before_action_selection(self):
-        card = self.card(check={"summary": "captures not produced", "findings": []},
+        card = self.card(check={"summary": "captures not produced", "needs": ["display"], "findings": []},
                          spending_checkpoint={"held_for": "claude", "return_state": "waiting_session",
                                               "exceeded": ["tokens"], "reason": "No display."})
         view = {"blocker": {"type": "spending_hold", "reason": "No display."}}
@@ -97,8 +105,16 @@ class ChiefCodex(unittest.TestCase):
              patch.object(work, "review_chief_hold", return_value=True) as review:
             routed = drain.route_chief_of_staff_queue(ORG)
         self.assertEqual(len(routed), 5)
-        self.assertEqual(review.call_count, 5)
-        self.assertEqual([path for _card, path in routed], ["reviewed"] * 5)
+        self.assertEqual(review.call_count, 4)
+        self.assertEqual([path for _card, path in routed], ["reviewed"] * 4 + ["structural_fault"])
+
+    def test_no_lane_cannot_authorize_model_close(self):
+        card = self.card()
+        with patch.object(work.execution, "launch_allowed", return_value=True), \
+             patch.object(work, "_run_cli") as model:
+            self.assertFalse(work.review_chief_hold(card, ORG, hold_kind="no_lane"))
+        model.assert_not_called()
+        self.assertEqual(work.load_item(card["id"])["state"], "waiting_session")
 
     def test_capability_profile_is_codex_unsandboxed(self):
         route = execution.resolve_model("haiku")
@@ -148,18 +164,78 @@ class ChiefCodex(unittest.TestCase):
         self.assertEqual(saved["cap_reviews"][-1]["by"], "claude")
 
     def test_close_needs_recorded_completion_evidence(self):
-        card = self._held_card(result="The reviewed capture already landed on main.")
+        canonical = self.card("wc0dec0000099", state="landed",
+                              completion={"sha": "abc", "at": "2026-09-29T02:00"})
+        card = self._held_card(result="The reviewed capture already landed on main.",
+                               superseded_by=canonical["id"])
         bad = {"outcome": "close", "reason": "It is done.", "evidence": "I guessed it is done."}
         self.assertFalse(self._review(card, bad))
         self.assertTrue(work.cap_held(work.load_item(card["id"])))
-        good = {"outcome": "close", "reason": "This capture is finished.",
-                "evidence": "The reviewed capture already landed on main."}
+        good = {"outcome": "close", "reason": "The canonical card landed.",
+                "evidence": canonical["id"]}
         self.assertTrue(self._review(card, good))
         saved = work.load_item(card["id"])
         self.assertEqual(saved["state"], "dropped")
         self.assertIn(good["evidence"], saved["result"])
         self.assertEqual(saved["chief_reviews"][-1]["by"], "claude")
         self.assertIn("Codex", saved["chief_reviews"][-1]["via"])
+
+    def test_old_result_keyword_cannot_close(self):
+        card = self._held_card(result="Work was done and merged last week.")
+        self.assertFalse(self._review(card, {"outcome": "close", "reason": "Done",
+                                               "evidence": "Work was done and merged last week."}))
+        self.assertTrue(work.cap_held(work.load_item(card["id"])))
+
+    def test_spending_ceiling_and_extension_count_remain_enforced(self):
+        answer = {"outcome": "extend", "reason": "Small remaining work",
+                  "brief": "Resolve captures not produced."}
+        ceiling = self._held_card(token_cap=work.CAP_CEILINGS["tokens"])
+        self.assertFalse(self._review(ceiling, answer))
+        saved = work.load_item(ceiling["id"])
+        self.assertTrue(work.cap_held(saved))
+        self.assertEqual(saved["token_cap"], work.CAP_CEILINGS["tokens"])
+        counted = self._held_card(item_id="wc0dec0000088", cap_reviews=[
+            {"decision": "extend"} for _ in range(work.CAP_AUTO_EXTENSIONS)])
+        self.assertFalse(self._review(counted, answer))
+        self.assertTrue(work.cap_held(work.load_item(counted["id"])))
+        with self.assertRaisesRegex(ValueError, "spending extension limit"):
+            work.release_chief_hold_for_capability(work.load_item(counted["id"]),
+                                                   "Resolve captures not produced.")
+        self.assertTrue(work.cap_held(work.load_item(counted["id"])))
+
+    def test_unrelated_card_revision_discards_model_answer(self):
+        card = self._held_card()
+        answer = {"outcome": "extend", "reason": "A display is ready.",
+                  "brief": "Resolve captures not produced."}
+        def concurrent_edit(*_args, **_kwargs):
+            fresh = work.load_item(card["id"])
+            fresh["ask"] = "The owner refined this ask while the model was running."
+            work.save_item(fresh)
+            return json.dumps(answer), False
+        with patch.object(work.execution, "launch_allowed", return_value=True), \
+             patch.object(work, "_run_cli", side_effect=concurrent_edit):
+            self.assertFalse(work.review_chief_hold(work.load_item(card["id"]), ORG))
+        saved = work.load_item(card["id"])
+        self.assertTrue(work.cap_held(saved))
+        self.assertEqual(saved["ask"], "The owner refined this ask while the model was running.")
+
+    def test_concurrent_hold_resolution_discards_model_answer(self):
+        card = self._held_card()
+        answer = {"outcome": "extend", "reason": "A display is ready.",
+                  "brief": "Resolve captures not produced."}
+        def concurrent_resolution(*_args, **_kwargs):
+            fresh = work.load_item(card["id"])
+            fresh.pop("spending_checkpoint")
+            fresh["state"] = "accepted"
+            work.save_item(fresh)
+            return json.dumps(answer), False
+        with patch.object(work.execution, "launch_allowed", return_value=True), \
+             patch.object(work, "_run_cli", side_effect=concurrent_resolution):
+            self.assertFalse(work.review_chief_hold(work.load_item(card["id"]), ORG))
+        saved = work.load_item(card["id"])
+        self.assertEqual(saved["state"], "accepted")
+        self.assertFalse(work.cap_held(saved))
+        self.assertEqual(saved.get("cap_reviews"), None)
 
     def test_two_unusable_answers_leave_hold_and_no_third_call(self):
         card = self._held_card()

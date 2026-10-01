@@ -3085,7 +3085,7 @@ LATEST RESULT: {str(item.get('result') or '')[:2400]}
 Return JSON only, one of:
 {{"outcome":"extend","reason":"why","brief":"instruction quoting the concrete reviewer finding"}}
 {{"outcome":"rescope","reason":"why","ask":"complete narrower ask that can pass","brief":"first concrete step"}}
-{{"outcome":"close","reason":"why it is superseded or done enough","evidence":"exact phrase from a recorded check or result"}}
+{{"outcome":"close","reason":"why it is superseded or landed","evidence":"the current landing SHA or superseding card ID recorded on this card"}}
 {{"outcome":"taste","reason":"why only Daniel can decide","question":"the choice in Daniel's terms","recommend":"recommended answer","why":"one deciding reason","instead":"honest alternative"}}
 """
 
@@ -3124,13 +3124,49 @@ def _chief_brief_grounded(item, brief):
 
 def _chief_close_evidence(item, doc):
     evidence = str(doc.get("evidence") or "").strip()
-    if not re.search(r'\b(?:landed|merged|complete|completed|done|superseded|replaced|already on main)\b', evidence, re.I):
+    # Prose in an old result or check is not proof that this card's work is on
+    # current main. Require a durable landing SHA, or a named canonical card
+    # that has itself landed.
+    completion = item.get("completion") or {}
+    sha = str(completion.get("sha") or (item.get("landed") or {}).get("sha") or "").strip()
+    if sha and evidence == sha:
+        import drain
+        return drain.sh(["git", "merge-base", "--is-ancestor", sha, "main"],
+                        cwd=drain.REPO, timeout=10).returncode == 0
+    canonical_id = str(item.get("superseded_by") or "").strip()
+    if canonical_id and evidence == canonical_id and canonical_id != item["id"]:
+        try:
+            canonical = load_item(canonical_id)
+        except (OSError, ValueError):
+            return False
+        return canonical.get("state") == "landed" and bool(canonical.get("completion"))
+    return False
+
+
+def _chief_hold_matches(item, hold_kind):
+    if item.get("state") in TERMINAL_STATES or item.get("decision_draft"):
         return False
-    source = " ".join(str(value or "") for value in (
-        item.get("result"), (item.get("check") or {}).get("summary"),
-        *[(f.get("what") if isinstance(f, dict) else f)
-          for f in (item.get("check") or {}).get("findings") or []]))
-    return len(evidence) >= 12 and evidence.lower() in source.lower()
+    if hold_kind == "spending_hold":
+        return cap_held(item)
+    if hold_kind == "repairs_used_up":
+        return repair_held(item)
+    if hold_kind in ("chief_hold", "art_budget"):
+        return any(b.get("state") == "open" and
+                   (b.get("type") == "art_budget" if hold_kind == "art_budget" else
+                    b.get("owner") == "claude" and b.get("wake") and not b.get("action_id")
+                    and b.get("type") not in ("spending_hold", "repairs_used_up", "art_budget"))
+                   for b in _workflow(item).get("blockers") or [])
+    return not hold_kind and (cap_held(item) or repair_held(item))
+
+
+def _chief_spending_step_allowed(item):
+    spent, caps, exceeded = spending_checkpoint_state(item)
+    exceeded = exceeded or [k for k in (item.get("spending_checkpoint") or {}).get("exceeded") or []
+                            if k in CAP_FIELDS]
+    extensions = sum(r.get("decision") == "extend" for r in item.get("cap_reviews") or [])
+    raised = raised_caps(spent, caps, exceeded)
+    return (extensions < CAP_AUTO_EXTENSIONS
+            and all(raised[key] <= CAP_CEILINGS[key] for key in exceeded))
 
 
 def review_chief_hold(item, org, hold_kind=""):
@@ -3139,28 +3175,37 @@ def review_chief_hold(item, org, hold_kind=""):
     Two unusable reviews leave the card held for a live session. Taste always
     stays held and receives a decision-card draft rather than an invented call.
     """
-    generic = hold_kind in ("chief_hold", "art_budget", "no_lane")
-    if (item.get("decision_draft") or not execution.launch_allowed()
-            or not (cap_held(item) or repair_held(item) or generic)):
+    if not execution.launch_allowed() or hold_kind == "no_lane":
         return False
-    if int(item.get("chief_review_tries") or 0) >= CHIEF_AUTOMATIC_TRIES:
-        return False
-    item["chief_review_tries"] = int(item.get("chief_review_tries") or 0) + 1
-    save_item(item)
+    with mutation_lock():
+        fresh = load_item(item["id"])
+        if (fresh.get("_revision") != item.get("_revision")
+                or not _chief_hold_matches(fresh, hold_kind)
+                or int(fresh.get("chief_review_tries") or 0) >= CHIEF_AUTOMATIC_TRIES):
+            item.clear(); item.update(fresh)
+            return False
+        fresh["chief_review_tries"] = int(fresh.get("chief_review_tries") or 0) + 1
+        save_item(fresh)
+        item.clear(); item.update(fresh)
+        launched_revision = fresh["_revision"]
     text, limited = _run_cli(_chief_review_prompt(item), HOST.build_system_prompt(org, "claude"),
                              "Read,Glob,Grep", 8, 300, model="gpt-6-astra",
                              phase="chief-review", seat="claude", item=item["id"])
     doc = {} if limited else (_json_reply(text) or {})
     with mutation_lock():
         fresh = load_item(item["id"])
+        if (fresh.get("_revision") != launched_revision
+                or not _chief_hold_matches(fresh, hold_kind)):
+            item.clear(); item.update(fresh)
+            return False
         if limited:
-            save_item(fresh)
             item.clear(); item.update(fresh)
             return False
         outcome = doc.get("outcome")
         reason, brief = str(doc.get("reason") or "").strip(), str(doc.get("brief") or "").strip()
         moved = False
-        if outcome == "extend" and reason and _chief_brief_grounded(fresh, brief):
+        if (outcome == "extend" and reason and _chief_brief_grounded(fresh, brief)
+                and (not cap_held(fresh) or _chief_spending_step_allowed(fresh))):
             if cap_held(fresh):
                 grant_spending_checkpoint(fresh, by="claude", reason=brief, via="automatic chief-of-staff review (Codex)")
             elif repair_held(fresh):
@@ -3171,7 +3216,8 @@ def review_chief_hold(item, org, hold_kind=""):
             save_item(fresh)
             moved = True
         elif (outcome == "rescope" and reason and str(doc.get("ask") or "").strip()
-              and _chief_brief_grounded(fresh, brief)):
+              and _chief_brief_grounded(fresh, brief)
+              and (not cap_held(fresh) or _chief_spending_step_allowed(fresh))):
             fresh["ask"] = str(doc["ask"]).strip()[:6000]
             fresh["first_action"] = brief[:1200]
             if cap_held(fresh):
@@ -3226,6 +3272,8 @@ def release_chief_hold_for_capability(item, brief, decision="capability"):
     reach main.
     """
     if cap_held(item):
+        if not _chief_spending_step_allowed(item):
+            raise ValueError("This card has reached its automatic spending extension limit.")
         grant_spending_checkpoint(item, by="claude", reason=brief,
                                   via="automatic chief-of-staff capability dispatch (Codex)")
         save_item(item)
