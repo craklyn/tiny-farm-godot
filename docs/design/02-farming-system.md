@@ -6,7 +6,7 @@ breadth and seasons rulings (Q-20).*
 ## Implemented baseline (prototype, phase-1 scale)
 32×20 grid, 16px tiles (`world/farm.gd`); tile states (obstacle → cleared → tilled →
 seeded → growing → ready); tools: hands, axe, pickaxe, hoe, watering can, seeds
-(`systems/tools.gd`); crops: wheat, tomato (`crops/crop_defs.gd`); energy 20/day,
+(`systems/tools.gd`); crops: wheat, tomato, pea (`crops/crop_defs.gd`); energy 20/day,
 watering-can charges, well refill; day/weather scaffold (`systems/game_state.gd`,
 `systems/day_cycle.gd`).
 
@@ -22,6 +22,24 @@ lets the player deposit what she carries or take stored stock back; planting
 cannot draw directly from the bin. Eggs still sell immediately. A full crop
 stack refuses a harvest before the crop or energy changes. Legacy sales already
 pending in a save continue to pay at sleep.
+
+### Crop shelf
+
+Wheat is the starter crop and is not sold. The following pea shelf rule is
+decided but not implemented: harvesting one wheat plant will unlock both tomato
+and pea packets. The seed box will list tomato first, then pea, then the
+scarecrow. A tomato packet costs 10g and each tomato sells for 30g after five
+days. A pea packet will cost 8g and each pea will sell for 15g after three days.
+All pea values are `[Playtest]`. The prototype still keeps peas off the shelf
+and sells them for 20g.
+
+Each harvested plant returns three plantable units. Once the player has stock
+to replant, two sale units make wheat worth 10g per growing day, tomato worth
+12g per growing day, and pea worth 10g per growing day. Peas cost less to begin
+and mature sooner; tomatoes earn more gold over the same growing time. The pea
+is therefore a quick-cash choice rather than the best way to earn gold. The
+first pea packet costs 8g, which prevents the first harvest from being free
+money.
 
 ## Sections to fill
 1. **Crop roster & growth math** — growth stages/days, water sensitivity, price curves.

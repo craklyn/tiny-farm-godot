@@ -1757,7 +1757,11 @@ fit "scarecrow", and a collapse toggle for the playtest readout).*
   source in the live game until a phase-2+ design wants one.*
 - **Q-55** ~~The pea economy?~~ — ✅ **ruled 2026-08-31: pea ships now as an ordinary
   crop (M2.5 WI-10); the shooters/towers/storage/delivery economy is designed at M3
-  alongside `design/03`/`design/05`.** Original item: **The pea economy.** Peas are grown, stored, delivered by bots, and
+  alongside `design/03`/`design/05`. Amended 2026-10-01 (P-19): pea packets are decided
+  to join the seed-box shelf after the first wheat harvest, beside tomato packets. A packet
+  will cost 8g; each pea will sell for 15g after three days; all three values are
+  `[Playtest]`. The planned shelf order is tomato, pea, scarecrow. This is not implemented:
+  the prototype still keeps peas off the shelf and sells them for 20g.** Original item: **The pea economy.** Peas are grown, stored, delivered by bots, and
   fired by peashooters (bot-mounted and tower) until critters back off. It fuses the
   farm and defense halves into one supply chain and partially answers Q-16 (thrown
   objects) — but it touches player-built structures and tower design, each a system.
