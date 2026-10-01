@@ -3492,8 +3492,9 @@ def main():
             return 2
     org = server.load_org()
     # Recovery is local bookkeeping and must run even while models are paused.
+    recovered_completion = []
     if not (args.list or args.list_json or args.dry_run or args.brief):
-        work.recover_completion_work()
+        recovered_completion = work.recover_completion_work()
 
     if args.unattended:
         args.all = True
@@ -3557,8 +3558,18 @@ def main():
         print(f"Recovered {recovered} interrupted attempt(s).")
         return 0
     if lock:
-        action_dispatch.poll_ci(work, work.items(), action_dispatch.fetch_tests_runs,
-                                contains=action_dispatch.repo_contains(REPO))
+        runs = action_dispatch.fetch_tests_runs()
+        contains = action_dispatch.repo_contains(REPO)
+        action_dispatch.poll_ci(work, work.items(), lambda: runs, contains=contains)
+        undone = action_dispatch.undo_failed_ci(work, work.items(), runs, repo=REPO,
+                                                 contains=contains)
+        for item_id, ok, reason in undone:
+            print(f"CI undo {'completed' if ok else 'held'} for {item_id}: {reason}.")
+        recovered_ci_undo = any((work.load_item(item_id).get("landing_undone") or {}).get("actor") == "ci"
+                                for item_id in recovered_completion)
+        if recovered_ci_undo or any(ok for _item_id, ok, _reason in undone):
+            why = push_landed()
+            print(f"CI undo not pushed: {why}." if why else "CI undo pushed to origin/main.")
 
     if args.repair:
         n = 0

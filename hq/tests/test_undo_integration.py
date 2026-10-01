@@ -9,6 +9,7 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 import drain
+import action_dispatch
 import integration
 import server
 import work
@@ -65,6 +66,83 @@ class UndoIntegration(unittest.TestCase):
     def undo(self):
         return work.api_post("/api/work/undo", {"id": self.card["id"],
                                               "_revision": self.card["_revision"]})
+
+    def ci_run(self, conclusion="failure", sha=None, run_id=42):
+        return {"headSha": sha or self.landed, "status": "completed",
+                "conclusion": conclusion, "databaseId": run_id,
+                "updatedAt": "2026-09-22T10:00:00Z"}
+
+    def poll_and_undo(self, runs):
+        action_dispatch.poll_ci(work, [work.load_item(self.card["id"])],
+                                lambda: runs, contains=action_dispatch.repo_contains(str(self.main)))
+        return action_dispatch.undo_failed_ci(work, [work.load_item(self.card["id"])],
+                                              runs, repo=str(self.main))
+
+    def test_red_ci_reverts_exact_head_once_with_ci_attribution(self):
+        got = self.poll_and_undo([self.ci_run()])
+        self.assertEqual(len(got), 1)
+        self.assertTrue(got[0][1], got)
+        card = work.load_item(self.card["id"])
+        self.assertEqual(card["landing_undone"]["actor"], "ci")
+        self.assertEqual(card["landing_undone"]["run_id"], 42)
+        self.assertEqual(card["conversation"][-1]["role"], "ci")
+        self.assertEqual((self.main / "sample.txt").read_text(), "before\n")
+        self.assertEqual((self.user / "private.txt").read_bytes(), self.user_bytes)
+        head = integration.main_head(self.main)
+        self.assertEqual(self.poll_and_undo([self.ci_run()]), [])
+        self.assertEqual(integration.main_head(self.main), head)
+
+    def test_red_ci_crash_recovers_one_revert(self):
+        original = integration.advance_main
+
+        def crash_after_advance(repo, commit, parent):
+            self.assertTrue(original(repo, commit, parent))
+            raise RuntimeError("interrupted after advance")
+
+        with mock.patch.object(integration, "advance_main", side_effect=crash_after_advance):
+            with self.assertRaisesRegex(RuntimeError, "interrupted"):
+                self.poll_and_undo([self.ci_run()])
+        head = integration.main_head(self.main)
+        self.assertEqual(work.load_item(self.card["id"])["pending_undo"]["actor"], "ci")
+        self.assertEqual(work.recover_completion_work(), [self.card["id"]])
+        self.assertEqual(work.recover_completion_work(), [])
+        self.assertEqual(integration.main_head(self.main), head)
+        self.assertEqual(work.load_item(self.card["id"])["landing_undone"]["run_id"], 42)
+        self.assertEqual((self.user / "private.txt").read_bytes(), self.user_bytes)
+
+    def test_green_run_refuses_red_ci_undo(self):
+        self.assertEqual(self.poll_and_undo([self.ci_run(), self.ci_run("success", run_id=43)]), [])
+        self.assertEqual(integration.main_head(self.main), self.landed)
+
+    def test_wrong_sha_refuses_red_ci_undo(self):
+        self.assertEqual(self.poll_and_undo([self.ci_run(sha="another")]), [])
+        self.assertEqual(integration.main_head(self.main), self.landed)
+
+    def test_card_landing_sha_mismatch_holds_for_chief_review(self):
+        card = work.load_item(self.card["id"])
+        card["landed"]["sha"] = "different"
+        work.save_item(card)
+        got = self.poll_and_undo([self.ci_run()])
+        self.assertEqual(len(got), 1)
+        self.assertFalse(got[0][1])
+        self.assertIn("current landing", got[0][2])
+        self.assertEqual(integration.main_head(self.main), self.landed)
+        self.assertEqual(work.load_item(self.card["id"])["workflow"]["blockers"][-1]["type"],
+                         "ci_undo")
+
+    def test_newer_main_holds_red_ci_for_chief_review(self):
+        (self.main / "other.txt").write_text("later\n")
+        git(self.main, "add", "other.txt")
+        git(self.main, "commit", "-m", "Later")
+        head = integration.main_head(self.main)
+        got = self.poll_and_undo([self.ci_run()])
+        self.assertEqual(len(got), 1)
+        self.assertFalse(got[0][1])
+        self.assertIn("moved", got[0][2])
+        card = work.load_item(self.card["id"])
+        self.assertEqual(card["workflow"]["blockers"][-1]["type"], "ci_undo")
+        self.assertEqual(integration.main_head(self.main), head)
+        self.assertEqual((self.user / "private.txt").read_bytes(), self.user_bytes)
 
     def test_busy_drain_refuses_undo_without_touching_main_or_card(self):
         before = integration.main_head(self.main)

@@ -4098,7 +4098,7 @@ def recover_completion_work():
         lock.close()
 
 
-def undo_landing(item):
+def undo_landing(item, *, actor="daniel", run_id=None):
     """Put back what a landing changed, and give the card back to Daniel.
 
     The commit is reverted rather than reset: other work has landed on top of
@@ -4128,11 +4128,14 @@ def undo_landing(item):
     if integration.git(HOST.REPO, "merge-base", "--is-ancestor", sha, parent,
                        check=False).returncode:
         return False, "The landing commit is not on local main."
+    if actor == "ci" and (parent != sha or
+            (item.get("completion") or {}).get("sha") != sha):
+        return False, "Main or the work card moved since the failed CI commit."
     marker = "HQ-Undo: " + item["id"] + ":" + sha
     checkout = os.path.join(drain.WORKTREES, "integration-undo-" + item["id"])
     item["pending_undo"] = {"version": 1, "reverted": sha, "parent": parent,
                             "checkout": checkout, "marker": marker,
-                            "at": _now_iso()}
+                            "at": _now_iso(), "actor": actor, "run_id": run_id}
     # The obligation is durable before any Git side effect. The drain lock
     # held by the API or startup recovery serializes this with normal landings.
     save_item(item)
@@ -4211,9 +4214,13 @@ def recover_pending_undo(item):
     forget_owner_memory(item)
     item["state"] = "for_review"
     item["landing_undone"] = {"at": _now_iso(), "reverted": tx["reverted"],
-                              "commit": commit}
+                              "commit": commit, "actor": tx.get("actor", "daniel"),
+                              "run_id": tx.get("run_id")}
     item.setdefault("conversation", []).append(
-        {"role": "daniel", "text": "Undid this landing.", "at": _now_iso(), "with": "undo"})
+        {"role": tx.get("actor", "daniel"),
+         "text": (f"CI run {tx['run_id']} failed; reverted this landing."
+                  if tx.get("actor") == "ci" else "Undid this landing."),
+         "at": _now_iso(), "with": "undo"})
     item.pop("landed", None)
     item.pop("pending_undo", None)
     save_item(item)

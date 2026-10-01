@@ -245,6 +245,51 @@ def poll_ci(work, items, fetch_runs, *, now=None, contains=None):
     return changed
 
 
+def undo_failed_ci(work, items, runs, *, repo, contains=None):
+    """Undo only a red run on the exact current main commit.
+
+    Caller holds the drain lock, as it does for normal landing and undo.
+    A missing CI reading is never treated as a failure. Any uncertain or
+    changed state stays on the card for the chief of staff to inspect.
+    """
+    if runs is None:
+        return []
+    import integration
+    contains = contains or repo_contains(repo)
+    outcomes = []
+    for original in items:
+        item = work.load_item(original["id"])
+        ci = (item.get("workflow") or {}).get("ci") or {}
+        sha = landed_sha(item)
+        if item.get("state") != "landed" or ci.get("status") != "failed" or not sha:
+            continue
+        run_id = ci.get("run_id")
+        if ci.get("commit_sha") != sha or (item.get("completion") or {}).get("sha") != sha or \
+                (item.get("landed") or {}).get("sha") != sha or not run_id:
+            reason = "The failed CI run does not identify this card's current landing commit."
+        elif any(r.get("databaseId") == run_id and r.get("headSha") == sha and
+                 r.get("status") == "completed" and r.get("conclusion") != "success"
+                 for r in runs) is False:
+            reason = "The failed CI run could not be confirmed again."
+        elif any(r.get("status") == "completed" and r.get("conclusion") == "success" and
+                 (r.get("headSha") == sha or contains(sha, r.get("headSha") or ""))
+                 for r in runs):
+            # A successful rerun or green successor may already have tested
+            # the landing. Let the next CI poll record that evidence.
+            continue
+        elif integration.main_head(repo) != sha:
+            reason = "Main has moved since this failed CI commit; review before undoing it."
+        else:
+            ok, reason = work.undo_landing(item, actor="ci", run_id=run_id)
+            if ok:
+                outcomes.append((item["id"], True, reason))
+                continue
+        work.ensure_blocker(item, "ci_undo", input_id=sha, owner="claude",
+                            reason=reason, wake="chief-of-staff review")
+        outcomes.append((item["id"], False, reason))
+    return outcomes
+
+
 def repo_contains(repo):
     """``contains(sha, head)`` for poll_ci: True when ``head`` has ``sha`` in its history.
 
