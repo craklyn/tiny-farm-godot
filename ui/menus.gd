@@ -873,8 +873,7 @@ func _labels_in(node: Node) -> Array[Label]:
 
 
 # shop_icons.png is the shop iconography in one row: wheat packet, tomato
-# packet, scarecrow, (added 2026-08-30 for T-12) a coin, then T-28's droplet
-# and basket.
+# packet, scarecrow, coin, droplet, basket and pea packet.
 const ICON_SHEET := preload("res://assets/sprites/generated/shop_icons.png")
 const COIN_COL := 3
 

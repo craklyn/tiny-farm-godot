@@ -25,13 +25,11 @@ pending in a save continue to pay at sleep.
 
 ### Crop shelf
 
-Wheat is the starter crop and is not sold. The following pea shelf rule is
-decided but not implemented: harvesting one wheat plant will unlock both tomato
-and pea packets. The seed box will list tomato first, then pea, then the
-scarecrow. A tomato packet costs 10g and each tomato sells for 30g after five
-days. A pea packet will cost 8g and each pea will sell for 15g after three days.
-All pea values are `[Playtest]`. The prototype still keeps peas off the shelf
-and sells them for 20g.
+Wheat is the starter crop and is not sold. Harvesting one wheat plant unlocks
+both tomato and pea packets (P-19, in the game since 2026-10-02). The seed box
+lists tomato first, then pea, then the scarecrow. A tomato packet costs 10g and
+each tomato sells for 30g after five days. A pea packet costs 8g and each pea
+sells for 15g after three days. All pea values are `[Playtest]`.
 
 Each harvested plant returns three plantable units. Once the player has stock
 to replant, two sale units make wheat worth 10g per growing day, tomato worth

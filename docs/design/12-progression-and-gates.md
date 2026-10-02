@@ -27,9 +27,8 @@ celebration moment and the measured proof are the same event
 (`phases/phase-1-homestead.md` §4).
 
 ## Unlock ladders (consolidated index; details in system chapters)
-- Crop shelf (decided, not implemented): harvest one wheat plant → tomato and pea packets
-  will appear in the seed box (02, P-19). The player will buy either packet; the unlock will
-  not grant seeds. The prototype currently lists tomato but not pea.
+- Crop shelf: harvest one wheat plant → tomato and pea packets appear in the seed box
+  (02, P-19). The player buys either packet; the unlock does not grant seeds.
 - Tools & land rings (02) → machines (03) → towers (05) →
 - Robot marks: 11 successful player watering actions in one day → mark-1; its first
   completed watering or hoeing action → mark-2; the mark-2's first chased bird →

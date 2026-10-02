@@ -7485,6 +7485,9 @@
   "d69ae61da5b7b617ae96": {
    "verdict": "ok"
   },
+  "d6c46053c6061e13b766": {
+   "verdict": "ok"
+  },
   "d6c9575dda5213881fd5": {
    "instead": "Measure how quickly the farm page redraws: sorting the farm takes nearly as long as checking every item in it",
    "quote": "every-frame redraw: the sort costs nearly as much as the walk",

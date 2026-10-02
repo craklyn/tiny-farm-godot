@@ -1379,10 +1379,10 @@ use its own whole-number room multiplier; the coop's exact size awaits its playa
 whole of this entry is about how something looks and none of it has been seen.
 
 ### P-19. Pea packets follow tomato packets, and tomatoes earn more gold over time
-**Ruled 2026-10-01; not implemented.** After the player harvests one wheat plant, pea
-seeds will unlock with tomato seeds in the seed box. The shelf will list tomato first, pea
-second, then the scarecrow. A pea packet will cost 8g, a pea will take three days to grow,
-and a harvested pea will sell for 15g. All three values are `[Playtest]`.
+**Ruled 2026-10-01; in the game since 2026-10-02.** After the player harvests one wheat
+plant, pea seeds unlock with tomato seeds in the seed box. The shelf lists tomato first, pea
+second, then the scarecrow. A pea packet costs 8g, a pea takes three days to grow, and a
+harvested pea sells for 15g. All three values are `[Playtest]`.
 
 One planted crop returns three plantable units (S-19). After keeping one unit to plant
 again, wheat earns 30g every three growing days, tomatoes earn 60g every five days, and
@@ -1391,10 +1391,8 @@ peas earn 10g per growing day. Peas cost 2g less to start and return gold two da
 tomatoes pay more gold over the same span of growing time. The lower pea price makes a quick
 cash choice available without making it the best source of crop income.
 
-This replaces Q-55's former hold on pea packets. The prototype still sells peas for 20g and
-does not list them on the shelf. Anna must change the pea sale value, add pea after tomato
-to the shelf order, and assign a pea-packet icon before this rule can appear in the game.
-This does not design the future tower and delivery use for peas; that remains phase-3 work.
+This replaces Q-55's former hold on pea packets. The shelf order, the 15g sale value and
+the pea-packet icon (`shop_icons.png` column 6) are in `crops/crop_defs.gd`. This does not design the future tower and delivery use for peas; that remains phase-3 work.
 
 ### D-16. ~~When interiors move from one grid to a grid per space~~ — closed 2026-09-15
 **Closed by P-18's correction**: there is one grid at the finest pitch any space uses, and

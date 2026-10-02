@@ -291,7 +291,7 @@ func test_crop_defs() -> void:
 	_assert(tomato.sell_price == 30, "Tomato sells for 30g")
 	
 	
-	_assert(CropDefs.ORDER.size() == 3, "ORDER has 3 crops")
+	_assert(CropDefs.ORDER.size() == 4, "ORDER has 4 rows")
 	_assert(CropDefs.ORDER[0] == "wheat", "ORDER[0] is wheat")
 	
 	_assert(not CropDefs.is_ready("wheat", 0), "Wheat not ready at stage 0")
@@ -4998,19 +4998,19 @@ func test_economy_teaching() -> void:
 	# the shelf since S-18/S-19/S-20, so the price the beat waits for is no longer a
 	# constant: on a farm that has never cut a wheat the tomato is locked and the
 	# cheapest thing left is the scarecrow, and once she has cut one it is the
-	# tomato. Either way it is what she could walk up and buy.
+	# pea (P-19), cheaper than the tomato. Either way it is what she could walk up and buy.
 	_assert(TeachingFocus.cheapest_seed({}) == int(CropDefs.TYPES["scarecrow"].seed_price),
 		"an unearned shelf is priced at the only packet on it")
 	gs.harvest_counts["wheat"] = 1
-	_assert(TeachingFocus.cheapest_seed(gs.harvest_counts) == int(CropDefs.TYPES["tomato"].seed_price),
-		"and one harvest behind her, at the tomato she has just unlocked")
+	_assert(TeachingFocus.cheapest_seed(gs.harvest_counts) == int(CropDefs.TYPES["pea"].seed_price),
+		"and one harvest behind her, at the pea she has just unlocked (P-19: cheaper than the tomato)")
 	gs.gold = TeachingFocus.cheapest_seed(gs.harvest_counts) - 1
 	_assert(TeachingFocus.economy_beat(world, gs).is_empty(),
 		"a penny short of the cheapest packet is still silence")
 	gs.gold = TeachingFocus.cheapest_seed(gs.harvest_counts)
 	_assert(_only(TeachingFocus.economy_beat(world, gs)) == box,
 		"an empty pouch and the price of a seed points at the seed box")
-	world.apply_action({ "verb": "buy_seed", "seed_type": "tomato", "actor": "player" }, gs)
+	world.apply_action({ "verb": "buy_seed", "seed_type": "pea", "actor": "player" }, gs)
 	_assert(gs.seeds_bought == 1, "buying accrues its counter")
 	gs.pouch = { "wheat": 0, "tomato": 0 }
 	gs.gold = 500
@@ -6955,29 +6955,41 @@ func test_sprinkler() -> void:
 
 
 func test_pea() -> void:
-	print("\n--- Pea, an ordinary crop (Q-55 ruled 2026-08-31; M2.5 WI-10) Tests ---")
+	print("\n--- Pea, an ordinary crop (Q-55 ruled 2026-08-31; on the shelf by P-19) Tests ---")
 
 	var pea: Dictionary = CropDefs.TYPES.get("pea", {})
 	_assert(not pea.is_empty(), "pea is a crop type")
 	_assert(int(pea.days_to_grow) == 3 and int(pea.stages) == 4,
 		"three days to grow, four visual stages — the shape wheat and tomato already have")
-	_assert(int(pea.sell_price) == 20 and int(pea.seed_price) == 8,
-		"priced between them [Playtest]: worth growing, never the obvious choice")
+	_assert(int(pea.sell_price) == 15 and int(pea.seed_price) == 8,
+		"P-19's prices [Playtest]: an 8g packet, a 15g pea")
+	# P-19's reason for those prices: kept for replanting (S-19 returns three
+	# units), a pea earns 10g per growing day and a tomato 12g, so the pea is the
+	# cheap, quick start and never the best crop income.
+	var tomato_def: Dictionary = CropDefs.TYPES["tomato"]
+	var pea_per_day := float(2 * int(pea.sell_price)) / float(pea.days_to_grow)
+	var tomato_per_day := float(2 * int(tomato_def.sell_price)) / float(tomato_def.days_to_grow)
+	_assert(pea_per_day < tomato_per_day and int(pea.seed_price) < int(tomato_def.seed_price)
+			and int(pea.days_to_grow) < int(tomato_def.days_to_grow),
+		"cheaper and quicker than a tomato, but it earns less per growing day")
 	_assert(int(pea.sell_price) > int(pea.seed_price),
 		"and worth more than its seed, which is the only balance rule that is not taste")
 	var sheet: Texture2D = load("res://assets/sprites/generated/pea.png")
 	_assert(sheet != null and sheet.get_image().get_width() >= int(pea.stages) * 16,
 		"its growth stages are really in pea.png, not cells off the end of it")
-	_assert(int(pea.icon_col) == 3, "its icon column still points at the coin — the documented trap "
-		+ "for whoever debuts it in the shop (see crop_defs.gd)")
+	_assert(int(pea.icon_col) == 6, "its icon column points at the pea packet after the six existing shop icons")
+	var icons: Texture2D = load("res://assets/sprites/generated/shop_icons.png")
+	_assert(icons != null and icons.get_width() == 112,
+		"the pea packet is a seventh 16px shop-icon cell")
 
-	# The shop does not sell it yet: every shop, HUD and seed-picker path iterates
-	# ORDER, and the pea is deliberately not in it (Q-55/Q-56 — the debut is content
-	# sequencing, not this work item).
-	_assert(not ("pea" in CropDefs.ORDER), "the shop does not sell pea seeds yet")
-	_assert(CropDefs.ORDER.size() == 3, "so the shop still offers exactly what it offered yesterday")
+	# P-19: the shelf lists tomato, pea, then the scarecrow. Every shop, HUD and
+	# seed-picker path iterates ORDER, so this row is the whole debut.
+	_assert(CropDefs.is_on_shelf("pea"), "the shop sells pea seeds")
+	_assert(CropDefs.ORDER.find("pea") == CropDefs.ORDER.find("tomato") + 1
+			and CropDefs.ORDER.find("scarecrow") == CropDefs.ORDER.find("pea") + 1,
+		"listed after the tomato and before the scarecrow")
 	_assert(not CropDefs.is_seed_unlocked("pea", {}),
-		"and when it does debut it is behind the same first-harvest gate the tomato is")
+		"behind the same first-harvest gate the tomato is")
 	_assert(CropDefs.is_seed_unlocked("pea", { "wheat": 1 }), "which one wheat opens")
 
 	# Growth, through the ordinary stages, with no special case anywhere.
@@ -10316,7 +10328,7 @@ func test_station_presentation() -> void:
 	_assert(p5.size() == 1 and p5[0]["at"] == box
 			and p5[0]["glyph"] == StationPresentation.GLYPH_PACKET,
 		"the price of one seed floats a packet over the box, pouch full or not")
-	world.apply_action({ "verb": "buy_seed", "seed_type": "tomato", "actor": "player" }, gs)
+	world.apply_action({ "verb": "buy_seed", "seed_type": "pea", "actor": "player" }, gs)
 	gs.gold = 500
 	for pip in StationPresentation.pips(world, gs):
 		_assert(pip["at"] != box, "and buying once retires it")

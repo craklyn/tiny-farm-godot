@@ -49,6 +49,12 @@ before the first public build ships.*
     only colours `chicken_coop.png` and `cot.png` already use. The script checks this
     before writing. Cost nothing; no model was called. Provenance and rights remain
     those of the two source sheets.
+  - `shop_icons.png` cell 6, the pea seed packet (2026-10-01), is **drawn, not
+    generated**: `tools/gen_pea_packet.py` preserves the first six icon cells and
+    adds a pale-paper packet with an open pea pod, using only the tomato packet's
+    paper and the shipped pea sheet's green ramp. The script verifies the seven-cell
+    grid, hard alpha and existing game palette before writing. Cost $0.00; no model
+    was called. Its provenance and rights remain those of the generated source sheets.
   - `player_chop.png` (2026-09-24) is **derived, not generated**: four 48px
     clearing poses built by `tools/build_player_chop.py` from the standing cells
     of `characters.png` and the axe cell of `tool_icons.png`. The axe rotates

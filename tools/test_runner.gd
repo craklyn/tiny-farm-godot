@@ -147,6 +147,7 @@ func _run_scenarios() -> void:
 	await _scenario_az_robot_unlock_cues()
 	await _scenario_ba_crow_spook_stops_at_room_wall()
 	await _scenario_bb_inventory_picker_selects_and_plants()
+	await _scenario_bi_peas_from_shelf_to_basket()
 	await _scenario_bc_a_nest_box_goes_down_by_tap()
 	await _scenario_bd_the_shop_shelf_scrolls()
 	await _scenario_be_a_finger_drag_scrolls_not_buys()
@@ -264,6 +265,89 @@ func _scenario_bb_inventory_picker_selects_and_plants() -> void:
 	_assert(planted and farm.get_crop_type(plot.x, plot.y) == "tomato",
 		"and the tile takes the crop the picker's tap chose, not the one cycling had left selected")
 	await _wait_until(func(): return not player.is_acting, 120)
+
+
+func _scenario_bi_peas_from_shelf_to_basket() -> void:
+	# P-19: pea packets join the shelf after the first wheat harvest. Every step
+	# here is a press or a tile tap on the real main scene, because a passing
+	# `buy_seed` verb says nothing about whether she can reach it.
+	print("\n--- Scenario BM: peas, bought by a press and grown by taps ---")
+	var menus = main_scene.menus
+	if menus.active_menu != "":
+		menus.close_menu()
+		await get_tree().process_frame
+	GameState.gold = 20
+	GameState.harvest_counts["wheat"] = 1
+	GameState.pouch["pea"] = 0
+	menus.open_menu("shop")
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	var rows := {}
+	for i in menus.shop_items.size():
+		rows[String(menus.shop_items[i].seed_type)] = i
+	_assert(rows.has("pea"), "the pea packet is on the shelf once one wheat is cut")
+	if not rows.has("pea"):
+		return
+	_assert(int(rows["tomato"]) < int(rows["pea"]) and int(rows["pea"]) < int(rows["scarecrow"]),
+		"between the tomato and the scarecrow")
+	var card: Dictionary = menus.shop_items[int(rows["pea"])]
+	_assert(int(card.price) == 8 and bool(card.affordable), "at 8g, which 20g affords")
+	_assert(int((card.icon as AtlasTexture).region.position.x) == 6 * 16,
+		"drawn with the pea packet, not the coin beside it")
+
+	_press_row(menus.options_container, int(rows["pea"]))
+	await get_tree().create_timer(0.3).timeout
+	_assert(int(GameState.pouch.get("pea", 0)) == 1 and GameState.gold == 12,
+		"pressing the card buys one pea packet for 8g")
+	menus.close_menu()
+	await get_tree().process_frame
+
+	var inv_button := _find_button(main_scene, "InventoryButton")
+	inv_button.pressed.emit()
+	await _wait_until(func(): return menus.active_menu == "inventory", 120)
+	var pea_row := -1
+	for i in menus.inventory_items.size():
+		if String(menus.inventory_items[i].key) == "pea":
+			pea_row = i
+	_assert(pea_row >= 0, "the pea she bought has its own picture in the picker")
+	if pea_row < 0:
+		return
+	_press_row(menus.options_container, pea_row)
+	await get_tree().process_frame
+	_assert(GameState.selected_seed_type == "pea", "and tapping it puts peas in her hand")
+
+	var plot := Vector2i(13, 8)
+	_stage_tile(plot.x, plot.y, "tilled")
+	GameState.selected_tool = 0
+	GameState.set_energy(GameState.max_energy)
+	player.pos = Vector2((plot.x + 0.5) * 16.0, (plot.y + 1.5) * 16.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	InputManager.click_tile = plot
+	InputManager.has_click = true
+	var planted := await _wait_until(
+		func(): return String(farm.get_tile(plot.x, plot.y).state) == "seeded", 200)
+	_assert(planted and farm.get_crop_type(plot.x, plot.y) == "pea",
+		"a tap on tilled ground plants the pea")
+	await _wait_until(func(): return not player.is_acting, 120)
+
+	_stage_tile(plot.x, plot.y, "ready", "pea")
+	farm.sim.get_tile(plot.x, plot.y).growth_stage = CropDefs.TYPES["pea"]["days_to_grow"]
+	var held_before: int = int(GameState.pouch.get("pea", 0))
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	InputManager.click_tile = plot
+	InputManager.has_click = true
+	var picked := await _wait_until(
+		func(): return int(GameState.pouch.get("pea", 0)) > held_before, 240)
+	_assert(picked and String(farm.get_tile(plot.x, plot.y).state) != "ready",
+		"and a tap on the ripe plant harvests peas into her pouch (%d → %d)"
+			% [held_before, int(GameState.pouch.get("pea", 0))])
+	await _wait_for_action()
+	GameState.selected_seed_type = "wheat"
 
 
 func _scenario_az_robot_unlock_cues() -> void:

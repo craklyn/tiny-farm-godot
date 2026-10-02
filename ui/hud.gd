@@ -1303,7 +1303,8 @@ func _draw_sun_arc() -> void:
 		sun_arc.draw_circle(at, ARC_TOKEN_R, warm)
 
 
-# shop_icons.png: one shop icon per crop, indexed by its icon_col.
+# shop_icons.png: wheat, tomato and pea packets share this 16px icon row;
+# each crop names its own cell with icon_col.
 func _crop_icon(icon_col: int) -> AtlasTexture:
 	var atlas := AtlasTexture.new()
 	atlas.atlas = load("res://assets/sprites/generated/shop_icons.png")

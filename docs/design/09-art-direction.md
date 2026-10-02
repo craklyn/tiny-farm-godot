@@ -466,6 +466,26 @@ close — and no single sheet can show both.
 
 ---
 
+## Pea seed packet brief (2026-10-01)
+
+The pea's 16×16 shop picture uses the same packet language as the wheat and
+tomato pictures: a pale paper packet with hard pixel edges and no shadow beyond
+its cell. The face shows one open pea pod in side view. Its curved silhouette
+and three round peas must identify it; loose green circles, a leaf and the ripe
+plant do not.
+
+Use `#a3c263` for the peas and light-facing pod edge, and the pea-sheet greens
+`#8db15d`, `#78a158` and `#4e6e3a` for its shade. Use `#f3f2c0` and `#f8f4e6`
+only for paper and the gap inside the pod. The packet keeps a transparent-pixel
+margin at each cell edge. It occupies new `shop_icons.png` column 6; columns 0
+through 5 remain wheat, tomato, scarecrow, coin, droplet and basket.
+
+A tomato-packet palette remap is not sufficient: it retains the round fruit
+silhouette and reads as a green tomato or apple. The finished packet copies the
+family's paper proportions but redraws the face as the specified open pod.
+
+---
+
 ## Shipped-sprite baseline — Q-14 draft, re-measured 2026-09-24
 
 This is an inventory for making and comparing the four look captures, **not an

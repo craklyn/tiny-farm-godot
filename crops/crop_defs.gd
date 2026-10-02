@@ -38,31 +38,20 @@ static var TYPES: Dictionary = {
 	#
 	# Balance is deliberately conservative and `[Playtest]`: three days like wheat
 	# (a crop the ammo economy will want a lot of should not be a five-day
-	# commitment) and priced between wheat and tomato, so growing peas for money is
-	# a fine choice and never the obvious one. Nothing is tuned against a peashooter
-	# that does not exist yet.
+	# commitment). Nothing is tuned against a peashooter that does not exist yet.
 	#
-	# **The shop does not sell pea seeds** — it is absent from ORDER below, which
-	# is what every shop, HUD and seed-selection path iterates. When a player first
-	# meets the pea, and what teaches her, is content sequencing and the designer's
-	# (the Q-56 pattern), not this work item's.
+	# P-19, ruled 2026-10-01: **pea packets join the shelf with tomato packets**
+	# after the first wheat harvest, listed after tomato (ORDER below). Kept for
+	# replanting, peas earn 10g per growing day against tomato's 12g, so they are
+	# the quick, cheap start and never the best crop income.
 	"pea": {
 		"name": "Pea",
 		"days_to_grow": 3,      # [Playtest]
-		"sell_price": 20,       # [Playtest]
-		"seed_price": 8,        # [Playtest]
+		"sell_price": 15,       # [Playtest] P-19
+		"seed_price": 8,        # [Playtest] P-19
 		"stages": 4,
 		"unlock_requirement": { "crop": "wheat", "count": 1 },
-		# pea.png — four growth stages in the same order and cell shape as wheat
-		# and tomato (WI-11 drew it; the 2026-09-06 split gave it its own sheet).
-		# Bound to the renderer in `world/farm.gd`'s crop_regions, exactly as
-		# those two are.
-		#
-		# **Trap for whoever puts the pea in the shop:** column 3 of
-		# shop_icons.png is the **coin** (T-12), so a pea in the shop today would
-		# be priced with a picture of a coin. Debuting it means drawing a pea
-		# packet into the icon row and pointing this number at it.
-		"icon_col": 3,
+		"icon_col": 6,
 	},
 	"egg": {
 		"name": "Egg",
@@ -82,7 +71,7 @@ static var TYPES: Dictionary = {
 # `is_on_shelf` hides the starter wheat. The **pea is deliberately absent**
 # (Q-55/M2.5 WI-10): the crop ships, the shop does not sell it yet, and adding it
 # here is the one-line change that debuts it when the designer says so.
-static var ORDER: Array[String] = ["wheat", "tomato", "scarecrow"]
+static var ORDER: Array[String] = ["wheat", "tomato", "pea", "scarecrow"]
 
 
 static func is_ready(crop_type: String, growth_stage: int) -> bool:
