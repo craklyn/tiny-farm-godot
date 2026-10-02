@@ -35,18 +35,20 @@ Builds a **debug** APK, connects over wireless debugging, rescues any session al
 the device, verifies a played session against the recording build, installs, and launches.
 The checkout must be clean before the deploy starts: a dirty build cannot be recreated
 from the build id recorded in a play session. If the tablet contains a session from a
-different build, the script shelves it and stops before installing. Check out that
-recording commit to verify it, then return to the desired build. Successful verification
-writes `verification.sha256` beside the session, so later deploys can recognize the same
-replay and autosave on the tablet without checking them against a newer build. Commit
-the session and receipt before the next deploy. A session stamped `-dirty` cannot be
-verified against an exact recording build and requires manual triage before another
-install. In practice (2026-09-25): check out the recording commit's source (the part
+different build, the script checks the recording commit out into a throwaway worktree and
+verifies the session there, so a new build never waits on a person to do it (2026-10-02).
+Successful verification writes `verification.sha256` beside the session, so later deploys
+can recognize the same replay and autosave on the tablet without checking them again.
+Commit the session and receipt before the next deploy.
+The deploy still stops, with the tablet untouched, in the cases a machine cannot
+settle: the replay does not match its autosave on the recording build; the recording
+build is stamped `-dirty`, so its exact source no longer exists; or its commit is not in
+this checkout, or is from before 2026-09-24, when `verify_replay.gd` began accepting a
+session folder. Triage those by hand: check out the recording commit's source (the part
 before `-dirty`) in a second worktree and run `verify_replay.gd -- <session folder>`
-there. A build from before 2026-09-24 ignores that folder argument and silently checks
-this machine's own save instead, so copy the two-line argument handling from today's
-`tools/verify_replay.gd` into it first. A `MATCH` is the triage; write the receipt as the
-script computes it (build id, then `sha256sum` of the replay and autosave) and commit it.
+there. For a build from before 2026-09-24, copy the two-line argument handling from
+today's `tools/verify_replay.gd` into it first. A `MATCH` is the triage; write the
+receipt as the script computes it (build id, then `sha256sum` of the replay and autosave).
 
 ### Without a terminal: the button in HQ
 

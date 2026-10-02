@@ -4817,6 +4817,9 @@
   "8a81b16d0e4509655347": {
    "verdict": "ok"
   },
+  "8ac05d0954885c5a7407": {
+   "verdict": "ok"
+  },
   "8b13d3d83090dd97236c": {
    "instead": "Fence it in, give it a home to return to, or add a sensor for dry soil",
    "quote": "Pen it, home it, or give it a nose?",
@@ -6621,6 +6624,12 @@
    "quote": "foley recording session",
    "verdict": "decode",
    "why": "“Foley” is audio-production shorthand for recording sound effects."
+  },
+  "bfc8ce827945b9b94d12": {
+   "instead": "Tablet deployments now stop instead of checking an older build's play session.",
+   "quote": "Tablet deploys check an older build's play session themselves instead of stopping",
+   "verdict": "second-look",
+   "why": "The sentence makes the reader pause over what “themselves” refers to and what is supposed to stop."
   },
   "bfe9a19772acebbf0430": {
    "instead": "Since the tracking started on [date], the studio has not exhausted its monthly budget, so we still don't know what a typical [period] costs.",

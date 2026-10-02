@@ -170,13 +170,52 @@ PY
 				&& [[ "$(cat "$verification_receipt")" == "$verification_fingerprint" ]]; then
 			echo "Already verified: $rescue_dir ($recorded_build)."
 		else
-			if [[ "$recorded_build" != "$BUILD_ID" ]]; then
-				echo "Rescued $rescue_dir from $recorded_build; checkout is $BUILD_ID." >&2
-				echo "Verify with the recording build before installing a different one." >&2
-				exit 1
-			fi
 			step "Verifying the rescued play session"
-			godot --headless --path . --script res://tools/verify_replay.gd -- "$rescue_dir"
+			if [[ "$recorded_build" == "$BUILD_ID" ]]; then
+				godot --headless --path . --script res://tools/verify_replay.gd -- "$rescue_dir"
+			else
+				# A session from another build is checked against the build that
+				# recorded it, in a throwaway worktree, so the deploy never stops to
+				# ask a person to do this by hand. Only what a machine cannot settle
+				# still stops it: an uncommitted recording build, a commit this
+				# checkout does not have, or a replay that does not match.
+				recorded_ref="$recorded_build"
+				[[ "$recorded_ref" =~ -g([0-9a-f]{7,})$ ]] && recorded_ref="${BASH_REMATCH[1]}"
+				recorded_commit=""
+				if [[ -n "$recorded_ref" && "$recorded_build" != *-dirty ]]; then
+					recorded_commit=$(git rev-parse --verify --quiet "$recorded_ref^{commit}" || true)
+				fi
+				if [[ -z "$recorded_commit" ]]; then
+					echo "Rescued $rescue_dir from '$recorded_build', which is not a commit this" >&2
+					echo "checkout has, so it cannot be verified automatically. docs/DEPLOY.md" >&2
+					echo "section 2 has the manual triage. The tablet is untouched." >&2
+					exit 1
+				fi
+				echo "Recorded by $recorded_build; checking it against that build."
+				recording_tree=$(mktemp -d)
+				trap 'git worktree remove --force "$recording_tree" >/dev/null 2>&1 || true; rm -rf "$recording_tree"; rm -f "$rescue_result"; cleanup_generated_sidecars' EXIT
+				git worktree add --detach --quiet "$recording_tree" "$recorded_commit"
+				if ! grep -q "get_cmdline_user_args" "$recording_tree/tools/verify_replay.gd"; then
+					echo "$recorded_build's verify_replay.gd cannot be pointed at a session folder" >&2
+					echo "(builds before 2026-09-24). docs/DEPLOY.md section 2 has the manual triage." >&2
+					exit 1
+				fi
+				godot --headless --path "$recording_tree" --import >/dev/null 2>&1 || true
+				verify_out=$(godot --headless --path "$recording_tree" --script res://tools/verify_replay.gd -- "$PWD/$rescue_dir" 2>&1) || {
+					echo "$verify_out"
+					echo "The rescued session does not replay on the build that recorded it. Kept in" >&2
+					echo "$rescue_dir; the tablet is untouched." >&2
+					exit 1
+				}
+				echo "$verify_out"
+				if ! grep -q "^MATCH:" <<<"$verify_out"; then
+					echo "The recording build's check did not report a match. The tablet is untouched." >&2
+					exit 1
+				fi
+				git worktree remove --force "$recording_tree" >/dev/null 2>&1 || true
+				rm -rf "$recording_tree"
+				trap 'rm -f "$rescue_result"; cleanup_generated_sidecars' EXIT
+			fi
 			printf '%s\n' "$verification_fingerprint" > "$verification_receipt"
 		fi
 	fi
