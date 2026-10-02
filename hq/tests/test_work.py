@@ -439,13 +439,26 @@ def main():
         check(got[0]["tier"] == 1, "a tier that is not a number is read the same way")
         got, _a, _r, _m = work._parse_follows(
             '{"items": [{"title": "Ship the build", "owner": "rin", "tier": 2, '
-            '"first_action": "x", "why": "y"}]}', org, "sam")
-        check(got[0]["tier"] == 2, "a tier that is named is kept")
+            '"ask_first": "release", "first_action": "x", "why": "y"}]}', org, "sam")
+        check(got[0]["tier"] == 2 and got[0]["ask_first"] == "release",
+              "a tier 2 that names what it is on the ask-first list is kept")
+        got, _a, _r, _m = work._parse_follows(
+            '{"items": [{"title": "Put pea seed packets on the shop shelf", "owner": "rin", '
+            '"tier": 2, "first_action": "x", "why": "players will see the pea"}]}', org, "sam")
+        check(got[0]["tier"] == 1 and "ask_first" not in got[0],
+              "a tier 2 that names nothing on the list files at tier 1: players seeing it is not enough")
+        got, _a, _r, _m = work._parse_follows(
+            '{"items": [{"title": "Put pea seed packets on the shop shelf", "owner": "rin", '
+            '"tier": 2, "ask_first": "players see it", "first_action": "x", "why": "y"}]}', org, "sam")
+        check(got[0]["tier"] == 1, "and so does one whose reason is not on the list")
+        check(all(key in work._follows_spec(org, completion=True) for key in work.ASK_FIRST),
+              "the landing model is told every ask-first reason it may name")
 
         print("work that is hard to walk back files as a question to be written")
         work.save_item(card(id="w0000000b0001", recommend=REC, follow_ups=[
             {"title": "Put the bloom on the store page", "owner": "rin", "level": "task",
-             "tier": 2, "first_action": "Swap the hero image.", "why": "players see it"}]))
+             "tier": 2, "ask_first": "store_page", "first_action": "Swap the hero image.",
+             "why": "players see it"}]))
         work.api_post("/api/work/accept", {"id": "w0000000b0001"})
         kid = [i for i in work.items() if i.get("parent") == "w0000000b0001"][0]
         check(kid["state"] == "prepping" and kid["owner"] == "rin",
@@ -478,7 +491,8 @@ def main():
         print("a complete question joins his list")
         work.save_item(card(id="w0000000b0002", recommend=REC, follow_ups=[
             {"title": "Raise the seed price", "owner": "rin", "level": "task", "tier": 2,
-             "first_action": "Edit the shop table.", "why": "the economy is loose"}]))
+             "ask_first": "taste", "first_action": "Edit the shop table.",
+             "why": "the economy is loose"}]))
         work.api_post("/api/work/accept", {"id": "w0000000b0002"})
         kid2 = [i for i in work.items() if i.get("parent") == "w0000000b0002"][0]
         stub_cli(reply("Seeds are too cheap by half.",
@@ -539,9 +553,9 @@ def main():
         shared_parent = card(id="w0000000d0004", owner="rin", title="Sound review")
         work.save_item(shared_parent)
         shared = work._file_follow_ups(shared_parent, [
-            {"title": "Pick the field recording", "owner": "rin", "tier": 2,
+            {"title": "Pick the field recording", "owner": "rin", "tier": 2, "ask_first": "taste",
              "decision_key": "field-sound", "why": "the field needs one sound"},
-            {"title": "Choose the field sound take", "owner": "rin", "tier": 2,
+            {"title": "Choose the field sound take", "owner": "rin", "tier": 2, "ask_first": "taste",
              "decision_key": "field-sound", "why": "the mixer needs the same choice"},
         ], ORG, "follow", "Choose one field sound.")
         check(len({s["id"] for s in shared}) == 1,

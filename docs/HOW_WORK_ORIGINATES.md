@@ -28,10 +28,20 @@ costs when no one checked it first.
 | Tier | Name | What it means | What happens | Examples |
 |---|---|---|---|---|
 | **0** | Just do it | Nothing to walk back | Runs immediately; the CEO reviews the **result** | Reading the repo, drafting, analysing, rendering a picture, running the suites, writing a proposal |
-| **1** | Do it, show the diff | Changes files, but git reverts it | Queued for a build session, which does it and shows the diff afterwards | Doc edits, code behind tests, a new decision card, a generated sprite landing in `assets/` |
+| **1** | Do it, show the diff | Changes files, but git reverts it | Queued for a build session, which does it and shows the diff afterwards | Doc edits, code behind tests, a new decision card, a generated sprite landing in `assets/`, carrying out a decided game change players will see (a ruled price, a new crop on the shop shelf) |
 | **2** | Ask first | Hard to walk back, or the CEO's taste to settle | Nothing happens until he says yes | Shipping or deploying anything players see, spending money (except art generated within the limits in [Art the queue can generate](#art-the-queue-can-generate)), deleting, changing design direction, anything outward-facing |
 
 When a work item's tier is unclear, it is a **2**. Unknown blast radius is not tier 0.
+A follow-up filed at tier 2 must say which ask-first item it is (a release, a deploy,
+spending, deleting, the store page, a change of design direction, or a choice only the CEO
+can make); one that names none is filed at tier 1, because "players will see it" is not on
+that list until the change ships.
+
+**Work that needs other work first** names the card it waits for (`after` on the card, or
+on a follow-up, the title of another follow-up in the same list). It waits in the queue,
+shown as held with the card it is waiting for, and starts on its own once that card lands.
+Before this, such cards ran early, found their prerequisite missing, and came back as dead
+results.
 
 ## How work gets created
 

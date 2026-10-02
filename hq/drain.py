@@ -2574,8 +2574,10 @@ def queued(include_thinking=False):
     return out
 
 
-def project_work(item, *, head=None, active=None, now=None):
-    """Resolve external facts once, then use the pure work projection."""
+def project_work(item, *, head=None, active=None, now=None, cards=None):
+    """Resolve external facts once, then use the pure work projection. `cards`
+    maps id to card for reading the prerequisites a card names in `after`;
+    without it they are read from the store."""
     if head is None:
         got = sh(["git", "rev-parse", "main"], cwd=REPO, timeout=10)
         head = got.stdout.strip() if got.returncode == 0 else ""
@@ -2599,10 +2601,12 @@ def project_work(item, *, head=None, active=None, now=None):
     waiting = item.get("waiting_for") or {}
     waiting_valid = not ((waiting.get("files") and not blocked) or
                          ("spent_usd" in waiting and not cost_reason))
+    prereq_waiting, prereq_dropped = work.prerequisites(item, cards)
     return work.work_view(item, {"blocked_files": blocked, "tree_reason": _tree_reason(blocked) if blocked else "",
                                  "cost_reason": cost_reason, "active_session":
                                  (active or {}).get("run") if server.drain_entry(active, item["id"]) else None,
                                  "head": head, "waiting_for_valid": waiting_valid,
+                                 "prerequisites": {"waiting": prereq_waiting, "dropped": prereq_dropped},
                                  "supervised_retry": (item["id"] in RETRY_ONCE_IDS
                                                       or bool(item.get("supervised_retry")))}, now=now)
 
@@ -2614,6 +2618,7 @@ def _queue_entries(include_thinking=False):
     head = head_result.stdout.strip() if head_result.returncode == 0 else ""
     active = server.drain_state()
     now = time.time()
+    cards = {item["id"]: item for item in got}
     entries = []
     for item in got:
         if item.get("state") in work.TERMINAL_STATES:
@@ -2621,7 +2626,7 @@ def _queue_entries(include_thinking=False):
         if item.get("state") not in ("waiting_session", "for_review") and not (
                 include_thinking and item.get("state") == "doing"):
             continue
-        view = project_work(item, head=head, active=active, now=now)
+        view = project_work(item, head=head, active=active, now=now, cards=cards)
         action = view["next_action"]
         if action and action.get("type") != "decide":
             entries.append((item, view, action))

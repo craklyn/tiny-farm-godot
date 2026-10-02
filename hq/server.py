@@ -2000,7 +2000,7 @@ not try to carry the work out inside this reply, and never imply it is already d
 what should happen and who owns it — that is what gets filed. Reversible work (reading,
 drafting, analysing, rendering, running the suites) then starts on its own and Daniel
 reviews the result; work that changes the repo goes to a build session; anything hard to
-walk back — shipping, spending, deleting, anything players see, any change of design
+walk back — a release or deploy, spending, deleting, the store page, any change of design
 direction — waits for his yes. He can see all of it on the Work page. Because of that, keep
 replies short: answer him, name the next step and its owner, and let the filing happen.
 

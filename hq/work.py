@@ -13,8 +13,9 @@ is calibrated to one question: how bad is it to get this wrong with nobody looki
             -> it happens immediately and he approves the RESULT, not the task
     tier 1  changes the repo, but git can revert it (docs, code behind tests)
             -> queued for a build session, which shows him the diff afterwards
-    tier 2  hard to walk back or his taste to settle (ship, spend, delete,
-            anything players see, any design direction) -> he says yes first
+    tier 2  hard to walk back or his taste to settle (release, deploy, spend,
+            delete, the store page, a change of design direction) -> he says yes
+            first. Carrying out a decided change players will see is tier 1.
 
 The rule that produced those tiers is the CEO's, 2026-09-02: "we should not delay
 steps that have no downside waiting for human feedback", with the guardrail being
@@ -60,13 +61,13 @@ DEFAULT_POLICY = {
         },
         "1": {
             "name": "Do it, show the diff",
-            "means": "Changes files, but git reverts it — doc edits, code behind tests, a new decision card.",
+            "means": "Changes files, but git reverts it — doc edits, code and art behind tests (players' game changes included, until they ship), a new decision card.",
             "gate": "a build session does it and shows the diff afterwards",
             "auto": False,
         },
         "2": {
             "name": "Ask first",
-            "means": "Hard to walk back or his taste to settle — shipping, spending, deleting, anything players see, any change of design direction.",
+            "means": "Hard to walk back or his taste to settle — a release, a deploy, spending, deleting, the store page, any change of design direction.",
             "gate": "his yes, before anything happens",
             "auto": False,
         },
@@ -129,6 +130,37 @@ STATES = ("needs_approval", "for_review", "owed", "prepping", "doing",
 
 # The tier a follow-up files at when it names none (S-17, §5.3).
 UNTIERED_FOLLOW = 1
+
+# What may make a follow-up tier 2: S-16's tier-2 list, and a question of his
+# taste. A follow-up asking for his yes first says which of these it is, and
+# one that names none files at tier 1 (2026-10-02). Before this, the policy's
+# "anything players see" put every game change at tier 2, so the two pea cards
+# a landed decision promised (the shelf, the packet art) parked as questions
+# nobody could write — "a person has to write this one" — when both were
+# revertable code and art that S-16 lands without him.
+ASK_FIRST = {
+    "release": "publishing a release",
+    "deploy": "a deploy to the tablet or the web",
+    "spending": "spending money, beyond the art the queue may generate on its own",
+    "deleting": "deleting something git cannot bring back",
+    "store_page": "the store page, or anything else said in public",
+    "design_direction": "changing a design direction, rather than carrying one out",
+    "taste": "a choice only Daniel can make, which nothing on main has settled",
+}
+
+
+def follow_tier(fu):
+    """The tier a follow-up files at: its own, except that tier 2 must name
+    what on ASK_FIRST it is."""
+    try:
+        tier = int(fu.get("tier", UNTIERED_FOLLOW))
+    except (TypeError, ValueError):
+        return UNTIERED_FOLLOW
+    if tier not in (0, 1, 2):
+        return UNTIERED_FOLLOW
+    if tier == 2 and fu.get("ask_first") not in ASK_FIRST:
+        return 1
+    return tier
 
 # What a recommendation has to say before the card carrying it may ask him for
 # a yes: the choice, the answer, the one reason that decides it, and the
@@ -676,19 +708,21 @@ def _clean_follow(raw, org, fallback_owner):
     # never 2. Tier 2 is "ask him first", so defaulting to it spends his
     # attention on the model's silence rather than on any judged risk. What the
     # work actually turned out to be is decided by the checker reading the diff.
-    try:
-        tier = int(raw.get("tier", UNTIERED_FOLLOW))
-    except Exception:
-        tier = UNTIERED_FOLLOW
+    # And tier 2 holds only with a named reason from ASK_FIRST.
+    tier = follow_tier(raw)
     level = str(raw.get("level") or "task").lower()
     owner = str(raw.get("owner") or "").strip()
     if not any(e["id"] == owner for e in org["employees"]):
         owner = fallback_owner
+    after = raw.get("after")
+    after = [after] if isinstance(after, str) else after if isinstance(after, list) else []
     return {
         "title": title[:160],
         "owner": owner,
         "level": level if level in LEVELS else "task",
-        "tier": tier if tier in (0, 1, 2) else UNTIERED_FOLLOW,
+        "tier": tier,
+        **({"ask_first": raw["ask_first"]} if tier == 2 else {}),
+        **({"after": [str(a).strip()[:160] for a in after[:4] if str(a).strip()]} if after else {}),
         "first_action": str(raw.get("first_action") or "")[:600],
         "why": str(raw.get("why") or "")[:300],
     }
@@ -763,6 +797,55 @@ ACTION_LEASE_SECONDS = 30 * 60
 # it as closed rather than as open work. FINAL_STATES are the recognised ones.
 TERMINAL_STATES = frozenset(("landed", "accepted", "dropped", "done"))
 FINAL_STATES = ("landed", "accepted", "dropped")
+
+
+# A card that names others in `after` waits for them (2026-10-02). Before this a
+# prerequisite lived only as prose in the first step, so the drain started four
+# pea cards at 12:32 that each came back "Blocked: not closed on origin/main"
+# and sat in Daniel's list as dead results, while the card they waited on
+# landed at 14:08. A prerequisite is met once that card is closed with its work
+# done; a dropped one never will be, so the dependent goes to the chief of staff.
+PREREQUISITE_MET = frozenset(("landed", "accepted", "done"))
+
+
+def prerequisites(item, cards=None):
+    """(waiting, dropped): the cards named in the item's `after` that have not
+    landed, and those closed without landing, each as {"id", "title"}. `cards`
+    maps id to card; without it each one is read from the store. A name the
+    store does not hold is not waited for: filing checks every name, so a
+    missing one is a card since archived, and waiting on it would be forever."""
+    waiting, dropped = [], []
+    for ident in item.get("after") or []:
+        if not isinstance(ident, str) or ident == item.get("id"):
+            continue
+        card = (cards or {}).get(ident)
+        if card is None and cards is None:
+            try:
+                card = load_item(ident)
+            except (OSError, ValueError):
+                card = None
+        if card is None or card.get("state") in PREREQUISITE_MET:
+            continue
+        entry = {"id": ident, "title": str(card.get("title") or ident)}
+        (dropped if card.get("state") == "dropped" else waiting).append(entry)
+    return waiting, dropped
+
+
+def clean_after(raw, own_id=""):
+    """The `after` list a filer gave, as card ids the store holds, or an error.
+    Accepts one id or a list."""
+    names = [raw] if isinstance(raw, str) else list(raw or []) if isinstance(raw, (list, tuple)) else None
+    if names is None:
+        return None, "after must be a card id or a list of them."
+    out = []
+    for name in names:
+        name = str(name or "").strip()
+        if not name or name in out or name == own_id:
+            continue
+        if not re.fullmatch(WORK_ID, name) or not os.path.isfile(_item_path(name)):
+            return None, f"after names {name!r}, which is not a work card."
+        out.append(name)
+    return out, ""
 
 
 def _iso_seconds(value):
@@ -989,7 +1072,8 @@ def finish_action(item, action_id, claim_id, *, state="done"):
 def work_view(item, repo_facts=None, now=None):
     """Pure canonical work/eligibility projection for cards, queue and dashboard.
 
-    repo_facts may contain blocked_files, cost_reason, active_session and head.
+    repo_facts may contain blocked_files, cost_reason, active_session, head and
+    prerequisites ({"waiting": [...], "dropped": [...]}, from `prerequisites`).
     No filesystem or clock reads occur when `now` is supplied.
     """
     facts = repo_facts or {}
@@ -1019,6 +1103,13 @@ def work_view(item, repo_facts=None, now=None):
     if not cost_reason:
         active_actions = [a for a in active_actions if a.get("type") != "rebrief"]
     waiting = item.get("waiting_for") or {}
+    # Prerequisites hold only a card about to start: one already running, or
+    # back with a result, is past the point where waiting would help.
+    prereqs = facts.get("prerequisites") or {}
+    prereq_waiting = list(prereqs.get("waiting") or [])
+    prereq_dropped = list(prereqs.get("dropped") or [])
+    not_started = (item.get("state") in ("waiting_session", "doing") and not item.get("started")
+                   and not facts.get("active_session"))
     pending = item.get("pending_landing") or item.get("pending_followups")
     patch = (item.get("attempt_outcome") or {}).get("patch_id") or ""
     candidate = (item.get("attempt_outcome") or {}).get("candidate") or {}
@@ -1119,6 +1210,16 @@ def work_view(item, repo_facts=None, now=None):
                    "owner": item.get("owner") or "claude"}
         if exhausted_repair:
             blocker["wake"] = "An explicit supervised retry of this card after reviewing the failed repair."
+    elif prereq_dropped and not_started:
+        names = ", ".join(f"“{p['title']}”" for p in prereq_dropped)
+        blocker = {"type": "prerequisite_dropped", "files": [], "owner": "claude",
+                   "reason": f"Waits for {names}, which was dropped, so it will never land.",
+                   "wake": "The chief of staff rescopes this card, points it at other work, or closes it."}
+    elif prereq_waiting and not_started:
+        names = ", ".join(f"“{p['title']}”" for p in prereq_waiting)
+        blocker = {"type": "prerequisite", "files": [], "owner": item.get("owner") or "claude",
+                   "reason": f"Waits for {names} to land. It starts on its own once that work is on main.",
+                   "wake": f"{names} lands.", "after": [p["id"] for p in prereq_waiting]}
     elif cost_reason:
         blocker = {"type": "capacity", "reason": cost_reason, "files": [],
                    "owner": "claude", "wake": "A reviewed, bounded cost cap above the amount already spent."}
@@ -1154,7 +1255,8 @@ def work_view(item, repo_facts=None, now=None):
     # project their own step and take precedence.
     chief_of_staff_hold = (blocker and blocker.get("owner") == "claude"
                            and not blocker.get("action_id") and blocker.get("wake")
-                           and blocker.get("type") not in ("spending_hold", "repairs_used_up", "art_budget"))
+                           and blocker.get("type") not in ("spending_hold", "repairs_used_up", "art_budget",
+                                                           "prerequisite"))
     if not terminal and not active_actions:
         if chief_of_staff_hold:
             # A landing failure the chief of staff inspects: a visible, blocked
@@ -1668,7 +1770,8 @@ def card_lanes(item, view, preparation=None):
         in_scope = state in _RUNNER_SCOPE and action.get("type") not in (None, "decide")
         # HQ's own worker (work.worker): unstarted tier-0 work, questions being
         # prepared, and replies owed to him.
-        hq_worker = ((state == "doing" and not item.get("started"))
+        prerequisite_hold = str((view.get("blocker") or {}).get("type") or "").startswith("prerequisite")
+        hq_worker = ((state == "doing" and not item.get("started") and not prerequisite_hold)
                      or (state == "prepping" and not item.get("prep_stalled"))
                      or state == "owed" or bool(item.get("awaiting_reply")))
         if hq_worker or (in_scope and action.get("availability") == "runnable"
@@ -1750,6 +1853,7 @@ def _file_item(fields, cap, org):
         "attempts": 0,
         "created": _now_iso(),
         "created_ts": time.time(),
+        **({"after": list(fields["after"])} if fields.get("after") else {}),
     })
 
 
@@ -1814,6 +1918,8 @@ def _follows_spec(org, amendable=False, moves=None, wait="", completion=False):
     already handed back, where the wait is over and this reply is the answer."""
     pol = policy()
     t0, t1, t2 = (pol["tiers"][k]["means"] for k in ("0", "1", "2"))
+    ask_keys = "|".join(ASK_FIRST)
+    ask_lines = "\n".join(f"  {key} — {means}" for key, means in ASK_FIRST.items())
     amend = AMEND_NOTE if amendable else ""
     amend_field = (',\n "amend": {"title": ..., "ask": ..., "first_action": ...}'
                    if amendable else "")
@@ -1844,7 +1950,7 @@ sweep for the artist and a check in the pipeline are three items with three
 owners, and naming only the first quietly drops the other two. Four at most —
 past that it is a plan, and a plan is its own item.
 {amend}{move_note}
-{{"deliverable": {{"name": "the short name of the finished result Daniel reviews"}}, "items": [{{"title": "short and plain", "owner": "<roster id>", "level": "task|story|epic|project|goal", "tier": 0|1|2, "first_action": "the single next concrete step, specific enough to just do", "why": "one sentence: why this follows"}}]{amend_field}{move_field}{outcome_field}}}
+{{"deliverable": {{"name": "the short name of the finished result Daniel reviews"}}, "items": [{{"title": "short and plain", "owner": "<roster id>", "level": "task|story|epic|project|goal", "tier": 0|1|2, "ask_first": "only at tier 2: {ask_keys}", "after": ["the title of another item in this list that must land first"], "first_action": "the single next concrete step, specific enough to just do", "why": "one sentence: why this follows"}}]{amend_field}{move_field}{outcome_field}}}
 
 `deliverable.name` is for Daniel, not a rewrite of the ask: name the finished
 thing he can inspect in a few plain words. Keep the original ask in the card.
@@ -1855,7 +1961,16 @@ Tier each by how bad it is to get wrong with nobody reviewing it first:
 0 — {t0}
 1 — {t1}
 2 — {t2}
-Unknown blast radius is a 2, never a 0. Each item goes to the person whose job
+Unknown blast radius is a 2, never a 0. Carrying out something already decided
+is a 1 even when players will see it — putting a ruled price in the game,
+adding a crop to the shop, drawing the art a design calls for: it lands behind
+the test suites and one revert undoes it (S-16). A 2 names which of these it
+is in `ask_first`, and one that names none is filed as a 1:
+{ask_lines}
+When an item cannot start until another item in this list has landed (code
+that uses art not yet drawn, say), name that item's title in `after`: the card
+waits in the queue and starts on its own once the other lands. Leave `after`
+out otherwise. Each item goes to the person whose job
 it actually is, by id, from this roster:
 {_roster_line(org)}
 
@@ -2470,6 +2585,7 @@ def _file_follow_ups(item, fus, org, cap_id, message, said="", lead=""):
     says which card promised it."""
     started = []
     seen = {}            # subject -> the card this block already filed it into
+    filed = []           # (new card, the follow-up it came from), for `after`
     for fu in fus:
         completion_key = (evidence_id([item["id"], item.get("completion", {}).get("attempt_id"), fu])
                           if cap_id == "landed" else "")
@@ -2510,7 +2626,7 @@ def _file_follow_ups(item, fus, org, cap_id, message, said="", lead=""):
             "title": fu["title"],
             "level": fu.get("level", "task"),
             "owner": owner,
-            "tier": fu.get("tier", UNTIERED_FOLLOW),
+            "tier": follow_tier(fu),
             "tier_reason": fu.get("why", "follows from this card"),
             "ask": ask,
             "first_action": fu.get("first_action", ""),
@@ -2536,8 +2652,23 @@ def _file_follow_ups(item, fus, org, cap_id, message, said="", lead=""):
                                  "why": fu.get("why", "")}
         save_item(child)
         seen[(owner, decision_key or key)] = child
+        filed.append((child, fu))
         started.append({"id": child["id"], "title": child["title"],
                         "state": child["state"], "owner": child["owner"]})
+    # A follow-up that needs another one's work first names it in `after`, by
+    # its title in this same list (or by card id), and waits for it in the
+    # queue: the pea shelf needs the pea packet's picture before it can use it.
+    by_title = {merge_key(entry["title"]): entry["id"] for entry in started}
+    for child, fu in filed:
+        after = []
+        for name in fu.get("after") or []:
+            ident = by_title.get(merge_key(name)) or (
+                name if re.fullmatch(WORK_ID, name) and os.path.isfile(_item_path(name)) else "")
+            if ident and ident != child["id"] and ident not in after:
+                after.append(ident)
+        if after:
+            child["after"] = after
+            save_item(child)
     if started:
         item["spawned"] = list({child["id"]: child for child in (item.get("spawned") or []) + started}.values())
     return started
@@ -3910,7 +4041,9 @@ def worker():
             if pending:
                 _process_capture(pending[0], org)
                 continue
-            todo = [i for i in items() if i.get("state") == "doing" and not i.get("started")]
+            cards = {i["id"]: i for i in items()}
+            todo = [i for i in cards.values() if i.get("state") == "doing" and not i.get("started")
+                    and not any(prerequisites(i, cards))]
             todo.sort(key=lambda i: i.get("created_ts", 0))
             if todo:
                 _process_item(todo[0], org)
@@ -4398,6 +4531,13 @@ def _api_post(path, payload):
         }
         if fields["level"] not in LEVELS:
             fields["level"] = "task"
+        # Work that needs another card's work first names it here, and waits
+        # for it in the queue instead of starting and reporting it missing.
+        if payload.get("after"):
+            after, why = clean_after(payload["after"])
+            if why:
+                return {"error": why}
+            fields["after"] = after
         cap = {"to": fields["owner"], "message": fields["ask"], "id": "manual"}
         return _file_item(fields, cap, org)
 

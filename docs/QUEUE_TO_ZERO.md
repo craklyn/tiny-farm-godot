@@ -338,7 +338,7 @@ reading together, and compares today against the first evening on file.
 - **The reader (§6–§8)** is tier 1: built and shown, not asked. His verdict is on
   the result.
 
-What stays his, by design: taste calls, anything players see, spending money, the
+What stays his, by design: taste calls, releases and deploys, spending money, the
 store page, deleting, and any question the studio cannot recommend on. A card over its
 token budget is not one of these: the chief of staff extends, rescopes or closes it
 (S-38, 2026-09-29).
