@@ -27,6 +27,11 @@ func _ready() -> void:
 	# S-14 that farm is in `user://slot1`, where it would also block a pre-slot
 	# farm from ever migrating in. Scenarios that point the three paths somewhere
 	# else for their own reasons still do; they restore to these.
+	#
+	# The suite takes this farm away when it finishes (the end of this function),
+	# so one already here was left by another run: one going at the same time in
+	# the same `user://`, or one stopped before it reached the end. In the second
+	# case, delete `user://itest_farm/` by hand.
 	_assert(not FileAccess.file_exists(SUITE_SLOTS_ROOT.path_join("slot1/autosave.json")),
 		"the integration suite starts without another session's autosave")
 	GameState.use_slot(1, SUITE_SLOTS_ROOT)
@@ -43,7 +48,18 @@ func _ready() -> void:
 	player = main_scene.player
 	
 	await _run_scenarios()
-	
+
+	# The farm goes with the suite. `tools/run_godot_test.py` gives each run an
+	# empty `user://` only on Linux; on a Mac, or run without it, the next run
+	# opens this same directory and the check at the top would find this farm in
+	# it. The scene goes first, because it persists itself on a timer and would
+	# write the farm straight back.
+	main_scene.queue_free()
+	await get_tree().process_frame
+	_wipe_dir(SUITE_SLOTS_ROOT)
+	_assert(not DirAccess.dir_exists_absolute(SUITE_SLOTS_ROOT),
+		"the suite takes its own farm away when it finishes, so the next run starts without it")
+
 	print("")
 	print("=".repeat(60))
 	print("Results: %d PASSED, %d FAILED" % [_pass_count, _fail_count])
@@ -66,6 +82,18 @@ func _assert(condition: bool, test_name: String) -> void:
 		_fail_count += 1
 		_test_log.append("FAIL: %s" % test_name)
 		print("  ✗ FAIL: %s" % test_name)
+
+
+# Put the three session paths back after a scenario pointed them at files of its
+# own, and delete those files on the way: a sleep or the scene's persist timer
+# may have written them, and nothing else ever will.
+func _restore_session_paths(real_paths: Array) -> void:
+	for p in [GameState.save_path, GameState.replay_path, GameState.trace_path]:
+		if FileAccess.file_exists(p):
+			DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
+	GameState.save_path = real_paths[0]
+	GameState.replay_path = real_paths[1]
+	GameState.trace_path = real_paths[2]
 
 # --- Test Scenarios ---
 
@@ -2725,12 +2753,7 @@ func _scenario_w_the_cot_presents_itself() -> void:
 		"nothing was rescued — the tapped tile wins whenever it produces a real change")
 
 	GameState.pouch["wheat"] = 5
-	for p in [GameState.save_path, GameState.replay_path, GameState.trace_path]:
-		if FileAccess.file_exists(p):
-			DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
-	GameState.save_path = real_paths[0]
-	GameState.replay_path = real_paths[1]
-	GameState.trace_path = real_paths[2]
+	_restore_session_paths(real_paths)
 
 
 # What `limit_top` must read right now, and it is two rules stacked: the top of
@@ -2865,12 +2888,7 @@ func _scenario_x_three_looks_for_the_cot() -> void:
 	_assert(CotPresentation.SHIPPED == CotPresentation.GLOW,
 		"and the build's default, restored, is A — the box stays the designer's to tick")
 	GameState.pouch["wheat"] = 5
-	for p in [GameState.save_path, GameState.replay_path, GameState.trace_path]:
-		if FileAccess.file_exists(p):
-			DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
-	GameState.save_path = real_paths[0]
-	GameState.replay_path = real_paths[1]
-	GameState.trace_path = real_paths[2]
+	_restore_session_paths(real_paths)
 
 
 func _scenario_y_acorns_are_pickable() -> void:
@@ -3065,12 +3083,7 @@ func _scenario_z_a_bed_button() -> void:
 	_assert(GameState.day == day_mid, "and the day did not turn")
 
 	GameState.pouch["wheat"] = 5
-	for p in [GameState.save_path, GameState.replay_path, GameState.trace_path]:
-		if FileAccess.file_exists(p):
-			DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
-	GameState.save_path = real_paths[0]
-	GameState.replay_path = real_paths[1]
-	GameState.trace_path = real_paths[2]
+	_restore_session_paths(real_paths)
 
 
 func _scenario_aa_the_yard_is_home() -> void:
@@ -4868,12 +4881,7 @@ func _scenario_ai_the_house_has_a_door() -> void:
 	InputManager.has_click = true
 	await _wait_until(func(): return farm.sim.page_of(player.get_tile_pos()) == 0, 12000)
 	GameState.set_energy(GameState.max_energy)
-	for p in [GameState.save_path, GameState.replay_path, GameState.trace_path]:
-		if FileAccess.file_exists(p):
-			DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
-	GameState.save_path = real_paths[0]
-	GameState.replay_path = real_paths[1]
-	GameState.trace_path = real_paths[2]
+	_restore_session_paths(real_paths)
 
 
 # Is the button on the nth option row enabled? The rows are PanelContainers with
@@ -5121,12 +5129,7 @@ func _scenario_aj_the_robot_lives_in_a_stall() -> void:
 	GameState.machines = {}
 	GameState.selected_seed_type = "wheat"
 	GameState.set_energy(GameState.max_energy)
-	for p in [GameState.save_path, GameState.replay_path, GameState.trace_path]:
-		if FileAccess.file_exists(p):
-			DirAccess.remove_absolute(ProjectSettings.globalize_path(p))
-	GameState.save_path = real_paths[0]
-	GameState.replay_path = real_paths[1]
-	GameState.trace_path = real_paths[2]
+	_restore_session_paths(real_paths)
 
 
 # --- AK: she puts up a fence (Q-92, 2026-09-07) -------------------------------
@@ -7326,9 +7329,7 @@ func _scenario_au_the_overnight_tells_a_story() -> void:
 	await _wait_until(func(): return not main_scene.day_cycle.is_active(), 12000)
 	farm.sim.story_night = SimWorld.STORY_NIGHT_NONE  # leave the world as any other sleep would
 
-	GameState.save_path = real_paths[0]
-	GameState.replay_path = real_paths[1]
-	GameState.trace_path = real_paths[2]
+	_restore_session_paths(real_paths)
 
 
 func _scenario_av_a_ransacked_plot_shows_it() -> void:
@@ -7682,9 +7683,7 @@ func _scenario_ax_she_can_get_back_out_of_the_coop() -> void:
 	_assert(coop_rooms == 0, "its inside goes with it")
 	_assert(GameState.machines.get("coop", 0) == 1, "and it is back in the crate")
 
-	GameState.save_path = real_paths[0]
-	GameState.replay_path = real_paths[1]
-	GameState.trace_path = real_paths[2]
+	_restore_session_paths(real_paths)
 
 	# ------------------------------------------------------------------------------
 	print("\n--- Scenario AY: going through a door is one move of the camera, not a cut (design/15 §8a) ---")
@@ -7814,9 +7813,7 @@ func _scenario_ax_she_can_get_back_out_of_the_coop() -> void:
 	_assert(cam.limit_top == _expected_camera_top() and cam.limit_bottom == _expected_camera_bottom(0),
 		"and the page's top and bottom (%d..%d)" % [cam.limit_top, cam.limit_bottom])
 
-	GameState.save_path = real_paths[0]
-	GameState.replay_path = real_paths[1]
-	GameState.trace_path = real_paths[2]
+	_restore_session_paths(real_paths)
 
 
 func _scenario_bc_a_nest_box_goes_down_by_tap() -> void:
@@ -7917,9 +7914,7 @@ func _scenario_bc_a_nest_box_goes_down_by_tap() -> void:
 		GameState.machines.erase("coop")
 	GameState.machines.erase("nest_box")
 	GameState.selected_seed_type = held_before
-	GameState.save_path = real_paths[0]
-	GameState.replay_path = real_paths[1]
-	GameState.trace_path = real_paths[2]
+	_restore_session_paths(real_paths)
 
 
 func _scenario_az_a_full_pouch_leaves_the_crop() -> void:
@@ -8787,9 +8782,7 @@ func _scenario_bj_a_tap_on_the_tower_goes_inside() -> void:
 		clear_message += "; blocked by " + blocker
 	_assert(blocker == "", clear_message)
 	if blocker != "":
-		GameState.save_path = real_paths[0]
-		GameState.replay_path = real_paths[1]
-		GameState.trace_path = real_paths[2]
+		_restore_session_paths(real_paths)
 		return
 	var laid: Dictionary = farm.apply_action({ "verb": "place", "target": anchor,
 		"item": "spiral_tower", "actor": "player" }, GameState)
@@ -8871,9 +8864,7 @@ func _scenario_bj_a_tap_on_the_tower_goes_inside() -> void:
 	_assert(farm.sim.page_of(player.get_tile_pos()) == 0,
 		"and she is still standing on the farm (%s)" % player.get_tile_pos())
 
-	GameState.save_path = real_paths[0]
-	GameState.replay_path = real_paths[1]
-	GameState.trace_path = real_paths[2]
+	_restore_session_paths(real_paths)
 
 
 func _in_room_or_door(id: String, door: Vector2i) -> bool:
