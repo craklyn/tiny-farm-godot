@@ -168,6 +168,10 @@ python3 tools/record_sound_candidates.py
 After a fresh clone or when assets changed, import first: `godot --headless --path . --import`
 (CI does this; harmless to repeat).
 
+**Making a video (TikTok, YouTube, devlog) is `video/README.md`**: one folder per video under
+`video/`, gameplay recorded from the game by `tools/record_video_shots.gd`, built on the
+video-editing skill. Footage and renders stay out of git.
+
 **Deploying anywhere — tablet, web, or a public release — is `docs/DEPLOY.md`.** It is the
 runbook, including the traps that have already cost time (Android's `user://` is internal
 storage; installing overwrites the previous session; itch drafts 404 to everyone but their

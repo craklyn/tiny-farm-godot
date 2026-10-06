@@ -1,0 +1,20 @@
+# TikTok v1: the voice track. Hand-assembled from autocut's passes over takes 0023 and 0020
+# (auto-0023.yaml, auto-0020.yaml); cut points snapped to the loudness envelope by hand.
+# Hook and closing question from the last intro take (0023); the feature list from 0020, whose
+# own opening line repeats 0023's and is dropped. Autocut cut "you have a tower you can climb up"
+# as trailing off; it isn't (a 3 s pause follows, then "and you have AI bots"), so it is kept.
+version: 1
+fps: 30000/1001
+sections:
+  - title: hook
+    segments:
+      - {clip: "footage/raw/DJI_20000405071849_0023_D.MP4", in: 1.060, out: 11.240, says: "What's up TikTok, it's your boy Buddy-O Vlogs. I'm making a game for my 4-year-old daughter. So far it's a farming game, obviously inspired by Harvest Moon and Stardew Valley."}
+  - title: features
+    segments:
+      - {clip: "footage/raw/DJI_20000405071745_0020_D.MP4", in: 6.800, out: 7.840, says: "You can plant crops,"}
+      - {clip: "footage/raw/DJI_20000405071745_0020_D.MP4", in: 8.500, out: 15.860, says: "you can water the crops, you can collect eggs from your single chicken, you have a chicken coop, you have a tower you can climb up,"}
+      - {clip: "footage/raw/DJI_20000405071745_0020_D.MP4", in: 19.240, out: 20.400, says: "and you"}
+      - {clip: "footage/raw/DJI_20000405071745_0020_D.MP4", in: 20.940, out: 32.700, says: "have AI bots that can walk your garden, water according to a pre-programmed order, or they can learn with reward mechanism how to feed your crops better."}
+  - title: ask
+    segments:
+      - {clip: "footage/raw/DJI_20000405071849_0023_D.MP4", in: 11.860, out: 14.300, says: "What's the next feature we should add to my game? (then 0.7 s of him waiting for an answer, before he reaches for the camera)"}

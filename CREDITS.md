@@ -753,7 +753,13 @@ before the first public build ships.*
   2026-08-26 (remains in git history only).
 
 ## Fonts
-- None bundled (engine default).
+- The game: none bundled (engine default).
+- Video tools only (`video/fonts/`, not shipped in the game), downloaded 2026-10-06 from the
+  Google Fonts repository (github.com/google/fonts, `ofl/`), each beside its licence file:
+  - `Figtree-Variable.ttf` — **Figtree**, © 2022 The Figtree Project Authors
+    (github.com/erikdkennedy/figtree), **SIL Open Font License 1.1**. Video captions.
+  - `PixelifySans-Variable.ttf` — **Pixelify Sans**, © 2021 The Pixelify Sans Project Authors
+    (github.com/eifetx/Pixelify-Sans), **SIL Open Font License 1.1**. Video end-card titles.
 
 *Rule going forward: no asset lands in the repo without a line here naming its source
 and license.*

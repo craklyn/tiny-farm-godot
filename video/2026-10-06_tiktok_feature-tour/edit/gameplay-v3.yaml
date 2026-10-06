@@ -1,0 +1,17 @@
+# Gameplay panel v3 (1080 x 960), cut to the re-recorded read (edl-v2.yaml, captions-v2.txt): each shot
+# starts on the caption phrase it illustrates. Same recordings as v2, plus the house interior.
+- {at: 0.00, src: gameplay/raw/boot.mp4, in: 0.00, hold: 0.5, look: crop, box: [130, 60, 540, 480], note: "splash portrait, sunflower bloom (What's up TikTok … for my daughter)"}
+- {at: 4.44, src: gameplay/raw/pan.mp4, in: 1.40, note: "drift across the farm (The game so far, it has a farming element)"}
+- {at: 6.84, src: gameplay/raw/plant.mp4, in: 1.40, note: "sowing (It's obviously inspired by)"}
+- {at: 7.88, src: gameplay/raw/plant.mp4, in: 3.55, note: "watering + inset (Harvest Moon and Stardew Valley)"}
+- {at: 9.48, src: gameplay/raw/harvest.mp4, in: 1.05, note: "harvest bursts (Right now, you can harvest crops)"}
+- {at: 11.30, src: gameplay/raw/eggs.mp4, in: 3.20, note: "egg by the coop (and you can collect eggs from your single chicken)"}
+- {at: 13.68, src: gameplay/raw/house.mp4, in: 1.00, note: "inside the farmhouse (You have a house)"}
+- {at: 14.53, src: gameplay/raw/coopdoor.mp4, in: 1.90, note: "into the coop (a chicken coop)"}
+- {at: 15.27, src: gameplay/raw/tower.mp4, in: 1.60, note: "up the tower, the farm below (and even a tower you can climb up and look down at your farm)"}
+- {at: 17.63, src: gameplay/raw/yard.mp4, in: 3.00, note: "the farmer stops to say hello to her hen (If you don't want to tend the farm yourself)"}
+- {at: 19.39, src: gameplay/raw/bots.mp4, in: 1.10, note: "six mark-1s out of their stalls (we have robots that you can use to do it)"}
+- {at: 21.27, src: gameplay/raw/botclose.mp4, in: 1.80, speed: 1.8, note: "one mark-1 waters its list in order (either pre-programmed)"}
+- {at: 22.27, src: gameplay/raw/bench-dials.mp4, in: 2.30, look: fit, box: [12, 10, 776, 580], pad: "0x21202d", note: "reward dials turned (or they can learn how to farm)"}
+- {at: 23.71, src: gameplay/raw/robot.mp4, in: 2.40, look: fit, box: [40, 120, 720, 430], note: "robot story night (based on a reward mechanism)"}
+- {at: 25.51, src: gameplay/raw/crow.mp4, in: 2.00, look: fit, box: [20, 0, 760, 600], note: "crow story night (What's the next feature that you'd like to see in my game?)"}

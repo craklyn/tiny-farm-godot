@@ -1,0 +1,23 @@
+# TikTok v3's voice: the re-recorded read (take 0025, 2026-10-06), hand-trimmed from autocut's pass
+# (auto-0025.yaml): every repeated line uses its last take. Cut points snapped to the loudness envelope.
+# "Valley." and "mechanism." end on a glance away from the lens, so those outs sit tight on the word.
+# Robots: the in-flow take (62.8 s, "If you don't want to tend the farm yourself...") over the extra take
+# at 91.5 s ("You have AI robots that walk your garden, some water in the order that you program and others
+# learn through reward systems"); both are clean, and the first gives the reason the robots exist.
+version: 2
+fps: 30000/1001
+sections:
+  - title: hook
+    segments:
+      - {clip: "footage/raw/DJI_20000405083748_0025_D.MP4", in: 0.520, out: 4.960, says: "What's up, TikTok? It's your boy, Buddy-O Vlogs. I'm here and I'm making a game for my daughter."}
+  - title: features
+    segments:
+      - {clip: "footage/raw/DJI_20000405083748_0025_D.MP4", in: 24.560, out: 29.600, says: "The game so far, it has farming element. It's obviously inspired by Harvest Moon and Stardew Valley."}
+      - {clip: "footage/raw/DJI_20000405083748_0025_D.MP4", in: 40.100, out: 44.300, says: "Right now, you can harvest crops and you can collect eggs from your single chicken."}
+      - {clip: "footage/raw/DJI_20000405083748_0025_D.MP4", in: 51.260, out: 55.180, says: "You have a house, a chicken coop, and even a tower you can climb up and look down at your farm."}
+  - title: robots
+    segments:
+      - {clip: "footage/raw/DJI_20000405083748_0025_D.MP4", in: 62.760, out: 70.600, says: "If you don't want to tend the farm yourself, we have robots that you can use to do it, either pre-programmed or they can learn how to farm based on a reward mechanism."}
+  - title: ask
+    segments:
+      - {clip: "footage/raw/DJI_20000405083748_0025_D.MP4", in: 82.880, out: 85.060, says: "What's the next feature that you'd like to see in my game?"}

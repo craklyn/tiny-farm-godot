@@ -1,0 +1,16 @@
+# Gameplay panel v1: each shot starts on the caption phrase it illustrates (output seconds) and runs to
+# the next. Sources are recordings from game-src/tools/record_tiktok.gd (see edit/record_shot.sh);
+# `in` is source seconds, read off each recording's MARK lines and contact sheets.
+- {at: 0.00, src: gameplay/raw/boot.mp4, in: 0.00, hold: 0.5, look: crop, box: [130, 30, 540, 540], note: "splash portrait, sunflower bloom, title (What's up TikTok … daughter)"}
+- {at: 5.64, src: gameplay/raw/pan.mp4, in: 1.40, note: "drift across the farm (So far it's a farming game, obviously inspired by)"}
+- {at: 8.36, src: gameplay/raw/harvest.mp4, in: 1.05, note: "harvest bursts (Harvest Moon and Stardew Valley)"}
+- {at: 10.18, src: gameplay/raw/plant.mp4, in: 1.40, note: "sowing (You can plant crops)"}
+- {at: 11.26, src: gameplay/raw/plant.mp4, in: 3.55, note: "watering + inset (you can water the crops)"}
+- {at: 13.46, src: gameplay/raw/eggs.mp4, in: 3.40, note: "egg by the coop (you can collect eggs from your single chicken)"}
+- {at: 15.38, src: gameplay/raw/coopdoor.mp4, in: 1.85, note: "into the coop (You have a chicken coop)"}
+- {at: 17.06, src: gameplay/raw/tower.mp4, in: 1.55, note: "up the tower (you have a tower you can climb up)"}
+- {at: 18.58, src: gameplay/raw/bots.mp4, in: 1.10, note: "six mark-1s out of their stalls (and you have AI bots that can walk your garden)"}
+- {at: 23.81, src: gameplay/raw/botclose.mp4, in: 1.70, speed: 1.8, note: "one mark-1 waters its list in order (water according to a pre-programmed order)"}
+- {at: 26.19, src: gameplay/raw/bench-dials.mp4, in: 2.00, look: fit, box: [12, 10, 776, 580], pad: "0x21202d", note: "reward dials turned, then the learning curve (or they can learn with reward mechanism)"}
+- {at: 29.46, src: gameplay/raw/robot.mp4, in: 2.40, look: fit, box: [40, 120, 720, 430], note: "robot story night (how to feed your crops better)"}
+- {at: 31.52, src: gameplay/raw/crow.mp4, in: 2.00, look: fit, box: [20, 0, 760, 600], note: "crow story night (What's the next feature we should add to my game?)"}

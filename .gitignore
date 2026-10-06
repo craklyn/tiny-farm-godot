@@ -107,3 +107,16 @@ hq/data/server.nohup.log
 # The door transition's per-frame captures (tools/measure_door_transition.tscn);
 # tools/measure_door_transition.py reads them. Review material, regenerated each run.
 tools/door_transition/
+
+# Video production (video/README.md). Footage, game recordings, renders and scratch stay
+# out of git: they are large, and the footage is of Daniel. The tools, fonts and each
+# video's hand-written edit files (voice cuts, captions, shot lists, decisions) are committed.
+video/.venv/
+video/*/footage/
+video/*/gameplay/
+video/*/renders/
+video/*/work/
+video/*/assets/**/*.mp4
+video/*/edit/auto-*
+# video/tools/record_shot.sh writes this for the length of a square recording
+/override.cfg
