@@ -88,6 +88,23 @@ class Completion(unittest.TestCase):
             runner.assert_called_once()
             self.assertEqual(self.card['state'],'landed')
 
+    def test_tier_zero_run_does_not_stay_running(self):
+        # 2026-10-07: a request card worked by HQ's own worker stayed in
+        # drain.json under HQ's live pid, so its repair showed as running and
+        # the drain never picked it up.
+        state = os.path.join(self.tmp.name, 'drain.json')
+        def works(item, org, run_id, say):
+            drain.record_phase(run_id, item, 'reviewing', 'reading the change')
+            return record(check={'verdict': 'fail', 'read': True, 'complete': False,
+                                 'findings': [{'what': 'Not filed.'}]})
+        with patch.object(drain, 'DRAIN_STATE', state), \
+             patch.object(work.execution, 'launch_allowed', return_value=True), \
+             patch.object(drain, 'do_item', side_effect=works):
+            work._process_item(self.card, ORG)
+        doc = json.loads(Path(state).read_text())
+        self.assertEqual(doc['phase'], 'finished')
+        self.assertIsNone(server.drain_entry(doc, self.card['id']))
+
     def test_incomplete_error_envelope_and_stale_check_rejected(self):
         for r in [record(result=result('blocked')), record(result=result('unfinished')),
                   record(error='exhausted'), record(limited=True), record(result='{"result":"raw"}'),

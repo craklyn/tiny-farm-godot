@@ -2229,7 +2229,17 @@ def _process_item(item, org):
         return False
     # Read-only work uses the same checked completion path as changes.
     import drain
-    record = drain.do_item(item, org, "reading-" + uuid.uuid4().hex[:12], lambda message: None)
+    run_id = "reading-" + uuid.uuid4().hex[:12]
+    try:
+        record = drain.do_item(item, org, run_id, lambda message: None)
+    finally:
+        # do_item records the card as being worked in runs/drain.json under
+        # this process's pid. The drain's loop releases each item it finishes;
+        # this path must too, because HQ's own pid never dies, and a card left
+        # there reads as running forever, so its repair never reaches the drain.
+        drain.release_phase(run_id, item)
+        if not drain._PHASES:
+            drain.record_phase(run_id, None, "finished", "HQ's own worker finished the card.")
     if record.get("held") or record.get("limited"):
         item["started"] = ""
         save_item(item)
