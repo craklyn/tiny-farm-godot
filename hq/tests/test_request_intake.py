@@ -53,6 +53,19 @@ class RequestIntakeTest(unittest.TestCase):
             "request_id": "request-87654321"})["id"], reopened["id"])
         self.assertEqual(len(work.items()), 2)
 
+    def test_follow_up_carries_his_words(self):
+        # 2026-10-07: the barn request's follow-up held only its title, so the
+        # owner would have designed without the spec he wrote.
+        words = "Add an industrial barn.\nCows store up to 2 units of milk; inside it is 6 wide by 4 tall."
+        request = work.api_post("/api/work/request", {
+            "words": words, "kind": "work", "request_id": "request-barn-0001"})
+        org = work.HOST.load_org()
+        child = work._file_follow_ups(request, [{
+            "title": "Draft three directions for the barn", "owner": request["owner"],
+            "tier": 0, "why": "Needs proposals first."}], org, cap_id="follow",
+            message="Accepted the barn request.")[0]
+        self.assertIn(words, work.load_item(child["id"])["ask"])
+
 
 if __name__ == "__main__":
     unittest.main()

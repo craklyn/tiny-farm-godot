@@ -2611,6 +2611,10 @@ def _file_follow_ups(item, fus, org, cap_id, message, said="", lead=""):
         if completion_key:
             cap.update(child_id="w" + completion_key[:11], completion_key=completion_key, parent=item["id"])
         ask = (f"{lead or message} {fu.get('why', '')}".strip())[:600]
+        # A request card only routes his words; the work is in the child, and
+        # a worker reads only its own card, so the child carries them whole.
+        if item.get("source") == "request" and item.get("source_message"):
+            ask += "\n\nDaniel's request, in his words:\n" + item["source_message"]
         if said:
             ask += ("\n\nDaniel attached this, and it is part of the brief:\n" + said)
         owner = fu.get("owner") or item["owner"]
