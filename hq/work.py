@@ -472,8 +472,16 @@ def file_decision_revision(decision, feedback, ruled_at, submission_id):
 def _sanitize():
     """A restart mid-run leaves an item claiming to be in progress. Say the true
     thing instead: it never finished, and it is due to run again."""
+    # Every drain process binds with this, including the recovery run HQ starts
+    # each minute, so a card a live process is working is not a restart's
+    # leftover. Resetting it made that run's result conflict and the card start
+    # over every minute without counting an attempt (2026-10-07, Milo's barn).
+    live = HOST.drain_state() if hasattr(HOST, "drain_state") else None
+    entry = getattr(HOST, "drain_entry", None)
     for it in items():
         if it.get("state") == "doing" and it.get("started"):
+            if live and entry and entry(live, it["id"]):
+                continue
             it["state"] = "doing"
             it["started"] = ""     # the worker picks it up again
             save_item(it)
@@ -4098,7 +4106,11 @@ def worker():
             if blind:
                 _propose_follow_up(blind[0], org)
         except Exception:
-            continue      # the company outlives any one bad item
+            # The company outlives any one bad item, but not silently: a swallowed
+            # conflict here hid a card rerunning every minute (2026-10-07).
+            import sys, traceback
+            print("HQ worker: " + traceback.format_exc(), file=sys.stderr, flush=True)
+            continue
 
 
 def start():

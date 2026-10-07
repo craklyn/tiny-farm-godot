@@ -1328,6 +1328,9 @@ def do_item(item, org, run_id, log, action=None):
         # The card and the bullpen must agree on whether this is queued or
         # running. Tier-0 also needs this claim before the server's own worker
         # can see it; tier-1 needs it so the page has real start evidence.
+        # Live in drain.json first, so another process never sees a start mark
+        # with no live run behind it and resets the card under this one.
+        record_phase(run_id, item, "starting", "The owner's session is starting.")
         item["started"] = work._now_iso()
         work.save_item(item)
         tree = make_worktree(run_id, item["id"])

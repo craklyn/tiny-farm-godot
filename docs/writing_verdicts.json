@@ -3102,6 +3102,12 @@
   "59a881673f4d1e3383d2": {
    "verdict": "ok"
   },
+  "59bfebc91d6fcdcd3d34": {
+   "instead": "Work HQ now starts on its own and is allowed to finish instead of being restarted every minute.",
+   "quote": "Work HQ starts on its own is no longer restarted every minute before it can finish",
+   "verdict": "second-look",
+   "why": "The sentence makes the reader reread it to separate the fact that Work HQ starts automatically from the fact that it is now allowed to finish."
+  },
   "59dabb5b106b6a8bfcdb": {
    "instead": "Correct the robot's watering problem from when it was first found, and identify the person meant by 'she' in the robot decision card.",
    "quote": "'she'",
