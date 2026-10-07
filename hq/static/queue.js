@@ -247,7 +247,8 @@ function qWorkItem(card, org, reason) {
     id: card.id, cardId: card.id, isDecision: false, subject: card.subject || "",
     title: card.state === "for_review" ? reviewTitle(card) : card.title,
     question, answer, recommender, why: rec.why || (ap ? ap.why : merge ? (card.check || {}).summary || "" : ""), instead: rec.instead || "",
-    options: Array.isArray(rec.options) ? rec.options : [],
+    // Not `options`: a work row keeps that empty, as decision rows use it for their buttons.
+    recOptions: Array.isArray(rec.options) ? rec.options : [],
     owner, seconds: answer ? Q_PICK_SECONDS : Q_READ_SECONDS, state: card.state, merge,
     spendingYes: card.state === "needs_approval"
       ? (card.spending_checkpoint || card.repair_checkpoint || {}).yes_starts || "" : "",
@@ -501,7 +502,7 @@ function qPaneHtml(row, org) {
 
     <div class="q-sec"><h3>${row.answer && row.recommender ? `${esc(row.recommender)} recommends` : "Recommendation"}</h3>
       ${row.answer
-        ? `<div class="q-rec"><b>${mdi(row.answer)}</b>${row.why ? `<p>${mdi(row.why)}</p>` : ""}${row.instead ? `<p class="q-instead">Instead: ${mdi(row.instead)}</p>` : ""}</div>${recOptionsHtml(row.options)}`
+        ? `<div class="q-rec"><b>${mdi(row.answer)}</b>${row.why ? `<p>${mdi(row.why)}</p>` : ""}${row.instead ? `<p class="q-instead">Instead: ${mdi(row.instead)}</p>` : ""}</div>${recOptionsHtml(row.recOptions)}`
         : `<div class="q-rec q-rec-none"><b>No recommendation on this one.</b><p>${esc(qNoRecommendation(row))}</p></div>`}
     </div>
 

@@ -767,6 +767,12 @@
    "verdict": "decode",
    "why": "“Landed on main” and “CI” are engineering shorthand for a change being merged and automatically checked."
   },
+  "153504466ede38ad3110": {
+   "instead": "The questions page now lists every option, not just the page for the work card",
+   "quote": "not only the work card page",
+   "verdict": "second-look",
+   "why": "This makes the reader stop to work out whether the work card page is an option or the place where options were previously shown."
+  },
   "15c22d4221e7c340938b": {
    "verdict": "ok"
   },
