@@ -1307,6 +1307,12 @@
   "2557ff4de89d2f03d1a0": {
    "verdict": "ok"
   },
+  "2558f84fcdcf572c0cda": {
+   "instead": "Decision needed: [state the decision]",
+   "quote": "The call to make",
+   "verdict": "decode",
+   "why": "A cold reader cannot tell which decision or action “the call” refers to."
+  },
   "255b0bd3c648e1705f36": {
    "verdict": "ok"
   },
@@ -2231,6 +2237,9 @@
    "verdict": "ok"
   },
   "3fc45fd7467541150293": {
+   "verdict": "ok"
+  },
+  "3fee93fb797c0963406f": {
    "verdict": "ok"
   },
   "4025b14d063cafcf6bfe": {
@@ -7289,6 +7298,12 @@
    "quote": "normal speed needs none",
    "verdict": "second-look",
    "why": "The reader has to infer that normal speed requires no purchase."
+  },
+  "d1083d7a1b02ecfca7b2": {
+   "instead": "A decision is needed, but the question and recommended option are not shown.",
+   "quote": "Decision needed · … · Recommended … · … … …",
+   "verdict": "decode",
+   "why": "The line does not say what decision is needed or what the recommendation is, so the reader cannot act on it."
   },
   "d10fba8d06df9788313b": {
    "baselined": "2026-09-19",

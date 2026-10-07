@@ -168,6 +168,25 @@ def follow_tier(fu):
 # cannot act on without asking a question back.
 REC_PARTS = ("question", "answer", "why", "instead")
 
+# A choice among named options shows him every option, not only the pick and
+# one alternative (2026-10-07: the barn's three looks reached his page as "C,
+# instead A", with B and every description only inside the diff).
+OPTIONS_SPEC = ('"options": [{"label": "A. the option\'s short name", "summary": "what choosing it means, '
+                'in one or two plain sentences"}] — every option he is choosing between, the recommended '
+                'one included; leave it out when the choice is a plain yes or no')
+
+
+def rec_options(raw):
+    """At most eight {label, summary} options, each a short plain string."""
+    if not isinstance(raw, list):
+        return []
+    out = []
+    for o in raw[:8]:
+        if isinstance(o, dict) and str(o.get("label") or "").strip():
+            out.append({"label": str(o["label"]).strip()[:120],
+                        "summary": str(o.get("summary") or "").strip()[:400]})
+    return out if len(out) >= 2 else []
+
 # How many times the studio rewrites a question that comes back incomplete
 # before it stops and says a person has to write this one. Without a stop, a
 # seat that cannot answer the question loops on it for as long as HQ runs.
@@ -629,7 +648,9 @@ is exactly what he has told us not to build. Add:
 
 and make the items above the work that carries that recommendation out, so that
 accepting the card IS taking it. Leave "recommend" out entirely when the result
-raises no choice — a manufactured question costs him more than a missing one."""
+raises no choice — a manufactured question costs him more than a missing one.
+
+When the choice is among named options, also put inside "recommend": """ + OPTIONS_SPEC + "."
 
 AMEND_NOTE = (
     "\nIf what you have just said changes what this card itself is — its title,\n"
@@ -784,8 +805,11 @@ def _parse_follows(tail, org, fallback_owner):
     # and offers him an accept button decides nothing.
     rec = doc.get("recommend")
     if isinstance(rec, dict) and str(rec.get("answer") or "").strip():
+        options = rec_options(rec.get("options"))
         rec = {k: str(rec.get(k) or "").strip()[:400]
                for k in ("question", "answer", "why", "instead")}
+        if options:
+            rec["options"] = options
     else:
         rec = None
     move = str(doc.get("move") or "").strip().lower().replace("_", "-")
@@ -2782,7 +2806,8 @@ undo each. Then answer with one short paragraph he reads first (the choice in
 front of him, in his terms, no jargon and no ticket ids), and end with the block.
 
 The block must carry "recommend" with all four parts filled in. A recommendation
-missing any part comes straight back to you.
+missing any part comes straight back to you. When the choice is among named
+options, also put inside "recommend": {OPTIONS_SPEC}.
 
 {FOLLOW_MARK}
 {{"items": [], "recommend": {{"question": "the choice, in one line and in his terms", "answer": "what you recommend he does", "why": "the one reason that decides it", "instead": "the alternative he might reasonably prefer, named honestly"}}}}"""

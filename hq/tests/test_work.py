@@ -149,6 +149,18 @@ def main():
         check(move == "revise", "revise is read as revise")
         got, amend, rec, move = work._parse_follows('{"items": [], "move": "shrug"}', org, "sam")
         check(move is None, "an unknown move is no move")
+        print("a recommendation keeps every option of a named choice")
+        got, amend, rec, move = work._parse_follows(json.dumps({"items": [], "recommend": {
+            "question": "Which look?", "answer": "Choose C.", "why": "Warm.", "instead": "A.",
+            "options": [{"label": "A. Red dairy works", "summary": "Red timber."},
+                        {"label": "B. Blue-and-cream creamery", "summary": "Tile."},
+                        {"label": "C. Pine visitor gallery", "summary": "Pine and glass."}]}}), org, "sam")
+        check([o["label"][0] for o in rec["options"]] == ["A", "B", "C"],
+              "all three options survive parsing, in order")
+        got, amend, rec, move = work._parse_follows(json.dumps({"items": [], "recommend": {
+            "question": "Ship it?", "answer": "Yes.", "why": "Ready.", "instead": "Wait.",
+            "options": "not a list"}}), org, "sam")
+        check("options" not in rec, "a malformed options field is dropped, not kept")
         parts = work._split_result("just prose", org, "sam")
         check(len(parts) == 5 and parts[1] is None and parts[4] is None,
               "a reply with no block yields five parts, all unknown")

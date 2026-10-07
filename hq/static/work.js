@@ -171,6 +171,14 @@ function recommendBlock(it) {
   </div>`;
 }
 
+// Every option of a choice among named options, the recommended one included
+// (2026-10-07: the barn's three looks showed as "C, instead A").
+function recOptionsBlock(r) {
+  if (!Array.isArray(r.options) || r.options.length < 2) return "";
+  return `<div class="w-rec w-rec-options"><p class="w-rec-p"><b>All the options</b></p><ul>${r.options.map(o =>
+    `<li><b>${mdi(o.label || "")}</b>${o.summary ? ` — ${mdi(o.summary)}` : ""}</li>`).join("")}</ul></div>`;
+}
+
 function reviewQuestion(it) {
   if (it.state !== "for_review") return "";
   const question = (it.recommend && it.recommend.question) || it.review_question;
@@ -845,7 +853,7 @@ function workCard(it, org, pol) {
       </div>` : ""}
       ${reviewQuestion(it)}
       ${reviewEvidence(it)}
-      ${it.state === "for_review" ? recommendBlock(it) : ""}
+      ${it.state === "for_review" ? recommendBlock(it) + recOptionsBlock(it.recommend || {}) : ""}
       ${amendNote(it, org)}
       ${result}
       ${drainBlock(it, org)}
@@ -857,7 +865,7 @@ function workCard(it, org, pol) {
       ${childrenNote(it, org)}
       ${spawnedNote(it)}
       ${decidedNote(it)}
-      ${(again || repairHold || heldReason(it) || ["for_review", "accepted", "dropped"].includes(it.state) ? "" : recommendBlock(it))
+      ${(again || repairHold || heldReason(it) || ["for_review", "accepted", "dropped"].includes(it.state) ? "" : recommendBlock(it) + recOptionsBlock(it.recommend || {}))
           + consequence(it, org) + (repairHold || pendingCode ? "" : replyBox(it, org))
           + `<div class="w-acts">${acts}${talkBtn}</div>`}
       ${brief}
