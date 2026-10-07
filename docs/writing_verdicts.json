@@ -7844,6 +7844,12 @@
   "dfe629888602b3cfc4e0": {
    "verdict": "ok"
   },
+  "dff3cdadfbeb0ebf29ad": {
+   "instead": "The task queue shows work that HQ starts automatically, matching the work started by the team",
+   "quote": "matching the bullpen",
+   "verdict": "decode",
+   "why": "“Bullpen” is an internal metaphor here, so a cold reader cannot tell what the queue is being compared with."
+  },
   "e05f90c05ec048d44315": {
    "verdict": "ok"
   },
@@ -8768,6 +8774,9 @@
    "verdict": "ok"
   },
   "fe52efd7c89d1d417cb7": {
+   "verdict": "ok"
+  },
+  "fe5aec0c7dc80604ea21": {
    "verdict": "ok"
   },
   "fe673babfb78ac63e0d2": {

@@ -2665,7 +2665,13 @@ def classified_queue(include_thinking=False):
 def queue_view():
     """Action rows and held outcomes from the scheduler's one projection."""
     working, eligible, held = [], [], []
-    for item, view, action in _queue_entries():
+    for item, view, action in _queue_entries(include_thinking=True):
+        # A "doing" card is run by HQ's own worker, not in this scheduler's
+        # order. It is listed while it is being worked, so this page agrees
+        # with the bullpen (2026-10-07: Milo's barn card showed in one and not
+        # the other), and otherwise left out rather than given a place in line.
+        if item.get("state") == "doing" and action["availability"] != "running":
+            continue
         base = {"id": action["id"] if action["type"] != "build" else item["id"],
                 "work_id": item["id"], "title": item.get("title", "Untitled"),
                 "owner": action["owner"], "created": item.get("created", ""),
