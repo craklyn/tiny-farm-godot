@@ -482,7 +482,7 @@ def task_prompt(item, org, resumed="", continuing=False, turns=WORKER_TURNS,
     return f"""WORK ITEM: {item['title']}
 
 What Daniel asked for: {item.get('ask', '')}
-
+{work.lineage_brief(item)}
 The next step, which is yours to take now: {item.get('first_action', '')}
 {said}{prior_checks(item)}{prior_session(item)}{verification_brief}{revising}{resume_brief(item, continuing, turns)}{action_dispatch.reconcile_brief(action or {}, blocker)}{"" if int(item.get("tier") or 0) == 0 else art_requests.WORKER_BRIEF}
 Include outcome: {{"status": "complete|blocked|unfinished", "reason": "concrete reason"}} in the final WHAT FOLLOWS JSON object. Use items: [] rather than NONE.
@@ -538,6 +538,7 @@ THE EARLIER RESULT HE WAS READING:
                           ensure_ascii=False, sort_keys=True)
     return f"""THE ITEM: {item['title']}
 What Daniel asked for: {item.get('ask', '')}
+{work.lineage_brief(item)}
 The step that was theirs to take: {item.get('first_action', '')}
 Who did it: {item['owner']}
 {revising}

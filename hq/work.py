@@ -2256,6 +2256,36 @@ def _process_item(item, org):
     return True
 
 
+def lineage_brief(item, limit=8000):
+    """Daniel's own words from the cards above this one, for a worker that reads
+    only its own card: the request at the top of the chain, and what he said on
+    each card in between. A follow-up's ask is a one-line summary, so without
+    this the owner of a grandchild never sees the spec (2026-10-07: the barn's
+    design card was filed two steps below the request and held none of it)."""
+    parent = item.get("parent")
+    if not parent or WORK is None:
+        return ""
+    parts, seen = [], {item.get("id")}
+    ask = item.get("ask") or ""
+    while parent and parent not in seen and os.path.isfile(_item_path(parent)):
+        seen.add(parent)
+        card = load_item(parent)
+        said = [m.get("text", "") for m in card.get("conversation", []) if m.get("role") == "daniel"]
+        if said:
+            parts.append(f"What Daniel said on the card “{card.get('title', '')}”:\n" + "\n\n".join(said))
+        if card.get("source") == "request" and card.get("source_message"):
+            if card["source_message"] not in ask:
+                parts.append("Daniel's request, in his words:\n" + card["source_message"])
+            break
+        parent = card.get("parent")
+    if not parts:
+        return ""
+    text = "\n\n".join(reversed(parts))
+    return ("\n\nWHERE THIS CARD COMES FROM — Daniel's own words from the cards above it. "
+            "This card's ask summarises them; where the summary leaves something out, these govern:\n\n"
+            + text[:limit] + "\n")
+
+
 def _convo_lines(item, org):
     """The card's conversation, as the owner will read it back."""
     out = []

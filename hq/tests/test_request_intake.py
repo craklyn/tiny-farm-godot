@@ -66,6 +66,31 @@ class RequestIntakeTest(unittest.TestCase):
             message="Accepted the barn request.")[0]
         self.assertIn(words, work.load_item(child["id"])["ask"])
 
+    def test_grandchild_brief_carries_his_words(self):
+        # 2026-10-07: the barn's design card was filed from the conversation on
+        # the request's follow-up, and its brief held neither the spec nor the
+        # photo notes he had given.
+        words = "Add an industrial barn.\nInside it is 6 wide by 4 tall."
+        request = work.api_post("/api/work/request", {
+            "words": words, "kind": "work", "request_id": "request-barn-0002"})
+        org = work.HOST.load_org()
+        child = work._file_follow_ups(request, [{
+            "title": "Propose the barn", "owner": request["owner"], "tier": 0,
+            "why": "Proposals first."}], org, cap_id="follow", message="Accepted.")[0]
+        child = work.load_item(child["id"])
+        child["conversation"] = [{"role": "daniel", "text": "The floors are warm terracotta tile."},
+                                 {"role": child["owner"], "text": "Noted."}]
+        work.save_item(child)
+        grandchild = work._file_follow_ups(child, [{
+            "title": "Write the barn proposal", "owner": child["owner"], "tier": 1,
+            "why": "It needs files."}], org, cap_id="reply", message="Filed from the conversation.")[0]
+        brief = work.lineage_brief(work.load_item(grandchild["id"]))
+        self.assertIn(words, brief)
+        self.assertIn("warm terracotta tile", brief)
+        self.assertNotIn("Noted.", brief)
+        # The child already carries the request in its ask, so it is not repeated.
+        self.assertNotIn(words, work.lineage_brief(child))
+
 
 if __name__ == "__main__":
     unittest.main()
