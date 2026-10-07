@@ -5880,6 +5880,9 @@
    "verdict": "decode",
    "why": "This design shorthand makes the reader work out what visual rules the guide contains."
   },
+  "a75d16abf815aac7a35d": {
+   "verdict": "ok"
+  },
   "a78e6ec9fcc86be4982e": {
    "verdict": "ok"
   },
@@ -5924,6 +5927,12 @@
   },
   "a88f3da253eee1d8204d": {
    "verdict": "ok"
+  },
+  "a8d1a9c06205ad49eb38": {
+   "instead": "Review no longer rejects requests that ask a worker to create a card they are not allowed to create",
+   "quote": "Requests no longer fail review for a card the worker is not allowed to file",
+   "verdict": "decode",
+   "why": "The reader has to work out what “fail review” and “file a card” mean in this workflow."
   },
   "a8d4483a0d1ae55b265b": {
    "instead": "Show the robot beside the object or person it acts on.",

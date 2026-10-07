@@ -4483,9 +4483,9 @@ def _api_post(path, payload):
         if not any(e["id"] == owner for e in HOST.load_org()["employees"]):
             owner = "claude"
         first = {
-            "work": "Identify the accountable owner and safe execution tier, file the requested work as a linked follow-up, and report the route here.",
-            "priority": "Read the current priorities, identify the accountable owner, file the priority edit as linked work at its proper execution tier, and report the route here.",
-            "discussion": "Respond to Daniel's question here and file follow-up work only if the discussion calls for it.",
+            "work": "Identify the accountable owner and safe execution tier, name the requested work as a follow-up on this card, and report the route here. You cannot file cards yourself: HQ files each named follow-up as a linked card when this card closes.",
+            "priority": "Read the current priorities, identify the accountable owner, name the priority edit as a follow-up at its proper execution tier, and report the route here. You cannot file cards yourself: HQ files each named follow-up as a linked card when this card closes.",
+            "discussion": "Respond to Daniel's question here and name follow-up work only if the discussion calls for it; HQ files each named follow-up as a linked card when this card closes.",
         }[kind]
         title = words.splitlines()[0][:160] or "New request"
         return save_item({
