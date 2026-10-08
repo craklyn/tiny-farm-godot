@@ -1,6 +1,7 @@
 # 17 — Industrial Barn and Cheese Line
 
-*Status: proposal. Blocking: Daniel's choice of visual direction. This is a phase-2 livestock building; implementation starts only after that choice.*
+*Status: visual direction selected. This is a phase-2 livestock building; its economy,
+acquisition, art, and implementation remain unplanned.*
 
 ## The building at a glance
 
@@ -42,45 +43,30 @@ The four stall pipes meet at one shared receiver. If several cows give milk toge
 
 The early version uses fixed machinery throughout. It does not need a robot that chooses tasks, because the player has not yet earned that level of autonomy elsewhere. A later upgrade can replace one fixed station with a directed robot only when it creates a new player decision rather than making the first barn more capable than its role needs.
 
-## Three visual directions
-
-All directions keep the same happy, voluntary cow behaviour and the same seven stations. They differ only in how the building makes the player feel while looking at it.
-
-### A. Red dairy works
+## Selected visual direction: red dairy works
 
 **Outside.** A familiar red-painted timber barn has a pale metal roof, broad dark door openings, and short steel vent stacks. The front still reads as a barn before the player enters.
 
-**Inside.** Red brick and terracotta tile warm the floor under white tile walls. Stainless-steel pipe runs cross the ceiling and down the stall wall. Copper-orange vat interiors supply the line's warm focal points.
+**Cow section.** The cow side is a warm, dry livestock space with red brick and terracotta
+tile, timber-faced open stalls, straw-coloured flooring, and visible hay and other cow
+supplies. It occupies the side nearest the large doors, so a cow can enter, choose an empty
+stall, turn, and leave at any time. A low, clean steel milk connection sits at each stall's
+edge; it reads as building equipment, never something attached to the cow.
 
-**Animal handling.** Each stall is timber-faced with a clean steel milk connection low on the side. A cow steps onto dry straw-coloured floor and can turn back toward the open doors at any time.
+**Industrial section.** A separate, clean processing space contains the stainless-steel
+receiver, vats, cutters, rakes, drains, presses, and conveyor. White tile walls, steel
+pipes, and clear floor space distinguish it from the cow section. Copper-orange vat
+interiors and finished yellow cheese remain the warm moving focal points.
 
-**Machinery.** The steel line is sturdy and workshop-like: exposed valves, milk churns beside the receiver, long vats, and a direct outfeed belt.
+**Boundary and readability.** A wide, open division separates the two sections without
+blocking the player’s view of the milk path. The fixed steel pipes visibly cross from the
+cow stalls into the processing equipment. The player can see cows cared for on one side and
+milk becoming cheese on the other without needing a label.
 
-### B. Blue-and-cream creamery
-
-**Outside.** A pale cream masonry building with a blue tile band and tall clerestory windows reads as a small local dairy. The livestock doors are framed in blue steel.
-
-**Inside.** Blue-and-cream wall tile meets wet ochre floor tile. The room is bright, orderly, and reflective; stainless machines and red digital readouts give it a clean factory rhythm.
-
-**Animal handling.** White-tiled stall fronts and rounded steel rails make each open stall look like a calm wash bay rather than a pen. The route from doors to stalls stays wide and unobstructed.
-
-**Machinery.** Enclosed pipes and tidy panel boxes make the process read as a compact modern plant. Yellow cheese wheels provide the strongest moving colour.
-
-### C. Pine visitor gallery — recommended
-
-**Outside.** A warm knotty-pine public front sits under a simple barn roof. Large livestock doors remain at ground level, while broad upper windows reveal bright steel within. From the farm, it reads as both a welcoming barn and something special worth entering.
-
-**Inside.** The player stands in a narrow pine-floored visitor gallery along the front wall, looking through large safety-glass windows into the bright steel cheese room. Terracotta and red-brick tile under the machines keeps the plant warm rather than clinical. The cow stalls remain visible beside the gallery, with the open doors beyond them.
-
-**Animal handling.** Four open, timber-trimmed stalls face the easy path from the doors. Steel pipes connect at the stall edge, where they read as equipment in the building rather than something attached to a cow. The cows are always shown with space to enter, turn, and leave.
-
-**Machinery.** The gallery frames the whole line as a show: overhead harps and rakes cross the copper-lit vat, then yellow cheese wheels or blocks travel on a long winding conveyor behind the glass. The player sees warm wood on their side and stainless steel on the factory side.
-
-## Recommendation and open decision
-
-Choose **C, the pine visitor gallery**. It gives the player a clear, warm place to stand while watching the automated reward happen, and its wood-versus-steel contrast makes the barn feel like a Tiny Farm building rather than an opaque industrial box. Direction A is the reasonable alternative if Daniel wants the barn to read first as a traditional farm building from the yard.
-
-No art is requested with this proposal. The supplied photographs are third-party mood reference only and must not be added to the repository or shipped. Once Daniel chooses a direction, the art director can make a game-owned visual brief and the pixel artist can make the required original assets.
+The selected direction is **A, red dairy works**, ruled by Daniel on 2026-10-07. No art is
+attached to this design. The supplied photographs are third-party mood reference only and
+must not be added to the repository or shipped. An art director will prepare a game-owned
+visual brief before original pixel art is made.
 
 ## What remains for later design
 

@@ -774,6 +774,16 @@ This changes presentation only; the surrounding void still blocks movement, and 
 and replays do not record the wall style. The coop and farmhouse keep their existing
 one-cell wall rings.
 
+### S-40. The Industrial Barn is a red dairy works with separate cow and processing sections
+**Ruled 2026-10-07 (Q-136, option A).** The phase-2 Industrial Barn has a red-painted
+timber exterior. Its interior separates a warm livestock section from a clean industrial
+cheese section. Cows freely enter the livestock section, where open timber-faced stalls,
+hay, and other cow supplies make their care visible. Stainless-steel tools and equipment in
+the separate processing section mature and process milk into cheese. The open route to the
+doors stays clear, and the milk path remains visible from stalls through the fixed cheese
+line. This settles the building's visual direction only; economy, acquisition, original
+art, and implementation remain to be planned. Design: `design/17-industrial-barn-and-cheese-line.md`.
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported
