@@ -8,6 +8,22 @@ before the first public build ships.*
 - **Godot Engine** — MIT License. https://godotengine.org
 
 ## Art
+- **Industrial Barn** (`assets/sprites/generated/industrial_barn.png`,
+  `assets/sprites/generated/industrial_barn_interior_kit.png`, 2026-10-08) — the
+  red timber exterior began as two Retro Diffusion Plus 192×128 pixel-art
+  generations, $0.12 total. The source prompt requested “a familiar red-painted
+  timber dairy barn” with a broad pale-metal gable roof, wide dark open doors,
+  restrained timber braces, and short steel roof vents; it excluded text,
+  signs, silos, smokestacks, cows, and a factory campus. The selected second
+  source and the service response (including model, cost and request id) are archived under
+  `assets/raw/2026-10-08-w8081d9bfb69-industrial-barn-exterior/`. It was
+  background-keyed, reduced with nearest-neighbour sampling, and palette-locked
+  to the Industrial Barn brief. The 6×4 interior atlas is original local pixel
+  work assembled from the same approved palette so its four open stalls, shared
+  milk receiver, vat, drain table, press bank, and winding outfeed retain an
+  exact, readable route. `tools/build_industrial_barn_art.py` rebuilds both
+  PNGs and checks their dimensions, hard alpha, and palette. Output rights for
+  the generated exterior follow the Retro Diffusion terms verified below.
 - **Industrial Barn prototype boards** (2026-10-07) — six Retro Diffusion Plus
   pixel-art concept-board generations at 384×288, made to compare the three
   proposed Industrial Barn looks before any game asset is selected. The raw PNGs

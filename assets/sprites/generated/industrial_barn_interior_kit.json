@@ -1,0 +1,15 @@
+{
+  "image": "industrial_barn_interior_kit.png",
+  "cell_size": [16, 16],
+  "grid_size": [6, 4],
+  "cells": [
+    "stall_northwest", "stall_northeast", "open_crossing", "milk_receiver", "set_vat_cutter", "set_vat_rake",
+    "stall_southwest", "stall_southeast", "open_crossing_pipe", "whey_drain_table", "press_bank", "outfeed_conveyor",
+    "door_threshold", "cow_route_floor", "open_crossing_floor", "processing_floor_a", "processing_floor_b", "processing_floor_c",
+    "barn_door_opening", "cow_route_floor", "open_crossing_floor", "processing_wall_a", "processing_wall_b", "processing_wall_c"
+  ],
+  "states": {
+    "idle": "base cells show an empty line",
+    "active": "machine motion is a future presentation animation; this base atlas keeps the stations and path fixed"
+  }
+}
