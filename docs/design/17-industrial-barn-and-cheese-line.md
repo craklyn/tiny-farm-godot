@@ -14,7 +14,7 @@ The barn is a place cows choose to use, not a place that confines them. Each cow
 
 Each cow has a hidden milk amount measured in units.
 
-- At each new day, the amount rises by a deterministic random 20% to 50% of the cow's 2-unit capacity: 0.4 to 1.0 units. The future simulation uses [SimRng](../ARCHITECTURE.md) for this draw so a saved replay gives the same result.
+- At each new day, the amount rises by a random 0.4 to 1.0 units (Daniel confirmed this reading on 2026-10-07: 20% to 50% of the cow's 2-unit capacity, not of one unit). The future simulation uses [SimRng](../ARCHITECTURE.md) for this draw so a saved replay gives the same result.
 - A cow stores no more than 2 units.
 - A cow is ready to give milk at 1 unit or more. When she freely enters an empty stall, she gives exactly 1 unit, leaving any amount above 1 unit in her body.
 - The stall sends that unit into the steel pipe immediately. The cow then remains free to leave through the front doors.
