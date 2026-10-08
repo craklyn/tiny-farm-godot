@@ -49,3 +49,4 @@ Technical design lives in `docs/ARCHITECTURE.md`; production plan in `docs/ROADM
 vision in `docs/GAME_VISION.md`.
 - `15-interiors.md` — buildings you walk into without leaving the farm: the dilation principle, why distance between spaces is undefined, what a cycle of rooms does to a metric, and where staircases fit (analysed 2026-09-14, P-18).
 - `14-training-workbench.md` — the workbench: reward dials, what the robot sees, the model plate, the training ledger, the weight mosaic (designed 2026-09-10, Q-101).
+- `17-industrial-barn-and-cheese-line.md` — a phase-2 industrial barn: four voluntary cow stalls, a milk cycle, and an automated cheese line (proposal awaiting visual direction).

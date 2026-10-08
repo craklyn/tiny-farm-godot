@@ -11,6 +11,31 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
 ## Now — blocks M0 close or current work
 
+- **Q-136 — Which look should the Industrial Barn use?** — **Ruling.** The proposed
+  [Industrial Barn and Cheese Line](design/17-industrial-barn-and-cheese-line.md) is a
+  3-wide by 2-tall farm building with a 6-wide by 4-tall interior. Four cows can freely
+  walk through its large front doors, choose an empty stall when ready to give milk, and
+  leave again. Steel pipes carry milk to a fixed automated line: receiver, set vat, curd
+  cutter, stirring rake, whey drain and curd table, hoops and presses, then a conveyor of
+  finished yellow cheese. The proposal keeps cows calm and unconfined in every direction.
+
+  **Recommendation: C, the pine visitor gallery.** The player stands on a warm
+  knotty-pine gallery and looks through big windows at bright steel machinery over
+  terracotta and red-brick floor. The open stalls and doors remain visible beside the
+  gallery. Copper-lit vats and a winding yellow-cheese conveyor make the result readable
+  without words. It gives the player a warm place from which to watch the earned automated
+  reward, while still making the industrial line feel large. The reasonable alternative is
+  A if the yard needs the building to read first as a traditional barn.
+
+  Options: **(A) Red dairy works** — red-painted timber outside, brick and terracotta
+  inside, timber-faced open stalls, and exposed workshop-like steel; **(B) Blue-and-cream
+  creamery** — pale masonry outside, bright blue-and-cream tile inside, orderly white-tiled
+  open stalls, and a compact modern plant; **(C) Pine visitor gallery** — a warm pine
+  public face outside and inside, with glass between the player and a bright steel factory.
+  The milk cycle and station order are the same in every option. The nine supplied third-party
+  photographs are mood reference only and are not game assets. This is a visual-direction
+  choice; no game art is attached or requested yet.
+
 - ~~**Q-110** The mark a crow leaves does not read~~ — **Ruled 2026-09-19: (b), the stripped plant.** Built and shipped the same night; see the closing note below. It is Q-105's own outcome
   coming back for a second look. On 2026-09-15 the CEO looked at his daughter's farm, saw
   three small shapes stirring on a square three tiles east of the gate by her house, and could

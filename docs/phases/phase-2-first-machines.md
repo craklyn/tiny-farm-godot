@@ -16,6 +16,11 @@ dog (the first creature the player commands; pre-figures phase 4's bots). Straw-
 roster order: sheep → cow → llama → dog; horse and pig parked (no current friction their
 relief would answer).
 
+The proposed [Industrial Barn and Cheese Line](../design/17-industrial-barn-and-cheese-line.md)
+is the cow's later livestock building: four cows may voluntarily give milk at once, then
+watchable fixed machinery turns each batch into cheese. Its visual direction still needs
+Daniel's choice; its economy and acquisition are intentionally unplanned.
+
 **The statics ladder continues here**: fencing per-tile (yard size becomes a cost),
 buried chicken wire (the anti-burrower), scarecrow habituation (it wants moving), and
 the counter-turn — the **kangaroo** hops everything (Q-57), the standing proof that
