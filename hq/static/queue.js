@@ -241,7 +241,9 @@ function qWorkItem(card, org, reason) {
     : (card.concern_resolution || card.spending_checkpoint || card.repair_checkpoint) ? "Chief of staff"
     : hasRec ? owner.name : "Chief of staff";
   const convo = (card.conversation || []).filter(m => m.text)
-    .map(m => ({ who: m.role === "daniel" ? "You" : qFirst(owner.name), text: m.text, at: m.at || "" }));
+    .map(m => ({ who: m.role === "daniel" ? "You" : qFirst(owner.name), text: m.text, at: m.at || "",
+      // Work the reply already started, so the page never implies it waits on his yes (2026-10-07).
+      filed: (m.filed || []).map(f => ({ id: f.id, title: f.title, owner: ownerOf(org, f.owner).name })) }));
   return {
     kind: card.state === "needs_approval" ? "approve" : "review",
     id: card.id, cardId: card.id, isDecision: false, subject: card.subject || "",
@@ -527,7 +529,8 @@ function qPaneHtml(row, org) {
     <div class="q-sec"><h3>What you would be walking back</h3><p>${esc(qWalkBack(row))}</p></div>
 
     ${row.conversation.length ? `<div class="q-sec"><h3>So far</h3>${row.conversation.map(m =>
-      `<div class="q-msg${m.who === "You" ? " q-msg-you" : ""}"><div class="q-msg-who">${esc(m.who)}${m.at ? ` · ${esc(m.at)}` : ""}</div><div>${mdi(m.text)}</div></div>`).join("")}</div>` : ""}
+      `<div class="q-msg${m.who === "You" ? " q-msg-you" : ""}"><div class="q-msg-who">${esc(m.who)}${m.at ? ` · ${esc(m.at)}` : ""}</div><div>${mdi(m.text)}</div>${(m.filed || []).map(f =>
+        `<p class="q-msg-filed">Started without waiting for you: <a href="#/work/${esc(f.id)}">${esc(f.title)}</a> · ${esc(f.owner)}</p>`).join("")}</div>`).join("")}</div>` : ""}
 
     <div class="q-sec"><h3>The evidence</h3>
       ${row.evidence.length ? row.evidence.filter(e => !e.linkOnly).map(e =>

@@ -2295,6 +2295,12 @@ def lineage_brief(item, limit=8000):
         seen.add(parent)
         card = load_item(parent)
         said = [m.get("text", "") for m in card.get("conversation", []) if m.get("role") == "daniel"]
+        files = (card.get("diff") or {}).get("files") or []
+        patch = os.path.join(os.path.dirname(WORK), "patches", card["id"] + ".patch")
+        if files and not (card.get("diff") or {}).get("applied") and card.get("state") not in FINAL_STATES \
+                and os.path.isfile(patch):
+            parts.append(f"“{card.get('title', '')}” finished work that is not on main yet, so your copy "
+                         f"does not have it: {', '.join(files[:8])}. Read it, without applying it, in {patch}.")
         if said:
             parts.append(f"What Daniel said on the card “{card.get('title', '')}”:\n" + "\n\n".join(said))
         if card.get("source") == "request" and card.get("source_message"):

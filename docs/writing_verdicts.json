@@ -7744,6 +7744,9 @@
    "verdict": "second-look",
    "why": "The reader has to calculate what this unusual comparison means."
   },
+  "dc8e2cb01667f7ab94e8": {
+   "verdict": "ok"
+  },
   "dcb624718dfc8ef984df": {
    "verdict": "ok"
   },

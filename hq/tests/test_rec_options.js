@@ -31,3 +31,13 @@ const row = ctx.qWorkItem(card, { employees: [] }, '');
 assert.equal(row.recOptions.length, 3, 'the work row keeps all three options');
 assert.equal(row.options.length, 0, 'decision buttons stay empty on a work row');
 console.log('ok — the work row carries every option');
+
+// A reply that started work says so, with a link, so the page never implies the
+// work waits on his yes (2026-10-07: the prototypes were filed by Milo's reply,
+// but the page showed only the accept button).
+const replied = ctx.qWorkItem({ ...card, conversation: [
+  { role: 'daniel', text: 'Please generate prototypes.' },
+  { role: 'milo', text: 'Design art first.', filed: [{ id: 'we8c970ceca6', title: 'Render three prototypes', owner: 'yuki' }] }] },
+  { employees: [] }, '');
+assert.equal(replied.conversation[1].filed[0].id, 'we8c970ceca6', 'the started card travels with the reply');
+console.log('ok — a reply that started work carries it');

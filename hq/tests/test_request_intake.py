@@ -91,6 +91,20 @@ class RequestIntakeTest(unittest.TestCase):
         # The child already carries the request in its ask, so it is not repeated.
         self.assertNotIn(words, work.lineage_brief(child))
 
+        # 2026-10-07: the prototypes card was filed while the chapter it draws
+        # from waited for his OK, so the artist's copy did not have it.
+        child = work.load_item(child["id"])
+        child["state"] = "for_review"
+        child["diff"] = {"files": ["docs/design/17-barn.md"], "applied": False}
+        work.save_item(child)
+        patches = os.path.join(os.path.dirname(work.WORK), "patches")
+        os.makedirs(patches, exist_ok=True)
+        with open(os.path.join(patches, child["id"] + ".patch"), "w") as f:
+            f.write("diff --git a/docs/design/17-barn.md b/docs/design/17-barn.md\n")
+        brief = work.lineage_brief(work.load_item(grandchild["id"]))
+        self.assertIn("docs/design/17-barn.md", brief)
+        self.assertIn(child["id"] + ".patch", brief)
+
 
 if __name__ == "__main__":
     unittest.main()

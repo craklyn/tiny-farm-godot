@@ -3,13 +3,13 @@
   "tiers": {
     "0": {
       "name": "Just do it",
-      "means": "Nothing to walk back — reading, drafting, analysing, rendering, running the suites.",
+      "means": "Nothing to walk back and nothing written — reading, drafting a reply, analysing, running the suites. These sessions cannot create files, so any work that makes a file, an image or a prototype is tier 1.",
       "gate": "none; the result is what he reviews",
       "auto": true
     },
     "1": {
       "name": "Do it, show the diff",
-      "means": "Changes files, but git reverts it — doc edits, code and art behind tests (players' game changes included, until they ship), a new decision card.",
+      "means": "Changes files, but git reverts it — doc edits, code and art behind tests (players' game changes included, until they ship), generated images and prototypes within the art budget, a new decision card.",
       "gate": "a build session does it and shows the diff afterwards",
       "auto": false
     },
