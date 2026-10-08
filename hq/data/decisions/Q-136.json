@@ -1,0 +1,53 @@
+{
+ "id": "Q-136",
+ "owner": "milo",
+ "subject": "The Industrial Barn",
+ "title": "Which look should the Industrial Barn, the new dairy and cheese building, use?",
+ "question": "The Industrial Barn is the new building where up to four cows walk in on their own to give milk, and steel pipes carry it to an automated cheese line. Its design is in docs/design/17-industrial-barn-and-cheese-line.md. How it works is the same in every look; this choice is only how it looks.\n\nYou asked for a prototype of each look before choosing. Yuki generated these boards with Retro Diffusion, the pixel-art generator, at 384 by 288 pixels and shown here at twice that size. They are concept pictures for choosing a direction, not the art that will go in the game.\n\nA: Red dairy works. A red timber barn with brick and terracotta inside, open stalls and workshop-like steel. The board shows the barn, a yard of calm cows and a copper-orange vat fed by a steel pipe.\nB: Blue-and-cream creamery. Pale masonry with a blue band, blue-and-cream tile inside and a compact modern plant. The board shows the tiled room with cows walking freely beside the cheese machines.\nC: Pine visitor gallery. A knotty-pine barn whose gallery looks through big windows onto the steel line. The board shows the barn from above with its stalls and machine room, but not the gallery looking through glass, which is what this look is about. It also shows six stalls where the barn has four.\n\nMilo recommends C, because it gives you a warm place to stand and watch the cheese line. C's board is the weakest of the three at showing that. If you want to see C done properly before choosing, choose to revise and say so; one more generation costs about $0.06.",
+ "why_now": "The barn's art brief and the list of work to build it wait on this choice. Nothing else in the game is blocked by it.",
+ "options": [
+  {
+   "key": "c",
+   "label": "C: Pine visitor gallery (Recommended)",
+   "detail": "Milo records C in the barn's design chapter. The art director then writes a game-owned art brief for C and the pixel artist draws the barn, its stalls and the cheese line for the game.",
+   "recommended": true
+  },
+  {
+   "key": "a",
+   "label": "A: Red dairy works",
+   "detail": "Milo records A in the barn's design chapter. The art director then writes a game-owned art brief for A and the pixel artist draws the barn, its stalls and the cheese line for the game."
+  },
+  {
+   "key": "b",
+   "label": "B: Blue-and-cream creamery",
+   "detail": "Milo records B in the barn's design chapter. The art director then writes a game-owned art brief for B and the pixel artist draws the barn, its stalls and the cheese line for the game."
+  }
+ ],
+ "links": [
+  {
+   "type": "image",
+   "src": "docs/design/mockups/industrial_barn/side_by_side.png",
+   "caption": "The three looks side by side: A Red dairy works, B Blue-and-cream creamery, C Pine visitor gallery."
+  },
+  {
+   "type": "image",
+   "src": "docs/design/mockups/industrial_barn/A_red_dairy_works.png",
+   "caption": "A: Red dairy works."
+  },
+  {
+   "type": "image",
+   "src": "docs/design/mockups/industrial_barn/B_blue_and_cream_creamery.png",
+   "caption": "B: Blue-and-cream creamery."
+  },
+  {
+   "type": "image",
+   "src": "docs/design/mockups/industrial_barn/C_pine_visitor_gallery.png",
+   "caption": "C: Pine visitor gallery. The board does not show the gallery looking through glass, and shows six stalls where the barn has four."
+  },
+  {
+   "type": "doc",
+   "src": "docs/design/17-industrial-barn-and-cheese-line.md",
+   "caption": "The barn's design: the cows' milk cycle, the seven-station cheese line and the three looks in words."
+  }
+ ]
+}

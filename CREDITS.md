@@ -8,6 +8,17 @@ before the first public build ships.*
 - **Godot Engine** — MIT License. https://godotengine.org
 
 ## Art
+- **Industrial Barn prototype boards** (2026-10-07) — six Retro Diffusion Plus
+  pixel-art concept-board generations at 384×288, made to compare the three
+  proposed Industrial Barn looks before any game asset is selected. The raw PNGs
+  and the service's response for each (model, cost, request id) are archived under
+  `assets/raw/2026-10-07-w4389079d985-barn-*/`; the prompts are in the work card's
+  session log in HQ. The first Red dairy works board,
+  the revised Blue-and-cream creamery board, and the final Pine visitor gallery
+  board are the comparison set; the three other attempts remain in
+  the archive as process work. Total cost: $0.36. These are review boards only,
+  not shipped game assets. Output rights follow the Retro Diffusion terms verified
+  below.
 - **Generated sprites** (`assets/sprites/generated/`, `assets/sprites/tool_icons.png`):
   created for this project on 2026-08-26 with **Retro Diffusion**
   (https://retrodiffusion.ai) pixel-art models, prompted and post-processed

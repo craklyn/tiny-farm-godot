@@ -1,0 +1,10 @@
+{
+  "created_at": 1791419353,
+  "credit_cost": 6,
+  "balance_cost": 0.06,
+  "model": "rd_plus",
+  "remaining_credits": 0,
+  "remaining_balance": 2.33,
+  "request_id": "cc80edf1-5261-458e-b135-e34e4e339137",
+  "outputs_retained_until": 1791505743
+}

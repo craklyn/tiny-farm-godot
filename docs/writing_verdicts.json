@@ -97,6 +97,9 @@
   "02e34f0b552bd4699609": {
    "verdict": "ok"
   },
+  "0330fec9a0a92dd2ba28": {
+   "verdict": "ok"
+  },
   "0368530aab1f28a6192f": {
    "verdict": "ok"
   },
@@ -800,6 +803,12 @@
   "16309f97681c1fc3a011": {
    "verdict": "ok"
   },
+  "163e67b48d0110188193": {
+   "instead": "The barn's art brief and building plans wait on this choice.",
+   "quote": "The barn's art brief and build stories wait on this choice.",
+   "verdict": "decode",
+   "why": "“Build stories” is an internal process term whose meaning is not given."
+  },
   "1667accdf3de6d974ca5": {
    "verdict": "ok"
   },
@@ -1309,6 +1318,12 @@
   },
   "24ea1de910c34b36a86a": {
    "verdict": "ok"
+  },
+  "2519bb592a09eb56ad05": {
+   "instead": "cheese line",
+   "quote": "steel line",
+   "verdict": "second-look",
+   "why": "This shortens the already named cheese line into a metaphor the reader has to map back to the machines."
   },
   "2557ff4de89d2f03d1a0": {
    "verdict": "ok"
@@ -1995,6 +2010,9 @@
    "verdict": "ok"
   },
   "37601b7df5dd00fb0064": {
+   "verdict": "ok"
+  },
+  "378088801da7c02a81ca": {
    "verdict": "ok"
   },
   "378df1febaca2a4fc214": {
@@ -2809,6 +2827,9 @@
    "quote": "the neighbour",
    "verdict": "decode",
    "why": "The sentence does not identify what object “the neighbour” refers to, so a cold reader would have to ask which thing to render."
+  },
+  "5134846e0904e9275aa2": {
+   "verdict": "ok"
   },
   "516457afde6d5ebd048d": {
    "verdict": "ok"
@@ -3659,6 +3680,12 @@
   "6813f4342cb4ee806182": {
    "verdict": "ok"
   },
+  "686dbade3c4e3c0a564f": {
+   "instead": "Which look should the new dairy building use?",
+   "quote": "Which look should the Industrial Barn use?",
+   "verdict": "second-look",
+   "why": "The building's name appears before the reader is told what it is."
+  },
   "68991bac4ab580f160ea": {
    "verdict": "ok"
   },
@@ -3701,6 +3728,9 @@
    "verdict": "ok"
   },
   "694a4ae3f999a0965eb5": {
+   "verdict": "ok"
+  },
+  "69645692c456ac0bb33f": {
    "verdict": "ok"
   },
   "69ace6adfea2cc5c5e1c": {
@@ -4324,6 +4354,9 @@
    "verdict": "ok"
   },
   "7c23adf64920e8bea113": {
+   "verdict": "ok"
+  },
+  "7c338374c4d0cc10c6b4": {
    "verdict": "ok"
   },
   "7c56f8c44df0c98818f1": {
@@ -5291,6 +5324,9 @@
   "96286647949821278e5e": {
    "verdict": "ok"
   },
+  "9632516a72d8ed334800": {
+   "verdict": "ok"
+  },
   "963c7237b8810fb52a03": {
    "verdict": "ok"
   },
@@ -6164,6 +6200,9 @@
   "adde835171338ee22394": {
    "verdict": "ok"
   },
+  "ae12c50a5843cc3bac3e": {
+   "verdict": "ok"
+  },
   "ae17a2b077b318aadb5e": {
    "instead": "Move the studio dashboard's current records out of the code repository and close work cards only through the studio dashboard",
    "quote": "HQ's live records",
@@ -6571,6 +6610,12 @@
   "bcaecb46f79eb3fd78d8": {
    "verdict": "ok"
   },
+  "bcb622c32c8ef41d807f": {
+   "instead": "C's board is the weakest at showing a warm place to stand and watch the cheese line.",
+   "quote": "Its board is the weakest of the three at showing that.",
+   "verdict": "second-look",
+   "why": "“Its” makes the reader look back to work out which board is meant."
+  },
   "bcb9b7927d331b02863c": {
    "instead": "Cards with requests that are too long wait for the chief of staff instead of going to Daniel",
    "quote": "over their token budget",
@@ -6596,6 +6641,9 @@
    "why": "The phrase 'something named' is too abstract; the reader cannot know which specific thing is meant."
   },
   "bd89fbf78bd51cc26289": {
+   "verdict": "ok"
+  },
+  "bd9c01f7a499fa160bd3": {
    "verdict": "ok"
   },
   "bdc30a6b1045cd7b60f4": {
@@ -7828,6 +7876,9 @@
    "quote": "An earlier comparison asked how the game should answer a tap that changes nothing.",
    "verdict": "decode",
    "why": "The paragraph refers to an earlier discussion and several unnamed options, so a cold reader cannot tell what decision still needs to be made."
+  },
+  "de27fc19a92181778e38": {
+   "verdict": "ok"
   },
   "de3f6be7668f657b10d5": {
    "instead": "Prevent secret access keys from being included in any code sent to GitHub, then publish the studio's approved work automatically",
