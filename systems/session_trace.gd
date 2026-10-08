@@ -16,6 +16,8 @@
 class_name SessionTrace
 extends RefCounted
 
+const AtomicFileWriter := preload("res://systems/atomic_file.gd")
+
 const VERSION := 1
 
 var gen_seed: int = 0
@@ -118,11 +120,8 @@ func flush(path: String) -> void:
 	if entries.is_empty() and _flushed == 0:
 		return
 	if _flushed == 0:
-		var f := FileAccess.open(path, FileAccess.WRITE)
-		if f == null:
+		if not AtomicFileWriter.write_text(path, to_jsonl()):
 			return
-		f.store_string(to_jsonl())
-		f.close()
 		_flushed = entries.size()
 		return
 	if _flushed >= entries.size():

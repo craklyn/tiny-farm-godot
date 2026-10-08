@@ -2,6 +2,8 @@
 # Mirrors test_runner.lua in LÖVE2D
 extends SceneTree
 
+const AtomicFileWriter := preload("res://systems/atomic_file.gd")
+
 var pass_count := 0
 var fail_count := 0
 var fail_log: Array[String] = []
@@ -135,6 +137,7 @@ func _init() -> void:
 	test_sim_actions()
 	test_replay()
 	test_save_game()
+	test_interrupted_save_write()
 	test_save_slots()
 	test_save_slot_migration()
 	test_replay_from_save()
@@ -1154,6 +1157,21 @@ func test_save_game() -> void:
 	var bad = JSON.parse_string(live)
 	bad["version"] = 999
 	_assert(not SaveGame.restore(bad, SimWorld.new(), GameState), "unknown save version refused")
+
+
+func test_interrupted_save_write() -> void:
+	print("\n--- Interrupted save write Tests ---")
+	_wipe_dir(SLOT_SCRATCH)
+	var path := SaveSlots.save_path(1, SLOT_SCRATCH)
+	_write_text(path, "the farm before this save")
+	_write_text(path + ".bak", "the parked farm")
+	_assert(not AtomicFileWriter.write_text(path, "the unfinished farm", true),
+		"a write stopped before replacement reports failure")
+	_assert(_read_text(path) == "the farm before this save",
+		"a write interrupted before replacement leaves the old farm intact")
+	_assert(_read_text(path + ".bak") == "the parked farm",
+		"an interrupted save does not disturb the parked backup")
+	_wipe_dir(SLOT_SCRATCH)
 
 
 # --- Three farms, three directories (S-14) ------------------------------------

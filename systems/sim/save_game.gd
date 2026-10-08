@@ -5,6 +5,8 @@
 class_name SaveGame
 extends RefCounted
 
+const AtomicFileWriter := preload("res://systems/atomic_file.gd")
+
 # v2 (T-29): the day is 600 fine units instead of 20 coarse points. Everything
 # else in the schema is unchanged — every *other* field this format has ever
 # gained was additive and needed no bump (see the notes through `capture`), but a
@@ -750,11 +752,7 @@ static func _scale_energy(v: int) -> int:
 
 
 static func save_to(path: String, world: SimWorld, gs) -> bool:
-	var f := FileAccess.open(path, FileAccess.WRITE)
-	if f == null:
-		return false
-	f.store_string(JSON.stringify(capture(world, gs)))
-	return true
+	return AtomicFileWriter.write_text(path, JSON.stringify(capture(world, gs)))
 
 
 # Canonical string form of a capture for equality checks. Excludes presentation

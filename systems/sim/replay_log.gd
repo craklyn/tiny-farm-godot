@@ -37,6 +37,8 @@
 class_name ReplayLog
 extends RefCounted
 
+const AtomicFileWriter := preload("res://systems/atomic_file.gd")
+
 # 1: M2's action stream. 2: tick-stamped dual-record net (M2.5 WI-5).
 # 3: new stateless RNG derivation for fresh farms; a base save owns its revision.
 const VERSION := 3
@@ -417,11 +419,8 @@ func build_note() -> String:
 
 # Full rewrite (new file / format reset). Prefer flush_to for periodic saves.
 func save_to(path: String) -> bool:
-	var f := FileAccess.open(path, FileAccess.WRITE)
-	if f == null:
+	if not AtomicFileWriter.write_text(path, to_json() + "\n"):
 		return false
-	f.store_string(to_json())
-	f.store_string("\n")
 	_flushed = entries.size()
 	_marked = end_tick
 	return true
