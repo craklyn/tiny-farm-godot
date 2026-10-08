@@ -17,8 +17,9 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   hay and other cow supplies, open timber-faced stalls, and a clear route back to the doors.
   A separate clean industrial section holds the stainless-steel equipment that matures and
   processes milk into cheese. The sections make both the cows' care and the cheese line
-  visible without requiring the player to read. Original game art remains to be briefed and
-  made; third-party photographs are not game assets.
+  visible without requiring the player to read. The original-game-art brief now sets the
+  native scale, palette, silhouettes, state art and approval checks. Finished art still needs
+  to be made; third-party photographs are not game assets.
 
 - ~~**Q-110** The mark a crow leaves does not read~~ — **Ruled 2026-09-19: (b), the stripped plant.** Built and shipped the same night; see the closing note below. It is Q-105's own outcome
   coming back for a second look. On 2026-09-15 the CEO looked at his daughter's farm, saw

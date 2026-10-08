@@ -1,7 +1,7 @@
 # 17 — Industrial Barn and Cheese Line
 
-*Status: visual direction selected. This is a phase-2 livestock building; its economy,
-acquisition, art, and implementation remain unplanned.*
+*Status: visual direction and original-game-art brief complete. This is a phase-2 livestock
+building; its economy, acquisition, finished art, and implementation remain unplanned.*
 
 ## The building at a glance
 
@@ -63,10 +63,120 @@ blocking the player’s view of the milk path. The fixed steel pipes visibly cro
 cow stalls into the processing equipment. The player can see cows cared for on one side and
 milk becoming cheese on the other without needing a label.
 
-The selected direction is **A, red dairy works**, ruled by Daniel on 2026-10-07. No art is
-attached to this design. The supplied photographs are third-party mood reference only and
-must not be added to the repository or shipped. An art director will prepare a game-owned
-visual brief before original pixel art is made.
+The selected direction is **A, red dairy works**, ruled by Daniel on 2026-10-07. No
+production-ready game art is attached to this design. The supplied photographs are
+third-party mood reference only and must not be added to the repository or shipped. The
+direction mockup at
+[`mockups/industrial_barn/A_red_dairy_works.png`](mockups/industrial_barn/A_red_dairy_works.png)
+sets the division of materials and spaces; it is not a sprite source.
+
+## Original-game-art brief
+
+The finished art must read in this order at play size: **red barn, welcoming cow space,
+working cheese line**. The exterior is a familiar farm silhouette with a few industrial
+clues. The interior is one room with two unmistakable material families. Machinery detail
+must not turn the cow side cold or make the building look like a laboratory from outside.
+
+### Deliverables and scale
+
+Draw on the game's 16-pixel world grid with hard, fully opaque pixel edges and transparent
+space outside each sprite. Check every asset at native size and at the whole-farm camera
+scale; enlarged working views do not count as readability checks.
+
+- **Exterior:** one 48×32-pixel base sprite for the building's three-square by two-square
+  footprint. Keep the large double-door opening readable in the front silhouette. Provide
+  separate closed, open and occupied/activity states only if implementation needs them;
+  every state must keep the same footprint and door position.
+- **Interior shell:** a tileable floor-and-wall kit for the six-square by four-square room,
+  with a warm livestock side, a clean processing side and an open crossing between them.
+  The room remains part of the farm view, so the kit must follow the depth and wall rules in
+  [15 — Interiors](15-interiors.md).
+- **Cow section:** four open stall fronts, hay and feed supplies, a low milk connection for
+  each stall, and only enough loose dressing to make care visible without narrowing the
+  route between the doors and stalls.
+- **Cheese section:** separate receiver, vat with cutter and rake, drain table, press bank,
+  and winding outfeed conveyor pieces. Include the fixed pipes, overhead rails, coiled hoses
+  and conveyor joins required to show one continuous route through all seven stations.
+- **State art:** idle and active frames for milk arrival, vat warming, cutter travel, rake
+  travel, whey drain, press travel and cheese outfeed. Keep mechanical loops short and calm.
+  World-changing completions come from simulation actions; animation never chooses when a
+  batch advances.
+
+### Exterior: red timber dairy works
+
+Lead with one broad roof shape and one large dark opening. The pale metal gable roof should
+overhang a red-painted timber body; two or three short steel vents may break the roofline,
+but they remain subordinate to the barn silhouette. Use vertical boards and a restrained
+brace pattern rather than many small panels. The doors remain visibly wide enough for a cow
+even when the sprite is seen at native scale.
+
+Use `#94371f` as the dark red structure colour and `#c84e39` as the sun-facing red. Use the
+existing wood ramp `#c39a6c`, `#a97959` and `#90625d` for exposed timber and door braces.
+Use `#f8f4e6`, `#8d8e92` and `#2f2b3d` for the roof, steel vents and deepest openings. Do
+not add painted signs, words, logos, silos or smokestacks. The building makes cheese at farm
+scale; it is not a factory campus.
+
+### Cow section: warm, open and voluntary
+
+The cow section sits nearest the doors. Straw-coloured floor blocks and terracotta-red wall
+blocks must form larger, warmer shapes than the steel details opposite them. Timber stall
+fronts stay low and open: no gates, headlocks, neck rails, chains or narrow chutes. A cow in
+a stall must retain a clear turn and exit silhouette. Milk equipment stops at the stall edge
+and never touches the cow in the art.
+
+Use `#e8cfa6`, `#dcb98a`, `#c9a06b` and `#8b7c63` for straw, tile and warm masonry, with
+the existing wood ramp for stalls and storage. Hay bales, a feed bin and one or two hanging
+tools are enough to show care. Keep the central route empty and use repeated stall openings,
+not clutter, to carry the section's rhythm.
+
+### Cheese section: clean steel with warm product
+
+Build the cheese line from large steel cylinders, a long vat, clear pipe bends and a single
+winding belt. Each station needs a distinct silhouette before interior highlights are added:
+receiver as a lidded vessel, vat as the largest open shape, cutters and rakes as travelling
+overhead bars, press bank as repeated vertical cylinders, and outfeed as the long low path.
+White tile and clear floor gaps keep the equipment separated at native size.
+
+Use `#f8f4e6` for tile and steel highlights, `#8d8e92` for steel bodies and `#2f2b3d` for
+deep seams and openings. Use `#c9a06b` only inside the warm vat and `#cca13c`, `#e9e178`
+and `#f0cf5a` for curds, cheese and the coiled hoses. These warm colours carry the product
+through the grey section. Magenta, cyan and warm orange remain reserved for scent overlays;
+do not use them for status lamps, liquid, steam or machine trim. A red arrival light may use
+the barn red, but motion and fill level must communicate the state without colour alone.
+
+### Shared room and milk path
+
+Separate the two sides with floor and wall materials, not a full-height partition. A broad
+open threshold preserves the whole-room view. Four low stall pipes converge visibly into one
+receiver; from there, pipe, rail, trough and belt connections must let a pre-reader trace one
+unbroken left-to-right or right-to-left path to the collection point. Do not cross that path
+over the cow exit route.
+
+The processing side may carry finer detail than the cow side, but no one-pixel decoration
+may be the only cue for a station or state. Steam, blinking lights and moving tools are
+secondary cues. The shape of the product changes from pale liquid to curd, slab, hoop and
+yellow wheel or block as it moves along the line.
+
+### Production and approval
+
+Create every sprite as original game art. If generation is used, retain the raw source under
+`assets/raw/`, record its source in `CREDITS.md`, remove its background, fit it to the native
+cell, and lock every opaque pixel to the colours named above or another exact colour already
+measured in [09 — Art Direction](09-art-direction.md). Do not sample pixels from the mockup
+or any third-party photograph.
+
+Before an asset enters the build, the art director reviews the palette-locked PNG at native
+size and over the shipped farm ground. Approval requires all of the following:
+
+- the exterior reads as a red barn before its industrial vents are noticed;
+- the open doors remain the strongest dark shape and admit a cow clearly;
+- the cow side reads warm, open and cared for, with no restraint imagery;
+- the cheese side reads as clean steel and its seven station silhouettes stay distinct;
+- the product path can be followed without labels, status text or colour alone;
+- the two sides remain visible together, and neither loose props nor equipment block the
+  cow route;
+- all edges are hard and palette-locked, with no generated fringe, baked shadow, backdrop or
+  partially transparent pixel.
 
 ## What remains for later design
 

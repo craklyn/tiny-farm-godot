@@ -5863,6 +5863,9 @@
   "a4ff397733715b9be73e": {
    "verdict": "ok"
   },
+  "a50e5e7323b3a74e32b5": {
+   "verdict": "ok"
+  },
   "a5240c1795a5c40b598c": {
    "verdict": "ok"
   },
@@ -7707,6 +7710,9 @@
    "quote": "already-done tap reply",
    "verdict": "decode",
    "why": "“Tap reply” is internal shorthand whose meaning a reader would have to work out."
+  },
+  "da2fd0d805350247a045": {
+   "verdict": "ok"
   },
   "da4181ebe25092a65578": {
    "verdict": "ok"
