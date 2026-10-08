@@ -530,6 +530,28 @@ class ArtTool(unittest.TestCase):
         self.assertEqual(rd.generated, [], "an unreadable ledger must not read as $0 spent")
         self.assertEqual(outcome["hold"]["kind"], "failed")
 
+    def test_plus_sizes_the_service_refuses_are_turned_away_first(self):
+        # 2026-10-07: the barn prototypes asked for 512x384 on rd_plus, which the
+        # service fails every time; 384x288 generated.
+        params, why = art_requests.validate(request(width=512, height=384, prompt_style="rd_plus__default"),
+                                            str(self.tree))
+        self.assertIsNone(params)
+        self.assertIn("64 to 384", why)
+        params, why = art_requests.validate(request(width=384, height=288, prompt_style="rd_plus__default"),
+                                            str(self.tree))
+        self.assertEqual(params["width"], 384)
+        self.assertFalse(why)
+
+    def test_a_refusal_keeps_the_services_reason(self):
+        class Refuses(FakeRD):
+            def generate(self, key, name, params, out_dir, tries=4, timeout=900):
+                print(f"  {name}: HTTP 400 attempt 1/1 {{\"detail\":{{\"code\":\"inference_failed\"}}}} {key}")
+                return None
+        outcome = art_requests.generate_one(self.card(), request(), str(self.tree), (), rd=Refuses())
+        self.assertEqual(outcome["status"], "failed")
+        self.assertIn("inference_failed", outcome["reason"])
+        self.assertNotIn(KEY, outcome["reason"])
+
     def test_a_service_error_never_repeats_the_key(self):
         class Failing(FakeRD):
             def cost(self, key, params):

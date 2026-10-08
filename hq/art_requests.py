@@ -72,6 +72,20 @@ def _money(x):
 # one request
 # ---------------------------------------------------------------------------
 
+def size_limits(style):
+    """(smallest, largest) side the art service will generate for a style. Fast and
+    Plus refuse sides under 64 (skill api.md). Plus refuses 512: measured
+    2026-10-07, the barn prototypes at 512x384 failed every time with "Unable to
+    run inference" while the same request at 384x288 generated, so it is capped
+    at the largest size known to work rather than left for the service to refuse."""
+    style = style if isinstance(style, str) else ""
+    if style.startswith("rd_plus"):
+        return 64, 384
+    if style.startswith("rd_fast"):
+        return 64, 512
+    return 16, 512
+
+
 def validate(data, tree):
     """(params for the API, error). Unknown fields are refused so a worker learns
     the format instead of having a field silently ignored."""
@@ -87,10 +101,11 @@ def validate(data, tree):
     if not isinstance(prompt, str) or not prompt.strip() or len(prompt) > 2000:
         return None, "`prompt` must be text of at most 2000 characters"
     params = {"prompt": prompt.strip()}
+    low, high = size_limits(data.get("prompt_style", DEFAULT_STYLE))
     for field in ("width", "height"):
         value = data.get(field)
-        if not isinstance(value, int) or isinstance(value, bool) or not 16 <= value <= 512:
-            return None, f"`{field}` must be a whole number of pixels from 16 to 512"
+        if not isinstance(value, int) or isinstance(value, bool) or not low <= value <= high:
+            return None, f"`{field}` must be a whole number of pixels from {low} to {high} for this style"
         params[field] = value
     images = data.get("num_images", 1)
     if not isinstance(images, int) or isinstance(images, bool) or not 1 <= images <= MAX_IMAGES:
@@ -292,8 +307,9 @@ def _generate(item, tree, rd, key, what, params, price, reservation, day):
     name, n = what, 2
     while os.path.exists(os.path.join(store, f"{name}_meta.json")):
         name, n = f"{what}-{n}", n + 1
+    said = io.StringIO()
     try:
-        with contextlib.redirect_stdout(io.StringIO()):
+        with contextlib.redirect_stdout(said):
             # One request, no retries, bounded inside the tool's own timeout
             # (execution.ART_REQUEST_TIMEOUT_SEC), so the call is over before the
             # worker could try again.
@@ -309,7 +325,12 @@ def _generate(item, tree, rd, key, what, params, price, reservation, day):
         return {"status": "failed", "what": what, "reason": _failure(exc, key)}
     if not meta:
         _settle(reservation, None)     # refused by the service: nothing was charged
-        return {"status": "failed", "what": what, "reason": "the art service refused it"}
+        # Its own words, so the worker and the card can tell a bad size from an
+        # outage (2026-10-07: three refusals read as one opaque line each).
+        why = [line.strip() for line in said.getvalue().splitlines() if "HTTP" in line]
+        detail = _scrub(why[-1], key)[:200] if why else ""
+        return {"status": "failed", "what": what,
+                "reason": "the art service refused it" + (f" ({detail})" if detail else "")}
     dollars = float(meta.get("balance_cost") if meta.get("balance_cost") is not None else price)
     files = sorted(f for f in os.listdir(store) if f.startswith(name + "_"))
     raw = f"assets/raw/{folder}"
@@ -406,7 +427,7 @@ def mcp_server(item, tree, run_id, attempt_id, repo):
 WORKER_BRIEF = f"""
 NEW PIXEL ART: if the card needs new art, call the `generate_art` tool (you cannot reach the
 art service yourself: no network, no key). Fields: "what" (short slug), "prompt", "width",
-"height" (16-512; sprites 64+, generate at 4x the cell), optional "num_images" (1-{MAX_IMAGES}),
+"height" (64-384 on rd_plus styles, 64-512 on rd_fast; sprites generate at 4x the cell), optional "num_images" (1-{MAX_IMAGES}),
 "prompt_style" (default {DEFAULT_STYLE}), "palette" (["#rrggbb", ...] from
 docs/design/09-art-direction.md), "input_image" (a worktree PNG path), "seed". It returns the
 raw files it saved under assets/raw/, what the call cost and what is left. A card may spend

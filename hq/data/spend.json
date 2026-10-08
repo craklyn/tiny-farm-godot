@@ -447,6 +447,19 @@
       "balance_after": 2.51,
       "reconciled": true,
       "recorded_by": "record_spend"
+    },
+    {
+      "id": "2026-10-07-barn-prototype-size-test-rd-plus-at-384x",
+      "date": "2026-10-07",
+      "vendor": "Retro Diffusion",
+      "kind": "generation",
+      "purpose": "Barn prototype size test: rd_plus at 384x288 after 512x384 failed every time",
+      "work_item": "we8c970ceca6",
+      "dollars": 0.06,
+      "credits": null,
+      "balance_after": 2.45,
+      "reconciled": true,
+      "recorded_by": "record_spend"
     }
   ]
 }
