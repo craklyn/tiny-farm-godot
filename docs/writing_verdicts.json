@@ -5393,6 +5393,9 @@
    "verdict": "decode",
    "why": "The sentence does not make clear how many waiting steps can be started in a run."
   },
+  "985ed580979ec982dec3": {
+   "verdict": "ok"
+  },
   "9861a6dcfaf30bd33532": {
    "instead": "Show and edit all nine pictures used to make the farm's ground",
    "quote": "ground pictures the farm repeats",
