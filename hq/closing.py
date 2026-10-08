@@ -150,7 +150,12 @@ def close(item_id, *, sha, ci_run, result, by, note="", main_root, run=_run, fet
                               "sha": full_sha, "by": by, "kind": "session_close",
                               "evidence": evidence}
         # Follow-ups are filed by the session as their own cards, not parsed from prose.
-        item["pending_followups"] = {"version": 1, "attempt_id": attempt_id, "items": []}
+        # The exception is the owner's own structured follow-ups on a result the
+        # checker passed: closing that result is landing it, so they start too
+        # (2026-10-07: the barn's art brief closed and its drawing card never started).
+        reviewed = (item.get("check") or {}).get("verdict") == "pass"
+        item["pending_followups"] = {"version": 1, "attempt_id": attempt_id,
+                                     "items": work.follow_ups(item) if reviewed else []}
         item.pop("outside_claim", None)
         work.save_item(item)
         landed = work.land_item(item, by, sha=full_sha, note=summary)

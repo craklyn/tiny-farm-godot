@@ -144,6 +144,18 @@ class CardClose(unittest.TestCase):
         with self.assertRaises(closing.Refused):
             self.close()
 
+    def test_a_reviewed_cards_own_follow_ups_start_when_it_is_closed(self):
+        fu = [{"title": "Draw the barn", "owner": "claude", "tier": 1, "why": "The brief is ready."}]
+        self.card("w0000000000b", check={"verdict": "pass", "read": True, "complete": True},
+                  follow_ups=fu)
+        self.close("w0000000000b")
+        started = [i for i in work.items() if i.get("parent") == "w0000000000b"]
+        self.assertEqual([i["title"] for i in started], ["Draw the barn"])
+        # Without a passing review the session files its own follow-ups.
+        self.card("w0000000000c", follow_ups=fu)
+        self.close("w0000000000c")
+        self.assertEqual([i for i in work.items() if i.get("parent") == "w0000000000c"], [])
+
     def test_closing_an_integrate_ruling_card_integrates_the_ruling(self):
         (self.data / "rulings" / "Q-7.json").write_text(
             json.dumps({"id": "Q-7", "option": "a", "status": "pending_integration"}))

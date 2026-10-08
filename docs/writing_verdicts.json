@@ -2387,6 +2387,9 @@
   "462305a3ff86c0d597ee": {
    "verdict": "ok"
   },
+  "462d432860f3cfd00dce": {
+   "verdict": "ok"
+  },
   "4630215182aeba5c75f3": {
    "instead": "a movement test that is not yet available in the game",
    "quote": "an unspawned movement test",
@@ -6264,6 +6267,12 @@
   },
   "af423b3aba3d3571b62c": {
    "verdict": "ok"
+  },
+  "af7570a90bf8b7cab9ef": {
+   "instead": "Closing a reviewed work item now starts the next task assigned to the person responsible for it.",
+   "quote": "Closing a reviewed card from a session now starts the work its owner said comes next",
+   "verdict": "decode",
+   "why": "The sentence relies on internal terms and makes the reader work out which person and task it refers to."
   },
   "af7a481f7628e34fd5b9": {
    "baselined": "2026-09-19",
