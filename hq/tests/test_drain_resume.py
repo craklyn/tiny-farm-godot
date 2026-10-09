@@ -132,6 +132,36 @@ def main():
               "the worker's brief contains the earlier attempt's record")
         check(prompt.index("What Daniel asked for") < prompt.index("WHAT YOUR EARLIER ATTEMPT"),
               "the item is still the first thing in the brief")
+
+        print("a third attempt gets only the focused repair context")
+        repaired = {"id": "w111", "title": "A title", "ask": "An ask",
+                    "first_action": "A first action", "owner": "tomas",
+                    "conversation": [{"role": "daniel", "text": "Old card conversation."}],
+                    "prior_checks": [{"attempt_id": "a1", "verdict": "fail",
+                                      "summary": "The first review failed.", "findings": []}],
+                    "check": {"attempt_id": "a2", "verdict": "fail",
+                              "summary": "The replay assertion is still missing.",
+                              "findings": [{"what": "Add the replay assertion.",
+                                            "where": "tests/replay.gd:40",
+                                            "fix": "Compare the final canonical state."}]}}
+        prompt = drain.task_prompt(repaired, org)
+        check("HELD PATCH:" in prompt and os.path.join(drain.PATCHES, "w111.patch") in prompt,
+              "the focused brief names the held patch")
+        check("Add the replay assertion" in prompt and "Compare the final canonical state" in prompt,
+              "the focused brief carries the latest review findings")
+        many_findings = [{"what": f"Finding {number}."} for number in range(1, 9)]
+        repaired["check"]["findings"] = many_findings
+        prompt = drain.task_prompt(repaired, org)
+        check(all(f"Finding {number}." in prompt for number in range(1, 9)),
+              "the focused brief carries every finding when a review has more than six")
+        check("WHAT YOUR EARLIER ATTEMPT DID" not in prompt and "Halfway" not in prompt
+              and "Old card conversation" not in prompt and "The first review failed" not in prompt,
+              "the prior transcript and card history are omitted")
+        one_review = {"verdict": "fail", "summary": "One failed review.", "findings": []}
+        check(drain.focused_repair_brief({"id": "w111", "title": "A title", "ask": "An ask",
+                                          "first_action": "Act", "prior_checks": [one_review],
+                                          "check": dict(one_review)}) == "",
+              "one legacy review recorded twice is not counted as two failures")
         drain._set_run("")
 
         print("a long session is cut to fit")

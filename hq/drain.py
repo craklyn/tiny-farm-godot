@@ -464,6 +464,49 @@ def prior_session(item):
     return ""
 
 
+def focused_repair_brief(item):
+    """A third attempt gets the card, held patch, and review findings only.
+
+    After two failed reviews, more of the prior worker's transcript is a cost,
+    not context: a fresh worker has repeatedly finished these repairs faster
+    from the reviewer's concrete findings. The system prompt still supplies the
+    seat and studio rules; this replaces all card-history context.
+    """
+    reviews = list(item.get("prior_checks") or [])
+    current = item.get("check") or {}
+    current_id = current.get("attempt_id")
+    already_recorded = any(
+        (current_id and row.get("attempt_id") == current_id)
+        or (not current_id and row == current)
+        for row in reviews)
+    if current and not already_recorded:
+        reviews.append(current)
+    failed = [row for row in reviews
+              if row.get("verdict") in ("concerns", "fail") or row.get("findings")]
+    if len(failed) < 2:
+        return ""
+    review = failed[-1]
+    lines = ["REVIEWER FINDINGS:", review.get("summary") or "The review did not pass."]
+    for finding in review.get("findings") or []:
+        if isinstance(finding, dict):
+            line = "- " + str(finding.get("what") or "").strip()
+            if finding.get("where"):
+                line += f" ({finding['where']})"
+            if finding.get("fix"):
+                line += f" — fix: {finding['fix']}"
+            lines.append(line)
+        elif str(finding).strip():
+            lines.append("- " + str(finding).strip())
+    patch_path = os.path.join(PATCHES, item["id"] + ".patch")
+    return (f"WORK ITEM: {item['title']}\n\n"
+            f"What Daniel asked for: {item.get('ask', '')}\n\n"
+            f"The next step: {item.get('first_action', '')}\n\n"
+            f"HELD PATCH: {patch_path}\n"
+            "The held patch has been applied to this fresh worktree when it still applies. "
+            "Use the path to identify the exact candidate being repaired.\n\n"
+            + "\n".join(lines))
+
+
 def task_prompt(item, org, resumed="", continuing=False, turns=WORKER_TURNS,
                 action=None, blocker=None):
     convo = work._convo_lines(item, org)
@@ -480,12 +523,14 @@ def task_prompt(item, org, resumed="", continuing=False, turns=WORKER_TURNS,
                         "shows only what you change now." if resumed else
                         ", because they are on main.")
                      + " Read them first and build on them. Do not undo what still stands.\n")
-    return f"""WORK ITEM: {item['title']}
+    focused = focused_repair_brief(item)
+    card_context = focused or f"""WORK ITEM: {item['title']}
 
 What Daniel asked for: {item.get('ask', '')}
 {work.lineage_brief(item)}
 The next step, which is yours to take now: {item.get('first_action', '')}
-{said}{prior_checks(item)}{prior_session(item)}{verification_brief}{revising}{resume_brief(item, continuing, turns)}{action_dispatch.reconcile_brief(action or {}, blocker)}{"" if int(item.get("tier") or 0) == 0 else art_requests.WORKER_BRIEF}
+{said}{prior_checks(item)}{prior_session(item)}{verification_brief}{revising}{resume_brief(item, continuing, turns)}{action_dispatch.reconcile_brief(action or {}, blocker)}{"" if int(item.get("tier") or 0) == 0 else art_requests.WORKER_BRIEF}"""
+    return f"""{card_context}
 Include outcome: {{"status": "complete|blocked|unfinished", "reason": "concrete reason"}} in the final WHAT FOLLOWS JSON object. Use items: [] rather than NONE.
 Do the work in your worktree. Then reply with the deliverable Daniel reads: what
 you changed, what it now does, and anything you found that he should know.
