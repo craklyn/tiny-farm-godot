@@ -52,6 +52,7 @@ var speed_px: float = 30.0
 
 var facing_left: bool = false
 var hop_frame: int = 0
+var is_cow: bool = false
 # Cosmetic, and the only die roll in this file: two animals in one field should
 # not hop in lockstep. `CosmeticRng`, never the sim's seeded stream — see
 # systems/cosmetic_rng.gd, and the unit test that reads this directory for the
@@ -66,6 +67,7 @@ func init_actor(farm_ref: Node2D, id: String = SpeciesDefs.RABBIT) -> void:
 	var species: String = farm.sim.species_of(actor_id)
 	sprites = SPRITES.get(species, SPRITES[SpeciesDefs.RABBIT])
 	speed_px = SpeciesDefs.speed_of(species) * TILE_SIZE * float(SimClock.RATE)
+	is_cow = species == SpeciesDefs.COW
 	position = sim_position()
 
 
@@ -84,6 +86,23 @@ func _process(delta: float) -> void:
 	# sim dropping the actor, and the sprite goes with it.
 	if not farm.sim.has_actor(actor_id):
 		queue_free()
+		return
+
+	# **A cow is drawn from the sim clock, not this frame's delta** (design/17;
+	# the barn plan's "Connect barn animation to simulation state"). Her walk
+	# into the barn, through its door and into a stall is read off her saved
+	# step and the tick (`BarnPresentation.cow_pose`), so a paused game or a
+	# reloaded save draws her exactly where that tick puts her.
+	if is_cow:
+		var pose := BarnPresentation.cow_pose(farm.sim, actor_id, farm.sim.clock.tick)
+		var at: Vector2 = pose.get("pos", Vector2.ZERO) * TILE_SIZE
+		var frame := int(pose.get("frame", 0))
+		var left := bool(pose.get("facing_left", false))
+		if at != position or frame != hop_frame or left != facing_left:
+			position = at
+			hop_frame = frame
+			facing_left = left
+			queue_redraw()
 		return
 
 	var goal := sim_position()

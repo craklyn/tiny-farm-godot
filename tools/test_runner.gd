@@ -187,6 +187,7 @@ func _run_scenarios() -> void:
 	await _scenario_bj_a_tap_on_the_tower_goes_inside()
 	await _scenario_bk_the_bin_hint_hides_on_touch()
 	await _scenario_bl_the_shelf_sells_a_pace()
+	await _scenario_bn_the_barn_is_entered_and_drawn_from_its_saved_state()
 
 
 func _scenario_ba_crow_spook_stops_at_room_wall() -> void:
@@ -8874,6 +8875,127 @@ func _scenario_bj_a_tap_on_the_tower_goes_inside() -> void:
 	_assert(farm.sim.page_of(player.get_tile_pos()) == 0,
 		"and she is still standing on the farm (%s)" % player.get_tile_pos())
 
+	_restore_session_paths(real_paths)
+
+
+# The Industrial Barn put down through the ordinary building path, tapped, and
+# gone into (INDUSTRIAL_BARN_ENGINEERING_PLAN, "Add the placeable barn and
+# six-by-four room"). Inside, the renderer's barn is the saved barn at the sim's
+# tick: with the world held, frames and real time pass and nothing in the barn
+# moves (the plan's "Connect barn animation to simulation state").
+func _scenario_bn_the_barn_is_entered_and_drawn_from_its_saved_state() -> void:
+	print("\n--- Scenario BN: the barn goes down, she goes in, and it is drawn from its saved state ---")
+	var real_paths := [GameState.save_path, GameState.replay_path, GameState.trace_path]
+	GameState.save_path = "user://barn_autosave.json"
+	GameState.replay_path = "user://barn_replay.json"
+	GameState.trace_path = "user://barn_trace.jsonl"
+	var menus = main_scene.menus
+	menus.close_menu()
+	GameState.gold = 1000
+	GameState.machines = {}
+	GameState.set_energy(GameState.max_energy)
+	main_scene.end_teaching()
+
+	# Scenario BJ's patch of ground, free again once it has taken its tower up.
+	var anchor := Vector2i(25, 16)
+	for ty in range(11, 20):
+		for tx in range(22, 31):
+			_stage_tile(tx, ty, "cleared")
+	GameState.machines["industrial_barn"] = 1
+	var blocker := _clear_ground_for_fixture(anchor, "industrial_barn")
+	_assert(blocker == "", "the barn's six squares are free (%s)" % blocker)
+	if blocker != "":
+		_restore_session_paths(real_paths)
+		return
+	var laid: Dictionary = farm.apply_action({ "verb": "place", "target": anchor,
+		"item": "industrial_barn", "actor": "player" }, GameState)
+	var id := String(laid.get("room", ""))
+	_assert(laid.get("ok", false) and id != "" and farm.sim.barns.has(id),
+		"the barn stands on the farm with its room and its barn record (%s)" % laid)
+	if id == "":
+		_restore_session_paths(real_paths)
+		return
+	await get_tree().process_frame
+
+	# Her cow, if the barn brought one, is drawn where the sim clock puts her.
+	var cow_id := String(laid.get("cow", ""))
+	if cow_id != "":
+		var cow_node = farm.actor_nodes.get(cow_id, null)
+		_assert(cow_node != null, "the barn's cow has a picture on the farm")
+		if cow_node != null:
+			var pose := BarnPresentation.cow_pose(farm.sim, cow_id, farm.sim.clock.tick)
+			await get_tree().process_frame
+			pose = BarnPresentation.cow_pose(farm.sim, cow_id, farm.sim.clock.tick)
+			_assert(cow_node.position == Vector2(pose.pos) * 16.0,
+				"and her picture stands where the tick puts her (%s, %s)" % [cow_node.position, pose.pos])
+
+	# --- the tap in ---------------------------------------------------------------
+	player.pos = Vector2((anchor.x + 1) * 16.0 + 8.0, (anchor.y + 1) * 16.0 + 8.0)
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	InputManager.click_tile = anchor + Vector2i(1, -1)
+	InputManager.has_click = true
+	var asked := await _wait_until(func(): return menus.active_menu == "structure", 200)
+	_assert(asked and menus.structure_item == "industrial_barn",
+		"a tap on the barn opens the building panel for it (%s)" % menus.structure_item)
+	if not asked:
+		_restore_session_paths(real_paths)
+		return
+	menus.selected_option = 0      # "Go inside"
+	menus._select_current_option()
+	var room: Dictionary = farm.sim.rooms[id]
+	var inside := await _wait_until(func(): return _in_room_or_door(id, room["door"]), 200)
+	_assert(inside, "and she goes into the barn's room (%s)" % player.get_tile_pos())
+
+	# --- the barn drawn from saved state, and held with the world ------------------
+	var barn: Dictionary = farm.sim.barns[id]
+	var t: int = farm.sim.clock.tick
+	barn.stations.cutter = { "batch_id": 99, "cow_id": "staged", "amount_milliunits": 1000,
+		"station": "cutter", "entry_tick": t - 10, "ready_tick": t + 20 }
+	barn.finished_cheese_count = 2
+	get_tree().paused = true
+	var drawn: Dictionary = farm.barn_drawn_state(id)
+	_assert(drawn.get("origin", []) == [Vector2i(room.origin).x, Vector2i(room.origin).y]
+		and drawn.line.cutter != null and int(drawn.line.cutter.batch_id) == 99
+		and float(drawn.tools.cutter_x) > 0.0 and int(drawn.finished) == 2
+		and drawn.line.press == null,
+		"the barn is drawn from its saved line: the cutter mid-cut, two wheels finished (%s)" % str(drawn.tools))
+	_assert(var_to_str(drawn) == var_to_str(BarnPresentation.drawn_state(farm.sim, id, farm.sim.clock.tick)),
+		"and the renderer reads it at the sim clock's tick")
+	farm.queue_redraw()
+	for i in 30:
+		await get_tree().process_frame
+	OS.delay_msec(120)
+	_assert(farm.sim.clock.tick == t and var_to_str(farm.barn_drawn_state(id)) == var_to_str(drawn),
+		"with the world held, thirty frames and real time pass and nothing in the barn moves")
+	barn.stations.cutter = null
+	barn.finished_cheese_count = 0
+	get_tree().paused = false
+
+	# --- out by the doorway, then the panel's other row -----------------------------
+	player.init_position(Vector2i(room.door).x, Vector2i(room.door).y)
+	farm.sim.set_actor_pos(SimWorld.ACTOR_PLAYER, Vector2i(room.door))
+	player.path.clear()
+	await get_tree().process_frame
+	InputManager.click_tile = player.get_tile_pos()
+	InputManager.has_click = true
+	var outside := await _wait_until(func(): return farm.sim.page_of(player.get_tile_pos()) == 0, 300)
+	_assert(outside, "a tap on the barn's doorway brings her back out (%s)" % player.get_tile_pos())
+	var cow_in_stall := false
+	for stall in barn.stalls:
+		cow_in_stall = cow_in_stall or String(stall.cow_id) != ""
+	if not cow_in_stall:
+		InputManager.click_tile = anchor + Vector2i(1, -1)
+		InputManager.has_click = true
+		var asked_again := await _wait_until(func(): return menus.active_menu == "structure", 200)
+		if asked_again:
+			menus.selected_option = 1      # "Pick up"
+			menus._select_current_option()
+		var gone := await _wait_until(func(): return farm.get_object(anchor.x, anchor.y) == "", 200)
+		_assert(asked_again and gone and not farm.sim.barns.has(id) and not farm.sim.rooms.has(id)
+			and int(GameState.machines.get("industrial_barn", 0)) == 1,
+			"an idle barn is picked up with its room and barn record, back into the crate")
 	_restore_session_paths(real_paths)
 
 

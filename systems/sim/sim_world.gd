@@ -981,9 +981,14 @@ func make_barn(barn_id: String, anchor: Vector2i = Vector2i.ZERO) -> Dictionary:
 		return {}
 	var stalls: Array[Dictionary] = []
 	for i in 4:
-		# The four stalls are the north row of the barn's six-by-four room. The
-		# south row is the turn area between the livestock door and the stalls.
-		stalls.append({"index": i, "cow_id": "", "cell": [origin.x + 1 + i, origin.y + 1]})
+		# The four stalls are the two-by-two block the interior picture draws in
+		# the room's top-left corner, deepest first: stall 0 is the back-left one,
+		# so the first cow in walks furthest and leaves the near stalls free.
+		# Cows do not block one another (`tile_exclusive` is false), so a cow
+		# in a near stall never shuts one in at the back. The rows below them
+		# are the turn area between the livestock door and the stalls.
+		stalls.append({"index": i, "cow_id": "",
+			"cell": [origin.x + i % 2, origin.y + i / 2]})
 	var stations := {}
 	for station in BARN_STATIONS:
 		stations[station] = null
@@ -992,6 +997,23 @@ func make_barn(barn_id: String, anchor: Vector2i = Vector2i.ZERO) -> Dictionary:
 		"stations": stations, "next_batch_id": 1, "finished_cheese_count": 0}
 	barns[barn_id] = barn
 	return barn
+
+
+# Whether picking this barn up would lose something: a cow holding one of its
+# stalls, a batch waiting in the receiver or on a station, or finished cheese.
+func _barn_in_use(barn_id: String) -> bool:
+	var barn: Dictionary = barns.get(barn_id, {})
+	if barn.is_empty():
+		return false
+	for stall in barn["stalls"]:
+		if String(stall.get("cow_id", "")) != "":
+			return true
+	if not barn["receiver"].is_empty() or int(barn["finished_cheese_count"]) > 0:
+		return true
+	for station in BARN_STATIONS:
+		if barn["stations"].get(station) != null:
+			return true
+	return false
 
 
 # The first Industrial Barn is sold with one cow. Find her an ordinary outdoor
@@ -1213,8 +1235,16 @@ func open_room(item: String, anchor: Vector2i) -> String:
 	# **And the doorway gets an object, or there is no way to ask to leave.** The
 	# hole in the wall is a tile state and a tap resolves against objects, so
 	# without this a player walks in and is stuck — found in play, 2026-09-16.
-	var doorway := origin + WorldLayout.room_door_cell(size)
+	# A row may name its doorway (the barn's is under its picture's door); every
+	# other room keeps the centre of its south wall.
+	var doorway := origin + Vector2i(spec.get("door", WorldLayout.room_door_cell(size)))
 	set_object(doorway.x, doorway.y, WorldLayout.ROOM_DOORWAY)
+	# Fixed machinery the row declares (the barn's cheese line) blocks those cells
+	# for every walker. `close_room` clears every object in the room, these too.
+	var machinery: Rect2i = spec.get("machinery", Rect2i())
+	for y in range(machinery.position.y, machinery.end.y):
+		for x in range(machinery.position.x, machinery.end.x):
+			set_object(origin.x + x, origin.y + y, WorldLayout.INDUSTRIAL_BARN_MACHINERY)
 	var id := "%s_room_%d" % [item, slot + 1]
 	rooms[id] = {
 		"item": item,
@@ -1224,7 +1254,7 @@ func open_room(item: String, anchor: Vector2i) -> String:
 		"size": size,
 		"slot": slot,
 		"origin": origin,
-		"door": origin + WorldLayout.room_door_cell(size),
+		"door": doorway,
 		# The square she steps out onto: the tile below the building's own, which
 		# is where she was standing when she reached for the door.
 		"exit": anchor + Vector2i(spec.get("exit_offset", Vector2i(0, 1))),
@@ -2969,6 +2999,21 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				# gone. Every building anchored inside the one coming up comes up
 				# with it, and the crate is paid for each.
 				var taken_up := _building_nest(building)
+				# **A barn in use stays where it is** (INDUSTRIAL_BARN_ENGINEERING_PLAN,
+				# "Simulation model"): a cow holding a stall, a batch anywhere on the
+				# line or finished cheese inside would be deleted with the room. The
+				# refusal changes nothing; an idle barn comes up like any other.
+				var barn_ids: Array[String] = []
+				for b in taken_up:
+					var barn_room := room_of_anchor(b["anchor"])
+					if barns.has(barn_room):
+						if _barn_in_use(barn_room): return _fail("barn_in_use")
+						barn_ids.append(barn_room)
+				for barn_room in barn_ids:
+					if _barn_events.has(barn_room):
+						clock.cancel(int(_barn_events[barn_room]))
+						_barn_events.erase(barn_room)
+					barns.erase(barn_room)
 				# **And what is inside comes out first** (S-22, design/15 §9a).
 				# The slot is reused by the next room, so nothing may be left in
 				# it: every fitting, egg and machine goes to her as its own item,

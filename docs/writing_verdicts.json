@@ -1135,6 +1135,9 @@
    "verdict": "decode",
    "why": "The sentence calls the ignored inputs “squares” and then says most of them were taps, so the reader has to work out what was actually ignored."
   },
+  "1e0158576e32ad82107a": {
+   "verdict": "ok"
+  },
   "1e12eeddbc603de9944d": {
    "verdict": "ok"
   },

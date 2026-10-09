@@ -161,10 +161,17 @@ func _door_cell(world: SimWorld, barn_id: String) -> Vector2i:
 	return Vector2i(int(cell[0]), int(cell[1])) if cell.size() == 2 else Vector2i(-1, -1)
 
 
+# The building square she reaches for from the doorstep outside: the footprint
+# cell beside the room's exit, since `use_door` needs her next to what she taps.
+# Found in the sorted footprint, so it does not depend on dictionary order.
 func _building_door_cell(world: SimWorld, barn_id: String) -> Vector2i:
-	if not world.barns.has(barn_id): return Vector2i(-1, -1)
-	var cell: Array = world.barns[barn_id].get("anchor", [])
-	return Vector2i(int(cell[0]), int(cell[1])) if cell.size() == 2 else Vector2i(-1, -1)
+	if not world.barns.has(barn_id) or not world.rooms.has(barn_id): return Vector2i(-1, -1)
+	var room: Dictionary = world.rooms[barn_id]
+	var exit := world.room_exit_for(room)
+	for cell in MachineDefs.footprint_cells(String(room.get("item", "")), room.get("anchor", Vector2i(-1, -1))):
+		if absi(cell.x - exit.x) + absi(cell.y - exit.y) == 1:
+			return cell
+	return Vector2i(-1, -1)
 
 
 func _exterior_door_cell(world: SimWorld, barn_id: String) -> Vector2i:

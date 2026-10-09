@@ -18111,9 +18111,11 @@ func test_barn_simulation() -> void:
 			line_verbs.append(verb); line_ticks.append(int(taken.tick))
 	_assert(verbs.slice(0, 6) == ["reserve_milk_stall", "use_door", "enter_milk_stall", "give_milk", "leave_milk_stall", "use_door"],
 		"a ready cow reserves the first stall, crosses the barn door, gives one unit and leaves again (%s)" % str(verbs))
-	_assert(world.actor_pos("cow_1") == Vector2i(10, 11) and String(barn.stalls[0].cow_id) == ""
+	_assert(world.actor_pos("cow_1") == Vector2i(11, 11)
+		and world.actor_pos("cow_1") == world.room_exit_for(world.rooms["barn_1"])
+		and String(barn.stalls[0].cow_id) == ""
 		and String(world.actor("cow_1").extra.state) == "idle",
-		"the cow walks back out through the door, idle, and the stall is free for another cow")
+		"the cow walks back out through the door onto the doorstep under the barn's doors, idle, and the stall is free for another cow (%s)" % world.actor_pos("cow_1"))
 	_assert(int(world.actor("cow_1").extra.milk_milliunits) == 0
 		and world.energy_of("cow_1") == SpeciesDefs.max_energy_of(SpeciesDefs.COW) - SimWorld.COW_GIVE_MILK_ENERGY,
 		"one visit transfers one unit and spends cow energy")
@@ -18192,6 +18194,233 @@ func test_barn_simulation() -> void:
 	test_barn_cow_gives_a_stall_back()
 	test_barn_milk_gain_at_sleep()
 	test_barn_save_v6_migration()
+	test_barn_room_layout()
+	test_barn_pick_up()
+	test_barn_animation_follows_sim_ticks()
+
+
+# A cleared yard with the barn bought and put down through the ordinary `place`
+# verb. Returns [world, anchor, room id, cow id].
+func _placed_barn_world(seed_value: int) -> Array:
+	GameState.reset()
+	SimRng.reseed(seed_value)
+	var world := SimWorld.new(); world.generate()
+	var spot := Vector2i(-1, -1)
+	for y in range(8, 18):
+		for x in range(5, 24):
+			for dy in range(-1, 3):
+				for dx in range(-1, 5):
+					world.set_tile_state(x + dx, y + dy, "cleared")
+			if world.placeable_at(Vector2i(x, y), "industrial_barn") \
+					and world.placeable_at(Vector2i(x, y + 2)):
+				spot = Vector2i(x, y)
+				break
+		if spot.x >= 0:
+			break
+	GameState.gold = 500
+	GameState.harvest_counts["egg"] = 10
+	world.apply_action({ "verb": "buy_machine", "item": "industrial_barn", "actor": "player" }, GameState)
+	var laid := world.apply_action({ "verb": "place", "target": spot, "item": "industrial_barn",
+		"actor": "player" }, GameState)
+	return [world, spot, String(laid.get("room", "")), String(laid.get("cow", ""))]
+
+
+# The room the interior picture draws: all six-by-four cells usable, the
+# livestock door under the picture's door, the stalls in its stall block and the
+# cheese line's half closed to walkers (INDUSTRIAL_BARN_ENGINEERING_PLAN,
+# "Building and interior").
+func test_barn_room_layout() -> void:
+	print("\n--- Industrial barn: the placed building and its six-by-four room ---")
+	var placed := _placed_barn_world(1721)
+	var world: SimWorld = placed[0]; var spot: Vector2i = placed[1]; var room_id: String = placed[2]
+	_assert(room_id != "" and world.barns.has(room_id) and world.room_kind(room_id) == "industrial_barn",
+		"placing the barn through the ordinary building path opens its room and its barn record (%s)" % room_id)
+	if room_id == "":
+		return
+	var room: Dictionary = world.rooms[room_id]
+	var origin: Vector2i = room["origin"]
+	_assert(Vector2i(room["size"]) == Vector2i(6, 4) and bool(room["edge_walls"]),
+		"the room is six cells by four, every one of them inside the walls")
+	_assert(room["anchor"] == spot and world.room_exit_for(room) == spot + Vector2i(1, 1),
+		"the room is anchored to the building, and its doorstep is under the barn's middle doors")
+	var footprint_ok := true
+	for cell in MachineDefs.footprint_cells("industrial_barn", spot):
+		var obj := world.get_object(cell.x, cell.y)
+		footprint_ok = footprint_ok and (obj == WorldLayout.INDUSTRIAL_BARN or obj == WorldLayout.INDUSTRIAL_BARN_PART)
+	_assert(footprint_ok and MachineDefs.footprint_cells("industrial_barn", spot).size() == 6,
+		"the building stands on all six squares of its three-by-two footprint")
+	_assert(Vector2i(room["door"]) == origin + Vector2i(1, 3)
+		and world.get_object(origin.x + 1, origin.y + 3) == WorldLayout.ROOM_DOORWAY,
+		"the livestock doorway is under the interior picture's door, bottom left")
+	var machinery_blocked := true
+	var cow_side_open := true
+	for y in 4:
+		for x in 6:
+			var c := origin + Vector2i(x, y)
+			if x >= 3:
+				machinery_blocked = machinery_blocked and not world.is_walkable(c.x, c.y) \
+					and world.get_object(c.x, c.y) == WorldLayout.INDUSTRIAL_BARN_MACHINERY
+			else:
+				cow_side_open = cow_side_open and world.is_walkable(c.x, c.y)
+	_assert(machinery_blocked, "nobody walks through the cheese line's half of the room")
+	_assert(cow_side_open, "and the whole cow half is open floor")
+	var stall_cells: Array = []
+	var reachable := true
+	for stall in world.barns[room_id]["stalls"]:
+		var cell := Vector2i(int(stall.cell[0]), int(stall.cell[1]))
+		stall_cells.append(cell - origin)
+		reachable = reachable and not Movement.path(world, SpeciesDefs.GROUND,
+			Vector2i(room["door"]), cell).is_empty()
+	_assert(stall_cells == [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)],
+		"the four stalls are the picture's two-by-two stall block, deepest first (%s)" % str(stall_cells))
+	_assert(reachable, "and a cow can walk from the doorway to every one of them")
+	_assert(ActionRouter.SPECIAL_OBJECTS.get(WorldLayout.INDUSTRIAL_BARN, "") == "open_structure"
+		and ActionRouter.SPECIAL_OBJECTS.get(WorldLayout.INDUSTRIAL_BARN_PART, "") == "open_structure",
+		"a tap on any square of the barn opens the building panel: go inside, or pick up")
+
+	# In and out by the same door, without the building moving.
+	world.set_actor_pos(SimWorld.ACTOR_PLAYER, spot + Vector2i(1, 1))
+	var went_in := world.apply_action({ "verb": "use_door", "target": spot + Vector2i(1, 0),
+		"actor": "player" }, GameState)
+	_assert(went_in.get("ok", false) and world.actor_pos(SimWorld.ACTOR_PLAYER) == Vector2i(room["door"]),
+		"the farmer goes in through the barn's doors to the livestock doorway (%s)" % went_in)
+	var came_out := world.apply_action({ "verb": "use_door", "target": Vector2i(room["door"]),
+		"actor": "player" }, GameState)
+	_assert(came_out.get("ok", false) and world.actor_pos(SimWorld.ACTOR_PLAYER) == spot + Vector2i(1, 1)
+		and world.get_object(spot.x, spot.y) == WorldLayout.INDUSTRIAL_BARN,
+		"and comes back out onto the doorstep, the building where it was (%s)" % came_out)
+
+	# Every square of the footprint is checked before anything is spent.
+	var second := _placed_barn_world(1722)
+	var other: SimWorld = second[0]
+	var at: Vector2i = second[1] + Vector2i(0, 4)
+	for dy in range(-2, 3):
+		for dx in range(-1, 5):
+			other.set_tile_state(at.x + dx, at.y + dy, "cleared"); other.set_object(at.x + dx, at.y + dy, "")
+	other.set_tile_state(at.x + 2, at.y - 1, "obstacle_rock")
+	_assert(not other.placeable_at(at, "industrial_barn"),
+		"a rock under the barn's far back corner refuses the whole footprint")
+
+
+# Picking the barn up: refused while it would take a cow's stall or any milk or
+# cheese with it, and otherwise the building, its room and its barn record come
+# up together.
+func test_barn_pick_up() -> void:
+	print("\n--- Industrial barn: picking it up ---")
+	var placed := _placed_barn_world(1723)
+	var world: SimWorld = placed[0]; var spot: Vector2i = placed[1]
+	var room_id: String = placed[2]; var cow_id: String = placed[3]
+	if room_id == "" or cow_id == "":
+		_assert(false, "the barn and its cow were placed for the pick-up test")
+		return
+	world.actor(cow_id)["extra"]["milk_milliunits"] = 1000
+	_barn_run_until(world, func(): return String(world.barns[room_id]["stalls"][0]["cow_id"]) == cow_id, 400)
+	var before := SaveGame.capture_canonical(world, GameState)
+	var refused := world.apply_action({ "verb": "collect", "target": spot, "actor": "player" }, GameState)
+	_assert(not refused.get("ok", true) and String(refused.get("reason", "")) == "barn_in_use"
+		and SaveGame.capture_canonical(world, GameState) == before,
+		"a barn whose stall a cow holds stays put, and nothing changes (%s)" % refused)
+
+	var idle := _placed_barn_world(1724)
+	var w2: SimWorld = idle[0]; var spot2: Vector2i = idle[1]; var room2: String = idle[2]
+	var taken := w2.apply_action({ "verb": "collect", "target": spot2, "actor": "player" }, GameState)
+	_assert(taken.get("ok", false) and not w2.barns.has(room2) and not w2.rooms.has(room2)
+		and w2.get_object(spot2.x, spot2.y) == "" and int(GameState.machines.get("industrial_barn", 0)) == 1,
+		"an idle barn comes up with its room and barn record, back into the crate (%s)" % taken)
+	_assert(w2.has_actor(String(idle[3])), "and its cow stays on the farm")
+	var relaid := w2.apply_action({ "verb": "place", "target": spot2, "item": "industrial_barn",
+		"actor": "player" }, GameState)
+	_assert(relaid.get("ok", false) and w2.barns.has(String(relaid.get("room", "")))
+		and String(relaid.get("cow", "")) == "",
+		"put down again, it opens a fresh room and barn, and brings no second cow (%s)" % relaid)
+
+
+# **The barn's motion is a function of the saved tick** (INDUSTRIAL_BARN_ENGINEERING_PLAN,
+# "Connect barn animation to simulation state"). The cow walking in and the cheese
+# line's moving parts are drawn from the barn and cow records and the sim clock.
+# The same saved tick draws the same barn however much real time passes, after a
+# save and reload, and drawing it changes nothing in the world.
+func test_barn_animation_follows_sim_ticks() -> void:
+	print("\n--- Industrial barn: the drawn barn follows the sim clock ---")
+	GameState.reset()
+	SimRng.reseed(1725)
+	var world := _barn_world()
+	world.spawn_actor("cow_1", SpeciesDefs.COW, Vector2i(10, 12), {"milk_milliunits": 1000})
+	var per_tile := Movement.ticks_per_tile(SpeciesDefs.COW)
+
+	# Mid-step inside the room, on her way to the stall.
+	var mid_step := func() -> bool:
+		var e: Dictionary = world.actor("cow_1")
+		var since: int = world.clock.tick - (int(e.extra.get("wake", 0)) - per_tile)
+		return String(e.extra.get("state", "")) == "moving" and int(e.extra.get("step", 0)) >= 1 \
+			and world.room_of_cell(world.actor_pos("cow_1")) == "barn_1" and since > 0 and since < per_tile
+	_assert(_barn_run_until(world, mid_step, 600), "the cow is caught mid-step inside the barn")
+	_barn_assert_tick_drawn(world, "the cow walking to her stall")
+	var t := world.clock.tick
+	var pose := BarnPresentation.cow_pose(world, "cow_1", t)
+	_assert(Vector2(pose.pos) != Vector2(world.actor_pos("cow_1")) and int(pose.frame) > 0,
+		"between two of her steps she is drawn part-way, on a walking frame (%s)" % str(pose))
+	_assert(Vector2(BarnPresentation.cow_pose(world, "cow_1", t + 1).pos) != Vector2(pose.pos),
+		"and a later tick, not a later frame, is what moves her on")
+
+	# Every station, every tick of one batch's trip: the drawn line is the saved line.
+	var matches := true
+	var seen := {}
+	var cutter_ok := true
+	var held := true
+	for i in 400:
+		world.advance_ticks(1, GameState)
+		var state := BarnPresentation.drawn_state(world, "barn_1", world.clock.tick)
+		var barn: Dictionary = world.barns["barn_1"]
+		for station in SimWorld.BARN_STATIONS:
+			var saved = barn.stations[station]
+			var drawn = state.line[station]
+			if (saved == null) != (drawn == null):
+				matches = false
+			elif saved != null:
+				seen[station] = true
+				matches = matches and int(drawn.batch_id) == int(saved.batch_id) \
+					and is_equal_approx(float(drawn.progress), BarnPresentation.progress(saved, world.clock.tick))
+				# A done batch whose next station is busy holds still.
+				held = held and (world.clock.tick < int(saved.ready_tick) or float(drawn.progress) == 1.0)
+		matches = matches and int(state.finished) == int(barn.finished_cheese_count) \
+			and int(state.receiver.count) == barn.receiver.size()
+		if barn.stations.cutter != null:
+			cutter_ok = cutter_ok and is_equal_approx(float(state.tools.cutter_x),
+				BarnPresentation.there_and_back(BarnPresentation.progress(barn.stations.cutter, world.clock.tick)))
+			if not seen.has("cutter_checked") and float(state.line.cutter.progress) > 0.0 \
+					and float(state.line.cutter.progress) < 1.0:
+				seen["cutter_checked"] = true
+				_barn_assert_tick_drawn(world, "the cutter crossing the vat")
+		if int(barn.finished_cheese_count) == 1:
+			break
+	_assert(matches, "at every tick the drawn stations, receiver and finished count are the saved ones")
+	_assert(seen.has("set_vat") and seen.has("cutter") and seen.has("rake") and seen.has("drain")
+		and seen.has("press") and seen.has("outfeed"),
+		"and the batch is drawn at all six machine stations on its way (%s)" % str(seen.keys()))
+	_assert(cutter_ok and held, "the cutter's carriage is placed by its batch's saved ticks, and a finished station holds still")
+	_assert(int(BarnPresentation.drawn_state(world, "barn_1", world.clock.tick).finished) == 1,
+		"the finished cheese is drawn from the saved count")
+
+
+# The drawn barn at the world's current tick, held to three things: it does not
+# change while only real time passes, it does not change the world, and a save
+# reloaded into a new world draws the same barn at the same tick.
+func _barn_assert_tick_drawn(world: SimWorld, what: String) -> void:
+	var t := world.clock.tick
+	var before := SaveGame.capture_canonical(world, GameState)
+	var first := var_to_str(BarnPresentation.drawn_state(world, "barn_1", t))
+	OS.delay_msec(150)
+	var later := var_to_str(BarnPresentation.drawn_state(world, "barn_1", t))
+	_assert(first == later and first != var_to_str({}),
+		"%s: the same saved tick draws the same barn after real time passes" % what)
+	_assert(SaveGame.capture_canonical(world, GameState) == before,
+		"%s: drawing the barn changes nothing in the world" % what)
+	var reloaded := SimWorld.new()
+	_assert(SaveGame.restore(SaveGame.capture(world, GameState), reloaded, GameState)
+		and reloaded.clock.tick == t
+		and var_to_str(BarnPresentation.drawn_state(reloaded, "barn_1", t)) == first,
+		"%s: and a reloaded save draws it identically at that tick" % what)
 
 
 # The 500-gold shop card is a barn-plus-first-cow bundle. The cow is created by

@@ -186,7 +186,10 @@ advances the same simulation clock.
 
 Presentation derives all activity from the saved station slots and their entry and ready
 ticks. It may interpolate milk, tools, presses, and belts, but it cannot call a completion
-verb because an animation ended.
+verb because an animation ended. As built, `world/barn_presentation.gd` computes every moving
+part, including a walking cow's position and frame, from the saved records and the simulation
+clock's tick. It never reads the wall clock, so the same saved tick draws the same barn after
+any amount of real time or a reload.
 
 ## Building and interior
 
@@ -201,6 +204,16 @@ the finished-product outfeed, and an unobstructed route from the livestock doors
 stall turn area. Placement uses the existing general building path: it validates every cell
 of the three-by-two footprint, creates the anchored room with the building, and removes both
 together only after the barn-state checks above pass.
+
+As built (2026-10-08), the room's layout follows the interior picture
+(`industrial_barn_interior_kit.png`). All 24 cells are inside the walls, as in the Spiral
+Tower. The livestock doorway is cell (1, 3), under the door drawn in the picture's
+bottom-left corner. The outdoor doorstep is under the barn's middle doors. The four stalls are the picture's two-by-two block
+in the top-left corner, numbered deepest first. Cows do not block one another, so a near
+stall never shuts in a cow at the back. The right half (columns 3–5) holds the cheese line and
+is fixed machinery that no one walks through. Picking the barn up is refused while a cow holds
+a stall or any milk or cheese is inside. Otherwise the barn record, its pending line event and
+the room come up together.
 
 The building and room must support the approved red dairy works art without encoding visual
 details in simulation. Open doors, stall occupancy, station state, product shape, and

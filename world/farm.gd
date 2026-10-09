@@ -1465,6 +1465,42 @@ static func room_exit_edge(room: Dictionary) -> String:
 	return "south"
 
 
+# **The Industrial Barn's inside, once per barn rather than once per square**
+# (design/17; INDUSTRIAL_BARN_ENGINEERING_PLAN, "Building and interior" and
+# "Performance"). The walk over the squares has already laid the floor; here the
+# interior picture covers the room's six-by-four cells in one call, and the
+# cheese line's moving parts are drawn from `BarnPresentation.drawn_state` at
+# the sim clock's tick. The loop is over barns — a farm without one pays nothing
+# — and nothing here reads the wall clock, so the barn stands still exactly when
+# the sim does. Drawn straight onto the canvas before the queue runs, so the cows
+# and the farmer stand on it.
+func _draw_barn_rooms(canvas: CanvasItem, y0: int, y1: int) -> void:
+	if sim == null or sim.barns.is_empty():
+		return
+	var ids: Array = sim.barns.keys()
+	ids.sort()
+	for raw in ids:
+		var barn_id := String(raw)
+		if not sim.rooms.has(barn_id):
+			continue
+		var origin: Vector2i = sim.rooms[barn_id].get("origin", Vector2i(-1, -1))
+		if origin.y < y0 or origin.y >= y1:
+			continue
+		# Standing in another room, this one is not in her world (P-18): the same
+		# rule the walk above applies square by square.
+		if _backdrop_active and not _backdrop_rect.has_point(origin):
+			continue
+		BarnPresentation.draw(canvas, industrial_barn_interior_texture, barn_drawn_state(barn_id))
+
+
+# What the renderer draws for one barn right now: the sim's tick, never a frame
+# time. Public so a test can hold the picture to the saved state.
+func barn_drawn_state(barn_id: String) -> Dictionary:
+	if sim == null:
+		return {}
+	return BarnPresentation.drawn_state(sim, barn_id, sim.clock.tick)
+
+
 # A small room keeps all four cells usable. Its boundary is drawn on the cell
 # edges; the surrounding VOID still blocks movement, and the doorway gap is the
 # same doorway that the interaction system uses, cut in whichever edge faces the
@@ -1583,10 +1619,6 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 			# draws the same 16x16 cell from its own sheet — no autotiling, no
 			# edge cases: two seamless tiles that happen to meet at the fence.
 			var ground_tex: Texture2D = tileset_texture
-			var barn_room := ""
-			if sim != null:
-				barn_room = sim.room_of_cell(Vector2i(tx, ty))
-			var is_barn_room := barn_room != "" and sim.room_kind(barn_room) == "industrial_barn"
 			# Another room, kept on the same page as hers and nowhere near her in
 			# the world. Skipped whole — ground, boundaries and objects — so the
 			# backdrop's farm is what shows in that space instead.
@@ -1632,30 +1664,6 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 			var vy: int = (ty % GROUND_VARIANTS) * TILE_SIZE
 			canvas.draw_texture_rect_region(ground_tex, Rect2(px, py, TILE_SIZE, TILE_SIZE),
 				Rect2(vx, vy, TILE_SIZE, TILE_SIZE))
-			# The barn kit is a six-by-four picture in the room's own cells. It is
-			# read from the room record and its saved factory state is layered below,
-			# so presentation never chooses or advances a batch.
-			if is_barn_room and industrial_barn_interior_texture != null:
-				var barn: Dictionary = sim.rooms[barn_room]
-				var origin: Vector2i = barn.get("origin", Vector2i.ZERO)
-				canvas.draw_texture_rect_region(industrial_barn_interior_texture,
-					Rect2(px, py, TILE_SIZE, TILE_SIZE),
-					Rect2((tx - origin.x) * TILE_SIZE, (ty - origin.y) * TILE_SIZE,
-						TILE_SIZE, TILE_SIZE))
-				# State comes only from the barn record. A moving rake, press, or belt
-				# is a calm interpolation while its saved station is occupied; the
-				# picture cannot complete a station or mutate the line.
-				var line: Dictionary = sim.barns.get(barn_room, {})
-				var stations: Dictionary = line.get("stations", {})
-				var phase := int(Time.get_ticks_msec() / 250) % 4
-				var cell := Vector2i(tx - origin.x, ty - origin.y)
-				if cell == Vector2i(4, 0) and (stations.get("set_vat") != null \
-						or stations.get("cutter") != null or stations.get("rake") != null):
-					canvas.draw_line(Vector2(px + 2 + phase * 2, py + 4), Vector2(px + 2 + phase * 2, py + 13), Color("2f2b3d"), 1.0)
-				if cell == Vector2i(5, 1) and stations.get("press") != null:
-					canvas.draw_rect(Rect2(px + 7, py + 5 + (phase % 2), 5, 2), Color("f0cf5a"), true)
-				if cell == Vector2i(5, 1) and stations.get("outfeed") != null:
-					canvas.draw_rect(Rect2(px + 2 + phase * 3, py + 11, 3, 3), Color("e9e178"), true)
 
 			# Draw tilled soil, edge-matched to its neighbours (see world/autotile.gd)
 			if Autotile.is_soil(tile.state):
@@ -1689,7 +1697,7 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 
 			# Queue obstacles and boundaries — whatever picture this square's
 			# state has, and nothing if it has none (`tile_picture`).
-			var picture := [] if is_barn_room else tile_picture(String(tile.state))
+			var picture := tile_picture(String(tile.state))
 			if not picture.is_empty():
 				var tile_sheet: Texture2D = picture[0]
 				var tile_region: Rect2 = picture[1]
@@ -1862,6 +1870,7 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 	# the `_profiling`-gated block that used to be the only reader of this
 	# count.
 	var walk_len := render_queue.size()
+	_draw_barn_rooms(canvas, y0, y1)
 	_queue_edge_room_walls(render_queue, canvas)
 
 	if _profiling:

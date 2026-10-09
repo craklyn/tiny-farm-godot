@@ -74,6 +74,9 @@ const SPECIAL_OBJECTS := {
 	# into it, so she could buy it, put it down, and never go in.
 	WorldLayout.SPIRAL_TOWER: "open_structure",
 	WorldLayout.SPIRAL_TOWER_PART: "open_structure",
+	# And the Industrial Barn (design/17): the same panel, go inside or pick up.
+	WorldLayout.INDUSTRIAL_BARN: "open_structure",
+	WorldLayout.INDUSTRIAL_BARN_PART: "open_structure",
 	"tool_axe":     "take_tool",
 	"tool_pickaxe": "take_tool",
 	# The door, both ends of it (2026-09-06). A tap on the farmhouse's door or on

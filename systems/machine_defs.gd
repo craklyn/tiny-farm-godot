@@ -165,7 +165,16 @@ static var TYPES: Dictionary = {
 		"configs": [], "default_config": "", "unlock_requirement": { "crop": "egg", "count": 10 },
 		"object": WorldLayout.INDUSTRIAL_BARN, "part": WorldLayout.INDUSTRIAL_BARN_PART,
 		"footprint": Vector2i(3, 2),
-		"room": { "cells": Vector2i(6, 4), "pitch": 2 },
+		# Every one of the six-by-four cells is usable, as the Spiral Tower's are,
+		# because the interior picture fills the whole grid
+		# (`industrial_barn_interior_kit.png`). That picture puts the livestock
+		# door under its left half and the outside doors under the middle tile,
+		# so the room names both instead of taking the coop's centred defaults.
+		# The cheese line stands on the right half: fixed machinery nobody walks
+		# through.
+		"room": { "cells": Vector2i(6, 4), "pitch": 2, "edge_walls": true,
+			"exit_offset": Vector2i(1, 1), "door": Vector2i(1, 3),
+			"machinery": Rect2i(3, 0, 3, 4) },
 		"icon": { "sheet": "res://assets/sprites/generated/industrial_barn.png", "region": Rect2(0, 0, 48, 32) },
 	},
 	# The first automation the player meets — `design/03`'s "watch your old job

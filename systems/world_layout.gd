@@ -159,6 +159,9 @@ const SPIRAL_TOWER := "spiral_tower"
 const SPIRAL_TOWER_PART := "spiral_tower_part"
 const INDUSTRIAL_BARN := "industrial_barn"
 const INDUSTRIAL_BARN_PART := "industrial_barn_part"
+# The cheese line's floor inside the barn: real to the sim (nothing walks through
+# a vat) and drawn by the barn's interior picture, never by a cell of its own.
+const INDUSTRIAL_BARN_MACHINERY := "industrial_barn_machinery"
 
 # **Room fittings** (S-22, Q-117 ruled 2026-09-24; design/15 §9a). Things she buys
 # and sets down on a room's floor, one per cell of that room: a nest box in a coop,
