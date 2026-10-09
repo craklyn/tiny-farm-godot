@@ -9119,11 +9119,24 @@ func _scenario_bo_the_barn_by_finger_alone() -> void:
 	# --- 2. a spot it cannot fit is refused; a free one takes it ----------------------
 	# Under the shipping bin: open yard to stand on, but the barn's block would
 	# take the bin and the well with it.
+	# The farm differs from run to run, and the hen may have laid an egg under the
+	# bin (CI, 2026-10-09: the tap collected it instead of being refused). Hold the
+	# clock so no egg appears now, then pick an open, empty square beside the bin
+	# that the barn's block cannot fit on.
+	_hold_sim_clock()
 	var bin_t := Vector2i(4, 1)
-	var refused := bin_t + Vector2i(0, 1)
-	_assert(farm.sim.is_walkable(refused.x, refused.y) and farm.get_object(refused.x, refused.y) == ""
-			and not farm.sim.placeable_at(refused, "industrial_barn"),
-		"the square under the bin is open yard the barn cannot stand on")
+	var refused := Vector2i(-1, -1)
+	for ty in range(bin_t.y + 1, bin_t.y + 4):
+		for tx in range(bin_t.x - 2, bin_t.x + 3):
+			if refused.x < 0 and farm.sim.is_walkable(tx, ty) and farm.get_object(tx, ty) == "" \
+					and not farm.sim.placeable_at(Vector2i(tx, ty), "industrial_barn"):
+				refused = Vector2i(tx, ty)
+	_assert(refused.x >= 0,
+		"a square beside the bin is open yard the barn cannot stand on (%s)" % refused)
+	if refused.x < 0:
+		_release_sim_clock()
+		await _bo_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
+		return
 	await _finger_tap(refused)
 	await _wait_until(func(): return player.path.is_empty(), 600)
 	var since: int = farm.trace.entries.size()

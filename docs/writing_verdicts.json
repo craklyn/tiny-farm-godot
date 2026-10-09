@@ -779,6 +779,9 @@
   "14b468815817b869fe6f": {
    "verdict": "ok"
   },
+  "14cdff47e0b6f9ace44a": {
+   "verdict": "ok"
+  },
   "14cecf78473c5960de1d": {
    "verdict": "ok"
   },
@@ -4918,6 +4921,12 @@
   },
   "879be41cac6d131dec25": {
    "verdict": "ok"
+  },
+  "87e121e258ce5fbafaef": {
+   "instead": "Tapping the barn now works when a hen has laid an egg under the bin",
+   "quote": "The barn tap test",
+   "verdict": "decode",
+   "why": "A stranger does not know what this internal test checks."
   },
   "87e561cb4fe2028ad316": {
    "verdict": "ok"
