@@ -663,6 +663,7 @@ func tile_picture(state: String) -> Array:
 func start_replay_log(gen_seed: int) -> void:
 	replay = ReplayLog.new()
 	replay.start(gen_seed)
+	replay.record_decisions = true
 
 
 # `seed_value` is the seed the continued session runs under — the restored
@@ -672,6 +673,7 @@ func start_replay_log(gen_seed: int) -> void:
 func start_replay_log_from_save(save_data: Dictionary, seed_value: int = 0) -> void:
 	replay = ReplayLog.new()
 	replay.start_from_save(save_data, seed_value)
+	replay.record_decisions = true
 
 
 func start_trace(gen_seed: int, from_save: bool) -> void:
@@ -699,6 +701,11 @@ func advance_sim(ticks: int, gs = null) -> void:
 	# it is an Action that went through the gateway — which is what the loop body
 	# is recording.
 	for taken in sim.advance_ticks(ticks, gs):
+		if taken["action"].is_empty() or not taken["result"].get("ok", false):
+			if replay != null and replay.record_decisions \
+					and String(taken.get("actor", "")) == SimWorld.ACTOR_CHICKEN:
+				replay.record_brain_decision(taken)
+			continue
 		# **The dispatch tick, not the clock's** — this loop runs after the whole
 		# advance has finished, so `sim.clock.tick` is already up to four ticks
 		# past where the hen actually decided, and a replay recomputing her would

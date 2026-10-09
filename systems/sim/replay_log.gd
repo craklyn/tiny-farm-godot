@@ -41,7 +41,9 @@ const AtomicFileWriter := preload("res://systems/atomic_file.gd")
 
 # 1: M2's action stream. 2: tick-stamped dual-record net (M2.5 WI-5).
 # 3: new stateless RNG derivation for fresh farms; a base save owns its revision.
-const VERSION := 3
+# 4: the hen's no-Action wander decisions carry a compact state fingerprint, so
+# her movement joins the dual record instead of being checked only at the end.
+const VERSION := 4
 
 # Q-41: the *format* version above says how to parse the file; this says which game
 # produced it. They are different questions, and only the second one can tell you
@@ -97,6 +99,10 @@ var end_tick: int = 0
 # `apply_to`; read by `SaveGame.replay_matches`, the robot session and
 # `verify_replay.gd`, which are where a failure gets to be loud.
 var divergence: String = ""
+# Enabled by the live farm. Selective simulation fixtures leave it off unless
+# they record every hen decision, because a partial decision stream is not one.
+var record_decisions: bool = false
+var _checking_decisions: bool = false
 
 
 func start(seed_value: int) -> void:
@@ -135,6 +141,22 @@ func record(action: Dictionary, result: Dictionary, tick: int = 0,
 	if from_brain:
 		a["brain"] = true
 	entries.append(_encode(a))
+	end_tick = maxi(end_tick, tick)
+
+
+# A clock decision that emitted no successful Action still changed what the
+# actor decided: a route, a wake time, a step, or an attempted Action the gateway
+# refused. It gets its own replay entry so that recomputation must make the same
+# decision at the same tick.
+func record_brain_decision(decision: Dictionary) -> void:
+	var tick := int(decision.get("tick", 0))
+	entries.append({
+		"kind": "brain_decision",
+		"actor": String(decision.get("actor", "")),
+		"brain": true,
+		"brain_fingerprint": _decision_fingerprint(decision),
+		"tick": tick,
+	})
 	end_tick = maxi(end_tick, tick)
 
 
@@ -240,10 +262,15 @@ func apply_to(world: SimWorld, gs) -> bool:
 func _apply_v2(world: SimWorld, gs) -> void:
 	var recomputed: Array[Dictionary] = []
 	var matched := 0
+	_checking_decisions = false
+	for entry in entries:
+		if String(entry.get("kind", "")) == "brain_decision":
+			_checking_decisions = true
+			break
 	for i in entries.size():
 		var e: Dictionary = entries[i]
 		var tick := int(e.get("tick", 0))
-		_collect(recomputed, world.advance_to_tick(tick, gs))
+		_collect_for_replay(recomputed, world.advance_to_tick(tick, gs))
 		if is_walk(e):
 			# Not an Action: the player's own motion, replayed by putting her back
 			# on the tile the event says she reached (M2.5 WI-6). It changes
@@ -253,8 +280,35 @@ func _apply_v2(world: SimWorld, gs) -> void:
 			continue
 		var decoded := _decode(e)
 		if bool(e.get("brain", false)):
+			if version >= 4 and decoded.has("brain_fingerprint"):
+				var wanted_actor := String(decoded.get("actor", ""))
+				var found := -1
+				for j in recomputed.size():
+					if int(recomputed[j].get("tick", -1)) == tick \
+							and _decision_actor(recomputed[j]) == wanted_actor:
+						found = j
+						break
+				if found < 0:
+					_note_divergence(i, _entry_signature(decoded, tick), "(nothing recomputed)")
+					continue
+				var got: Dictionary = recomputed.pop_at(found)
+				_note_divergence(i, _entry_signature(decoded, tick), _decision_signature(got))
+				continue
+			if version >= 4:
+				var found := -1
+				for j in recomputed.size():
+					if recomputed[j]["result"].get("ok", false):
+						found = j
+						break
+				if found < 0:
+					_note_divergence(i, _signature(decoded, tick), "(nothing recomputed)")
+					continue
+				var got: Dictionary = recomputed.pop_at(found)
+				_note_divergence(i, _signature(decoded, tick),
+					_signature(got["action"], int(got.get("tick", -1))))
+				continue
 			if matched >= recomputed.size():
-				_note_divergence(i, _signature(decoded, tick), "(nothing recomputed)")
+				_note_divergence(i, _entry_signature(decoded, tick), "(nothing recomputed)")
 				continue
 			var got: Dictionary = recomputed[matched]
 			matched += 1
@@ -264,10 +318,11 @@ func _apply_v2(world: SimWorld, gs) -> void:
 		world.apply_action(decoded, gs)
 	# The session went on after its last Action — the hen was still pottering when
 	# the autosave was written — so the replay lives out the same sim time.
-	_collect(recomputed, world.advance_to_tick(end_tick, gs))
-	if matched < recomputed.size():
-		var extra: Dictionary = recomputed[matched]
+	_collect_for_replay(recomputed, world.advance_to_tick(end_tick, gs))
+	if (version >= 4 and not recomputed.is_empty()) or matched < recomputed.size():
+		var extra: Dictionary = recomputed[0 if version >= 4 else matched]
 		_note_divergence(entries.size(), "(nothing recorded)",
+			_decision_signature(extra) if version >= 4 else
 			_signature(extra["action"], int(extra.get("tick", -1))))
 
 
@@ -285,10 +340,77 @@ func _apply_v2(world: SimWorld, gs) -> void:
 # won (playtests/2026-09-25_113814, entry 653 — "diverged" on a till the live game
 # had refused twice as well). Its scan now skips a building's floor, so no brain is
 # refused in ordinary play; this rule is for the next one that disagrees.
+func _collect_for_replay(into: Array[Dictionary], taken: Array[Dictionary]) -> void:
+	for t in taken:
+		if version >= 4:
+			if t["result"].get("ok", false) or (_checking_decisions \
+					and _decision_actor(t) == SimWorld.ACTOR_CHICKEN):
+				into.append(t)
+		elif t["result"].get("ok", false):
+			into.append(t)
+
+
+# Kept as the successful-Action filter used by older callers and tests. Format
+# v4's replay path uses `_collect_for_replay`, because its recording also holds
+# decisions that emitted no successful Action.
 static func _collect(into: Array[Dictionary], taken: Array[Dictionary]) -> void:
 	for t in taken:
 		if t["result"].get("ok", false):
 			into.append(t)
+
+
+func _entry_signature(entry: Dictionary, tick: int) -> String:
+	if entry.has("brain_fingerprint"):
+		var action := {} if String(entry.get("kind", "")) == "brain_decision" \
+			else entry.duplicate(true)
+		action.erase("brain_fingerprint")
+		return "%s decision=%s" % [
+			_signature(action, tick), String(entry["brain_fingerprint"])]
+	return _signature(entry, tick)
+
+
+func _decision_signature(decision: Dictionary) -> String:
+	return "%s decision=%s" % [
+		_signature(decision.get("action", {}), int(decision.get("tick", -1))),
+		_decision_fingerprint(decision),
+	]
+
+
+static func _decision_actor(decision: Dictionary) -> String:
+	var actor := String(decision.get("actor", ""))
+	if actor == "":
+		actor = String((decision.get("action", {}) as Dictionary).get("actor", ""))
+	return actor
+
+
+static func _decision_fingerprint(decision: Dictionary) -> String:
+	var state: Dictionary = (decision.get("state", {}) as Dictionary).duplicate(true)
+	var before: Dictionary = (decision.get("before", {}) as Dictionary).duplicate(true)
+	# `wake` is scheduling scratch, not the choice the brain made. A restored
+	# world deliberately wakes every actor once to rebuild the clock queue, so
+	# that number can differ while its route, position, action and all other brain
+	# state are identical.
+	var extra: Dictionary = state.get("extra", {})
+	extra.erase("wake")
+	var before_extra: Dictionary = before.get("extra", {})
+	before_extra.erase("wake")
+	var comparable := {
+		"actor": String(decision.get("actor", "")),
+		"action": decision.get("action", {}),
+		"change": _changed_fields(before, state),
+	}
+	return (JSON.stringify(comparable) as String).sha256_text()
+
+
+static func _changed_fields(before: Dictionary, after: Dictionary) -> Dictionary:
+	var changed := {}
+	for key in after:
+		if not before.has(key) or before[key] != after[key]:
+			changed[key] = after[key]
+	for key in before:
+		if not after.has(key):
+			changed[key] = null
+	return changed
 
 
 # A recorded free walk, put back into the registry. Tolerant of a malformed entry

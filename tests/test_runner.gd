@@ -2503,7 +2503,7 @@ func test_stateless_schedule_revision() -> void:
 		"v6 saves restore the current derivation")
 	var replay := ReplayLog.new()
 	replay.start(1)
-	_assert(ReplayLog.from_json(replay.to_json()).version == 3,
+	_assert(ReplayLog.from_json(replay.to_json()).version == 4,
 		"new replay headers carry the new derivation version")
 	replay.start_from_save(old, 1)
 	_assert(replay.apply_to(SimWorld.new(), GameState)
@@ -4152,6 +4152,36 @@ func test_cold_open() -> void:
 	_assert(not world.has_actor(SimWorld.ACTOR_NEIGHBOUR),
 		"and when the gate is open she is gone from the registry too")
 
+	# The clock dispatcher records the state after every brain decision. An Action
+	# may remove its own actor inside the gateway; the neighbour's final open_gate
+	# is the smallest real example. Her decision must still be returned with an
+	# empty post-state instead of asking the registry for an actor that has left.
+	var dispatched_world := SimWorld.new()
+	var dispatched_gs = load("res://systems/game_state.gd").new()
+	SimRng.reseed(2026)
+	dispatched_world.generate()
+	for _i in ColdOpen.MAX_STEPS:
+		var next := ColdOpen.next_action(dispatched_world, dispatched_gs)
+		if String(next.get("verb", "")) == "open_gate":
+			break
+		dispatched_world.apply_action(next, dispatched_gs)
+	dispatched_world.clock.schedule(dispatched_world.clock.tick + 1, {
+		"kind": SimWorld.BRAIN_EVENT,
+		"actor": SimWorld.ACTOR_NEIGHBOUR,
+	})
+	var dispatched := dispatched_world.advance_ticks(1, dispatched_gs)
+	var departure: Dictionary = {}
+	for decision in dispatched:
+		if String(decision.get("actor", "")) == SimWorld.ACTOR_NEIGHBOUR:
+			departure = decision
+	_assert(String(departure.get("action", {}).get("verb", "")) == "open_gate"
+		and departure.get("result", {}).get("ok", false)
+		and departure.get("state", { "unexpected": true }).is_empty(),
+		"a despawning brain Action is recorded with an empty post-state")
+	_assert(not dispatched_world.has_actor(SimWorld.ACTOR_NEIGHBOUR),
+		"and the dispatched neighbour really left through the action gateway")
+	dispatched_gs.free()
+
 	# The whole opening replays. This is the property that makes it free: no new
 	# machinery to keep in sync with the sim, and the single gateway is honoured
 	# rather than carved around.
@@ -5456,6 +5486,8 @@ class LiveSession:
 		for t in taken:
 			if t["result"].get("ok", false):
 				log.record(t["action"], t["result"], int(t["tick"]), true)
+			elif String(t.get("actor", "")) == SimWorld.ACTOR_CHICKEN:
+				log.record_brain_decision(t)
 		log.mark_tick(world.clock.tick)
 		return taken
 
@@ -5487,6 +5519,13 @@ class LiveSession:
 
 	func done() -> void:
 		gs.free()
+
+
+func _record_brain_step(log: ReplayLog, taken: Dictionary) -> void:
+	if taken["result"].get("ok", false):
+		log.record(taken["action"], taken["result"], int(taken["tick"]), true)
+	elif log.record_decisions and String(taken.get("actor", "")) == SimWorld.ACTOR_CHICKEN:
+		log.record_brain_decision(taken)
 
 
 func test_brains() -> void:
@@ -7065,6 +7104,7 @@ func test_pea() -> void:
 # assuming the first morning obliges.
 func _session_with_brain_actions(seed_value: int) -> LiveSession:
 	var s := LiveSession.new(seed_value)
+	s.log.record_decisions = true
 	for _day in 8:
 		s.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
 		s.tick(400)
@@ -7113,11 +7153,11 @@ func test_hen_replay_from_fresh_save() -> void:
 
 
 func test_replay_v2() -> void:
-	print("\n--- Replay format v3 + the dual-record net (M2.5 WI-5) Tests ---")
+	print("\n--- Replay format v4 + the dual-record net (M2.5 WI-5) Tests ---")
 
 	# --- the format ------------------------------------------------------------
 	var s := _session_with_brain_actions(4321)
-	_assert(ReplayLog.VERSION == 3, "the format version is 3 (stateless derivation revision)")
+	_assert(ReplayLog.VERSION == 4, "the format version is 4 (all brain decisions are checked)")
 	_assert(_brain_entry_count(s.log) > 0,
 		"the session contains Actions a brain decided (%d of %d entries)"
 			% [_brain_entry_count(s.log), s.log.entries.size()])
@@ -7136,7 +7176,7 @@ func test_replay_v2() -> void:
 
 	var text := s.log.to_json()
 	var reloaded := ReplayLog.from_json(text)
-	_assert(reloaded.version == 3, "a v3 log reads back as v3")
+	_assert(reloaded.version == 4, "a v4 log reads back as v4")
 	_assert(reloaded.entries.size() == s.log.entries.size()
 			and _brain_entry_count(reloaded) == _brain_entry_count(s.log),
 		"with every entry and every brain mark intact")
@@ -7217,6 +7257,23 @@ func test_replay_v2() -> void:
 	_assert(missing.divergence != "",
 		"and so does a recomputation that produced something nobody recorded")
 	gs_m.free()
+
+	var broken_wander := ReplayLog.from_json(text)
+	var wander_entry := -1
+	for i in broken_wander.entries.size():
+		var entry: Dictionary = broken_wander.entries[i]
+		if String(entry.get("kind", "")) == "brain_decision" \
+				and String(entry.get("actor", "")) == SimWorld.ACTOR_CHICKEN:
+			wander_entry = i
+			break
+	_assert(wander_entry >= 0, "the replay records a hen wander decision even when it emits no Action")
+	broken_wander.entries[wander_entry]["brain_fingerprint"] = "deliberately-broken"
+	var wander_world := SimWorld.new()
+	var wander_gs = load("res://systems/game_state.gd").new()
+	broken_wander.apply_to(wander_world, wander_gs)
+	_assert(broken_wander.divergence.contains("entry %d" % wander_entry),
+		"a deliberately broken hen wander fails at that decision: %s" % broken_wander.divergence)
+	wander_gs.free()
 	s.done()
 
 	# --- the seed fix (the hole WI-3 filed and this closes) --------------------
@@ -7760,8 +7817,7 @@ func test_ants() -> void:
 	var spent := 0
 	while spent < 6000 and AntScoutBrain.raid_is_live(w_cont):
 		for t in w_cont.advance_ticks(25, gs_cont):
-			if t["result"].get("ok", false):
-				cont_log.record(t["action"], t["result"], int(t["tick"]), true)
+			_record_brain_step(cont_log, t)
 		cont_log.mark_tick(w_cont.clock.tick)
 		spent += 25
 	_assert(cont_log.entries.size() > 0,
@@ -8251,8 +8307,7 @@ func test_grazers() -> void:
 	var spent := 0
 	while spent < 4000 and w_cont.has_actor(SpeciesDefs.RABBIT):
 		for t in w_cont.advance_ticks(20, gs_cont):
-			if t["result"].get("ok", false):
-				cont_log.record(t["action"], t["result"], int(t["tick"]), true)
+			_record_brain_step(cont_log, t)
 		cont_log.mark_tick(w_cont.clock.tick)
 		spent += 20
 		# Halfway through, she walks over — one recorded crossing, exactly as
@@ -8361,8 +8416,7 @@ func test_songbird() -> void:
 	var flew := 0
 	while flew < 600:
 		for t in w_cont.advance_ticks(20, gs_cont):
-			if t["result"].get("ok", false):
-				cont_log.record(t["action"], t["result"], int(t["tick"]), true)
+			_record_brain_step(cont_log, t)
 		cont_log.mark_tick(w_cont.clock.tick)
 		flew += 20
 	var moved_on := w_cont.has_actor(SpeciesDefs.SONGBIRD)
@@ -8737,8 +8791,7 @@ func test_mole() -> void:
 	var spent := 0
 	while spent < 6000 and w_cont.has_actor(SpeciesDefs.MOLE):
 		for t in w_cont.advance_ticks(20, gs_cont):
-			if t["result"].get("ok", false):
-				cont_log.record(t["action"], t["result"], int(t["tick"]), true)
+			_record_brain_step(cont_log, t)
 		cont_log.mark_tick(w_cont.clock.tick)
 		spent += 20
 		# Halfway through she walks out to the seed row and stands there, which is
@@ -9056,8 +9109,7 @@ func test_worm() -> void:
 	var lived := 0
 	while lived < 16000 and w_cont.has_actor(SpeciesDefs.WORM):
 		for t in w_cont.advance_ticks(20, gs_cont):
-			if t["result"].get("ok", false):
-				cont_log.record(t["action"], t["result"], int(t["tick"]), true)
+			_record_brain_step(cont_log, t)
 		cont_log.mark_tick(w_cont.clock.tick)
 		lived += 20
 	_assert(not w_cont.has_actor(SpeciesDefs.WORM),
@@ -9442,10 +9494,10 @@ func test_bots() -> void:
 		"and achieves nothing, because a songbird has no visit to end and no Action to receive")
 	var log_had_actions := false
 	for e in q.log.entries:
-		if not ReplayLog.is_walk(e):
+		if not ReplayLog.is_walk(e) and String(e.get("kind", "")) != "brain_decision":
 			log_had_actions = true
 	_assert(not log_had_actions,
-		"nothing is written down, because nothing happened — no verb was invented for it")
+		"no Action is written down, because nothing happened — no verb was invented for it")
 	_assert(String(q.world.actor("shoo_bot")["extra"].get("ignore", "")) == SpeciesDefs.SONGBIRD,
 		"the machine marks the bird as one it cannot budge...")
 	var home_q := Vector2i(perch.x, perch.y + 3)
@@ -9604,8 +9656,7 @@ func test_bots() -> void:
 		w2.set_actor_pos(SimWorld.ACTOR_PLAYER, to, "right")
 		log2.record_walk("step", "right", to, w2.clock.tick)
 		for t in w2.advance_ticks(4, gs_cont2):
-			if t["result"].get("ok", false):
-				log2.record(t["action"], t["result"], int(t["tick"]), true)
+			_record_brain_step(log2, t)
 	var till_at := Vector2i(5, 14)
 	w2.set_tile_state(till_at.x, till_at.y, "cleared")
 	var r2 := w2.apply_action({ "verb": "till", "target": till_at, "actor": "player" }, gs_cont2)
@@ -9615,8 +9666,7 @@ func test_bots() -> void:
 	var lived2 := 0
 	while lived2 < 900 and w2.has_actor(SimWorld.ACTOR_CROW):
 		for t in w2.advance_ticks(10, gs_cont2):
-			if t["result"].get("ok", false):
-				log2.record(t["action"], t["result"], int(t["tick"]), true)
+			_record_brain_step(log2, t)
 		log2.mark_tick(w2.clock.tick)
 		lived2 += 10
 	log2.mark_tick(w2.clock.tick)
@@ -12429,7 +12479,7 @@ func test_mark_one_robot() -> void:
 	# Without this the replay would recompute a watering the log never mentioned
 	# and rightly call it a divergence.
 	for taken in live.advance_to_tick(live.clock.tick + SimClock.RATE * 120, GameState):
-		log.record(taken["action"], taken["result"], int(taken["tick"]), true)
+		_record_brain_step(log, taken)
 	log.mark_tick(live.clock.tick)
 	var live_canonical := SaveGame.capture_canonical(live, GameState)
 
@@ -16034,7 +16084,7 @@ func test_robot_stall() -> void:
 	_assert(bool(live.actor("bot_mk1")["extra"].get("sent", false)),
 		"the recorded session's robot let itself out at the day turn")
 	for taken in live.advance_to_tick(live.clock.tick + SimClock.RATE * 200, GameState):
-		log.record(taken["action"], taken["result"], int(taken["tick"]), true)
+		_record_brain_step(log, taken)
 	log.mark_tick(live.clock.tick)
 	var live_canonical := SaveGame.capture_canonical(live, GameState)
 
@@ -18128,7 +18178,7 @@ func test_barn_simulation() -> void:
 	_assert(paced, "each station holds its batch for its row of STATION_DURATION_TICKS (%s)" % str(line_ticks))
 	_assert(int(barn.finished_cheese_count) == 1, "the completed batch becomes one stored cheese")
 	var log := ReplayLog.new(); log.start_from_save(replay_base, world.gen_seed)
-	for taken in trip: log.record(taken.action, taken.result, int(taken.tick), true)
+	for taken in trip: _record_brain_step(log, taken)
 	log.mark_tick(world.clock.tick)
 	var replayed := SimWorld.new()
 	_assert(log.apply_to(replayed, GameState) and log.divergence == "",
@@ -18163,12 +18213,15 @@ func test_barn_simulation() -> void:
 		"station": "press", "entry_tick": 0, "ready_tick": 20}
 	b.next_batch_id = 3; blocked.schedule_all_brains()
 	var first := blocked.advance_ticks(1, GameState)
-	_assert(first.size() == 1 and String(first[0].action.verb) == "finish_cheese",
+	var first_actions := first.filter(func(t): return t.result.get("ok", false))
+	_assert(first_actions.size() == 1 and String(first_actions[0].action.verb) == "finish_cheese",
 		"a clock appointment clears the downstream station first")
 	var early := blocked.advance_to_tick(19, GameState)
-	_assert(early.is_empty() and b.stations.press != null, "ready_tick prevents an early factory transition")
+	_assert(early.filter(func(t): return t.result.get("ok", false)).is_empty() \
+		and b.stations.press != null, "ready_tick prevents an early factory transition")
 	var due := blocked.advance_to_tick(20, GameState)
-	_assert(due.size() == 1 and String(due[0].action.verb) == "press_cheese",
+	var due_actions := due.filter(func(t): return t.result.get("ok", false))
+	_assert(due_actions.size() == 1 and String(due_actions[0].action.verb) == "press_cheese",
 		"the saved batch advances when its ready tick arrives")
 	_assert(int(b.stations.outfeed.ready_tick) == 20 + int(SimWorld.STATION_DURATION_TICKS["outfeed"]),
 		"and is due off the outfeed after the outfeed's duration")
@@ -18622,7 +18675,8 @@ func test_barn_cow_gives_a_stall_back() -> void:
 	var verbs: Array[String] = []
 	var released := false
 	for t in taken:
-		if String(t.action.actor) != "cow_1": continue
+		# A brain decision with no Action (a hen's wander) carries an empty action.
+		if t.action.is_empty() or String(t.action.actor) != "cow_1": continue
 		verbs.append(String(t.action.verb))
 		if String(t.action.verb) == "leave_milk_stall" and bool(t.result.get("ok", false)) \
 				and not bool(t.result.get("was_in_stall", true)):

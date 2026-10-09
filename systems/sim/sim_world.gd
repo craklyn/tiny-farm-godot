@@ -2587,10 +2587,12 @@ const BARN_EVENT := "barn"
 
 
 # Advance sim time to `target_tick`, letting brains decide along the way.
-# Returns every Action they took, in dispatch order, as
-# `[{ "action": {...}, "result": {...}, "tick": n }]` — the caller's record of
-# what the world did while it was not looking. `world/farm.gd` is what turns that
-# into replay entries and trace lines; the sim does not know those exist.
+# Returns every decision in dispatch order, as
+# `[{ "actor": id, "action": {...}, "result": {...}, "state": {...}, "tick": n }]`.
+# `action` is empty when the brain changed only its own plan, as a hen normally
+# does when she chooses or follows a wander. `state` is the actor row after the
+# decision, or an empty dictionary when the decision despawned it. The caller
+# uses both to record decisions without teaching the sim that replay logs exist.
 #
 # The tick is in there because it is half of what the Action means (M2.5 WI-5):
 # a replay's dual-record net compares a recomputed brain Action against the
@@ -2627,11 +2629,20 @@ func _dispatch(event: Dictionary, gs, taken: Array[Dictionary]) -> void:
 	if not actors.has(actor_id):
 		return  # despawned since it was scheduled; its event is not its ghost
 	var brain := Brains.of_actor(self, actor_id)
+	var before: Dictionary = actor(actor_id).duplicate(true)
 	var action := brain.step(self, actor_id, clock.tick, gs)
+	var result: Dictionary = {}
 	if not action.is_empty():
-		var result := apply_action(action, gs)
+		result = apply_action(action, gs)
 		brain.on_result(self, actor_id, action, result)
-		taken.append({ "action": action, "result": result, "tick": clock.tick })
+	taken.append({
+		"actor": actor_id,
+		"action": action,
+		"result": result,
+		"before": before,
+		"state": actor(actor_id).duplicate(true) if actors.has(actor_id) else {},
+		"tick": clock.tick,
+	})
 	# The brain may have despawned itself (a crow leaving the map), or been
 	# despawned by its own Action's consequences (the neighbour opening the gate).
 	if actors.has(actor_id):
