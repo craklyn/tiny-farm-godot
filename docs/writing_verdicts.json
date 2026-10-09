@@ -2937,6 +2937,12 @@
   "5207ce5256a27017e348": {
    "verdict": "ok"
   },
+  "5231b7e4d26253a4e5f8": {
+   "instead": "The robot that plays the whole game now buys the barn and completes the process from milking a cow to making cheese",
+   "quote": "follows a cow's milk to finished cheese",
+   "verdict": "second-look",
+   "why": "The phrase makes the reader work out that the robot completes the steps from milking a cow to making cheese."
+  },
   "525934f561fde09fea6b": {
    "instead": "Approve the reward and view design, change the numbers",
    "quote": "Approve the shape, change the numbers",

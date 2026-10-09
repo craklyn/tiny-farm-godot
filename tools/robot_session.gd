@@ -60,13 +60,14 @@ const STALL_TILE := Vector2i(13, 2)
 # two taps rather than a staged fixture, and they go to bed seeded and dry.
 const BOT_ROW := [Vector2i(14, 5), Vector2i(15, 5)]
 
-# The purse she starts the session with — a stall (80g), a mark-1 (150g), a
-# learning mark-3 (800g) and the workbench that reads it (300g), with change.
+# The purse she starts the session with — a barn (500g), a stall (80g), a
+# mark-1 (150g), a learning mark-3 (800g) and the workbench that reads it
+# (300g), with change.
 # Staged **before the game boots**, and the replay is anchored to a base save
 # taken at boot (see `_ready`), so the reproduction starts with the same money in
-# the same pocket. Earning 1330 gold honestly is ninety harvests, which is ninety
+# the same pocket. Earning 1830 gold honestly is ninety harvests, which is ninety
 # days this run does not have.
-const OPENING_PURSE := 1500
+const OPENING_PURSE := 2000
 
 # A walk of a dozen tiles at 3 tiles/sec is seconds of game time, and a headless
 # frame is short, so the legs below need a budget in the thousands rather than the
@@ -141,6 +142,10 @@ func _ready() -> void:
 	# this session measures a day's play and its replay, not the overnight loop.
 	main_scene.farm.sim.story_nights_told[SimWorld.STORY_NIGHT_CROW] = true
 	main_scene.farm.sim.story_nights_told[SimWorld.STORY_NIGHT_ROBOT] = true
+	# The barn is unlocked by ten eggs. The robot session is a one-day path, so
+	# it starts at that already-earned shop threshold just as it starts with the
+	# robot ladder already earned above.
+	GameState.harvest_counts["egg"] = 10
 
 	SimRng.reseed(main_scene.farm.sim.gen_seed)
 	main_scene.farm.start_replay_log_from_save(
@@ -196,6 +201,13 @@ func _ready() -> void:
 	_check(main_scene.farm.sim.actor_pos(SimWorld.ACTOR_PLAYER) == player.get_tile_pos(),
 		"and the registry knows it — her tile is sim truth now (%s)"
 			% main_scene.farm.sim.actor_pos(SimWorld.ACTOR_PLAYER))
+
+	# The barn is bought from the real shelf and placed with a real tap. Its cow
+	# begins empty by design, so this test gives the supplied cow one valid daily
+	# gain through Farm's action gateway. That action is recorded beside the shop
+	# and placement actions; the cow and cheese-line actions which follow must be
+	# recomputed during replay, not copied from this run.
+	var barn_cow := await _build_a_barn()
 
 	# A short day of real play: till, plant, water the same tile via taps.
 	_check(main_scene.farm.get_tile(WORK_TILE.x, WORK_TILE.y).state == "cleared",
@@ -361,6 +373,20 @@ func _ready() -> void:
 			% main_scene.farm.sim.actor_pos(mk1))
 	_check(not bool(main_scene.farm.sim.actor(mk1)["extra"].get("sent", false)),
 		"round over, parked, ready to do it again tomorrow without being asked")
+	if barn_cow != "":
+		var cow_verbs: Array[String] = []
+		var cheese_verbs: Array[String] = []
+		for e in main_scene.farm.replay.entries:
+			if String(e.get("actor", "")) == barn_cow:
+				cow_verbs.append(String(e.get("verb", "")))
+			if String(e.get("actor", "")) == "world" \
+					and String(e.get("verb", "")) in SimWorld.BARN_LINE_VERBS:
+				cheese_verbs.append(String(e.get("verb", "")))
+		_check(cow_verbs.has("reserve_milk_stall") and cow_verbs.has("give_milk")
+				and cow_verbs.has("leave_milk_stall"),
+			"the barn cow freely walked in, gave milk, and walked back out (%s)" % [cow_verbs])
+		_check(cheese_verbs == SimWorld.BARN_LINE_VERBS,
+			"the recorded milk crossed every cheese station in order (%s)" % [cheese_verbs])
 
 	# Verify: replay the robot's own session against its autosave
 	var rlog := ReplayLog.load_from(ROBOT_REPLAY)
@@ -466,6 +492,42 @@ func _employ_a_robot() -> String:
 	_check(not bool(main_scene.farm.sim.actor(mk1)["extra"].get("sent", false)),
 		"and she sends it nowhere — there is no send tap in this session")
 	return mk1
+
+
+# The barn's complete player-facing path: select its shop card, put down the
+# three-by-two building, and let its supplied cow start with a valid daily milk
+# gain. The gain is an autonomous simulation action, not a hidden write, so the
+# replay below has to reproduce both it and the brain's response to it.
+func _build_a_barn() -> String:
+	var anchor := _free_barn_anchor()
+	_check(anchor.x >= 0, "the farm has a clear three-by-two place for the barn (%s)" % anchor)
+	if anchor.x < 0:
+		return ""
+	_check(await _buy("industrial_barn"),
+		"she buys an industrial barn from the shop (%d gold left)" % GameState.gold)
+	var built := await _tap_until(anchor, func():
+		return main_scene.farm.get_object(anchor.x, anchor.y) == WorldLayout.INDUSTRIAL_BARN)
+	_check(built, "and a tap places its three-by-two building (%s)" % anchor)
+	if not built:
+		return ""
+	var room_id: String = main_scene.farm.sim.room_of_anchor(anchor)
+	var cow_id := ""
+	for id in main_scene.farm.sim.actors:
+		if main_scene.farm.sim.species_of(String(id)) == SpeciesDefs.COW:
+			cow_id = String(id)
+	_check(room_id != "" and main_scene.farm.sim.barns.has(room_id) and cow_id != "",
+		"the placed barn has its room, four stalls, and its first cow (%s)" % room_id)
+	if cow_id == "":
+		return ""
+	var gained: Dictionary = main_scene.farm.apply_action({"actor": cow_id, "verb": "gain_milk",
+		"amount_milliunits": 1000}, GameState)
+	_check(gained.get("ok", false),
+		"the cow's recorded daily milk gain makes her ready to visit a stall")
+	# Placing the last barn consumes the crate item but does not choose a new held
+	# item for the player. Pick wheat through the same inventory-selection path
+	# the HUD uses before returning to the crop part of this session.
+	GameState.select_held_item("wheat")
+	return cow_id
 
 
 # --- the afternoon she turns a dial (Q-101, v0.2.2 WI-8) ----------------------
@@ -590,6 +652,21 @@ func _free_square(skip: Array) -> Vector2i:
 			if not sim.placeable_at(t) or not sim.is_walkable(tx - 1, ty):
 				continue
 			return t
+	return Vector2i(-1, -1)
+
+
+# A real placement asks the simulation whether all six squares, the livestock
+# doorstep, and a route beside the building are clear. The session's seed varies,
+# so scan the farm rather than smuggling a map-dependent coordinate into a replay.
+func _free_barn_anchor() -> Vector2i:
+	var sim = main_scene.farm.sim
+	for ty in range(2, WorldLayout.PAGE_ROWS - 3):
+		for tx in range(2, SimWorld.MAP_WIDTH - 4):
+			var anchor := Vector2i(tx, ty)
+			if sim.placeable_at(anchor, "industrial_barn") \
+					and sim.is_walkable(tx - 1, ty) \
+					and not (anchor in BOT_ROW) and anchor != STALL_TILE:
+				return anchor
 	return Vector2i(-1, -1)
 
 
