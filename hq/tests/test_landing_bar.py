@@ -166,6 +166,18 @@ def main():
     finally:
         drain.git_blobs, drain.integration.main_head = real_blobs, real_head
 
+    # The writing check refusing a card title must not cost the whole attempt again.
+    refused = """This commit subject is one Daniel would have to decode.
+  you wrote : Draw Industrial Barn cheese shelf sale feedback
+  the problem: stacked nouns
+  say       : Draw the barn's cheese shelf, cart and coins that show a sale.
+
+Commit subjects are rendered on HQ's page."""
+    check(drain.hook_rewording(refused) == "Draw the barn's cheese shelf, cart and coins that show a sale",
+          "a refused title is replaced by the check's own rewording")
+    check(drain.hook_rewording("error: pathspec did not match") == "",
+          "any other commit failure is left as a failure")
+
     if FAILS:
         print(f"\n{len(FAILS)} failed.")
         return 1

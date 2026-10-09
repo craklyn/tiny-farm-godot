@@ -2465,7 +2465,16 @@ def land(item, rec, *, repo=None):
         return "", (add.stderr or add.stdout or "git add failed").strip()[:200]
     if sh(["git", "write-tree"], cwd=repo).stdout.strip() != candidate["tree"]:
         return "", "the staged prospective tree differs from the reviewed candidate"
-    made = sh(["git", "commit", "-m", item["title"], "-m", "HQ-Attempt: " + item["attempt_outcome"]["id"], "--"] + files, cwd=repo)
+    subject = item["title"]
+    made = sh(["git", "commit", "-m", subject, "-m", "HQ-Attempt: " + item["attempt_outcome"]["id"], "--"] + files, cwd=repo)
+    reworded = hook_rewording((made.stderr or "") + (made.stdout or "")) if made.returncode else ""
+    if reworded and reworded != subject:
+        # 2026-10-09: the writing check turned down a card title as the commit
+        # subject after the work, the review and the suites had all passed, and
+        # each retry paid for the whole attempt again to fail on the same words.
+        # The check says how it would put it; that is the subject.
+        made = sh(["git", "commit", "-m", reworded, "-m", "HQ-Attempt: " + item["attempt_outcome"]["id"], "--"] + files,
+                  cwd=repo)
     if made.returncode != 0:
         return "", (made.stderr or made.stdout or "git commit failed").strip()[:200]
     got = sh(["git", "rev-parse", "HEAD"], cwd=repo)
@@ -2475,6 +2484,14 @@ def land(item, rec, *, repo=None):
     if not integration.advance_main(server.REPO, sha, parent):
         return "", "local main moved after verification; the candidate needs a new base"
     return sha, ""
+
+
+def hook_rewording(output):
+    """The writing check's own plain rewording of a commit subject it refused."""
+    m = re.search(r"^\s*say\s*:\s*(.+?)\s*$", output or "", re.M)
+    if not m or "commit subject" not in (output or ""):
+        return ""
+    return m.group(1).strip().strip('"“”').rstrip(".")[:200]
 
 
 def plain_failure(text, applied=None, why=""):

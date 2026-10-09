@@ -9055,6 +9055,12 @@
   "f85b98e92a59a40112d9": {
    "verdict": "ok"
   },
+  "f876720ff2ad7f14518a": {
+   "instead": "Finished work is no longer redone from scratch when the writing check rejects the title on the work's card.",
+   "quote": "turns down its card's title",
+   "verdict": "second-look",
+   "why": "“Turns down” makes the reader pause to work out that the writing check rejects the title on the work's card."
+  },
   "f8778746cd898e9371cf": {
    "verdict": "ok"
   },
