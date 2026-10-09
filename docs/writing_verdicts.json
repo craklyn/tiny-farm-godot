@@ -3616,6 +3616,9 @@
    "verdict": "second-look",
    "why": "The number has no stated scale or target, so the reader cannot tell what it represents."
   },
+  "63791da6c83cb92ed073": {
+   "verdict": "ok"
+  },
   "639c469dd9e7715ac4dd": {
    "verdict": "ok"
   },
@@ -8410,6 +8413,12 @@
    "quote": "cannot be made the real render",
    "verdict": "second-look",
    "why": "The phrasing is grammatically awkward; 'made the real render' is not standard English."
+  },
+  "e79f6f26085cfeb67183": {
+   "instead": "A card returned for changes now resumes work instead of remaining stalled",
+   "quote": "now starts again instead of sitting as stalled",
+   "verdict": "decode",
+   "why": "The reader has to work out what “starts again” and “sitting as stalled” mean in the card workflow."
   },
   "e7ad564a49c13a996e3f": {
    "verdict": "ok"

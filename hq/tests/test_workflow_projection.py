@@ -127,6 +127,31 @@ class WorkflowProjection(unittest.TestCase):
         self.assertEqual(drain.project_work(item)["availability"], "waiting_event")
         self.assertEqual(before, Path(work._item_path(item["id"])).read_bytes())
 
+    def test_a_revision_after_completed_steps_is_new_work_not_a_stall(self):
+        # 2026-10-09: the seed-clarity card's owner replied "revise", but its next
+        # step reused the id of a step already done, so it read as a stalled
+        # recovery and sat in the held lane. Its last result changed no files, so
+        # every step took the same recorded candidate as its input.
+        item = self.card(workflow={"version": 1, "actions": [], "blockers": [],
+                                   "candidates": [{"id": "candidate-without-files"}],
+                                   "verifications": [], "integrations": []})
+        for _ in range(4):
+            view = drain.project_work(work.load_item(item["id"]))
+            if (view.get("blocker") or {}).get("type") == "recovery":
+                break
+            fresh = work.load_item(item["id"])
+            step = dict(view["next_action"]); step.pop("virtual", None); step["state"] = "done"
+            work._workflow(fresh)["actions"].append(step)
+            work.save_item(fresh)
+        self.assertEqual((view.get("blocker") or {}).get("type"), "recovery", "the fixture reaches the stall")
+        fresh = work.load_item(item["id"])
+        fresh["revising"] = True
+        fresh["prior_results"] = [{"at": "2026-10-09T00:00:00", "attempt": 1, "result": "Blocked."}]
+        work.save_item(fresh)
+        view = drain.project_work(work.load_item(item["id"]))
+        self.assertNotEqual((view.get("blocker") or {}).get("type"), "recovery")
+        self.assertEqual(view["next_action"]["availability"], "runnable")
+
     def test_newly_stale_candidate_has_runnable_reconciliation(self):
         old_head = self.git("rev-parse", "HEAD")
         item = self.card(attempt_outcome={"candidate": {"base": old_head, "tree": "candidate-tree",

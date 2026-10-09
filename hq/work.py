@@ -1157,6 +1157,12 @@ def work_view(item, repo_facts=None, now=None):
                 ((workflow.get("candidates") or [{}])[-1].get("id")) or
                 ((actions or [{}])[-1].get("input_id")) or
                 str(item.get("last_recorded_attempt") or "legacy"))
+    if item.get("revising"):
+        # A revision asked for in the card's conversation is new input even when
+        # no new patch exists yet. Without this its next step reused the id of a
+        # step already done and the card read as a stalled recovery (2026-10-09,
+        # the seed-clarity card after a "revise" reply).
+        input_id = f"{input_id}:revision-{len(item.get('prior_results') or [])}"
     if supervised_retry:
         # One explicit invocation gets a distinct action for this failed attempt.
         # Repeating a queue read must never mint another repair action.
