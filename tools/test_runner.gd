@@ -9304,6 +9304,16 @@ func _bo_free_barn_spot() -> Vector2i:
 				continue
 			if not farm.sim.placeable_at(at + Vector2i(-1, 0)):
 				continue
+			# Not right beside her: a first tap there would put the barn down at once
+			# instead of walking her up to it (CI, 2026-10-09: she stood under the bin
+			# at (4, 2), the spot was (4, 3), and the step after it opened the panel).
+			var near := false
+			var here: Vector2i = player.get_tile_pos()
+			for cell in MachineDefs.footprint_cells("industrial_barn", at):
+				if absi(cell.x - here.x) + absi(cell.y - here.y) <= 2:
+					near = true
+			if near:
+				continue
 			return at
 	return Vector2i(-1, -1)
 
