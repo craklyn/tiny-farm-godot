@@ -493,6 +493,8 @@ func generate(with_layout: Dictionary = WorldLayout.WORLD) -> void:
 	story_night = STORY_NIGHT_NONE
 	story_nights_told.clear()
 	rungs.clear()
+	barns.clear()
+	_barn_events.clear()
 	player_water_actions_today = 0
 
 	# 1. Bare ground inside the map border. Every later step overwrites; nothing
@@ -943,6 +945,27 @@ const HOME_ROOM_ID := "home_room"
 # Keyed by room id ("coop_room_1"), so a farm may hold several. Saved; restored as
 # written. Each entry: { item, anchor, pitch, size, slot, origin, door, exit }.
 var rooms: Dictionary = {}
+const BARN_STATIONS: Array[String] = ["set_vat", "cutter", "rake", "drain", "press", "outfeed"]
+const BARN_LINE_VERBS: Array[String] = ["set_curd", "cut_curd", "stir_curd", "drain_whey",
+	"fill_cheese_hoops", "press_cheese", "finish_cheese"]
+const FINISHED_CHEESE_CAPACITY := 8
+const COW_GIVE_MILK_ENERGY := 20
+var barns: Dictionary = {}
+var _barn_events: Dictionary = {}
+
+
+func make_barn(barn_id: String, anchor: Vector2i = Vector2i.ZERO) -> Dictionary:
+	var stalls: Array[Dictionary] = []
+	for i in 4:
+		stalls.append({"index": i, "cow_id": "", "cell": [anchor.x + i, anchor.y - 1]})
+	var stations := {}
+	for station in BARN_STATIONS:
+		stations[station] = null
+	var barn := {"anchor": [anchor.x, anchor.y], "door": [anchor.x, anchor.y],
+		"stalls": stalls, "receiver": [],
+		"stations": stations, "next_batch_id": 1, "finished_cheese_count": 0}
+	barns[barn_id] = barn
+	return barn
 
 
 # The rooms a farm has, by id, sorted — the registry's iteration-order rule, for
@@ -1757,6 +1780,12 @@ func _hands_of(actor_id: String) -> Dictionary:
 
 
 func spawn_actor(actor_id: String, species: String, at: Vector2i, extra: Dictionary = {}) -> Dictionary:
+	var actor_extra := extra.duplicate(true)
+	if species == SpeciesDefs.COW:
+		actor_extra["milk_milliunits"] = int(actor_extra.get("milk_milliunits", 0))
+		actor_extra["barn_id"] = String(actor_extra.get("barn_id", ""))
+		actor_extra["stall_index"] = int(actor_extra.get("stall_index", -1))
+		actor_extra["state"] = String(actor_extra.get("state", "idle"))
 	var entry := {
 		"species": species,
 		"pos": at,
@@ -1764,8 +1793,8 @@ func spawn_actor(actor_id: String, species: String, at: Vector2i, extra: Diction
 		# The player's meter is GameState's, and hers is also the clock (Q-38).
 		# -1 is the same "she has no world-side meter" that energy_of() returns,
 		# stored so every row has the same shape.
-		"energy": -1 if _is_player(actor_id) else ACTOR_MAX_ENERGY,
-		"extra": extra.duplicate(true),
+		"energy": -1 if _is_player(actor_id) else SpeciesDefs.max_energy_of(species),
+		"extra": actor_extra,
 	}
 	actors[actor_id] = entry
 	# A newly arrived actor starts thinking on the next tick. Nothing happens
@@ -2473,6 +2502,7 @@ func path_between(start: Vector2i, goal: Vector2i) -> Array[Vector2i]:
 # seed lives on, and for the same reason (rule 7). Fast-forward paths advance the
 # clock explicitly instead.
 const BRAIN_EVENT := "brain"
+const BARN_EVENT := "barn"
 
 
 # Advance sim time to `target_tick`, letting brains decide along the way.
@@ -2507,6 +2537,9 @@ func advance_ticks(ticks: int, gs = null) -> Array[Dictionary]:
 
 
 func _dispatch(event: Dictionary, gs, taken: Array[Dictionary]) -> void:
+	if String(event.get("kind", "")) == BARN_EVENT:
+		_dispatch_barn(String(event.get("barn_id", "")), gs, taken)
+		return
 	if String(event.get("kind", "")) != BRAIN_EVENT:
 		return
 	var actor_id := String(event.get("actor", ""))
@@ -2563,6 +2596,80 @@ func schedule_all_brains() -> void:
 	_brain_events.clear()
 	for id in actors.keys():
 		_schedule_brain(id, clock.tick + 1)
+	_schedule_all_barns()
+
+
+func _schedule_all_barns() -> void:
+	_barn_events.clear()
+	var ids: Array = barns.keys()
+	ids.sort()
+	for barn_id in ids:
+		_schedule_barn(String(barn_id), clock.tick + 1)
+
+
+func _schedule_barn(barn_id: String, at_tick: int) -> void:
+	if not barns.has(barn_id):
+		return
+	if _barn_events.has(barn_id):
+		clock.cancel(int(_barn_events[barn_id]))
+	_barn_events[barn_id] = clock.schedule(maxi(at_tick, clock.tick + 1),
+		{ "kind": BARN_EVENT, "barn_id": barn_id })
+
+
+func _dispatch_barn(barn_id: String, gs, taken: Array[Dictionary]) -> void:
+	_barn_events.erase(barn_id)
+	var action := next_barn_line_action(barn_id)
+	if action.is_empty():
+		var wake := _next_barn_ready_tick(barn_id)
+		if wake > clock.tick:
+			_schedule_barn(barn_id, wake)
+		return
+	var result := apply_action(action, gs)
+	taken.append({ "action": action, "result": result, "tick": clock.tick })
+	# A blocked outfeed or destination needs no polling. The action that frees it
+	# schedules the line again; a successful move makes the next station eligible
+	# no earlier than its saved ready tick.
+	if bool(result.get("ok", false)):
+		_schedule_barn(barn_id, clock.tick + 1)
+
+
+func next_barn_line_action(barn_id: String) -> Dictionary:
+	if not barns.has(barn_id):
+		return {}
+	var barn: Dictionary = barns[barn_id]
+	var stations: Dictionary = barn["stations"]
+	# Outfeed first, then work backwards. Clearing the far end before examining
+	# upstream stations is what lets a full line advance without overtaking.
+	var sources: Array[String] = ["outfeed", "press", "drain", "rake", "cutter", "set_vat"]
+	for i in sources.size():
+		var batch = stations.get(sources[i])
+		if batch == null or int(batch.get("ready_tick", -1)) > clock.tick:
+			continue
+		if i > 0 and stations.get(sources[i - 1]) != null:
+			continue
+		if i == 0 and int(barn["finished_cheese_count"]) >= FINISHED_CHEESE_CAPACITY:
+			continue
+		return { "actor": "world", "verb": BARN_LINE_VERBS[6 - i],
+			"barn_id": barn_id, "batch_id": int(batch["batch_id"]) }
+	if not barn["receiver"].is_empty():
+		var batch: Dictionary = barn["receiver"][0]
+		if int(batch.get("ready_tick", -1)) <= clock.tick and stations["set_vat"] == null:
+			return { "actor": "world", "verb": "set_curd", "barn_id": barn_id,
+				"batch_id": int(batch["batch_id"]) }
+	return {}
+
+
+func _next_barn_ready_tick(barn_id: String) -> int:
+	if not barns.has(barn_id): return -1
+	var next := -1
+	var barn: Dictionary = barns[barn_id]
+	var batches: Array = barn["receiver"].duplicate()
+	for station in BARN_STATIONS:
+		if barn["stations"][station] != null: batches.append(barn["stations"][station])
+	for batch in batches:
+		var ready := int(batch.get("ready_tick", -1))
+		if ready > clock.tick and (next < 0 or ready < next): next = ready
+	return next
 
 
 func apply_action(action: Dictionary, gs = null) -> Dictionary:
@@ -2623,6 +2730,24 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 	var target: Vector2i = action.get("target", Vector2i(-1, -1))
 
 	match verb:
+		"gain_milk":
+			var cow_id := String(action.get("actor", ""))
+			if species_of(cow_id) != SpeciesDefs.COW: return _fail("not_a_cow")
+			var gain := int(action.get("amount_milliunits", 0))
+			if gain < 400 or gain > 1000: return _fail("invalid_milk_gain")
+			var cow_extra: Dictionary = actors[cow_id]["extra"]
+			cow_extra["milk_milliunits"] = mini(2000, int(cow_extra.get("milk_milliunits", 0)) + gain)
+			return {"ok": true, "milk_milliunits": cow_extra["milk_milliunits"]}
+		"reserve_milk_stall":
+			return _reserve_milk_stall(action)
+		"enter_milk_stall":
+			return _enter_milk_stall(action)
+		"give_milk":
+			return _give_milk(action)
+		"leave_milk_stall":
+			return _leave_milk_stall(action)
+		"set_curd", "cut_curd", "stir_curd", "drain_whey", "fill_cheese_hoops", "press_cheese", "finish_cheese":
+			return _apply_barn_line(action)
 		# -- special-object verbs (no energy cost, pre-M2 behavior) --
 		# A full watering can and an empty pouch are both perfectly fine states.
 		# Found in a real session (2026-08-28):
@@ -4198,6 +4323,100 @@ func _parcel_with_gate(gate: Vector2i) -> Dictionary:
 # `gs` is optional and is only needed by the machines below (M2.5 WI-10): a day
 # turn without a GameState is a test fixture arranging a grid, not a farm waking
 # up, and the sleep verb — the only caller in the running game — always has one.
+func _reserve_milk_stall(action: Dictionary) -> Dictionary:
+	var cow_id := String(action.get("actor", "")); var barn_id := String(action.get("barn_id", ""))
+	var index := int(action.get("stall_index", -1))
+	if species_of(cow_id) != SpeciesDefs.COW: return _fail("not_a_cow")
+	if not barns.has(barn_id): return _fail("no_such_barn")
+	if index < 0 or index >= 4: return _fail("no_such_stall")
+	var extra: Dictionary = actors[cow_id]["extra"]
+	if int(extra.get("milk_milliunits", 0)) < 1000: return _fail("not_ready")
+	if String(extra.get("barn_id", "")) != "": return _fail("already_in_stall")
+	var stall: Dictionary = barns[barn_id]["stalls"][index]
+	if String(stall.get("cow_id", "")) != "": return _fail("stall_occupied")
+	stall["cow_id"] = cow_id; extra["barn_id"] = barn_id; extra["stall_index"] = index
+	extra["state"] = "going_to_stall"
+	return {"ok": true}
+
+
+func _enter_milk_stall(action: Dictionary) -> Dictionary:
+	var cow_id := String(action.get("actor", "")); var barn_id := String(action.get("barn_id", ""))
+	var index := int(action.get("stall_index", -1))
+	if species_of(cow_id) != SpeciesDefs.COW or not barns.has(barn_id): return _fail("wrong_stall")
+	if index < 0 or index >= 4: return _fail("wrong_stall")
+	var extra: Dictionary = actors[cow_id]["extra"]
+	var stall: Dictionary = barns[barn_id]["stalls"][index]
+	if String(stall.get("cow_id", "")) != cow_id or String(extra.get("barn_id", "")) != barn_id \
+			or int(extra.get("stall_index", -1)) != index: return _fail("wrong_stall")
+	var cell: Array = stall.get("cell", [])
+	if cell.size() != 2 or actor_pos(cow_id) != Vector2i(int(cell[0]), int(cell[1])):
+		return _fail("not_at_stall")
+	extra["state"] = "giving"
+	return {"ok": true}
+
+
+func _give_milk(action: Dictionary) -> Dictionary:
+	var cow_id := String(action.get("actor", "")); var barn_id := String(action.get("barn_id", ""))
+	var index := int(action.get("stall_index", -1))
+	if species_of(cow_id) != SpeciesDefs.COW or not barns.has(barn_id): return _fail("invalid_transfer")
+	var extra: Dictionary = actors[cow_id]["extra"]
+	if String(extra.get("barn_id", "")) != barn_id or int(extra.get("stall_index", -1)) != index: return _fail("wrong_stall")
+	if int(extra.get("milk_milliunits", 0)) < 1000: return _fail("not_ready")
+	var barn: Dictionary = barns[barn_id]; var batch_id := int(barn["next_batch_id"])
+	extra["milk_milliunits"] = int(extra["milk_milliunits"]) - 1000
+	spend_actor_energy(cow_id, COW_GIVE_MILK_ENERGY)
+	barn["next_batch_id"] = batch_id + 1
+	barn["receiver"].append({"batch_id": batch_id, "cow_id": cow_id, "amount_milliunits": 1000,
+		"station": "receiver", "entry_tick": clock.tick, "ready_tick": clock.tick})
+	_schedule_barn(barn_id, clock.tick + 1)
+	return {"ok": true, "batch_id": batch_id}
+
+
+func _leave_milk_stall(action: Dictionary) -> Dictionary:
+	var cow_id := String(action.get("actor", "")); var barn_id := String(action.get("barn_id", ""))
+	var index := int(action.get("stall_index", -1))
+	if not barns.has(barn_id) or index < 0 or index >= 4: return _fail("wrong_stall")
+	var stall: Dictionary = barns[barn_id]["stalls"][index]
+	if String(stall.get("cow_id", "")) != cow_id: return _fail("wrong_stall")
+	stall["cow_id"] = ""
+	var extra: Dictionary = actors[cow_id]["extra"]
+	extra["barn_id"] = ""; extra["stall_index"] = -1; extra["state"] = "leaving_barn"
+	return {"ok": true}
+
+
+func _apply_barn_line(action: Dictionary) -> Dictionary:
+	var barn_id := String(action.get("barn_id", "")); var verb := String(action.get("verb", ""))
+	if not barns.has(barn_id): return _fail("no_such_barn")
+	var barn: Dictionary = barns[barn_id]; var slots: Dictionary = barn["stations"]
+	var sources := {"set_curd": "receiver", "cut_curd": "set_vat", "stir_curd": "cutter",
+		"drain_whey": "rake", "fill_cheese_hoops": "drain", "press_cheese": "press",
+		"finish_cheese": "outfeed"}
+	var destinations := {"set_curd": "set_vat", "cut_curd": "cutter", "stir_curd": "rake",
+		"drain_whey": "drain", "fill_cheese_hoops": "press", "press_cheese": "outfeed"}
+	var source := String(sources.get(verb, "")); var batch = null
+	if source == "receiver":
+		if barn["receiver"].is_empty(): return _fail("source_empty")
+		batch = barn["receiver"][0]
+	else:
+		batch = slots.get(source)
+		if batch == null: return _fail("source_empty")
+	if int(action.get("batch_id", -1)) != int(batch["batch_id"]): return _fail("stale_batch")
+	if int(batch.get("ready_tick", -1)) > clock.tick: return _fail("not_ready")
+	if verb == "finish_cheese":
+		if int(barn["finished_cheese_count"]) >= FINISHED_CHEESE_CAPACITY: return _fail("cheese_store_full")
+		slots["outfeed"] = null; barn["finished_cheese_count"] = int(barn["finished_cheese_count"]) + 1
+		_schedule_barn(barn_id, clock.tick + 1)
+		return {"ok": true}
+	var destination := String(destinations[verb])
+	if slots[destination] != null: return _fail("destination_occupied")
+	if source == "receiver": barn["receiver"].pop_front()
+	else: slots[source] = null
+	batch["station"] = destination; batch["entry_tick"] = clock.tick; batch["ready_tick"] = clock.tick + 1
+	slots[destination] = batch
+	_schedule_barn(barn_id, clock.tick + 1)
+	return {"ok": true}
+
+
 func advance_day(weather: String, gs = null) -> void:
 	player_water_actions_today = 0
 	# **What kind of night this was, asked first and answered last** (P-15). The
@@ -4224,7 +4443,7 @@ func advance_day(weather: String, gs = null) -> void:
 	for id in actors:
 		if _is_player(id):
 			continue  # hers is GameState's, and hers is also the clock
-		actors[id]["energy"] = ACTOR_MAX_ENERGY
+		actors[id]["energy"] = SpeciesDefs.max_energy_of(species_of(String(id)))
 		# Last night's practice is paid for out of today's meter (S-35), and only
 		# when runs were actually played.
 		var px: Dictionary = actors[id].get("extra", {})

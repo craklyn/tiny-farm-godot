@@ -248,6 +248,7 @@ func _init() -> void:
 	test_senses_stop_at_space_boundary()
 	test_robot_usefulness()
 	test_one_pouch()
+	test_barn_simulation()
 	test_carry_cap()
 	test_save_v5_migration()
 	test_mark_three_assigned_tiles()
@@ -17316,7 +17317,7 @@ func test_save_v5_migration() -> void:
 	var migrated := SaveGame.migrate(old)
 	_assert(int(migrated.world.actors.legacy_picker.extra.carrying_count) == 1,
 		"a v4 machine hand migrates as one carried unit")
-	_assert(migrated.version == 6 and int(migrated.state.pouch.wheat) == SimWorld.ON_PERSON_CAP + 6
+	_assert(migrated.version == SaveGame.VERSION and int(migrated.state.pouch.wheat) == SimWorld.ON_PERSON_CAP + 6
 		and int(migrated.state.items.egg) == 3 and int(migrated.state.items.scarecrow) == 2,
 		"v4 stock sums plantable units without clipping and preserves noncrop items")
 	var restored := SimWorld.new()
@@ -18053,6 +18054,73 @@ func test_workbench_shelf() -> void:
 		"left on calm, where she left it")
 	gs_again.free()
 	live.done()
+
+
+func test_barn_simulation() -> void:
+	print("\n--- Industrial barn: voluntary cows and the scheduled cheese line ---")
+	var world := SimWorld.new(); world.generate()
+	for y in range(9, 13):
+		for x in range(10, 14):
+			world.set_tile_state(x, y, "cleared"); world.set_object(x, y, "")
+	var barn: Dictionary = world.make_barn("barn_1", Vector2i(10, 10))
+	world.spawn_actor("cow_1", SpeciesDefs.COW, Vector2i(10, 12), {"milk_milliunits": 1000})
+	var replay_base := SaveGame.capture(world, GameState)
+	var trip := world.advance_ticks(5000, GameState)
+	var verbs: Array[String] = []
+	var line_verbs: Array[String] = []
+	for taken in trip:
+		var verb := String(taken.action.get("verb", ""))
+		if String(taken.action.get("actor", "")) == "cow_1": verbs.append(verb)
+		if String(taken.action.get("actor", "")) == "world": line_verbs.append(verb)
+	_assert(verbs.slice(0, 4) == ["reserve_milk_stall", "enter_milk_stall", "give_milk", "leave_milk_stall"],
+		"a ready cow reserves the first stall, walks through its door, gives one unit and leaves (%s)" % str(verbs))
+	_assert(world.actor_pos("cow_1") == Vector2i(10, 10) and String(barn.stalls[0].cow_id) == "",
+		"the cow leaves by the barn door and releases the stall for another cow")
+	_assert(int(world.actor("cow_1").extra.milk_milliunits) == 0
+		and world.energy_of("cow_1") == SpeciesDefs.max_energy_of(SpeciesDefs.COW) - SimWorld.COW_GIVE_MILK_ENERGY,
+		"one visit transfers one unit and spends cow energy")
+	_assert(line_verbs == SimWorld.BARN_LINE_VERBS,
+		"the clock advances one batch through all seven stations in order (%s)" % str(line_verbs))
+	_assert(int(barn.finished_cheese_count) == 1, "the completed batch becomes one stored cheese")
+	var log := ReplayLog.new(); log.start_from_save(replay_base, world.gen_seed)
+	for taken in trip: log.record(taken.action, taken.result, int(taken.tick), true)
+	log.mark_tick(world.clock.tick)
+	var replayed := SimWorld.new()
+	_assert(log.apply_to(replayed, GameState) and log.divergence == "",
+		"the cow trip and every scheduled factory action recompute from the replay log (%s)" % log.divergence)
+	_assert(replayed.barns == world.barns and replayed.actor_pos("cow_1") == world.actor_pos("cow_1"),
+		"the replay ends with the same cow and cheese-line state")
+
+	var blocked := SimWorld.new(); blocked.generate(); var b := blocked.make_barn("b", Vector2i(8, 8))
+	b.stations.outfeed = {"batch_id": 1, "cow_id": "cow", "amount_milliunits": 1000,
+		"station": "outfeed", "entry_tick": 0, "ready_tick": 1}
+	b.stations.press = {"batch_id": 2, "cow_id": "cow", "amount_milliunits": 1000,
+		"station": "press", "entry_tick": 0, "ready_tick": 20}
+	b.next_batch_id = 3; blocked.schedule_all_brains()
+	var first := blocked.advance_ticks(1, GameState)
+	_assert(first.size() == 1 and String(first[0].action.verb) == "finish_cheese",
+		"a clock appointment clears the downstream station first")
+	var early := blocked.advance_to_tick(19, GameState)
+	_assert(early.is_empty() and b.stations.press != null, "ready_tick prevents an early factory transition")
+	var due := blocked.advance_to_tick(20, GameState)
+	_assert(due.size() == 1 and String(due[0].action.verb) == "press_cheese",
+		"the saved batch advances when its ready tick arrives")
+
+	var saved := SaveGame.capture(world, GameState)
+	var restored := SimWorld.new()
+	_assert(SaveGame.restore(saved, restored, GameState), "a barn with its cow and factory state restores")
+	_assert(restored.barns == world.barns, "the barn state round-trips exactly")
+	var missing_station: Dictionary = saved.duplicate(true)
+	missing_station.world.barns.barn_1.stations.erase("rake")
+	_assert(not SaveGame.restore(missing_station, SimWorld.new(), GameState), "a save missing a required station is refused")
+	var mismatched_cow: Dictionary = saved.duplicate(true)
+	mismatched_cow.world.barns.barn_1.stalls[0].cow_id = "cow_1"
+	_assert(not SaveGame.restore(mismatched_cow, SimWorld.new(), GameState), "a stall and cow that disagree about ownership are refused")
+	var wrong_station: Dictionary = saved.duplicate(true)
+	wrong_station.world.barns.barn_1.stations.rake = {"batch_id": 9, "cow_id": "cow_1",
+		"amount_milliunits": 1000, "station": "press", "entry_tick": 1, "ready_tick": 2}
+	wrong_station.world.barns.barn_1.next_batch_id = 10
+	_assert(not SaveGame.restore(wrong_station, SimWorld.new(), GameState), "a batch stored under the wrong station is refused")
 
 
 func test_room_edge_styles() -> void:

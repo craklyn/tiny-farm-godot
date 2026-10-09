@@ -29,7 +29,7 @@ const AtomicFileWriter := preload("res://systems/atomic_file.gd")
 # distinguish an older save from a new empty one, so v4 needs a real migration.
 # v6: the per-day stateless RNG derivation changed. V5 and earlier saves keep
 # their original rolls, including future days, by migrating to legacy revision.
-const VERSION := 6
+const VERSION := 7
 
 # 600 / 20. The one place the old scale is written down.
 const LEGACY_ENERGY_SCALE := 30
@@ -63,6 +63,7 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 			# reach it. Additive — a save without this key restores a farm with no
 			# interiors, which is every farm before this release.
 			"rooms": _capture_rooms(world),
+			"barns": world.barns.duplicate(true),
 			# Sim time (M2.5 WI-1). Additive, same pattern as actor_energy above:
 			# a save written before the clock existed simply has no tick, which
 			# reads as 0 — true of every build that wrote one.
@@ -285,6 +286,11 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 			r2.append(String(obj))
 		world.objects.append(r2)
 	_restore_rooms(world, w.get("rooms", {}))
+	if typeof(w.get("barns", {})) != TYPE_DICTIONARY:
+		return false
+	world.barns = w.get("barns", {}).duplicate(true)
+	if not _valid_barns(world):
+		return false
 	# A farm saved before the home joined the registry has no entry for it, and a
 	# player indoors on such a save would look out at nothing. Added on load rather
 	# than migrated into the file, because it is derived from the layout and a
@@ -358,9 +364,11 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 				world.set_actor_energy(id, int(legacy_energy[id]))
 	else:
 		world.actors = _restore_actors(saved_actors)
-		# A restored registry did not go through spawn_actor, so nobody is on the
-		# clock yet. This is the one call that makes a loaded farm alive.
-		world.schedule_all_brains()
+	if not _valid_barn_ownership(world):
+		return false
+	# A restored registry did not go through spawn_actor, so nobody is on the
+	# clock yet. This also reconstructs factory appointments from ready ticks.
+	world.schedule_all_brains()
 
 	var s: Dictionary = d.get("state", {})
 	gs.save_lineage = _restore_lineage(s.get("lineage", []))
@@ -470,6 +478,81 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 	return true
 
 
+static func _valid_barns(world: SimWorld) -> bool:
+	for barn_id in world.barns:
+		var barn = world.barns[barn_id]
+		if typeof(barn) != TYPE_DICTIONARY: return false
+		var stalls = barn.get("stalls", [])
+		if typeof(stalls) != TYPE_ARRAY or stalls.size() != 4: return false
+		var seen := {}
+		for stall in stalls:
+			if typeof(stall) != TYPE_DICTIONARY: return false
+			var index := int(stall.get("index", -1))
+			if index < 0 or index >= 4 or seen.has(index): return false
+			seen[index] = true
+		var receiver = barn.get("receiver", [])
+		var stations = barn.get("stations", {})
+		if typeof(receiver) != TYPE_ARRAY or typeof(stations) != TYPE_DICTIONARY: return false
+		if stations.size() != SimWorld.BARN_STATIONS.size(): return false
+		for key in SimWorld.BARN_STATIONS:
+			if not stations.has(key): return false
+		for key in stations:
+			if String(key) not in SimWorld.BARN_STATIONS: return false
+		if typeof(barn.get("door", null)) != TYPE_ARRAY or barn["door"].size() != 2: return false
+		if typeof(barn.get("next_batch_id", null)) != TYPE_INT or int(barn["next_batch_id"]) < 1: return false
+		if typeof(barn.get("finished_cheese_count", null)) != TYPE_INT: return false
+		if int(barn.get("finished_cheese_count", -1)) < 0 \
+				or int(barn.get("finished_cheese_count", -1)) > SimWorld.FINISHED_CHEESE_CAPACITY: return false
+		var batch_ids := {}
+		var batches: Array = receiver.duplicate()
+		for key in stations:
+			if stations[key] != null:
+				if typeof(stations[key]) != TYPE_DICTIONARY or String(stations[key].get("station", "")) != String(key): return false
+				batches.append(stations[key])
+		var highest_batch_id := 0
+		for batch in batches:
+			if typeof(batch) != TYPE_DICTIONARY or int(batch.get("amount_milliunits", 0)) != 1000: return false
+			var batch_id := int(batch.get("batch_id", -1))
+			if batch_id < 1 or batch_ids.has(batch_id): return false
+			batch_ids[batch_id] = true
+			highest_batch_id = maxi(highest_batch_id, batch_id)
+			var station := String(batch.get("station", ""))
+			if station != "receiver" and station not in SimWorld.BARN_STATIONS: return false
+			if int(batch.get("ready_tick", -1)) < int(batch.get("entry_tick", 0)): return false
+		for batch in receiver:
+			if typeof(batch) != TYPE_DICTIONARY or String(batch.get("station", "")) != "receiver": return false
+		if int(barn["next_batch_id"]) <= highest_batch_id: return false
+	return true
+
+
+static func _valid_barn_ownership(world: SimWorld) -> bool:
+	var claimed := {}
+	for barn_id in world.barns:
+		for stall in world.barns[barn_id]["stalls"]:
+			var cell = stall.get("cell", null)
+			if typeof(cell) != TYPE_ARRAY or cell.size() != 2: return false
+			var cow_id := String(stall.get("cow_id", ""))
+			if cow_id == "": continue
+			if claimed.has(cow_id) or world.species_of(cow_id) != SpeciesDefs.COW: return false
+			claimed[cow_id] = true
+			var extra: Dictionary = world.actor(cow_id).get("extra", {})
+			if String(extra.get("barn_id", "")) != String(barn_id) \
+					or int(extra.get("stall_index", -1)) != int(stall["index"]): return false
+	for actor_id in world.actors:
+		if world.species_of(String(actor_id)) != SpeciesDefs.COW: continue
+		var extra: Dictionary = world.actor(String(actor_id)).get("extra", {})
+		var milk = extra.get("milk_milliunits", null)
+		if typeof(milk) != TYPE_INT or int(milk) < 0 or int(milk) > 2000: return false
+		var state := String(extra.get("state", "idle"))
+		if state not in ["idle", "going_to_stall", "moving", "at_door", "entering", "giving", "leaving_stall", "leaving_barn"]: return false
+		var barn_id := String(extra.get("barn_id", "")); var index := int(extra.get("stall_index", -1))
+		if barn_id == "":
+			if index != -1 or claimed.has(String(actor_id)): return false
+		elif not world.barns.has(barn_id) or index < 0 or index >= 4 \
+				or String(world.barns[barn_id]["stalls"][index].get("cow_id", "")) != String(actor_id): return false
+	return true
+
+
 # Version chain: v(n) saves are migrated stepwise to VERSION here.
 # Unknown/future versions return {} (caller treats as unloadable).
 static func migrate(data: Dictionary) -> Dictionary:
@@ -498,6 +581,12 @@ static func migrate(data: Dictionary) -> Dictionary:
 		if out.get("world") is Dictionary:
 			out["world"]["stateless_revision"] = SimRng.STATELESS_LEGACY
 		v = 6
+	if v == 6:
+		out = out.duplicate(true)
+		out["version"] = 7
+		if out.get("world") is Dictionary:
+			out["world"]["barns"] = {}
+		v = 7
 	if v != VERSION:
 		return {}
 	return out

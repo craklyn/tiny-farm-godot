@@ -66,6 +66,7 @@ const WORM := "worm"
 # actor, not three rows here, because a product line is one machine with a
 # setting rather than three animals.
 const BOT := "bot"
+const COW := "cow"
 
 # --- what kind of thing a species is (M2.5 WI-9) -------------------------------
 #
@@ -133,7 +134,8 @@ const PLAYER_VERBS: Array[String] = [
 # open the door of her own hut would be an animal locked out of the one building in
 # the game that is for her.
 const ENTITY_VERBS: Array[String] = ["eat_crop", "eat_acorn", "lay_egg", "crow_scared",
-		"open_gate", "use_door"]
+		"open_gate", "use_door", "gain_milk", "reserve_milk_stall", "enter_milk_stall", "give_milk",
+		"leave_milk_stall"]
 
 static var ROWS: Dictionary = {
 	# The farmer. Her brain is the ActionRouter — a person, not a policy — and it
@@ -572,6 +574,13 @@ static var ROWS: Dictionary = {
 		# crawling pests, and a boot that could delete the player's own machine is
 		# a different design (and a support ticket).
 	},
+	COW: {
+		"name": "Cow", "brain": "cow_barn",
+		"verbs": ["gain_milk", "use_door", "reserve_milk_stall", "enter_milk_stall", "give_milk", "leave_milk_stall"],
+		"speed": 0.125,
+		"movement": { "mode": GROUND, "body_len": 1, "tile_exclusive": false },
+		"senses": {}, "persistent": true, "max_energy": 480,
+	},
 }
 
 
@@ -628,6 +637,10 @@ static func mode_of(species: String) -> String:
 
 static func speed_of(species: String) -> float:
 	return float(row(species).get("speed", 0.0))
+
+
+static func max_energy_of(species: String) -> int:
+	return int(row(species).get("max_energy", SimWorld.ACTOR_MAX_ENERGY))
 
 
 static func verbs_of(species: String) -> Array:

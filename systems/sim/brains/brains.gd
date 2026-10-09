@@ -49,6 +49,7 @@ static func _table() -> Dictionary:
 			# brain, this is one species with a dial — and between them they are
 			# the two ways this table stays small.
 			"bot_line": BotBrain.new(),
+			"cow_barn": CowBrain.new(),
 		}
 	return _by_id
 
