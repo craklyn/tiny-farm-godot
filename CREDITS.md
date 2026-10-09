@@ -35,8 +35,12 @@ before the first public build ships.*
   one continuous product run joins its milk, curd, slab, forming-hoop, and round-wheel
   shapes in that order.
   `tools/build_industrial_barn_art.py` rebuilds both PNGs and checks their
-  dimensions, hard alpha, and palette. Output rights for the generated exterior
-  and reference follow the Retro Diffusion terms verified below.
+  dimensions, hard alpha, palette, and cow-door clearances. On 2026-10-09, the
+  exterior doorway was widened from a 12-pixel clear opening to a 16-pixel clear
+  opening by moving its existing-colour timber posts outside the opening. The
+  interior doorway remains a 22-pixel clear opening. No new art was generated;
+  output rights for the generated exterior and reference follow the Retro Diffusion
+  terms verified below.
 - **Industrial Barn prototype boards** (2026-10-07) — six Retro Diffusion Plus
   pixel-art concept-board generations at 384×288, made to compare the three
   proposed Industrial Barn looks before any game asset is selected. The raw PNGs

@@ -61,13 +61,12 @@ def build_exterior():
         for x in range(48):
             if data[x, y][3]:
                 data[x, y] = nearest(data[x, y][:3]) + (255,)
-    # Keep the cow entrance unmistakable after the 4:1 reduction.
-    rect(out, 17, 22, 30, 29, "deep")
-    rect(out, 16, 21, 31, 21, "wood_dark")
-    rect(out, 16, 22, 16, 29, "wood_dark")
-    rect(out, 31, 22, 31, 29, "wood_dark")
-    for x in (19, 28):
-        line(out, [(x, y) for y in range(23, 29)], "wood")
+    # Keep a 16px clear cow entrance after the 4:1 reduction. The posts sit
+    # outside the opening so their braces do not reduce the usable width.
+    rect(out, 16, 22, 31, 29, "deep")
+    rect(out, 15, 21, 32, 21, "wood_dark")
+    rect(out, 15, 22, 15, 29, "wood_dark")
+    rect(out, 32, 22, 32, 29, "wood_dark")
     check_no_white_edges(out)
     out.save(EXTERIOR)
 
@@ -283,6 +282,19 @@ def check_interior_readability(im):
                    for dx in range(4))
 
 
+def check_cow_doorways(exterior, interior):
+    """Keep the 16px cow clearances aligned between the two barn views."""
+    deep = RGB["deep"] + (255,)
+    # The exterior opening is exactly one cow frame wide, with its posts outside.
+    for y in range(22, 30):
+        assert all(exterior.getpixel((x, y)) == deep for x in range(16, 32)), y
+        assert exterior.getpixel((15, y))[:3] == RGB["wood_dark"], y
+        assert exterior.getpixel((32, y))[:3] == RGB["wood_dark"], y
+    # The interior's threshold remains wider than the exterior opening.
+    for y in range(51, 64):
+        assert all(interior.getpixel((x, y)) == deep for x in range(5, 27)), y
+
+
 def check_connected_product_path(im):
     """Assert that the visible route is a four-neighbour-connected run of product pixels."""
     # This is the ordered travel path, including its entrances and exits at every station.
@@ -312,9 +324,11 @@ def main():
     OUT.mkdir(parents=True, exist_ok=True)
     build_exterior()
     interior = build_interior()
-    check(Image.open(EXTERIOR).convert("RGBA"), (48, 32))
+    exterior = Image.open(EXTERIOR).convert("RGBA")
+    check(exterior, (48, 32))
     check(interior, (96, 64))
     check_interior_readability(interior)
+    check_cow_doorways(exterior, interior)
     check_connected_product_path(interior)
     interior.save(INTERIOR)
     print("wrote industrial_barn.png (48x32) and industrial_barn_interior_kit.png (96x64)")
