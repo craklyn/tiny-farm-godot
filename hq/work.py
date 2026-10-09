@@ -569,6 +569,12 @@ possibility raised that he did not take up is not work. File something only when
 he asked for something to happen, agreed to something happening, or the reply
 commits someone to a concrete next step.
 
+ONE STORY PER ITEM: each item asks for one finished outcome its owner can hand
+back for review. Independent outcomes are separate items, even when they share
+an owner; an implementation and its own tests are one outcome. Its first_action
+names where the work starts — `path/to/file:line` or a function — whenever the
+exchange makes that knowable, so the worker does not spend a session finding it.
+
 Studio rule: {pol['rule']}
 
 Tier each item by how bad it is to get wrong with nobody reviewing it first:
@@ -586,7 +592,7 @@ Pick the owner from this roster by id — the person whose job it actually is:
 {_roster_line(org)}
 
 Reply with raw JSON and nothing else (no prose, no code fence):
-{{"items": [{{"title": "short and plain", "level": "task|story|epic|project|goal", "owner": "<roster id>", "ask": "one sentence in Daniel's own terms", "first_action": "the single next concrete step, specific enough to just do", "tier": 0, "tier_reason": "why that tier"}}]}}
+{{"items": [{{"title": "short and plain", "level": "task|story|epic|project|goal", "owner": "<roster id>", "ask": "one sentence in Daniel's own terms", "first_action": "the single next concrete step, starting at path/to/file:line or a named function when known", "tier": 0, "tier_reason": "why that tier"}}]}}
 
 TITLES: Daniel reads the queue title-first, so a title is read with nothing around it to settle what it means: no ticket IDs, and no verb that could mean its own opposite. "Hold the foley session" was read as both delay it and run it. Prefer the longer unambiguous verb — "Take the foley session off the schedule". The ask and first_action below are read by the agent that does the work, so write those for efficiency. A title must survive four tests, which are the shapes of every writing call Daniel has actually made (docs/writing_rulings.json holds them, docs/WRITING.md holds the principle, and the commit-msg hook and tools/check_writing.py judge against both): (1) no internal term where the thing has a plain name — say where it came from, not provenance; the four test suites, not the suites; recorded, not stamped; (2) no metaphor standing where the fact should be — "a frame she would feel" says nothing, "won't make the tablet stutter" says it; (3) no mechanism where the symptom belongs — he wants to know the game stutters, not that a budget was exceeded; (4) no name or pronoun he has not been given in that same sentence. Do not treat those examples as a banned list: a word wrong in one sentence is right in another, and the rule is the principle, not the vocabulary. Say the literal thing.
 
@@ -1986,12 +1992,15 @@ and on the next line either {none_line}raw JSON, no fence and no prose, naming e
 acceptance should start. One result often implies several: a fix to a tool, a
 sweep for the artist and a check in the pipeline are three items with three
 owners, and naming only the first quietly drops the other two. Four at most —
-past that it is a plan, and a plan is its own item.
+past that it is a plan, and a plan is its own item. Each item is one finished
+outcome (an implementation and its own tests count as one); its first_action
+names where the work starts — `path/to/file:line` or a function — when you know it.
 {amend}{move_note}
-{{"deliverable": {{"name": "the short name of the finished result Daniel reviews"}}, "items": [{{"title": "short and plain", "owner": "<roster id>", "level": "task|story|epic|project|goal", "tier": 0|1|2, "ask_first": "only at tier 2: {ask_keys}", "after": ["the title of another item in this list that must land first"], "first_action": "the single next concrete step, specific enough to just do", "why": "one sentence: why this follows"}}]{amend_field}{move_field}{outcome_field}}}
+{{"deliverable": {{"name": "the short name of the finished result Daniel reviews"}}, "items": [{{"title": "short and plain", "owner": "<roster id>", "level": "task|story|epic|project|goal", "tier": 0|1|2, "ask_first": "only at tier 2: {ask_keys}", "after": ["the title of another item in this list that must land first"], "first_action": "the single next concrete step, starting at path/to/file:line or a named function when known", "why": "one sentence: why this follows"}}]{amend_field}{move_field}{outcome_field}}}
 
 `deliverable.name` is for Daniel, not a rewrite of the ask: name the finished
-thing he can inspect in a few plain words. Keep the original ask in the card.
+thing he can inspect in a few plain words. It does not replace the ask of the
+card you are finishing, which stays as it is.
 
 TITLES: Daniel reads the queue title-first, so a title is read with nothing around it to settle what it means: no ticket IDs, and no verb that could mean its own opposite. "Hold the foley session" was read as both delay it and run it. Prefer the longer unambiguous verb — "Take the foley session off the schedule". The ask and first_action below are read by the agent that does the work, so write those for efficiency. Never put these words in a title — each is exact inside this studio and empty three feet away: suite (say "test suite"), stamp (say "record"), prove or proof (say "test" or "evidence"), attestation, invariant, provenance, cadence, parity, plumbing, orphan, manifest, harness, hygiene, tier, trace, gate, instrument, surface. Say the literal thing. docs/glossary.json is the full list and the build fails on it.
 
