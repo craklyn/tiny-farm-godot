@@ -1608,6 +1608,47 @@ def do_item(item, org, run_id, log, action=None):
     return rec
 
 
+def approved_files_moved(item):
+    """Whether main has changed a file of the approved candidate since it was
+    built. The no-model landing of an approved patch can only rebuild it where
+    those files are untouched (S-33); otherwise it failed the same way every
+    ten minutes (2026-10-09: the cheese-collection design, five hours at zero
+    cost and no progress). Such a card takes the ordinary reconcile — merged on
+    current main and reviewed again — and keeps Daniel's yes only if the merged
+    change is line for line the one he approved (`approval_carries`)."""
+    candidate = (item.get("attempt_outcome") or {}).get("candidate") or {}
+    files = list((candidate.get("files") or {}).keys())
+    if not files or not candidate.get("base_files"):
+        return False
+    try:
+        head = integration.main_head(server.REPO)
+        now = git_blobs(server.REPO, head, files) if head else None
+    except (subprocess.SubprocessError, OSError):
+        now = None
+    # Unreadable main is not evidence that it moved; the landing gate still
+    # checks the exact files before anything goes in.
+    return now is not None and now != candidate.get("base_files")
+
+
+def stable_patch_id(patch):
+    """Git's id for a change's added and removed lines, ignoring where they sit."""
+    if not patch:
+        return ""
+    got = subprocess.run(["git", "patch-id", "--stable"], input=patch, capture_output=True,
+                         text=True, cwd=REPO, timeout=60)
+    return (got.stdout.split() or [""])[0]
+
+
+def approval_carries(item, patch):
+    """Daniel's yes covers this patch: the exact one, or one that differs from it
+    only in where its lines sit because main moved around it."""
+    approval = item.get("landing_approved") or {}
+    if approval.get("patch_id") and approval["patch_id"] == work.evidence_id(patch or ""):
+        return True
+    stable = approval.get("stable_patch_id")
+    return bool(stable) and stable == stable_patch_id(patch)
+
+
 def recorded_candidate_attempt(item, current_base=True):
     """The last card attempt's immutable transaction, if it is still this patch.
     `current_base=False` also finds one whose main has moved on; the landing
@@ -2387,7 +2428,7 @@ def meets_landing_bar(item, rec, applied, suites, *, repo=None):
     blocked = sorted({f for f in files
                       if any(f == n or f.startswith(n) for n in NEVER_LANDS)})
     # Daniel's yes (work.landing_approved) covers the exact patch he was shown.
-    approved = (item.get("landing_approved") or {}).get("patch_id") == work.evidence_id(rec.get("patch", ""))
+    approved = approval_carries(item, rec.get("patch", ""))
     if blocked and not approved:
         return False, work.approval_hold_reason(blocked[0])
 
@@ -2716,6 +2757,25 @@ def push_landed(repo=None):
         return "the secrets check stopped it: " + (scan.stderr or scan.stdout or "").strip()[-300:]
     pushed = sh(["git", "push", "-q", "origin", "main:main"], cwd=repo, timeout=180)
     return "" if pushed.returncode == 0 else ("push failed: " + (pushed.stderr or "")[-200:])
+
+
+def catch_up_local_main(repo=None):
+    """Bring local main up to origin/main before anything is worked or landed,
+    so a push made outside the drain never strands the queue. Says what it did
+    only when there is something to say."""
+    repo = repo or REPO
+    if sh(["git", "fetch", "-q", "origin", "main"], cwd=repo, timeout=120).returncode:
+        return "Could not fetch origin/main; local main was left where it was."
+    target = sh(["git", "rev-parse", "refs/remotes/origin/main"], cwd=repo).stdout.strip()
+    try:
+        state = integration.catch_up_main(repo, target)
+    except RuntimeError as e:
+        return str(e)
+    return {
+        "advanced": f"Local main caught up with origin/main at {target[:7]}.",
+        "dirty": "Local main is behind origin/main, but its checkout has changes of its own; "
+                 "landing waits until they are committed or cleared.",
+    }.get(state, "")
 
 
 def take_lock():
@@ -3337,7 +3397,8 @@ def _work_item(ctx, org, run_id, log):
     touches local main."""
     item, action = ctx["item"], ctx["action"]
     record_phase(run_id, item, "starting", "The task queue is preparing its isolated checkout.")
-    if action and action.get("type") == "reconcile" and work.landing_approved(item):
+    if action and action.get("type") == "reconcile" and work.landing_approved(item) \
+            and not approved_files_moved(item):
         # Daniel approved this exact reviewed patch: merge it with no model call.
         approved = recorded_candidate_attempt(item, current_base=False)
         if not approved:
@@ -3725,6 +3786,9 @@ def main():
 
     recovered = recover_interrupted_transactions(org) if lock else 0
     if lock:
+        caught = catch_up_local_main()
+        if caught:
+            print(caught)
         cleared = settle_handoffs()
         if cleared:
             print(f"Cleared obsolete pre-build or ready-to-land checkout handoffs on "

@@ -1003,6 +1003,23 @@ def landing_awaits_approval(item):
             and check.get("attempt_id") == attempt.get("id"))
 
 
+def _stable_patch_id_of(item_id, patch_id):
+    """Git's line-position-free id of the held patch he is approving, so his yes
+    still covers it after it is merged onto a main that moved around it. Empty
+    when the stored patch is not the one the card showed him."""
+    path = os.path.join(os.path.dirname(WORK), "patches", item_id + ".patch")
+    try:
+        with open(path, encoding="utf-8") as f:
+            patch = f.read()
+    except OSError:
+        return ""
+    if not patch or evidence_id(patch) != patch_id:
+        return ""
+    got = subprocess.run(["git", "patch-id", "--stable"], input=patch, capture_output=True,
+                         text=True, timeout=60)
+    return (got.stdout.split() or [""])[0]
+
+
 def landing_approved(item):
     """Daniel's yes, bound to the exact reviewed patch it was given for."""
     patch = (item.get("attempt_outcome") or {}).get("patch_id")
@@ -4702,6 +4719,7 @@ def _api_post(path, payload):
         # The drain merges it with no model call; landing files the follow-ups.
         outcome = item.get("attempt_outcome") or {}
         item["landing_approved"] = {"patch_id": outcome.get("patch_id"),
+                                    "stable_patch_id": _stable_patch_id_of(item["id"], outcome.get("patch_id")),
                                     "attempt_id": outcome.get("id"), "at": _now_iso()}
     elif path in ("/api/work/accept", "/api/work/approve") and item.get("state") == "needs_approval" \
             and item.get("spending_checkpoint"):

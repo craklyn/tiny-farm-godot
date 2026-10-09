@@ -413,16 +413,27 @@ class WorkflowProjection(unittest.TestCase):
         record = {"attempt_id": "e38fd850", "result": "Done.", "patch": "reviewed docs patch",
                   "check": saved["check"], "candidate": saved["attempt_outcome"]["candidate"]}
         with patch.object(drain, "recorded_candidate_attempt", return_value=record) as found, \
+                patch.object(drain, "approved_files_moved", return_value=False), \
                 patch.object(drain, "do_item", side_effect=AssertionError("no model session")):
             rec = drain._work_item(ctx, {}, "run", print)
         found.assert_called_once_with(saved, current_base=False)
         self.assertTrue(rec["verification_only"])
         self.assertEqual(rec["usage"], [])
         with patch.object(drain, "recorded_candidate_attempt", return_value=None), \
+                patch.object(drain, "approved_files_moved", return_value=False), \
                 patch.object(drain, "do_item", side_effect=AssertionError("no model session")):
             missing = drain._work_item(ctx, {}, "run", print)
         self.assertTrue(missing["held"])
         self.assertIn("approved", missing["error"])
+        # Once main has changed one of its files the exact patch can never land
+        # (2026-10-09: five hours of zero-cost retries); it is merged and read again.
+        with patch.object(drain, "approved_files_moved", return_value=True), \
+                patch.object(drain, "held_recheck_source", return_value=None), \
+                patch.object(drain, "verified_landing_source", return_value=None), \
+                patch.object(drain, "do_item", return_value={"merged": True}) as merged:
+            again = drain._work_item(ctx, {}, "run", print)
+        self.assertEqual(again, {"merged": True})
+        merged.assert_called_once()
 
     def test_leftover_build_on_a_card_in_review_starts_nothing(self):
         item = self.card(state="for_review", tier=0, started="2026-09-27T10:00:00+00:00",

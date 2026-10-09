@@ -2398,6 +2398,9 @@
   "42d4ad28ecdc963311df": {
    "verdict": "ok"
   },
+  "433bbe7042d94ea25346": {
+   "verdict": "ok"
+  },
   "4381dc6c721674051fb6": {
    "instead": "on-screen game display",
    "quote": "HUD",
@@ -4402,6 +4405,12 @@
   },
   "7a8c831aad1add921ccc": {
    "verdict": "ok"
+  },
+  "7a9d2fcdd820f4183239": {
+   "instead": "Work no longer stays marked “waiting to start” for hours when someone changes the project outside the work list or when the shared code changes after Daniel approves a change",
+   "quote": "changes are pushed outside the queue or the main branch moves after Daniel approves a change",
+   "verdict": "decode",
+   "why": "“Pushed,” “queue,” and “main branch” are internal process and engineering terms that leave a newcomer to work out what actually happened."
   },
   "7ad995031325e86944b8": {
    "baselined": "2026-09-25",
@@ -8278,6 +8287,12 @@
   },
   "e2b366c261d53529e945": {
    "verdict": "ok"
+  },
+  "e30c41ce46292d52a699": {
+   "instead": "Work no longer waits for hours in “waiting to start” after changes are made outside the queue or after Daniel approves a change while the main branch advances.",
+   "quote": "after Daniel approves a change that main has since moved around",
+   "verdict": "decode",
+   "why": "“Main” and “moved around” do not tell a cold reader that the main branch advanced after the approval."
   },
   "e32ffa88743568b86c6c": {
    "baselined": "2026-09-19",

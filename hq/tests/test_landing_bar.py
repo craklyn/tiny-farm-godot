@@ -135,6 +135,37 @@ def main():
     ok, why = bar(it=item(landing_approved=yes), r=rec(files=design, patch="another diff"))
     check(not ok and "docs/design/" in why, "a yes given for one patch does not carry to another")
 
+    # 2026-10-09: his yes on the cheese-collection design never landed, because
+    # main moved around the patch and only the exact bytes counted. Lines that
+    # moved are the same change; lines that changed are not.
+    approved = ("diff --git a/d.md b/d.md\n--- a/d.md\n+++ b/d.md\n"
+                "@@ -3,2 +3,2 @@ one\n-old line\n+new line\n two\n")
+    moved = approved.replace("@@ -3,2 +3,2 @@ one", "@@ -9,2 +9,2 @@ zero")
+    altered = approved.replace("+new line", "+a different line")
+    yes = {"patch_id": work.evidence_id(approved), "stable_patch_id": drain.stable_patch_id(approved)}
+    check(bool(yes["stable_patch_id"]), "an approved patch has a line-position-free id")
+    check(drain.approval_carries(item(landing_approved=yes), moved),
+          "his yes carries to the same change merged where main moved its lines")
+    check(not drain.approval_carries(item(landing_approved=yes), altered),
+          "his yes does not carry to a change whose lines the merge altered")
+    check(not drain.approval_carries(item(landing_approved={"patch_id": yes["patch_id"]}), moved),
+          "a yes recorded before the stable id existed still needs the exact patch")
+
+    # The no-model landing of an approved patch is skipped once main has changed
+    # one of its files, instead of failing the same way every ten minutes.
+    base = {"d.md": "100644 blob aaa"}
+    held = item(attempt_outcome={"candidate": {"files": {"d.md": "100644 blob bbb"},
+                                               "base_files": base}})
+    real_blobs, real_head = drain.git_blobs, drain.integration.main_head
+    try:
+        drain.integration.main_head = lambda repo: "head"
+        drain.git_blobs = lambda repo, rev, files: dict(base)
+        check(not drain.approved_files_moved(held), "an approved patch whose files main left alone lands as approved")
+        drain.git_blobs = lambda repo, rev, files: {"d.md": "100644 blob ccc"}
+        check(drain.approved_files_moved(held), "one whose file main has since changed is merged and reviewed again")
+    finally:
+        drain.git_blobs, drain.integration.main_head = real_blobs, real_head
+
     if FAILS:
         print(f"\n{len(FAILS)} failed.")
         return 1

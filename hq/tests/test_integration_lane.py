@@ -225,5 +225,59 @@ class IntegrationHandoff(unittest.TestCase):
         self.assertEqual(integration.main_head(str(self.repo)), self.base)
 
 
+    def _owner_behind_origin(self):
+        """A dedicated main checkout, and a newer main pushed from elsewhere."""
+        self.assertEqual(integration.handoff_main(str(self.repo), "codex/user",
+                                                  confirmed_idle=True), (True, ""))
+        owner = Path(self.tmp.name, "main-owner")
+        git(self.repo, "worktree", "add", "-q", "--", str(owner), "main")
+        side = Path(self.tmp.name, "elsewhere")
+        git(self.repo, "worktree", "add", "-q", "--detach", "--", str(side), self.base)
+        (side / "pushed.txt").write_text("from another session\n")
+        (side / "docs").mkdir()
+        (side / "docs" / "writing_verdicts.json").write_text("{}\n")
+        git(side, "add", "pushed.txt", "docs/writing_verdicts.json")
+        git(side, "commit", "-qm", "Pushed from elsewhere")
+        return owner, git(side, "rev-parse", "HEAD")
+
+    def test_a_clean_main_owner_catches_up_with_work_pushed_elsewhere(self):
+        owner, pushed = self._owner_behind_origin()
+        self.assertEqual(integration.catch_up_main(str(self.repo), pushed), "advanced")
+        self.assertEqual(integration.main_head(str(self.repo)), pushed)
+        self.assertEqual(git(owner, "rev-parse", "HEAD"), pushed)
+        self.assertTrue((owner / "pushed.txt").exists())
+        self.assertEqual(integration.catch_up_main(str(self.repo), pushed), "current")
+        self.assertEqual(integration.handoff_status(str(self.repo)), (True, ""))
+
+    def test_only_the_regenerable_cache_is_cleared_before_catching_up(self):
+        owner, pushed = self._owner_behind_origin()
+        # One more commit so the owner has the cache file tracked, then dirty it.
+        side = Path(self.tmp.name, "elsewhere")
+        integration.catch_up_main(str(self.repo), pushed)
+        (side / "pushed.txt").write_text("second\n")
+        git(side, "commit", "-qam", "Second push")
+        second = git(side, "rev-parse", "HEAD")
+        (owner / "docs" / "writing_verdicts.json").write_text('{"cached": 1}\n')
+        self.assertEqual(integration.catch_up_main(str(self.repo), second), "advanced")
+        self.assertEqual((owner / "docs" / "writing_verdicts.json").read_text(), "{}\n")
+        # Anything else edited in the checkout is someone's work: never touched.
+        (side / "pushed.txt").write_text("third\n")
+        git(side, "commit", "-qam", "Third push")
+        third = git(side, "rev-parse", "HEAD")
+        (owner / "kept.txt").write_text("somebody's edit\n")
+        self.assertEqual(integration.catch_up_main(str(self.repo), third), "dirty")
+        self.assertEqual(integration.main_head(str(self.repo)), second)
+        self.assertEqual((owner / "kept.txt").read_text(), "somebody's edit\n")
+
+    def test_main_that_has_diverged_from_origin_is_left_alone(self):
+        owner, pushed = self._owner_behind_origin()
+        (owner / "local.txt").write_text("landed here, not pushed\n")
+        git(owner, "add", "local.txt")
+        git(owner, "commit", "-qm", "Local landing")
+        local = integration.main_head(str(self.repo))
+        self.assertEqual(integration.catch_up_main(str(self.repo), pushed), "diverged")
+        self.assertEqual(integration.main_head(str(self.repo)), local)
+
+
 if __name__ == "__main__":
     unittest.main()

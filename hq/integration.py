@@ -186,6 +186,47 @@ def advance_main(repo, commit, parent):
     return True
 
 
+# Files the writing check rewrites in whatever checkout a commit is made from: a
+# cache of verdicts it can recompute, never anyone's work.
+REGENERABLE = ("docs/writing_verdicts.json",)
+
+
+def catch_up_main(repo, target):
+    """Fast-forward local main, and its clean dedicated checkout, to `target`.
+
+    Work pushed from anywhere but the drain (a chief-of-staff session, a Codex
+    session) leaves local main behind origin. Until 2026-10-09 nothing caught it
+    up, so every landing waited on handoff_status's "clean main-worktree
+    synchronization" for a person to pull by hand, and cards sat at "waiting to
+    start" for hours. This is that synchronization, done only when it is a pure
+    fast-forward over a checkout whose only changes are the regenerable cache.
+    Returns what happened: current, advanced, diverged, primary, dirty or raced."""
+    parent = main_head(repo)
+    if not target or target == parent:
+        return "current"
+    if git(repo, "merge-base", "--is-ancestor", parent, target, check=False).returncode:
+        return "diverged"
+    holder = main_checkout(repo)
+    if holder:
+        if os.path.realpath(holder) == _primary_checkout(repo):
+            return "primary"
+        if git(holder, "rev-parse", "HEAD").stdout.strip() != parent or \
+                git(holder, "diff", "--cached", "--quiet", check=False).returncode:
+            return "dirty"
+        changed = [p for p in git(holder, "diff", "--name-only").stdout.splitlines() if p]
+        if any(p not in REGENERABLE for p in changed):
+            return "dirty"
+        if changed:
+            git(holder, "restore", "--source=HEAD", "--worktree", "--", *changed)
+        if _untracked_collision(holder, parent, target):
+            return "dirty"
+    if git(repo, "update-ref", "refs/heads/main", target, parent, check=False).returncode:
+        return "raced"
+    if holder and not synchronize_main(repo, target, parent, holder):
+        raise RuntimeError("Local main caught up with origin, but its dedicated checkout needs safe synchronization.")
+    return "advanced"
+
+
 def synchronize_main(repo, commit, parent, holder=None):
     """Repair only the known-stale index/worktree of a dedicated main owner.
 
