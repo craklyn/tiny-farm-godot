@@ -188,6 +188,44 @@ size and over the shipped farm ground. Approval requires all of the following:
 - all edges are hard and palette-locked, with no generated fringe, baked shadow, backdrop or
   partially transparent pixel.
 
+### Art-direction review of the redrawn kit — 2026-10-09
+
+**Native-size verdict: approved.** The redrawn 48×32-pixel exterior and 96×64-pixel interior
+pass all seven requirements at native size. On 2026-10-09,
+`python3 tools/build_industrial_barn_art.py` completed against these two retained PNGs. The
+command checked both dimensions, fully opaque or fully transparent pixels, exact membership
+in the brief's palette, the harp, comb, hoops and wheels at their native coordinates, and an
+unbroken product-colour route through every station.
+
+**In-game verdict: pending.** The art director's review worker could not open a display.
+The chief of staff ran the capture scene on the desktop on 2026-10-09; it places the barn on
+the shipped farm ground and walks the farmer in through the barn's panel, as a player would.
+The two captures are [outside](mockups/industrial_barn/review_farm_ground.png) and
+[inside](mockups/industrial_barn/review_interior.png). The art director's verdict on them is
+still to come.
+
+- **Pass — red barn:** the exterior reads as a red timber barn before its roof vents.
+- **Pass — doors:** the open livestock doors remain the strongest dark shape and read wide
+  enough for the cow sprite.
+- **Pass — cow space:** the warm floor, hay rack, feed bin and four low open stalls read as a
+  cared-for space. The art contains no gates, headlocks, chains or equipment attached to a
+  cow.
+- **Pass — seven station silhouettes:** the receiver, vat, drain table, press bank and
+  outfeed have distinct shapes. The redrawn cutter descends as a wire harp, while the rake
+  travels as a broad comb, so all seven stations remain distinct at native size.
+- **Pass — product path:** milk, clustered curds, a slab, three forming hoops and round
+  cheese wheels carry the route. The fixed pipe, trough and belt connect those changing
+  shapes into one continuous run without labels or status text.
+- **Pass — shared room and cow route:** the warm and steel sides remain visible together.
+  The open floor from the livestock doors to all four stalls is not blocked by props or
+  machinery.
+- **Pass — pixel finish:** every pixel is fully transparent or fully opaque, and every
+  opaque pixel uses a colour from the brief. The kit has hard edges with no fringe, baked
+  shadow or backdrop.
+
+The native-size redraw is complete. To capture again, run
+`godot --path . res://tools/capture_industrial_barn_review.tscn` (it needs a display).
+
 ## What remains for later design
 
 - Daniel ruled that the barn unlocks after 10 collected eggs, that its shop bundle includes one

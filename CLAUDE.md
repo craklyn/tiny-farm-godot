@@ -126,6 +126,10 @@ godot --path . res://tools/profile_farm_page.tscn
 # Mark III — needs a display; saves to scratch so it never seeds the next suite run
 godot --path . res://tools/capture_workbench.tscn
 
+# The Industrial Barn on the shipped farm ground and its room from inside, entered through
+# the barn's panel, under docs/design/mockups/industrial_barn/review_*.png — needs a display
+godot --path . res://tools/capture_industrial_barn_review.tscn
+
 # The boot's four moments (Q-103) as PNGs under tools/boot_bloom_shots/ (gitignored),
 # and the watering inset (Q-104) as tools/shot_watering_inset.png — both need a display
 godot --path . res://tools/capture_boot_bloom.tscn
