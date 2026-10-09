@@ -73,6 +73,36 @@ class SuiteTests(unittest.TestCase):
         self.assertFalse(result["integration"]["ok"])
         self.assertTrue(all(cmd[:2] == [sys.executable, "tools/run_godot_test.py"] for cmd in seen))
 
+    def test_missing_evidence_runs_and_requires_the_robot_suite(self):
+        seen = []
+        def fake_sh(cmd, cwd=None, timeout=None):
+            seen.append(cmd)
+            output = ("replay MATCHES its autosave\n" if any(
+                part.endswith("robot_session.tscn") for part in cmd)
+                      else "Results: 3 PASSED, 0 FAILED\n")
+            return subprocess.CompletedProcess(cmd, 0, output, "")
+        check = {"verdict": "concerns", "complete": True, "escalates": None,
+                 "findings": [{"what": "No test suite was run.",
+                               "kind": "missing_test_evidence"}]}
+        with patch.object(drain, "sh", fake_sh), patch.object(drain, "preflight_godot_import"):
+            result = drain.run_suites("/fake", include_robot=True)
+        self.assertEqual(set(result), {"unit", "integration", "robot"})
+        self.assertTrue(all(row["ok"] for row in result.values()))
+        self.assertTrue(drain.clear_missing_test_evidence(check, result))
+        self.assertEqual((check["verdict"], check["findings"]), ("pass", []))
+        self.assertTrue(any(any(part.endswith("robot_session.tscn") for part in cmd)
+                            for cmd in seen))
+
+    def test_missing_evidence_category_does_not_hide_another_concern(self):
+        check = {"verdict": "concerns", "complete": True, "escalates": None,
+                 "findings": [
+                     {"what": "No test suite was run.", "kind": "missing_test_evidence"},
+                     {"what": "The replay format changed.", "kind": "other"},
+                 ]}
+        green = {name: {"ok": True} for name in ("unit", "integration", "robot")}
+        self.assertFalse(drain.clear_missing_test_evidence(check, green))
+        self.assertEqual(check["verdict"], "concerns")
+
     def test_a_change_to_hq_also_runs_hq_tests_away_from_the_live_store(self):
         # 2026-09-27: an HQ change landed with the game suites green and an HQ
         # test red; main stayed red for a day. HQ changes now need HQ's tests.

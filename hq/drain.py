@@ -610,7 +610,7 @@ THE DIFF THEY PRODUCED:
 Reply with raw JSON, no fence and no prose:
 {{"verdict": "pass|concerns|fail", "complete": true,
  "summary": "one sentence Daniel can read: what landed, and what to watch",
- "findings": [{{"what": "the problem in one line", "where": "file or file:line", "fix": "what to do about it"}}],
+ "findings": [{{"what": "the problem in one line", "where": "file or file:line", "fix": "what to do about it", "kind": "missing_test_evidence|other"}}],
  "unrelated_generated_files": [],
  "lesson_for_owner": null,
  "escalates": null,
@@ -628,6 +628,10 @@ Set complete true only when the entire requested result is finished, not blocked
 "pass" means it did what was asked and you found nothing worth his time. "concerns"
 means it is usable but you found something he or the owner should know. "fail"
 means it should not land as it stands.
+
+Use finding kind "missing_test_evidence" only when the finding is solely that no
+test suite was run on this exact candidate. Use "other" for every code, design,
+documentation, scope, or correctness concern, including a failed test.
 
 If — and only if — this genuinely needs Daniel himself, set "escalates" to one
 sentence saying what you need from him and "escalation_reason" to whichever of
@@ -1569,7 +1573,13 @@ def do_item(item, org, run_id, log, action=None):
         checkpoint(item, rec, "review_finished")
         if rec["files"] and rec["check"] and not cerr:
             record_phase(run_id, item, "checking_candidate", "The proposed change is running its tests.")
-            rec["candidate_suites"] = run_suites(cwd=tree, files=rec.get("files") or [])
+            evidence_only = only_missing_test_evidence(rec["check"])
+            rec["candidate_suites"] = (run_suites(
+                cwd=tree, files=rec.get("files") or [], include_robot=True)
+                if evidence_only else run_suites(cwd=tree, files=rec.get("files") or []))
+            if clear_missing_test_evidence(rec["check"], rec["candidate_suites"]):
+                rec["requires_robot_suite"] = True
+                rec["check_evidence"] = check_evidence_id(rec)
             restore_test_generated(tree, rec["candidate"]["tree"])
             checkpoint(item, rec, "candidate_tested")
         rec["candidate_unchanged"] = candidate_unchanged(tree, rec["candidate"]["tree"])
@@ -1727,8 +1737,14 @@ def recheck_held_candidate(item, org, run_id, source):
             rec["check_evidence"] = check_evidence_id(rec)
         checkpoint(item, rec, "review_finished")
         if rec["files"] and rec["check"]:
-            record_phase(run_id, item, "checking_candidate", "The re-reviewed candidate is running both game suites.")
-            rec["candidate_suites"] = run_suites(cwd=tree, files=rec.get("files") or [])
+            record_phase(run_id, item, "checking_candidate", "The re-reviewed candidate is running its game tests.")
+            evidence_only = only_missing_test_evidence(rec["check"])
+            rec["candidate_suites"] = (run_suites(
+                cwd=tree, files=rec.get("files") or [], include_robot=True)
+                if evidence_only else run_suites(cwd=tree, files=rec.get("files") or []))
+            if clear_missing_test_evidence(rec["check"], rec["candidate_suites"]):
+                rec["requires_robot_suite"] = True
+                rec["check_evidence"] = check_evidence_id(rec)
             restore_test_generated(tree, rec["candidate"]["tree"])
             checkpoint(item, rec, "candidate_tested")
         rec["candidate_unchanged"] = candidate_unchanged(tree, rec["candidate"]["tree"])
@@ -1774,7 +1790,10 @@ def parse_check(raw):
         lesson = {"text": " ".join(str(raw_lesson["text"]).split())[:600]}
     for f in (raw_findings if isinstance(raw_findings, list) else [])[:8]:
         if isinstance(f, dict) and f.get("what"):
-            findings.append({k: str(f.get(k) or "")[:400] for k in ("what", "where", "fix")})
+            finding = {k: str(f.get(k) or "")[:400] for k in ("what", "where", "fix")}
+            finding["kind"] = ("missing_test_evidence"
+                               if f.get("kind") == "missing_test_evidence" else "other")
+            findings.append(finding)
     reason = str(doc.get("escalation_reason") or "").lower().strip()
     unrelated = doc.get("unrelated_generated_files")
     unrelated = (["docs/writing_verdicts.json"] if isinstance(unrelated, list)
@@ -1793,6 +1812,46 @@ def parse_check(raw):
         "escalation_reason": reason if reason in
         ("authority", "external_commitment", "exposure", "age") else None,
     }
+
+
+def only_missing_test_evidence(check):
+    """Whether tests, rather than Daniel or another owner pass, settle the review."""
+    findings = (check or {}).get("findings") or []
+    return bool((check or {}).get("verdict") == "concerns"
+                and (check or {}).get("complete") is True
+                and not (check or {}).get("escalates")
+                and len(findings) == 1
+                and findings[0].get("kind") == "missing_test_evidence")
+
+
+def clear_missing_test_evidence(check, suites):
+    """Settle the one evidence concern with the suites the drain just ran.
+
+    All three green: the concern is answered and the read becomes clean. Any red:
+    the concern is answered too, the other way — the read becomes a failure naming
+    the suite, so the card goes back to its owner with something to fix rather than
+    reaching Daniel as a question about evidence the drain already has."""
+    if not only_missing_test_evidence(check):
+        return False
+    required = ("unit", "integration", "robot")
+    red = [name for name in required if not (suites or {}).get(name, {}).get("ok")]
+    if red:
+        tails = "\n".join(f"{name}: {((suites or {}).get(name) or {}).get('tail', '')}"
+                          for name in red)[-400:]
+        named = " and ".join(red)
+        check.update({"verdict": "fail",
+                      "summary": f"The exact candidate failed the {named} test "
+                                 f"suite{'s' if len(red) > 1 else ''} when the drain ran them.",
+                      "findings": [{"what": f"The {named} test suite failed on this candidate.",
+                                    "where": "test suites",
+                                    "fix": "Make the failing tests pass on this change:\n" + tails,
+                                    "kind": "other"}],
+                      "test_evidence_resolved": True})
+        return False
+    check.update({"verdict": "pass", "findings": [],
+                  "summary": "The exact candidate passed the unit, integration, and robot test suites.",
+                  "test_evidence_resolved": True})
+    return True
 
 
 def _patch_paths(patch):
@@ -1955,8 +2014,8 @@ def _hq_suite(cwd):
             "tail": "\n".join(failed + tail[-2:])[-600:]}
 
 
-def run_suites(cwd=REPO, files=None):
-    """Both headless suites, once, with private Godot user data.
+def run_suites(cwd=REPO, files=None, *, include_robot=False):
+    """The headless game suites, once, with private Godot user data.
 
     A checkout Godot has never imported is imported first, whatever the card
     says. 2026-09-26: the import ran only for cards whose wording named game
@@ -1969,19 +2028,28 @@ def run_suites(cwd=REPO, files=None):
         try:
             preflight_godot_import(cwd)
         except GodotImportHold as e:
-            return {name: {"ok": False, "tail": str(e)[:600]} for name in ("unit", "integration")}
-    for name, cmd in (
+            names = ("unit", "integration", "robot") if include_robot else ("unit", "integration")
+            return {name: {"ok": False, "tail": str(e)[:600]} for name in names}
+    commands = [
         ("unit", ["godot", "--headless", "--path", ".", "--script",
                   "res://tests/test_runner.gd"]),
         ("integration", ["godot", "--headless", "--path", ".",
                          "res://tools/test_runner.tscn"]),
-    ):
+    ]
+    if include_robot:
+        commands.append(("robot", ["godot", "--headless", "--path", ".",
+                                    "res://tools/robot_session.tscn"]))
+    for name, cmd in commands:
         try:
             p = sh([sys.executable, "tools/run_godot_test.py", "--timeout", "840", "--"] + cmd,
                    cwd=cwd, timeout=900)
             tail = ((p.stdout or "") + (p.stderr or "")).strip().splitlines()[-6:]
             matches = re.findall(r"Results:\s*(\d+) PASSED,\s*(\d+) FAILED", p.stdout or "")
-            out[name] = {"ok": p.returncode == 0 and bool(matches) and int(matches[-1][1]) == 0,
+            robot_match = re.search(r"replay MATCHES", p.stdout or "") if name == "robot" else None
+            ok = (p.returncode == 0 and bool(robot_match) and "✗" not in (p.stdout or "")) \
+                if name == "robot" else \
+                (p.returncode == 0 and bool(matches) and int(matches[-1][1]) == 0)
+            out[name] = {"ok": ok,
                          "tail": "\n".join(tail)[-600:]}
             if matches:
                 out[name].update({"passed": int(matches[-1][0]),
@@ -2269,8 +2337,10 @@ def meets_landing_bar(item, rec, applied, suites, *, repo=None):
         return False, "the test record does not identify the checked candidate"
     elif files:
         candidate_suites = rec.get("candidate_suites") or {}
-        if any(not (candidate_suites.get(name) or {}).get("ok") for name in ("unit", "integration")):
-            return False, "the checked candidate did not pass both test suites"
+        required = ("unit", "integration", "robot") if rec.get("requires_robot_suite") \
+            else ("unit", "integration")
+        if any(not (candidate_suites.get(name) or {}).get("ok") for name in required):
+            return False, "the checked candidate did not pass its required test suites"
         if git_blobs(repo, "", files) != candidate.get("files"):
             return False, "the applied files differ from the checked candidate"
     tier = _checked_tier(item, rec)
@@ -3360,7 +3430,10 @@ def _land_item(ctx, rec, org, run_id, log, done, no_suites):
         try:
             if touches_game(rec.get("files") or []):
                 preflight_godot_import(integration_repo)
-            suites = run_suites(cwd=integration_repo, files=rec.get("files") or [])
+            suites = (run_suites(cwd=integration_repo, files=rec.get("files") or [],
+                                 include_robot=True)
+                      if rec.get("requires_robot_suite") else
+                      run_suites(cwd=integration_repo, files=rec.get("files") or []))
             rec["suites"] = suites
             restore_test_generated(integration_repo, rec["candidate"]["tree"])
             # A test or hook that changed tracked files invalidates the tested

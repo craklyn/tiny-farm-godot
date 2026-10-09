@@ -257,6 +257,84 @@ class Completion(unittest.TestCase):
             self.assertEqual([run['job'] for run in runs], ['unit', 'integration'])
             self.assertEqual({run['head'] for run in runs}, {landed})
 
+    def test_missing_test_evidence_lands_only_after_all_three_candidate_suites_pass(self):
+        self.card['tier'] = 1
+        self.card['title'] = 'Record the test evidence'
+        repo = Path(self.tmp.name, 'missing-evidence-repo')
+        repo.mkdir()
+        drain.sh(['git', 'init', '-b', 'main'], cwd=repo, check=True)
+        drain.sh(['git', 'config', 'user.name', 'HQ fixture'], cwd=repo, check=True)
+        drain.sh(['git', 'config', 'user.email', 'hq@example.invalid'], cwd=repo, check=True)
+        Path(repo, 'sample.txt').write_text('before')
+        drain.sh(['git', 'add', 'sample.txt'], cwd=repo, check=True)
+        drain.sh(['git', 'commit', '-m', 'fixture base'], cwd=repo, check=True)
+        parent = drain.sh(['git', 'rev-parse', 'HEAD'], cwd=repo, check=True).stdout.strip()
+        drain.sh(['git', 'switch', '--detach'], cwd=repo, check=True)
+
+        def candidate(name, candidate_suites):
+            checkout = Path(self.tmp.name, name)
+            drain.sh(['git', 'worktree', 'add', '--detach', str(checkout), parent],
+                     cwd=repo, check=True)
+            Path(checkout, 'sample.txt').write_text(name)
+            drain.sh(['git', 'add', 'sample.txt'], cwd=checkout, check=True)
+            concern = {'verdict': 'concerns', 'complete': True, 'read': True,
+                       'escalates': None,
+                       'findings': [{'what': 'No test suite was run.',
+                                     'kind': 'missing_test_evidence'}]}
+            rec = record(attempt_id=name, files=['sample.txt'], patch='patch-' + name,
+                         check=concern)
+            rec['integration_checkout'] = str(checkout)
+            rec['candidate'] = {
+                'base': parent,
+                'tree': drain.sh(['git', 'write-tree'], cwd=checkout, check=True).stdout.strip(),
+                'files': drain.git_blobs(checkout, '', rec['files']),
+                'base_files': drain.git_blobs(checkout, parent, rec['files']),
+            }
+            rec['candidate_suites'] = candidate_suites
+            rec['candidate_test_evidence'] = work.evidence_id([rec['candidate'], candidate_suites])
+            rec['candidate_unchanged'] = True
+            rec['tree_evidence'] = drain.tree_evidence(rec['files'], repo=checkout)
+            return checkout, rec
+
+        green = {name: {'ok': True, 'passed': 1, 'failed': 0,
+                        'tail': 'Results: 1 PASSED, 0 FAILED'}
+                 for name in ('unit', 'integration', 'robot')}
+        checkout, rec = candidate('green-candidate', green)
+        with patch.object(drain, 'run_suites', return_value=green) as run:
+            suites = drain.run_suites(str(checkout), files=rec['files'], include_robot=True)
+        run.assert_called_once_with(str(checkout), files=['sample.txt'], include_robot=True)
+        self.assertTrue(drain.clear_missing_test_evidence(rec['check'], suites))
+        rec['requires_robot_suite'] = True
+        rec['check_evidence'] = work.evidence_id([rec['result'], rec['patch'], rec['candidate']])
+        rec['test_evidence'] = work.evidence_id([rec['patch'], suites])
+        with patch.object(server, 'REPO', str(repo)), patch.object(server, 'DATA', self.tmp.name), \
+             patch.object(drain, 'land', return_value=('landed-sha', '')):
+            landed = drain.write_back(self.card, rec, True, '', suites, ORG)
+        self.assertEqual(landed['state'], 'landed')
+
+        self.card = {'id': 'wtest-red', 'title': 'Record the failed test evidence',
+                     'owner': 'sam', 'tier': 1, 'state': 'doing', 'ask': 'Read',
+                     'first_action': 'Read', 'attempts': 0}
+        red = copy.deepcopy(green)
+        red['robot']['ok'] = False
+        red_checkout, red_record = candidate('red-candidate', red)
+        self.assertFalse(drain.clear_missing_test_evidence(red_record['check'], red))
+        red_record['check_evidence'] = work.evidence_id(
+            [red_record['result'], red_record['patch'], red_record['candidate']])
+        red_record['tree_evidence'] = drain.tree_evidence(red_record['files'], repo=red_checkout)
+        red_record['test_evidence'] = work.evidence_id([red_record['patch'], red])
+        with patch.object(server, 'REPO', str(repo)), patch.object(server, 'DATA', self.tmp.name):
+            held = drain.write_back(self.card, red_record, True, '', red, ORG)
+        self.assertEqual(red_record['check']['verdict'], 'fail')
+        self.assertIn('robot', red_record['check']['findings'][0]['what'])
+        self.assertEqual(red_record['check']['findings'][0]['kind'], 'other')
+        self.assertNotEqual(held['state'], 'landed')
+        self.assertIn('should not go in as it stands', held['diff']['why_not_landed'])
+        # A failed read is a repair for the owner, not a question for Daniel.
+        self.assertEqual(held['automatic_repairs'], 1)
+        self.assertEqual(held['state'], 'waiting_session')
+        self.assertIn('robot', held['repair_brief'])
+
     def test_frozen_legacy_set_is_not_ready_and_reconciliation_is_idempotent(self):
         records=json.loads((Path(__file__).parent/'fixtures'/'reconciliation_records.json').read_text())
         self.assertEqual({c['id'] for c in records},set(work.LEGACY_COMPLETION_IDS))
