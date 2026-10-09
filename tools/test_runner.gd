@@ -4984,13 +4984,23 @@ func _scenario_aj_the_robot_lives_in_a_stall() -> void:
 	player.path.clear()
 	player.pending_action = {}
 	await get_tree().process_frame
+	# The fixture owns this bay.  Reproduce the collision that used to happen at
+	# random in CI, then move its actor out before the tap and hold the sim until
+	# that tap has resolved.  A wait can observe an empty bay, but it cannot keep
+	# a hen from stepping back into it on the next frame.
+	farm.sim.set_actor_pos(SimWorld.ACTOR_CHICKEN, stall)
+	_clear_ground_for_fixture(stall, "bot_mk1")
+	_assert(farm.sim.actor_pos(SimWorld.ACTOR_CHICKEN) != stall,
+		"the staged hen is moved out of the bay before the robot is parked")
+	_assert(farm.sim.placeable_at(stall, "bot_mk1"), "the bay is free for the held robot")
+	_hold_sim_clock()
 	_assert(ActionRouter.resolve(farm, GameState, stall, player.get_tile_pos(), false)
 			.get("action", "") == "place",
 		"holding a robot, a tap on the bay means 'park it here' — the one thing a bay takes")
-	await _wait_for_clear_ground(stall, "bot_mk1")
 	InputManager.click_tile = stall
 	InputManager.has_click = true
 	var parked := await _wait_until(func(): return farm.sim.machine_at(stall) != "", 200)
+	_release_sim_clock()
 	_assert(parked, "a tap stands the robot in the bay")
 	var mk1: String = farm.sim.machine_at(stall)
 	var mextra: Dictionary = farm.sim.actor(mk1)["extra"]

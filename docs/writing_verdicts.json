@@ -6556,6 +6556,9 @@
   "b6b8df2c76e1431686f1": {
    "verdict": "ok"
   },
+  "b7288494106cb39c5257": {
+   "verdict": "ok"
+  },
   "b775f7f916a2590064cb": {
    "instead": "Paused repairs no longer appear ready to start",
    "quote": "Held repairs",
