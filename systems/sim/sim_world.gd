@@ -951,6 +951,10 @@ var rooms: Dictionary = {}
 const BARN_STATIONS: Array[String] = ["set_vat", "cutter", "rake", "drain", "press", "outfeed"]
 const BARN_LINE_VERBS: Array[String] = ["set_curd", "cut_curd", "stir_curd", "drain_whey",
 	"fill_cheese_hoops", "press_cheese", "finish_cheese"]
+# Named until Daniel rules Q-139. The current proposal matches the four voluntary
+# stalls; changing the ruling changes this value, not the purchase path.
+const HERD_LIMIT := 4
+const COW_PRICE := 250
 const FINISHED_CHEESE_CAPACITY := 8
 const COW_GIVE_MILK_ENERGY := 20
 # How long a batch stays at each station before the line may move it on, in sim
@@ -1032,6 +1036,31 @@ func has_cow() -> bool:
 		if species_of(String(actor_id)) == SpeciesDefs.COW:
 			return true
 	return false
+
+
+func cow_count() -> int:
+	var count := 0
+	for actor_id in actors:
+		if species_of(String(actor_id)) == SpeciesDefs.COW:
+			count += 1
+	return count
+
+
+# An added cow arrives at an existing barn's livestock doors. Barn ids and the
+# offsets within each doorway are both ordered so the accepted Action resolves
+# to the same square during replay.
+func added_cow_arrival_cell() -> Vector2i:
+	var ids: Array = barns.keys().map(func(k): return String(k))
+	ids.sort()
+	for barn_id in ids:
+		var barn: Dictionary = barns.get(barn_id, {})
+		var raw: Array = barn.get("anchor", [])
+		if raw.size() != 2:
+			continue
+		var cell := barn_cow_arrival_cell(Vector2i(int(raw[0]), int(raw[1])))
+		if cell.x >= 0:
+			return cell
+	return Vector2i(-1, -1)
 
 
 func next_cow_id() -> String:
@@ -1700,7 +1729,7 @@ func water_tile(tx: int, ty: int) -> void:
 # Verbs that can change milestone inputs (harvest counts, gold); other verbs
 # skip the check — it dominated fast-forward throughput when run per action.
 const MILESTONE_VERBS := { "harvest": true, "collect": true, "sell": true, "sleep": true,
-		"buy_seed": true, "buy_machine": true, "buy_upgrade": true }
+		"buy_seed": true, "buy_machine": true, "buy_cow": true, "buy_upgrade": true }
 
 
 # Verbs that do not advance the day's clock: sleep ends it, and the shop and bin
@@ -1713,7 +1742,7 @@ const NON_WORK_VERBS := { "sleep": true, "sell": true, "withdraw_seed": true,
 		# costs no energy and must not tick the clock the crows are scheduled
 		# against. **Placing** one is absent on purpose: carrying a sprinkler out
 		# to the far corner and setting it down is work, and it is charged as such.
-		"buy_machine": true, "configure": true,
+		"buy_machine": true, "buy_cow": true, "configure": true,
 		# Turning a reward dial on the workbench is the same kind of thing as
 		# turning a config dial (v0.2.2, Q-101): she is telling a machine what to
 		# care about, not doing a stroke of farm work. It costs no energy, and a
@@ -2918,6 +2947,17 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			# the shelf would have a capability she lacks (ground rule 1).
 			if not offers(bought_key, gs): return _fail("not_offered")
 			return { "ok": gs.buy_machine(bought_key) }
+		"buy_cow":
+			if gs == null: return _fail("no_state")
+			if barns.is_empty(): return _fail("no_barn")
+			if cow_count() >= HERD_LIMIT: return _fail("herd_full")
+			if int(gs.gold) < COW_PRICE: return _fail("not_enough_gold")
+			var arrival := added_cow_arrival_cell()
+			if arrival.x < 0: return _fail("no_cow_arrival_space")
+			var cow_id := next_cow_id()
+			gs.set_gold(int(gs.gold) - COW_PRICE)
+			spawn_actor(cow_id, SpeciesDefs.COW, arrival)
+			return { "ok": true, "cow": cow_id, "price": COW_PRICE }
 		"collect":
 			if gs == null: return _fail("no_state")
 			var obj := get_object(target.x, target.y)

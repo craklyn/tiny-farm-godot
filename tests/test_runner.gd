@@ -18526,6 +18526,32 @@ func test_barn_acquisition() -> void:
 		gave_milk = gave_milk or String(taken.action.get("verb", "")) == "give_milk"
 	_assert(gave_milk, "the bundled cow can walk through the placed barn's open livestock doors to give milk")
 
+	# Further cows are one atomic shop transaction: spend, actor creation and
+	# replay identity either all happen or none do.
+	GameState.gold = SimWorld.COW_PRICE * SimWorld.HERD_LIMIT
+	var cow_log := ReplayLog.new()
+	cow_log.start_from_save(SaveGame.capture(world, GameState), world.gen_seed)
+	var added := _replay_do(world, cow_log, {"verb": "buy_cow", "actor": "player"})
+	_assert(added.get("ok", false) and String(added.get("cow", "")) == "cow_2"
+		and GameState.gold == SimWorld.COW_PRICE * (SimWorld.HERD_LIMIT - 1)
+		and world.cow_count() == 2 and world.species_of("cow_2") == SpeciesDefs.COW,
+		"buying another cow spends 250 gold and registers cow_2 beside the barn (%s)" % added)
+	while world.cow_count() < SimWorld.HERD_LIMIT:
+		_assert(_replay_do(world, cow_log, {"verb": "buy_cow", "actor": "player"}).get("ok", false),
+			"another cow may be bought below the named herd limit")
+	var gold_at_limit: int = GameState.gold
+	var full := _replay_do(world, cow_log, {"verb": "buy_cow", "actor": "player"})
+	_assert(not full.get("ok", false) and String(full.get("reason", "")) == "herd_full"
+		and GameState.gold == gold_at_limit and world.cow_count() == SimWorld.HERD_LIMIT,
+		"the named herd limit refuses another cow without spending or spawning (%s)" % full)
+	var cows_live := SaveGame.capture_canonical(world, GameState)
+	var cows_replayed := SimWorld.new()
+	var cows_state = load("res://systems/game_state.gd").new()
+	_assert(cow_log.apply_to(cows_replayed, cows_state) and cow_log.divergence == ""
+		and SaveGame.capture_canonical(cows_replayed, cows_state) == cows_live,
+		"the added cows and their 250-gold purchases replay to the same herd (%s)" % cow_log.divergence)
+	cows_state.free()
+
 
 # A small cleared yard with one barn and its real six-by-four interior.
 func _barn_world() -> SimWorld:

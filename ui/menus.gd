@@ -1511,7 +1511,9 @@ func _select_current_option() -> void:
 				# per catalogue — see `SimWorld`'s `buy_machine` for why the seed
 				# verb was not generalised to cover both.
 				var purchase := { "actor": "player" }
-				if String(item.kind) == "machine":
+				if String(item.kind) == "cow":
+					purchase["verb"] = "buy_cow"
+				elif String(item.kind) == "machine":
 					purchase["verb"] = "buy_machine"
 					purchase["item"] = item.seed_type
 				else:
@@ -1520,6 +1522,10 @@ func _select_current_option() -> void:
 				var result: Dictionary = farm.apply_action(purchase, GameState)
 				var bought: bool = result.get("ok", false)
 				if bought:
+					# A cow is delivered as a live registry actor, not crate stock.
+					# Bring its presentation in on the same successful shop tap.
+					if result.has("cow"):
+						farm.sync_actors()
 					shop_refused_seed = ""
 					AudioManager.play_sfx("harvest")
 					_rebuild_options()
@@ -1699,4 +1705,17 @@ func _build_shop_items() -> void:
 			"affordable": GameState.gold >= int(mdef.price) and munlocked,
 			"icon": MachineDefs.icon_of(machine_key),
 			"owned": GameState.machines.get(machine_key, 0)
+		})
+	# Added cows use their own shop Action: they arrive alive beside a placed
+	# barn, never pass through the machine crate, and replay with their actor id.
+	if farm != null and not farm.sim.barns.is_empty():
+		var cows: int = farm.sim.cow_count()
+		var cow_icon := AtlasTexture.new()
+		cow_icon.atlas = load("res://assets/sprites/generated/cow.png")
+		cow_icon.region = Rect2(0, 0, 16, 16)
+		shop_items.append({
+			"kind": "cow", "seed_type": "cow", "item_name": "Cow",
+			"price": SimWorld.COW_PRICE, "unlocked": true,
+			"affordable": GameState.gold >= SimWorld.COW_PRICE and cows < SimWorld.HERD_LIMIT,
+			"icon": cow_icon, "owned": cows
 		})

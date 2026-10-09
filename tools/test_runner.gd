@@ -8912,6 +8912,25 @@ func _scenario_bn_the_barn_is_entered_and_drawn_from_its_saved_state() -> void:
 	var id := String(laid.get("room", ""))
 	_assert(laid.get("ok", false) and id != "" and farm.sim.barns.has(id),
 		"the barn stands on the farm with its room and its barn record (%s)" % laid)
+
+	# The same finger path as every shop card buys the second cow; it does not
+	# create machine stock that would need placing afterward.
+	GameState.gold = SimWorld.COW_PRICE
+	menus.open_menu("shop")
+	var cow_row := -1
+	for i in menus.shop_items.size():
+		if String(menus.shop_items[i].get("seed_type", "")) == "cow":
+			cow_row = i
+			break
+	_assert(cow_row >= 0 and bool(menus.shop_items[cow_row].get("affordable", false)),
+		"the placed barn adds an affordable 250-gold cow card to the shop")
+	if cow_row >= 0:
+		_press_row(menus.options_container, cow_row)
+		await get_tree().create_timer(0.3).timeout
+	_assert(GameState.gold == 0 and farm.sim.cow_count() == 2 and farm.sim.has_actor("cow_2")
+		and int(GameState.machines.get("cow", 0)) == 0,
+		"tapping the cow card spends 250 gold and the second cow arrives alive")
+	menus.close_menu()
 	if id == "":
 		_restore_session_paths(real_paths)
 		return
