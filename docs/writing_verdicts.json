@@ -1355,6 +1355,9 @@
   "24ea1de910c34b36a86a": {
    "verdict": "ok"
   },
+  "24f664737c3c56fae37c": {
+   "verdict": "ok"
+  },
   "2519bb592a09eb56ad05": {
    "instead": "cheese line",
    "quote": "steel line",
@@ -3320,6 +3323,12 @@
    "quote": "whose field the Mark III tends",
    "verdict": "second-look",
    "why": "The inverted wording makes the reader pause to work out that the question is which farmer's field the Mark III looks after."
+  },
+  "5bf0a6c697450b5d0535": {
+   "instead": "The building panel's wording stays unchanged for now. We will rewrite it later.",
+   "quote": "recorded as debt to fix later",
+   "verdict": "decode",
+   "why": "“Debt” is internal shorthand for work deliberately postponed, so the reader must work out what will happen later."
   },
   "5c1a64fd9702c2f832ae": {
    "verdict": "ok"

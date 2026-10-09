@@ -1712,6 +1712,17 @@ close to wordless — pictures and behavior, no required reading — so the prod
 far less text than a comparable title. The writing load lives almost entirely outside the
 game, which is why the trigger watches the storefront and not the build.
 
+### D-17. The building panel keeps its words for now (known debt)
+**Deferred by Daniel on 2026-10-08.** Tapping the coop, the Spiral Tower or the Industrial Barn
+opens the shared building panel, whose two choices are the words "Go inside" and "Pick up". A
+player who cannot read yet has to read them to choose, which falls short of S-7 (minimal
+literacy) and of the barn plan's "no required reading". Daniel chose to keep the pattern,
+consistent across all three buildings, and record it as technical debt to revise.
+
+**Trigger:** revisit when a playtest shows a pre-reader stuck or guessing at the panel, or at the
+next pass over the game's touch controls, whichever comes first. The likely fix is picture-only
+rows (a doorway for going in, a lifting hand for picking up) applied to every building at once.
+
 ---
 
 ## Awaiting designer input (the M0 exit gate)
