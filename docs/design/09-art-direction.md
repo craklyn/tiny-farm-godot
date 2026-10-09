@@ -468,21 +468,98 @@ close — and no single sheet can show both.
 
 ## Pea seed packet brief (2026-10-01)
 
-The pea's 16×16 shop picture uses the same packet language as the wheat and
-tomato pictures: a pale paper packet with hard pixel edges and no shadow beyond
-its cell. The face shows one open pea pod in side view. Its curved silhouette
-and three round peas must identify it; loose green circles, a leaf and the ripe
-plant do not.
+**What this settles:** the pea's 16×16 shop picture uses the same packet language
+as the wheat and tomato pictures, and the pea pod remains recognisable at the
+tablet's normal play size.
 
-Use `#a3c263` for the peas and light-facing pod edge, and the pea-sheet greens
-`#8db15d`, `#78a158` and `#4e6e3a` for its shade. Use `#f3f2c0` and `#f8f4e6`
-only for paper and the gap inside the pod. The packet keeps a transparent-pixel
-margin at each cell edge. It occupies new `shop_icons.png` column 6; columns 0
-through 5 remain wheat, tomato, scarecrow, coin, droplet and basket.
+### Draw this
 
-A tomato-packet palette remap is not sufficient: it retains the round fruit
-silhouette and reads as a green tomato or apple. The finished packet copies the
-family's paper proportions but redraws the face as the specified open pod.
+- Draw one upright seed packet in a 16×16 transparent cell. Match the wheat packet
+  in column 0 and the tomato packet in column 1 of
+  `assets/sprites/generated/shop_icons.png`: a pale paper body, a crop picture on
+  its face, hard fully opaque pixel edges, and no shadow outside the packet.
+- Make the face picture one open pea pod in side view. Its long, curved silhouette
+  and a row of three round peas must carry the meaning. Do not use loose green
+  circles, a leaf, or the ripe plant; each can read as another crop at this size.
+- Use pod green `#a3c263` for the peas and the pod's light-facing edge. Shade the
+  pod with the shipped pea greens `#8db15d`, `#78a158`, `#5c7a3f` and `#4e6e3a`.
+  Use the neighbouring packets' paper colours `#f3f2c0` and `#f8f4e6` only for
+  paper and the gap inside the open pod. Do not introduce magenta, cyan or warm
+  orange; those colours remain reserved for scent overlays.
+- Keep at least one transparent pixel between the packet and every cell edge.
+  The pod must remain identifiable when the game shows the cell at its normal
+  nearest-neighbour scale on a tablet. Check the icon in the live seed shelf,
+  beside both existing packets, in its available and darkened states.
+- Add the finished packet as a new cell in `shop_icons.png`; do not replace a
+  current cell. All six current cells are occupied, and column 2 is the
+  scarecrow rather than an open pea slot. Extending the row makes the new pea
+  packet column 6. The shop definition can point to that cell when peas enter
+  the shelf.
+
+**A palette remap of the tomato packet does not meet this brief.** A remap keeps
+the tomato's round fruit silhouette, so it reads as a green tomato or apple. Yuki
+can derive the candidate from the tomato cell without a generation call by
+retaining its packet body and redrawing only the face picture as the open pod
+above. That route is the first attempt because the packet proportions and paper
+colours already match the family.
+
+### Crop review and ripe-light verdict
+
+The four 16×16 cells in `pea.png` form a clear growth ladder beside wheat and
+tomato: the sprout grows taller, then gains a hanging pod, and the ready cell
+shows several peas. A scan of the current PNG's alpha channel places the four
+pea silhouettes at `(5,9)–(9,15)`, `(5,5)–(10,15)`, `(4,2)–(11,15)` and
+`(2,1)–(12,15)`, with 21, 29, 47 and 93 opaque pixels respectively. None of the
+four cells has partial alpha. The ready pea is larger than either neighbouring
+crop but stays inside the same cell and reads as a laden plant rather than a
+scale change.
+
+The measurement counts a pixel as opaque only when its alpha value is 255. The
+alpha bounds are inclusive, use coordinates local to each 16×16 cell, and
+include every pixel whose alpha value is greater than zero. The following
+command and output are the retained measurement evidence:
+
+```sh
+python3 - <<'PY'
+from PIL import Image
+from pathlib import Path
+path = Path('assets/sprites/generated/pea.png')
+image = Image.open(path).convert('RGBA')
+print(f'{path}: {image.width}x{image.height} RGBA; cells=16x16')
+for stage in range(4):
+    alpha = image.crop((stage * 16, 0, (stage + 1) * 16, 16)).getchannel('A')
+    used = [(x, y) for y in range(16) for x in range(16)
+            if alpha.getpixel((x, y)) > 0]
+    opaque = sum(alpha.getpixel((x, y)) == 255
+                 for y in range(16) for x in range(16))
+    partial = sum(0 < alpha.getpixel((x, y)) < 255
+                  for y in range(16) for x in range(16))
+    xs, ys = zip(*used)
+    print(f'stage {stage}: alpha_bounds=({min(xs)},{min(ys)})-'
+          f'({max(xs)},{max(ys)}); opaque={opaque}; partial={partial}')
+PY
+```
+
+```text
+assets/sprites/generated/pea.png: 64x16 RGBA; cells=16x16
+stage 0: alpha_bounds=(5,9)-(9,15); opaque=21; partial=0
+stage 1: alpha_bounds=(5,5)-(10,15); opaque=29; partial=0
+stage 2: alpha_bounds=(4,2)-(11,15); opaque=47; partial=0
+stage 3: alpha_bounds=(2,1)-(12,15); opaque=93; partial=0
+```
+
+The current ripe light is approved. The field captures were taken on a real display with `tools/capture_ripe_glow.tscn` by the chief of staff on 2026-10-08 (commit a20ec90), because the work queue's sessions have no display. The display-backed field captures at
+[`after_field.png`](mockups/ripe_glow/after_field.png) and
+[`before_field.png`](mockups/ripe_glow/before_field.png) show ripe peas beside
+ripe wheat and tomatoes under the same farm lighting. In `after_field.png`, the
+pea's pale green light stays on the hanging pods and remains distinct from the
+wheat's gold heads and the tomato's red fruit. The ready pea keeps its tall,
+laden silhouette, and its light does not merge into the field border or obscure
+the darker stem. Compared with `before_field.png`, the current light is tighter
+and quieter while keeping the pea as easy to locate as the other ripe crops.
+The two close-up captures are excluded because each shows a wheat plant rather
+than one example of every crop. No change to the pea sprite, ripe light, or seed
+packet brief is needed.
 
 ---
 
