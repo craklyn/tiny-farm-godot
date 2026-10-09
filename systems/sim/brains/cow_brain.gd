@@ -2,10 +2,9 @@
 # docs/INDUSTRIAL_BARN_ENGINEERING_PLAN.md "Movement and stalls")
 #
 # Layer 2 (pure). A ready cow reserves the first open stall, walks to the barn's
-# door tile and on to her stall tile, enters it, gives one unit, gives the stall
-# back and walks out to the door tile again. The door here is a tile the barn
-# record names, not a room crossing: the barn has no interior yet and this brain
-# never issues `use_door`.
+# exterior entrance, crosses the room doorway with `use_door`, and walks to her
+# stall. After giving one unit, she crosses the doorway back before she is free
+# outside.
 #
 # Like every brain (brain.gd), it keeps its own route and step state in the cow's
 # `extra` and changes nothing else. A stall reservation, a stall being freed, the
@@ -17,8 +16,9 @@
 class_name CowBrain
 extends Brain
 
-const STATES: Array[String] = ["idle", "going_to_stall", "moving", "at_door", "entering",
-	"giving", "leaving_stall", "releasing", "leaving_barn"]
+const STATES: Array[String] = ["idle", "going_to_stall", "moving", "at_exterior_door",
+	"crossing_in", "at_interior_door", "entering", "giving", "leaving_stall",
+	"releasing", "leaving_barn", "crossing_out"]
 
 
 func step(world: SimWorld, actor_id: String, tick: int, _gs = null) -> Dictionary:
@@ -35,9 +35,11 @@ func step(world: SimWorld, actor_id: String, tick: int, _gs = null) -> Dictionar
 			elif moved == Movement.BLOCKED:
 				_give_up(world, actor_id, extra, tick)
 		"going_to_stall":
-			if not _plan_stage(world, actor_id, extra, _door_cell(world, barn_id), "door", tick):
+			if not _plan_stage(world, actor_id, extra, _exterior_door_cell(world, barn_id), "exterior_door", tick):
 				_give_up(world, actor_id, extra, tick)
-		"at_door":
+		"crossing_in":
+			return _door_action(actor_id, _building_door_cell(world, barn_id))
+		"at_interior_door":
 			if not _plan_stage(world, actor_id, extra, _stall_cell(world, barn_id, stall_index), "stall", tick):
 				_give_up(world, actor_id, extra, tick)
 		"entering":
@@ -47,11 +49,12 @@ func step(world: SimWorld, actor_id: String, tick: int, _gs = null) -> Dictionar
 		"leaving_stall", "releasing":
 			return _stall_action(actor_id, "leave_milk_stall", barn_id, stall_index)
 		"leaving_barn":
-			# The gateway's word for "out of the stall"; `on_result` replaces it with
-			# her walk to the door tile in the same tick, so a cow is only found here
-			# if that walk could not be planned. She has no stall to leave by then.
-			extra["state"] = "idle"
-			extra["wake"] = tick + 1
+			var leaving_barn_id := String(extra.get("leaving_barn_id", ""))
+			if not _plan_stage(world, actor_id, extra, _door_cell(world, leaving_barn_id), "interior_door", tick):
+				extra["state"] = "idle"
+				extra["wake"] = tick + SimClock.RATE
+		"crossing_out":
+			return _door_action(actor_id, _door_cell(world, String(extra.get("leaving_barn_id", ""))))
 		_:
 			if int(extra.get("milk_milliunits", 0)) < 1000 or world.energy_of(actor_id) < SimWorld.COW_GIVE_MILK_ENERGY:
 				extra["wake"] = tick + SimClock.RATE
@@ -73,19 +76,26 @@ func on_result(world: SimWorld, actor_id: String, action: Dictionary, result: Di
 		extra.erase("route_stage")
 		# A refused enter or give leaves her holding a stall she cannot use: give
 		# it back through the gateway. A refused reservation or leave holds nothing.
-		extra["state"] = "releasing" if verb in ["enter_milk_stall", "give_milk"] \
+		extra["state"] = "releasing" if verb in ["use_door", "enter_milk_stall", "give_milk"] \
 			and String(extra.get("barn_id", "")) != "" else "idle"
 		extra["wake"] = tick + SimClock.RATE
 		return
 	match verb:
 		"reserve_milk_stall": extra["state"] = "going_to_stall"
+		"use_door":
+			# The door gateway clears a non-player's route state. Its target is the
+			# stable fact that says which direction this crossing took.
+			if Vector2i(action.get("target", Vector2i(-1, -1))) == _building_door_cell(world, String(extra.get("barn_id", ""))):
+				extra["state"] = "at_interior_door"
+			else:
+				extra.erase("leaving_barn_id")
+				extra["state"] = "idle"
 		"enter_milk_stall": extra["state"] = "giving"
 		"give_milk": extra["state"] = "leaving_stall"
 		"leave_milk_stall":
-			# The gateway says whether she was standing in the stall (walk out by the
-			# door tile) or gave back a stall she never reached (nothing to walk out of).
 			if bool(result.get("was_in_stall", false)):
-				_walk_out(world, actor_id, extra, String(action.get("barn_id", "")), tick)
+				extra["state"] = "leaving_barn"
+				extra["wake"] = tick + 1
 				return
 			Movement.clear_route(world, actor_id)
 			extra.erase("route_stage")
@@ -110,7 +120,8 @@ static func _stall_action(actor_id: String, verb: String, barn_id: String, stall
 
 static func _arrived_state(stage: String) -> String:
 	match stage:
-		"door": return "at_door"
+		"exterior_door": return "crossing_in"
+		"interior_door": return "crossing_out"
 		"stall": return "entering"
 	return "idle"  # "exit", or a route with no stage: she is outside and free
 
@@ -121,15 +132,6 @@ func _give_up(world: SimWorld, actor_id: String, extra: Dictionary, tick: int) -
 	Movement.clear_route(world, actor_id)
 	extra.erase("route_stage")
 	extra["state"] = "releasing" if String(extra.get("barn_id", "")) != "" else "idle"
-	extra["wake"] = tick + 1
-
-
-func _walk_out(world: SimWorld, actor_id: String, extra: Dictionary, barn_id: String, tick: int) -> void:
-	if _plan_stage(world, actor_id, extra, _door_cell(world, barn_id), "exit", tick):
-		return
-	Movement.clear_route(world, actor_id)
-	extra.erase("route_stage")
-	extra["state"] = "idle"
 	extra["wake"] = tick + 1
 
 
@@ -157,6 +159,21 @@ func _door_cell(world: SimWorld, barn_id: String) -> Vector2i:
 	if not world.barns.has(barn_id): return Vector2i(-1, -1)
 	var cell: Array = world.barns[barn_id].get("door", [])
 	return Vector2i(int(cell[0]), int(cell[1])) if cell.size() == 2 else Vector2i(-1, -1)
+
+
+func _building_door_cell(world: SimWorld, barn_id: String) -> Vector2i:
+	if not world.barns.has(barn_id): return Vector2i(-1, -1)
+	var cell: Array = world.barns[barn_id].get("anchor", [])
+	return Vector2i(int(cell[0]), int(cell[1])) if cell.size() == 2 else Vector2i(-1, -1)
+
+
+func _exterior_door_cell(world: SimWorld, barn_id: String) -> Vector2i:
+	if not world.rooms.has(barn_id): return Vector2i(-1, -1)
+	return world.room_exit_for(world.rooms[barn_id])
+
+
+static func _door_action(actor_id: String, target: Vector2i) -> Dictionary:
+	return { "actor": actor_id, "verb": "use_door", "target": target }
 
 
 func _stall_cell(world: SimWorld, barn_id: String, index: int) -> Vector2i:

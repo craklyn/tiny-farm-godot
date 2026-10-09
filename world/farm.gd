@@ -414,6 +414,7 @@ var yard_texture: Texture2D
 var floor_texture: Texture2D
 var interior_wall_texture: Texture2D
 var interior_window_texture: Texture2D
+var industrial_barn_interior_texture: Texture2D
 var obstacle_rock_texture: Texture2D
 var obstacle_log_texture: Texture2D
 var obstacle_weed_texture: Texture2D
@@ -452,6 +453,7 @@ func _load_textures() -> void:
 	floor_texture = load("res://assets/sprites/generated/terrain_floor.png")
 	interior_wall_texture = load("res://assets/sprites/generated/interior_wall.png")
 	interior_window_texture = load("res://assets/sprites/generated/interior_window.png")
+	industrial_barn_interior_texture = load("res://assets/sprites/generated/industrial_barn_interior_kit.png")
 	# One sheet per entity (2026-09-06): a sheet's edit history then belongs to
 	# exactly one thing, and regenerating one sprite is a file swap.
 	# Q-110 b: the stripped stage a bird leaves standing, one 16px cell per crop
@@ -600,6 +602,8 @@ func _load_textures() -> void:
 		load("res://assets/sprites/generated/chicken_coop.png"), Rect2(0, 0, 32, 48)]
 	object_regions[WorldLayout.SPIRAL_TOWER] = [
 		load("res://assets/sprites/generated/spiral_tower.png"), Rect2(0, 0, 64, 96)]
+	object_regions[WorldLayout.INDUSTRIAL_BARN] = [
+		load("res://assets/sprites/generated/industrial_barn.png"), Rect2(0, 0, 48, 32)]
 	# The room fittings (S-22): one room cell each, drawn on the room's floor with
 	# the same picture as their shop card.
 	object_regions[WorldLayout.NEST_BOX] = [
@@ -1579,6 +1583,10 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 			# draws the same 16x16 cell from its own sheet — no autotiling, no
 			# edge cases: two seamless tiles that happen to meet at the fence.
 			var ground_tex: Texture2D = tileset_texture
+			var barn_room := ""
+			if sim != null:
+				barn_room = sim.room_of_cell(Vector2i(tx, ty))
+			var is_barn_room := barn_room != "" and sim.room_kind(barn_room) == "industrial_barn"
 			# Another room, kept on the same page as hers and nowhere near her in
 			# the world. Skipped whole — ground, boundaries and objects — so the
 			# backdrop's farm is what shows in that space instead.
@@ -1624,6 +1632,30 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 			var vy: int = (ty % GROUND_VARIANTS) * TILE_SIZE
 			canvas.draw_texture_rect_region(ground_tex, Rect2(px, py, TILE_SIZE, TILE_SIZE),
 				Rect2(vx, vy, TILE_SIZE, TILE_SIZE))
+			# The barn kit is a six-by-four picture in the room's own cells. It is
+			# read from the room record and its saved factory state is layered below,
+			# so presentation never chooses or advances a batch.
+			if is_barn_room and industrial_barn_interior_texture != null:
+				var barn: Dictionary = sim.rooms[barn_room]
+				var origin: Vector2i = barn.get("origin", Vector2i.ZERO)
+				canvas.draw_texture_rect_region(industrial_barn_interior_texture,
+					Rect2(px, py, TILE_SIZE, TILE_SIZE),
+					Rect2((tx - origin.x) * TILE_SIZE, (ty - origin.y) * TILE_SIZE,
+						TILE_SIZE, TILE_SIZE))
+				# State comes only from the barn record. A moving rake, press, or belt
+				# is a calm interpolation while its saved station is occupied; the
+				# picture cannot complete a station or mutate the line.
+				var line: Dictionary = sim.barns.get(barn_room, {})
+				var stations: Dictionary = line.get("stations", {})
+				var phase := int(Time.get_ticks_msec() / 250) % 4
+				var cell := Vector2i(tx - origin.x, ty - origin.y)
+				if cell == Vector2i(4, 0) and (stations.get("set_vat") != null \
+						or stations.get("cutter") != null or stations.get("rake") != null):
+					canvas.draw_line(Vector2(px + 2 + phase * 2, py + 4), Vector2(px + 2 + phase * 2, py + 13), Color("2f2b3d"), 1.0)
+				if cell == Vector2i(5, 1) and stations.get("press") != null:
+					canvas.draw_rect(Rect2(px + 7, py + 5 + (phase % 2), 5, 2), Color("f0cf5a"), true)
+				if cell == Vector2i(5, 1) and stations.get("outfeed") != null:
+					canvas.draw_rect(Rect2(px + 2 + phase * 3, py + 11, 3, 3), Color("e9e178"), true)
 
 			# Draw tilled soil, edge-matched to its neighbours (see world/autotile.gd)
 			if Autotile.is_soil(tile.state):
@@ -1657,7 +1689,7 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 
 			# Queue obstacles and boundaries — whatever picture this square's
 			# state has, and nothing if it has none (`tile_picture`).
-			var picture := tile_picture(String(tile.state))
+			var picture := [] if is_barn_room else tile_picture(String(tile.state))
 			if not picture.is_empty():
 				var tile_sheet: Texture2D = picture[0]
 				var tile_region: Rect2 = picture[1]
@@ -1752,7 +1784,8 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 			# because those are out there and she can see them.
 			if _backdrop_active and _backdrop_own.has_point(Vector2i(tx, ty)):
 				continue
-			if obj == WorldLayout.CHICKEN_COOP_PART or obj == WorldLayout.SPIRAL_TOWER_PART:
+			if obj == WorldLayout.CHICKEN_COOP_PART or obj == WorldLayout.SPIRAL_TOWER_PART \
+					or obj == WorldLayout.INDUSTRIAL_BARN_PART:
 				# The coop's other three cells. Real to the sim — the hen shelters
 				# in them and nothing may be farmed there — and drawn by the
 				# front-left cell, whose picture covers the whole block. A cell of

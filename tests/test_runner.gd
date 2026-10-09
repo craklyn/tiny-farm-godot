@@ -18093,6 +18093,7 @@ func test_workbench_shelf() -> void:
 
 func test_barn_simulation() -> void:
 	print("\n--- Industrial barn: voluntary cows and the scheduled cheese line ---")
+	test_barn_acquisition()
 	GameState.reset()
 	SimRng.reseed(1708)
 	var world := _barn_world()
@@ -18108,11 +18109,11 @@ func test_barn_simulation() -> void:
 		if String(taken.action.get("actor", "")) == "cow_1": verbs.append(verb)
 		if String(taken.action.get("actor", "")) == "world":
 			line_verbs.append(verb); line_ticks.append(int(taken.tick))
-	_assert(verbs.slice(0, 4) == ["reserve_milk_stall", "enter_milk_stall", "give_milk", "leave_milk_stall"],
-		"a ready cow reserves the first stall, walks by the barn's door tile to it, gives one unit and leaves (%s)" % str(verbs))
-	_assert(world.actor_pos("cow_1") == Vector2i(10, 10) and String(barn.stalls[0].cow_id) == ""
+	_assert(verbs.slice(0, 6) == ["reserve_milk_stall", "use_door", "enter_milk_stall", "give_milk", "leave_milk_stall", "use_door"],
+		"a ready cow reserves the first stall, crosses the barn door, gives one unit and leaves again (%s)" % str(verbs))
+	_assert(world.actor_pos("cow_1") == Vector2i(10, 11) and String(barn.stalls[0].cow_id) == ""
 		and String(world.actor("cow_1").extra.state) == "idle",
-		"the cow walks back out to the door tile, idle, and the stall is free for another cow")
+		"the cow walks back out through the door, idle, and the stall is free for another cow")
 	_assert(int(world.actor("cow_1").extra.milk_milliunits) == 0
 		and world.energy_of("cow_1") == SpeciesDefs.max_energy_of(SpeciesDefs.COW) - SimWorld.COW_GIVE_MILK_ENERGY,
 		"one visit transfers one unit and spends cow energy")
@@ -18153,7 +18154,7 @@ func test_barn_simulation() -> void:
 	_assert(barn_diff == "", "and ends on the live farm's barn and cow, canonically (%s)" % barn_diff)
 	DirAccess.remove_absolute(path)
 
-	var blocked := SimWorld.new(); blocked.generate(); var b := blocked.make_barn("b", Vector2i(8, 8))
+	var blocked := _barn_world(); var b: Dictionary = blocked.barns["barn_1"]
 	b.stations.outfeed = {"batch_id": 1, "cow_id": "cow", "amount_milliunits": 1000,
 		"station": "outfeed", "entry_tick": 0, "ready_tick": 1}
 	b.stations.press = {"batch_id": 2, "cow_id": "cow", "amount_milliunits": 1000,
@@ -18193,12 +18194,67 @@ func test_barn_simulation() -> void:
 	test_barn_save_v6_migration()
 
 
-# A small cleared yard with one barn: door tile (10, 10), stalls on (10..13, 9).
+# The 500-gold shop card is a barn-plus-first-cow bundle. The cow is created by
+# the accepted placement Action, not by the renderer, so a save and replay keep
+# the same animal and later barns do not create a second one.
+func test_barn_acquisition() -> void:
+	GameState.reset()
+	SimRng.reseed(1707)
+	var world := SimWorld.new(); world.generate()
+	var spot := Vector2i(-1, -1)
+	for y in range(8, 18):
+		for x in range(5, 24):
+			for dy in range(-1, 3):
+				for dx in range(-1, 5):
+					world.set_tile_state(x + dx, y + dy, "cleared")
+			if world.placeable_at(Vector2i(x, y), "industrial_barn") \
+					and world.placeable_at(Vector2i(x, y + 2)):
+				spot = Vector2i(x, y)
+				break
+		if spot.x >= 0:
+			break
+	_assert(spot.x >= 0, "a cleared yard has room for the barn and its arriving cow")
+	GameState.gold = 500
+	GameState.harvest_counts["egg"] = 10
+	var base := SaveGame.capture(world, GameState)
+	var log := ReplayLog.new(); log.start_from_save(base, world.gen_seed)
+	var bought := _replay_do(world, log,
+		{ "verb": "buy_machine", "item": "industrial_barn", "actor": "player" })
+	var laid := _replay_do(world, log,
+		{ "verb": "place", "target": spot, "item": "industrial_barn", "actor": "player" })
+	var cow_id := String(laid.get("cow", ""))
+	_assert(bought.get("ok", false) and GameState.gold == 0
+		and laid.get("ok", false) and cow_id == "cow_1" and world.has_actor(cow_id)
+		and world.species_of(cow_id) == SpeciesDefs.COW,
+		"buying the unlocked 500-gold barn and placing it supplies its first cow (%s)" % laid)
+	_assert(world.actor_pos(cow_id) == spot + Vector2i(0, 2)
+		and world.is_walkable(spot.x, spot.y) and world.is_walkable(spot.x + 1, spot.y - 1),
+		"the cow arrives outside the open livestock doors, and her route through the barn is walkable")
+	var live := SaveGame.capture_canonical(world, GameState)
+	var replayed := SimWorld.new()
+	var replay_state = load("res://systems/game_state.gd").new()
+	_assert(log.apply_to(replayed, replay_state) and log.divergence == ""
+		and SaveGame.capture_canonical(replayed, replay_state) == live,
+		"the bundled cow is saved and replayed by the barn placement Action (%s)" % log.divergence)
+	replay_state.free()
+	world.actor(cow_id)["extra"]["milk_milliunits"] = 1000
+	var trip := world.advance_ticks(100, GameState)
+	var gave_milk := false
+	for taken in trip:
+		gave_milk = gave_milk or String(taken.action.get("verb", "")) == "give_milk"
+	_assert(gave_milk, "the bundled cow can walk through the placed barn's open livestock doors to give milk")
+
+
+# A small cleared yard with one barn and its real six-by-four interior.
 func _barn_world() -> SimWorld:
 	var world := SimWorld.new(); world.generate()
 	for y in range(9, 13):
 		for x in range(10, 14):
 			world.set_tile_state(x, y, "cleared"); world.set_object(x, y, "")
+	var room_id := world.open_room("industrial_barn", Vector2i(10, 10))
+	_assert(room_id != "", "the barn fixture opens its six-by-four room")
+	world.rooms["barn_1"] = world.rooms[room_id]
+	world.rooms.erase(room_id)
 	world.make_barn("barn_1", Vector2i(10, 10))
 	world.schedule_all_brains()
 	return world
@@ -18291,7 +18347,7 @@ func test_barn_gateway_refusals() -> void:
 	_assert(not bool(away.get("ok", true)) and int(world.actor("cow_1").extra.milk_milliunits) == 1500
 		and barn.receiver.is_empty(), "give_milk from outside the stall is refused (%s)" % away.get("reason", ""))
 	# Standing on the stall tile but never having entered it.
-	world.set_actor_pos("cow_1", Vector2i(10, 9))
+	world.set_actor_pos("cow_1", Vector2i(int(barn.stalls[0].cell[0]), int(barn.stalls[0].cell[1])))
 	_assert(not bool(world.apply_action(give, GameState).get("ok", true)) and barn.receiver.is_empty(),
 		"give_milk on the stall tile before entering the stall is refused")
 	var enter := {"actor": "cow_1", "verb": "enter_milk_stall", "barn_id": "barn_1", "stall_index": 0}
@@ -18315,12 +18371,12 @@ func test_barn_gateway_refusals() -> void:
 		and String(barn.stalls[0].cow_id) == "" and String(world.actor("cow_1").extra.barn_id) == "",
 		"and leaving frees the stall")
 
-	# SHOULD 7: arriving at the door tile on the way out is idle, not "entering".
+	# SHOULD 7: arriving at the interior doorway on the way out crosses outside.
 	var brain := CowBrain.new()
 	var extra: Dictionary = world.actor("cow_1").extra
 	extra["state"] = "leaving_barn"
-	_assert(brain._plan_stage(world, "cow_1", extra, world.actor_pos("cow_1"), "exit", world.clock.tick)
-		and String(extra.state) == "idle", "an exit planned from the door tile itself ends idle")
+	_assert(brain._plan_stage(world, "cow_1", extra, world.actor_pos("cow_1"), "interior_door", world.clock.tick)
+		and String(extra.state) == "crossing_out", "an exit planned from the door tile crosses outside")
 
 
 # MUST 3: a cow that cannot reach her stall gives it back through the gateway.
@@ -18330,8 +18386,8 @@ func test_barn_cow_gives_a_stall_back() -> void:
 	SimRng.reseed(1711)
 	var world := _barn_world()
 	var barn: Dictionary = world.barns["barn_1"]
-	# Stall 0's tile is walled off, so she can reach the door tile and no further.
-	world.set_object(10, 9, "rock")
+	# Stall 0's interior tile is walled off, so she gives the reservation back.
+	world.set_object(int(barn.stalls[0].cell[0]), int(barn.stalls[0].cell[1]), "rock")
 	world.spawn_actor("cow_1", SpeciesDefs.COW, Vector2i(10, 12), {"milk_milliunits": 1000})
 	var taken := world.advance_ticks(300, GameState)
 	var verbs: Array[String] = []
@@ -18342,8 +18398,9 @@ func test_barn_cow_gives_a_stall_back() -> void:
 		if String(t.action.verb) == "leave_milk_stall" and bool(t.result.get("ok", false)) \
 				and not bool(t.result.get("was_in_stall", true)):
 			released = true
-	_assert(verbs.size() >= 2 and verbs[0] == "reserve_milk_stall" and verbs[1] == "leave_milk_stall" and released,
-		"she reserves the stall, cannot reach it, and gives it back with leave_milk_stall (%s)" % str(verbs.slice(0, 4)))
+	_assert(verbs.size() >= 3 and verbs[0] == "reserve_milk_stall" and verbs[1] == "use_door"
+		and verbs[2] == "leave_milk_stall" and released,
+		"she reserves the stall, enters the barn, cannot reach it, and gives it back (%s)" % str(verbs.slice(0, 5)))
 	_assert(not ("enter_milk_stall" in verbs) and not ("give_milk" in verbs)
 		and int(world.actor("cow_1").extra.milk_milliunits) == 1000 and barn.receiver.is_empty(),
 		"and keeps her milk, since she never reached it")

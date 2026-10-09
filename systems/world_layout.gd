@@ -157,6 +157,8 @@ const CHICKEN_COOP := "chicken_coop"
 const CHICKEN_COOP_PART := "chicken_coop_part"
 const SPIRAL_TOWER := "spiral_tower"
 const SPIRAL_TOWER_PART := "spiral_tower_part"
+const INDUSTRIAL_BARN := "industrial_barn"
+const INDUSTRIAL_BARN_PART := "industrial_barn_part"
 
 # **Room fittings** (S-22, Q-117 ruled 2026-09-24; design/15 §9a). Things she buys
 # and sets down on a room's floor, one per cell of that room: a nest box in a coop,

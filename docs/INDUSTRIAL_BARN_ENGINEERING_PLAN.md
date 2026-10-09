@@ -2,8 +2,9 @@
 
 *Written 2026-10-08 from the approved design in [17 — Industrial Barn and Cheese
 Line](design/17-industrial-barn-and-cheese-line.md). This plan defines the simulation,
-save, replay, building, test, and tablet work. The barn price, herd limit, and finished-cheese
-capacity remain named parameters until Milo Fern's livestock-economy decisions settle them.*
+save, replay, building, test, and tablet work. The approved first barn costs 500 gold and
+includes the first cow. Herd limit and finished-cheese capacity remain named parameters until
+Milo Fern's livestock-economy decisions settle them.*
 
 ## Purpose and boundaries
 
@@ -34,14 +35,14 @@ spreading placeholders through the simulation:
 
 | Parameter | Meaning | Owner before release |
 | --- | --- | --- |
-| `BARN_PRICE` | Price of one Industrial Barn | Milo Fern's economy decision |
+| `BARN_PRICE` | Price of one Industrial Barn, including the first cow | Settled: 500 gold |
 | `HERD_LIMIT` | Maximum cows a farm may own; independent of the four-stall occupancy limit | Milo Fern's livestock decision |
 | `FINISHED_CHEESE_CAPACITY` | Maximum finished units held inside one barn | Milo Fern's livestock-economy decision |
 | `STATION_DURATION_TICKS` | Visible duration of each cheese-making step | Sam Kowalski's wordless timing proposal and Daniel's approval |
 
-Code and tests may inject explicit values for these parameters. The shop, acquisition flow,
-and public build must not expose temporary economy values. The settled values belong in the
-same data definitions that existing shops use. Station durations live in one
+The shop and acquisition flow expose the settled 500-gold barn-plus-first-cow bundle. Code and
+tests may inject explicit values for the remaining unresolved parameters. Their settled values
+belong in the same data definitions that existing shops use. Station durations live in one
 ordered table and tests replace them with short values; production timing is not an
 engineering guess because the player watches it to understand the process.
 

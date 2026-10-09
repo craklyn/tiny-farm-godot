@@ -8,6 +8,13 @@ before the first public build ships.*
 - **Godot Engine** — MIT License. https://godotengine.org
 
 ## Art
+- **Happy dairy cow** (`assets/sprites/generated/cow.png`, 2026-10-08) — four calm
+  16px walking frames drawn locally in `tools/build_cow_art.py`, using the Industrial
+  Barn palette and hard transparent edges. A Retro Diffusion Plus draft was generated
+  for this card for $0.06 and retained at
+  `assets/raw/2026-10-08-wdc9c2c164ef-happy-dairy-cow/`; it did not meet the required
+  frame layout, so no generated pixels ship. The shipped cow is original local pixel art and
+  remains pending Ingrid Bauer's art-direction review before any public build.
 - **Industrial Barn** (`assets/sprites/generated/industrial_barn.png`,
   `assets/sprites/generated/industrial_barn_interior_kit.png`, 2026-10-08) — the
   red timber exterior began as two Retro Diffusion Plus 192×128 pixel-art

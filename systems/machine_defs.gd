@@ -160,6 +160,14 @@ static var TYPES: Dictionary = {
 		"icon": { "sheet": "res://assets/sprites/generated/spiral_tower.png",
 			"region": Rect2(0, 0, 64, 96) },
 	},
+	"industrial_barn": {
+		"name": "Industrial Barn", "price": 500, "species": "", "program": "",
+		"configs": [], "default_config": "", "unlock_requirement": { "crop": "egg", "count": 10 },
+		"object": WorldLayout.INDUSTRIAL_BARN, "part": WorldLayout.INDUSTRIAL_BARN_PART,
+		"footprint": Vector2i(3, 2),
+		"room": { "cells": Vector2i(6, 4), "pitch": 2 },
+		"icon": { "sheet": "res://assets/sprites/generated/industrial_barn.png", "region": Rect2(0, 0, 48, 32) },
+	},
 	# The first automation the player meets — `design/03`'s "watch your old job
 	# happen without you". Priced above every seed and below the robot: a day of
 	# good tomatoes buys one, which makes it the natural first purchase after the
@@ -401,7 +409,7 @@ static var TYPES: Dictionary = {
 # with a verb, a state, a refund and 23 passing assertions, and no way to get any.
 # Fencing leads: it is the cheapest thing on the shelf and the only one that is
 # not a machine.
-static var ORDER: Array[String] = ["coop", "nest_box", "rug", "fence", "spiral_tower", "sprinkler",
+static var ORDER: Array[String] = ["coop", "nest_box", "rug", "fence", "spiral_tower", "industrial_barn", "sprinkler",
 		"stall", "bot_mk1", "bot_mk2", "bot_mk3", "workbench"]
 
 # The farmhouse's room kind (S-22). A coop's room is known by the row it was built

@@ -883,6 +883,9 @@ const OPEN_OBJECTS := {
 	# outside it in the rain.
 	WorldLayout.CHICKEN_COOP: true, WorldLayout.CHICKEN_COOP_PART: true,
 	WorldLayout.SPIRAL_TOWER: true, WorldLayout.SPIRAL_TOWER_PART: true,
+	# The barn's large livestock doors are open: a cow walks through the building
+	# footprint to the stalls recorded for its cheese line.
+	WorldLayout.INDUSTRIAL_BARN: true, WorldLayout.INDUSTRIAL_BARN_PART: true,
 	# ...and a room's doorway, which is the square she arrives on going in and the
 	# square she stands on to ask to leave. A door that blocked its own threshold
 	# would be a room with no way out (fixed 2026-09-16).
@@ -971,17 +974,49 @@ var _barn_events: Dictionary = {}
 
 
 func make_barn(barn_id: String, anchor: Vector2i = Vector2i.ZERO) -> Dictionary:
+	var room: Dictionary = rooms.get(barn_id, {})
+	var origin: Vector2i = room.get("origin", Vector2i(-1, -1))
+	var size: Vector2i = room.get("size", Vector2i.ZERO)
+	if origin.x < 0 or size != Vector2i(6, 4):
+		return {}
 	var stalls: Array[Dictionary] = []
 	for i in 4:
-		stalls.append({"index": i, "cow_id": "", "cell": [anchor.x + i, anchor.y - 1]})
+		# The four stalls are the north row of the barn's six-by-four room. The
+		# south row is the turn area between the livestock door and the stalls.
+		stalls.append({"index": i, "cow_id": "", "cell": [origin.x + 1 + i, origin.y + 1]})
 	var stations := {}
 	for station in BARN_STATIONS:
 		stations[station] = null
-	var barn := {"anchor": [anchor.x, anchor.y], "door": [anchor.x, anchor.y],
+	var barn := {"anchor": [anchor.x, anchor.y], "door": [room["door"].x, room["door"].y],
 		"stalls": stalls, "receiver": [],
 		"stations": stations, "next_batch_id": 1, "finished_cheese_count": 0}
 	barns[barn_id] = barn
 	return barn
+
+
+# The first Industrial Barn is sold with one cow. Find her an ordinary outdoor
+# square just beyond the livestock doors before the placement commits, so the
+# bundle never puts her inside a wall or on another actor.
+func barn_cow_arrival_cell(anchor: Vector2i) -> Vector2i:
+	for offset in [Vector2i(0, 2), Vector2i(1, 2), Vector2i(-1, 2), Vector2i(2, 2), Vector2i(-2, 2)]:
+		var cell: Vector2i = anchor + offset
+		if placeable_at(cell):
+			return cell
+	return Vector2i(-1, -1)
+
+
+func has_cow() -> bool:
+	for actor_id in actors:
+		if species_of(String(actor_id)) == SpeciesDefs.COW:
+			return true
+	return false
+
+
+func next_cow_id() -> String:
+	var number := 1
+	while has_actor("cow_%d" % number):
+		number += 1
+	return "cow_%d" % number
 
 
 # The rooms a farm has, by id, sorted — the registry's iteration-order rule, for
@@ -3115,6 +3150,13 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			# needs the square beside it as well, and a robot is the one thing that
 			# may be set down *in* a stall.
 			if not placeable_at(target, item): return _fail("occupied")
+			# The approved 500-gold barn includes the farm's first cow. This is
+			# checked before energy or crate stock changes, then spawned below in
+			# this same accepted Action, so saves and replays acquire the same cow.
+			var bundled_cow_at := Vector2i(-1, -1)
+			if item == "industrial_barn" and not has_cow():
+				bundled_cow_at = barn_cow_arrival_cell(target)
+				if bundled_cow_at.x < 0: return _fail("no_cow_arrival_space")
 			var placer := String(action.get("actor", ""))
 			var placer_charged: bool = _is_player(placer)
 			if placer_charged and int(gs.machines.get(item, 0)) <= 0: return _fail("no_machine")
@@ -3166,7 +3208,13 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				# square she just tapped; from here it is ordinary tiles that
 				# ordinary things walk on.
 				var room_id := open_room(item, target)
+				if item == "industrial_barn" and room_id != "":
+					make_barn(room_id, target)
 				var laid := { "ok": true, "structure": item, "cells": cells }
+				if bundled_cow_at.x >= 0:
+					var cow_id := next_cow_id()
+					spawn_actor(cow_id, SpeciesDefs.COW, bundled_cow_at)
+					laid["cow"] = cow_id
 				if room_id != "":
 					laid["room"] = room_id
 				# The stall's second bay, still under the name whatever draws it
@@ -4429,6 +4477,10 @@ func _leave_milk_stall(action: Dictionary) -> Dictionary:
 	var extra: Dictionary = actors[cow_id]["extra"]
 	var was_inside := _at_stall(cow_id, stall)
 	stall["cow_id"] = ""
+	if was_inside:
+		# Once a cow gives the stall back, its identifier is no longer her active
+		# reservation. Keep only the doorway destination until she is outdoors.
+		extra["leaving_barn_id"] = String(action.get("barn_id", ""))
 	extra["barn_id"] = ""; extra["stall_index"] = -1
 	extra["state"] = "leaving_barn" if was_inside else "idle"
 	return {"ok": true, "was_in_stall": was_inside}
