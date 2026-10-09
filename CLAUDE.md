@@ -177,10 +177,11 @@ runbook, including the traps that have already cost time (Android's `user://` is
 storage; installing overwrites the previous session; itch drafts 404 to everyone but their
 owner). Publishing is a pushed `v*` tag, never a push to main.
 
-There is no per-test filter. Both suites are single-file custom runners: tests are
-`test_*()` functions called explicitly from the top of `tests/test_runner.gd` (`_init`)
-and `tools/test_runner.gd` (`_ready`). To add a test, write the function and add the call
-there. The whole suite runs in seconds, so running everything is the normal workflow.
+There is no per-test filter. Unit tests are split by engineering area under `tests/unit/`;
+`tests/test_runner.gd` calls them explicitly in its `_init`. To add a unit test, write the
+`test_*()` function in the matching `tests/unit/*_tests.gd` file and add its ordered call
+to `tests/test_runner.gd`. Integration tests remain in `tools/test_runner.gd` and are
+called explicitly from `_ready`. The complete suite is the normal workflow.
 
 CI (`.github/workflows/tests.yml`) runs gateway, writing/HQ, and Godot test jobs on
 every push. The Godot job includes the unit, integration, robot, and benchmark checks.
