@@ -269,6 +269,11 @@ const ACTOR_RENDERERS := {
 	# by a sheet and a speed, and both come off the species row (M2.5 WI-8c/8f).
 	SpeciesDefs.RABBIT: "res://entities/grazer.gd",
 	SpeciesDefs.KANGAROO: "res://entities/grazer.gd",
+	# PLACEHOLDER: the cow walks on the grazer's script and wears the rabbit's
+	# sheet (`entities/grazer.gd` SPRITES) until the barn art card lands its own
+	# cow (design/17, "Original-game-art brief"). Nothing spawns a cow in the live
+	# game yet; this is so the Zoo and the integration suite can see her move.
+	SpeciesDefs.COW: "res://entities/grazer.gd",
 	SpeciesDefs.SONGBIRD: "res://entities/songbird.gd",
 	# The mole draws one of three cells depending on whether it is under the farm,
 	# and the worm draws one cell per tile of itself — the first actor in the game

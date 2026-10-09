@@ -157,6 +157,9 @@ const ICON_CELL := {
 	SpeciesDefs.WORM: Rect2(0, 0, 16, 16),
 	SpeciesDefs.KANGAROO: Rect2(0, 0, 16, 16),
 	SpeciesDefs.SONGBIRD: Rect2(0, 0, 16, 16),
+	# Placeholder portrait: the rabbit sheet's standing cell, which is what the
+	# cow is drawn with until the barn art card lands (`entities/grazer.gd`).
+	SpeciesDefs.COW: Rect2(0, 0, 16, 16),
 }
 
 

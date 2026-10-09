@@ -30,6 +30,10 @@ const TILE_SIZE := 16
 const SPRITES := {
 	SpeciesDefs.RABBIT: preload("res://assets/sprites/generated/rabbit.png"),
 	SpeciesDefs.KANGAROO: preload("res://assets/sprites/generated/kangaroo.png"),
+	# PLACEHOLDER, not a cow: the rabbit's own sheet, reused cell for cell, until
+	# the barn art card draws the cow (design/17). See `world/farm.gd`'s
+	# ACTOR_RENDERERS. Replace this one line when her sheet lands.
+	SpeciesDefs.COW: preload("res://assets/sprites/generated/rabbit.png"),
 }
 const HOP_FRAMES := 4
 const FRAME_TIME := 0.13
