@@ -197,6 +197,7 @@ func _init() -> void:
 	test_sprinkler()
 	test_pea()
 	test_replay_v2()
+	test_hen_replay_from_fresh_save()
 	test_ants()
 	test_grazers()
 	test_songbird()
@@ -7078,6 +7079,36 @@ func _brain_entry_count(rlog: ReplayLog) -> int:
 		if bool(e.get("brain", false)):
 			n += 1
 	return n
+
+
+func test_hen_replay_from_fresh_save() -> void:
+	print("\n--- Hen replay from a fresh-world save Tests ---")
+
+	var gs_live = load("res://systems/game_state.gd").new()
+	gs_live.reset()
+	SimRng.reseed(6363)
+	var live := SimWorld.new()
+	live.generate()
+	var base = JSON.parse_string(JSON.stringify(SaveGame.capture(live, gs_live)))
+	var log := ReplayLog.new()
+	log.start_from_save(base, live.gen_seed)
+
+	for taken in live.advance_ticks(400, gs_live):
+		if taken["result"].get("ok", false):
+			log.record(taken["action"], taken["result"], int(taken["tick"]), true)
+	log.mark_tick(live.clock.tick)
+	var live_hen := live.actor_pos(SimWorld.ACTOR_CHICKEN)
+
+	var replayed := SimWorld.new()
+	var gs_replayed = load("res://systems/game_state.gd").new()
+	_assert(log.apply_to(replayed, gs_replayed), "the fresh-world base save reloads for replay")
+	var replayed_hen := replayed.actor_pos(SimWorld.ACTOR_CHICKEN)
+	_assert(replayed_hen == live_hen,
+		"the hen replayed from a fresh-world save ends on her live-play tile "
+			+ "(live %s, replay %s)" % [live_hen, replayed_hen])
+
+	gs_live.free()
+	gs_replayed.free()
 
 
 func test_replay_v2() -> void:
