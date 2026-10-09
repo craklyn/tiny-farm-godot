@@ -1164,7 +1164,8 @@ func _on_card_drag_input(event: InputEvent, scroll: ScrollContainer) -> void:
 				clampf(_card_drag_start_scroll - travelled, 0.0, max_scroll))
 
 
-## One thing on the shelf: its picture, its price, and how many she already has.
+## One thing on the shelf: its picture, price, carried amount/capacity, and
+## (for seeds) the one packet a tap adds.
 ##
 ## `into` is the shelf it is added to: the cards no longer sit directly in
 ## `options_container`, and the number a card comes back with is its place in
@@ -1252,21 +1253,38 @@ func _add_shop_card(into: Control, item: Dictionary, scroll: ScrollContainer = n
 		price_row.alignment = BoxContainer.ALIGNMENT_BEGIN
 		price_row.custom_minimum_size = Vector2(66, 0)
 		hbox.add_child(price_row)
-		if bool(item.get("full_pouch", false)):
-			var full := Label.new()
-			full.text = "%d/%d" % [int(item.owned), int(item.cap)]
-			full.add_theme_color_override("font_color", Color(0.9, 0.3, 0.3))
-			price_row.add_child(full)
-		else:
-			_add_icon_number(price_row, coin_icon(), str(item.price), 20.0,
-				Color(1, 0.85, 0.2) if item.affordable else Color(0.9, 0.3, 0.3))
+		# A full card keeps its price: the reason it will not sell is the
+		# carried/capacity pair beside it, drawn in red, not a second copy of it here.
+		_add_icon_number(price_row, coin_icon(), str(item.price), 20.0,
+			Color(1, 0.85, 0.2) if item.affordable else Color(0.9, 0.3, 0.3))
 
 		var owned_row := HBoxContainer.new()
 		owned_row.alignment = BoxContainer.ALIGNMENT_BEGIN
 		owned_row.custom_minimum_size = Vector2(52, 0)
 		hbox.add_child(owned_row)
-		_add_icon_number(owned_row, item.icon,
-			"\u00d7%d" % int(item.owned), 18.0, Color(0.72, 0.82, 0.7))
+		if String(item.get("kind", "")) == "seed":
+			# A two-column shelf leaves about 220 pixels inside each card. Seed prices
+			# are short, so reclaim the machine-price slack for the capacity and +1
+			# groups without making the card or its touch target smaller.
+			price_row.custom_minimum_size = Vector2(50, 0)
+			owned_row.custom_minimum_size = Vector2.ZERO
+			# Packet + carried/capacity: the same seed picture identifies what the
+			# digits belong to. `cap` comes from the live sim in `_build_shop_items`.
+			_add_icon_number(owned_row, item.icon,
+				"%d/%d" % [int(item.owned), int(item.cap)], 18.0,
+				Color(0.9, 0.3, 0.3) if bool(item.get("full_pouch", false)) else Color(0.72, 0.82, 0.7))
+
+			# This packet and +1 sit together, distinct from the coin/price pair:
+			# a tap on a seed row always buys exactly one seed. It is numerals and the
+			# crop picture rather than an instruction a pre-reader must decode.
+			var gain_row := HBoxContainer.new()
+			gain_row.alignment = BoxContainer.ALIGNMENT_BEGIN
+			gain_row.custom_minimum_size = Vector2.ZERO
+			hbox.add_child(gain_row)
+			_add_icon_number(gain_row, item.icon, "+1", 16.0, Color(0.72, 0.92, 0.64))
+		else:
+			_add_icon_number(owned_row, item.icon,
+				"\u00d7%d" % int(item.owned), 18.0, Color(0.72, 0.82, 0.7))
 
 	var spacer := Control.new()
 	spacer.size_flags_horizontal = Control.SIZE_EXPAND_FILL

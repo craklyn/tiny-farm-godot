@@ -141,7 +141,10 @@ var inventory_button_icon: TextureRect
 # literacy bar the gold count already set (S-7). That also retires the
 # word-fitting machinery the pill needed (2026-09-01's spill fix): a card with
 # no words cannot spill.
-const CARD_W := 64.0
+# The count has room for today's longest live seed face, `100/100`, beside its
+# crop picture. The earlier 64px card left only 24px after the icon, clipping
+# the capacity number this card is meant to answer.
+const CARD_W := 100.0
 const CARD_H := 48.0
 const CARD_ICON := 28.0
 
@@ -358,7 +361,8 @@ func _build_ui() -> void:
 	bottom_bar.add_child(seed_info_label)
 
 	# Harvested-crop counts (seed counts live on the seed pill / seed info label).
-	# Q-123 (b), ruled 2026-09-25: a picture per plantable crop, its digit count
+	# Q-123 (b), ruled 2026-09-25: a picture per plantable crop, its carried
+	# amount and live capacity
 	# beside it — the picker's own icons (`MenusScript.crop_icon`), not the old
 	# "Wh:5  To:0" abbreviation, so the bar and the pop-up read as one picture
 	# set. Centred where the text label sat; the row shrinks to whatever
@@ -1174,7 +1178,11 @@ func _update_hud() -> void:
 	var sim := _current_sim()
 	for crop_name in crop_count_icons:
 		var count: int = GameState.pouch.get(crop_name, 0)
-		crop_count_digits[crop_name].text = "%d" % count
+		# The denominator is the sim's live answer, not the old 100-unit rule
+		# copied into presentation. A future storage machine can therefore enlarge
+		# this readout without a HUD edit.
+		var cap: int = sim.carry_cap(String(crop_name)) if sim != null else 0
+		crop_count_digits[crop_name].text = "%d/%d" % [count, cap]
 		var icon: TextureRect = crop_count_icons[crop_name]
 		var at_cap: bool = sim != null and _crop_at_cap(String(crop_name), sim)
 		crop_chip_pulsing[crop_name] = at_cap
@@ -1208,7 +1216,14 @@ func _update_hud() -> void:
 		seed_pill_icon.visible = true
 	else:
 		seed_pill_icon.visible = false
-	seed_pill_label.text = "x%d" % scount
+	# A seed card tells the same complete story as its bar chip. Machines do not
+	# have a seed carry capacity, so their card keeps the existing count-only face.
+	# Icons identify the crop; digits and the slash need no reading.
+	if CropDefs.is_plantable(seed_name):
+		var seed_cap: int = sim.carry_cap(seed_name) if sim != null else 0
+		seed_pill_label.text = "%d/%d" % [scount, seed_cap]
+	else:
+		seed_pill_label.text = "x%d" % scount
 
 	var style: StyleBoxFlat = seed_pill.get_theme_stylebox("panel")
 	if scount > 0:

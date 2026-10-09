@@ -1715,8 +1715,10 @@ func _scenario_j_wordless_shop() -> void:
 	_assert(GameState.held_count(String(later.seed_type)) == had + 1,
 		"and pressing a later card buys that row's own thing (%s)" % later.seed_type)
 
-	# The cap is part of the shop's visible state, not just a gateway refusal:
-	# she sees a darkened full card (10/10 at a cap of ten), and a press rings that card in red while
+	# The normal card answers all three seed questions before a purchase: packet
+	# + carried/capacity, coin + price, and packet +1. The cap is also part of
+	# the full card's visible state, not just a gateway refusal: she sees a
+	# darkened full card (100/100 today), and a press rings that card in red while
 	# the existing nope sound plays. The live shop remains wordless (S-7).
 	var gold_before_cap: int = GameState.gold
 	var harvests_before_cap: Dictionary = GameState.harvest_counts.duplicate()
@@ -1770,6 +1772,37 @@ func _scenario_j_wordless_shop() -> void:
 	GameState.harvest_counts = harvests_before_cap
 	GameState.pouch["tomato"] = tomatoes_before_cap
 	menus.shop_refused_seed = ""
+	# The full-card check temporarily restored the scenario's locked-tomato
+	# setup. Restore its earned state for the below-cap card and actual tap.
+	GameState.harvest_counts["wheat"] = 1
+	menus._rebuild_options()
+
+	# Below the cap, the actual tomato card keeps that same denominator and
+	# shows the pictured +1 outcome of one real press.
+	GameState.pouch["tomato"] = 4
+	menus._rebuild_options()
+	var seed_labels: Array = []
+	var normal_shelf: Node = menus.options_container.find_child("shop_shelf", true, false)
+	var normal_tomato_card: PanelContainer = normal_shelf.get_child(tomato_row) as PanelContainer
+	_collect_labels(normal_tomato_card, seed_labels)
+	var has_live_amount := false
+	var has_one_seed_gain := false
+	for label in seed_labels:
+		if String(label.text) == "4/%d" % farm.sim.carry_cap("tomato"):
+			has_live_amount = true
+		if String(label.text) == "+1":
+			has_one_seed_gain = true
+	_assert(has_live_amount, "a seed card shows what she carries over its live capacity")
+	_assert(has_one_seed_gain, "a seed card shows that one press adds one seed")
+	var gold_before_one_seed_tap: int = GameState.gold
+	GameState.gold = 100
+	_press_row(menus.options_container, tomato_row)
+	await get_tree().create_timer(0.3).timeout
+	_assert(int(GameState.pouch.tomato) == 5,
+		"tapping the card with +1 adds exactly one tomato seed")
+	GameState.gold = gold_before_one_seed_tap
+	GameState.pouch["tomato"] = tomatoes_before_cap
+	GameState.harvest_counts = harvests_before_cap
 	menus._rebuild_options()
 
 	# **Put her hand back where it was.** Buying a machine always takes hold of it
@@ -3749,7 +3782,7 @@ func _scenario_ad_two_hud_findings() -> void:
 	_assert(hud.seed_pill.position.x - bed_right > view.x * 0.5,
 		"a farm's width from the bed button, so the two thumbs-targets are never neighbours")
 
-	# The face is wordless: whatever is held, the label is digits (the icon is
+	# The face is wordless: whatever is held, the label is numerals (the icon is
 	# the identity), and every pouch item keeps a picture — the 2026-08-30
 	# scarecrow finding, still pinned under the new face.
 	# Over the pouch's own cycle (CropDefs.ORDER), not every sellable row: the
@@ -3761,15 +3794,35 @@ func _scenario_ad_two_hud_findings() -> void:
 		else:
 			GameState.items[seed_name] = 12
 		hud._update_hud()
-		_assert(hud.seed_pill_label.text == "x12",
-			"the card face is a count, not a name (%s)" % seed_name)
+		var expected_face := "12/%d" % farm.sim.carry_cap(seed_name) \
+			if CropDefs.is_plantable(seed_name) else "x12"
+		_assert(hud.seed_pill_label.text == expected_face,
+			"the card face is a live count/capacity, not a name (%s)" % seed_name)
 		_assert(hud.seed_pill_icon.visible and hud.seed_pill_icon.texture != null,
 			"and %s still has its picture" % seed_name)
 
 	GameState.selected_seed_type = "wheat"
 	GameState.pouch["wheat"] = 5
 	hud._update_hud()
-	_assert(hud.seed_pill_label.text == "x5", "the count follows the pouch")
+	_assert(hud.seed_pill_label.text == "5/%d" % farm.sim.carry_cap("wheat"),
+		"the card's carried amount and live capacity follow the pouch")
+
+	# A label's text alone cannot catch a clipped face. Put the currently
+	# longest possible seed count on the real HUD, let Godot lay it out, and
+	# require both its text minimum and rendered bounds to fit in the card.
+	var wheat_cap: int = farm.sim.carry_cap("wheat")
+	GameState.pouch["wheat"] = wheat_cap
+	hud._update_hud()
+	await get_tree().process_frame
+	var full_seed_face := "%d/%d" % [wheat_cap, wheat_cap]
+	var label_rect: Rect2 = hud.seed_pill_label.get_global_rect()
+	var card_rect: Rect2 = hud.seed_pill.get_global_rect()
+	_assert(hud.seed_pill_label.text == full_seed_face
+		and hud.seed_pill_label.size.x >= hud.seed_pill_label.get_minimum_size().x
+		and card_rect.encloses(label_rect),
+		"the full %s seed face fits beside its picture without clipping" % full_seed_face)
+	GameState.pouch["wheat"] = 5
+	hud._update_hud()
 
 	# --- the debug readout folds away ----------------------------------------
 	#
@@ -8419,8 +8472,8 @@ func _scenario_bh_crop_count_chips_track_the_pouch() -> void:
 	GameState.pouch["tomato"] = 0
 	await get_tree().process_frame
 	await get_tree().process_frame
-	_assert(hud.crop_count_digits["wheat"].text == "0" and hud.crop_counts_label.visible,
-		"an empty crop still shows its chip, reading zero rather than vanishing")
+	_assert(hud.crop_count_digits["wheat"].text == "0/%d" % farm.sim.carry_cap("wheat") and hud.crop_counts_label.visible,
+		"an empty crop still shows its chip, reading zero over live capacity rather than vanishing")
 	_assert(hud.crop_count_icons["wheat"].modulate.r < 0.9,
 		"and it is drawn dim — the same 'not there' the basket and can chips already use")
 
@@ -8446,8 +8499,8 @@ func _scenario_bh_crop_count_chips_track_the_pouch() -> void:
 	await _wait_for_action()
 	await get_tree().process_frame
 	await get_tree().process_frame
-	_assert(hud.crop_count_digits["wheat"].text == "3",
-		"the bar's own wheat chip reads the harvest back, not a separate number")
+	_assert(hud.crop_count_digits["wheat"].text == "3/%d" % farm.sim.carry_cap("wheat"),
+		"the bar's own wheat chip reads the harvest and live capacity back")
 	_assert(hud.crop_count_icons["wheat"].modulate.r > 0.9 and hud.crop_count_icons["wheat"].modulate.a > 0.9,
 		"and wheat she is carrying draws bright, not dim")
 
@@ -8464,7 +8517,7 @@ func _scenario_bh_crop_count_chips_track_the_pouch() -> void:
 	await _wait_for_action()
 	await get_tree().process_frame
 	await get_tree().process_frame
-	_assert(hud.crop_count_digits["wheat"].text == "2",
+	_assert(hud.crop_count_digits["wheat"].text == "2/%d" % farm.sim.carry_cap("wheat"),
 		"and the chip drops back by the same one unit the plant spent")
 
 

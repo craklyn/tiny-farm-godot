@@ -96,7 +96,7 @@ surface audit, **not** an observed pre-reader playtest or a tablet export test.
 | Water | Tap a seeded/growing tile in the farm view; HUD stays up. | No. The router chooses the can. |
 | Sleep | Tap the pictured cot in the farm, or the HUD's pictured cot button; the **day-transition overlay** appears and returns to the farm. | The overlay displays `Day N`, but reading it is not needed to advance or return. Story nights may add an animation before that card. |
 | Harvest | Tap a ready crop in the farm view; HUD stays up. | No for the tap; the ripe crop is shown in the world. |
-| Buy seeds | Tap the seed box in the farm, then a pictured card in the **shop panel**, then its × close control. | The shelf uses pictures, coin icons and numerals, not crop names. Wheat is no longer on the shelf: harvest supplies replantable wheat; later crops are purchasable when unlocked. Past a screenful the shelf scrolls (w2989282532d) rather than growing the panel off the screen; the close row stays put underneath it. A finger drag starting on a card scrolls the shelf rather than buying it — a plain tap still buys (w98a60854171); the same holds for the held-item picker's grid, which caps and scrolls the same way once she is carrying enough to overflow it. Neither shows a scrollbar: both hide it in favour of a fade at whichever edge still has something cut off, keeping the HUD's corner-card rule (no thin inline controls) and the shop's existing wordless rule (S-7) in one move. |
+| Buy seeds | Tap the seed box in the farm, then a pictured card in the **shop panel**, then its × close control. | The shelf uses pictures, coin icons and numerals, not crop names. Every seed card shows its packet beside carried/capacity, coin beside price, and packet beside +1: a tap buys one of that pictured crop. When she already carries as many as she can, the carried/capacity pair turns red and the card darkens; a tap rings it in red and buys nothing. Capacity comes from `SimWorld.carry_cap(crop_type)` when the card is built, so storage upgrades change the visible denominator too. Wheat is no longer on the shelf: harvest supplies replantable wheat; later crops are purchasable when unlocked. Past a screenful the shelf scrolls (w2989282532d) rather than growing the panel off the screen; the close row stays put underneath it. A finger drag starting on a card scrolls the shelf rather than buying it — a plain tap still buys (w98a60854171); the same holds for the held-item picker's grid, which caps and scrolls the same way once she is carrying enough to overflow it. Neither shows a scrollbar: both hide it in favour of a fade at whichever edge still has something cut off, keeping the HUD's corner-card rule (no thin inline controls) and the shop's existing wordless rule (S-7) in one move. |
 
 Thus the seven named verbs use four recurring presentation surfaces: **farm view,
 HUD, shop panel, and day-transition overlay**. They do not open a machine panel.
@@ -269,7 +269,7 @@ built 2026-09-25, w67d3bedbdc6).** The bar's `crop_counts_label` used to be a
 `Label` reading a fixed `"Wh:5  To:0"`; it is now a row of chips, one per
 plantable crop in `CropDefs.ORDER` (never a hard-coded pair), each a small
 picture — `Menus.crop_icon`, the exact texture the inventory pop-up draws —
-followed by its digit count. The variable keeps its old name so the many
+followed by its carried amount. The variable keeps its old name so the many
 scenarios that already check its `visible` flag (which treatment shows it,
 unchanged by this ruling) needed no change. A crop sitting at zero is drawn
 dim rather than removed: the bar's whole job is answering "how much of this
@@ -282,6 +282,22 @@ chips carry no letters (`_has_letters`), that an empty chip is dim, and that a
 real harvest and a real plant — not a direct write to `GameState.pouch` —
 move the digit the bar actually shows. A before/after capture of the bar is
 `docs/design/mockups/q123_result/` (`tools/capture_crop_counts.tscn`).
+
+**Seed amounts and capacity (v0.2.1).** Each crop chip in the bottom bar now
+shows `carried/capacity` beside that crop's picture, and the selected seed card
+uses the same form. The capacity is read live from `SimWorld.carry_cap(crop_type)`;
+the current on-person limit is 100 per crop, while a storage machine can raise it.
+The selected-item card is 100 pixels wide so its crop picture and today's longest
+live value, `100/100`, are fully visible together. It remains 48 pixels high for
+the HUD's touch-target standard; the neighbouring inventory card moves left with
+it and retains the existing eight-pixel gap.
+The shop repeats the pictured crop with `carried/capacity`, and separates the
+coin/price pair from a second pictured crop with `+1`, so a player can see that a
+single tap purchases one seed. These marks use only pictures, numerals, `+`, and
+`/`; crop names are still unnecessary in the farming loop. Scenario AD checks the
+held card's rendered full-capacity layout, Scenario BH checks the per-crop HUD
+readout after real harvest and plant taps, and Scenario J checks the shop's live
+denominator and `+1` cue after a tap.
 
 **Regression check.** `tools/test_runner.gd`'s Scenario BB presses the HUD button,
 taps a pictured item, then taps tilled ground, and asserts the crop that lands is
