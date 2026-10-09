@@ -2565,6 +2565,12 @@
    "verdict": "decode",
    "why": "“Model use” is internal shorthand, so the reader must work out that an AI usage limit has been reached."
   },
+  "490d20b6cd1c49028ecf": {
+   "instead": "The title screen's demo farm was rebuilt so its recorded playthrough works with the new game version",
+   "quote": "for the new replay version",
+   "verdict": "decode",
+   "why": "It does not explain whether the replay format or the game changed, or why the demo farm had to be rebuilt."
+  },
   "49229677a4241d827299": {
    "verdict": "ok"
   },
@@ -8900,6 +8906,9 @@
    "quote": "Seven senses measure across the page boundary with nothing stopping them",
    "verdict": "decode",
    "why": "Seven senses is undefined jargon, and measure across the page boundary is opaque—the reader cannot work out what work is being requested without asking."
+  },
+  "fabbf315e67f8c6b7ab7": {
+   "verdict": "ok"
   },
   "fafd981a421b6e478ec8": {
    "instead": "This build's score comes from commits older than the one you would ship today.",
