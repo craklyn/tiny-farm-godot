@@ -784,6 +784,14 @@ doors stays clear, and the milk path remains visible from stalls through the fix
 line. This settles the building's visual direction only; economy, acquisition, original
 art, and implementation remain to be planned. Design: `design/17-industrial-barn-and-cheese-line.md`.
 
+### S-41. The Industrial Barn unlocks through egg collection and starts at 500 gold
+**Ruled by Daniel on 2026-10-08 (Q-137 and Q-138).** The shop unlocks the Industrial Barn
+after the player collects 10 eggs. The barn comes with its first cow and costs 500 gold.
+Each additional cow costs 250 gold. The egg requirement gives livestock a small animal-care
+milestone while keeping every owned thing in the shop under P-12. Herd size and cheese value
+remain open in Q-139 and Q-140; batch duration, storage, and collection interaction still need
+design. Design: `design/17-industrial-barn-and-cheese-line.md`.
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported

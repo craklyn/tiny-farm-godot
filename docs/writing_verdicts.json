@@ -40,6 +40,12 @@
   "011bfd92c79d9a3310d7": {
    "verdict": "ok"
   },
+  "012b3930731244164465": {
+   "instead": "The four cows can make at most 2.8 finished cheese batches",
+   "quote": "They can make at most 2.8 finished cheese batches",
+   "verdict": "second-look",
+   "why": "“They” refers to the cows in the previous sentence rather than identifying its subject here."
+  },
   "0131fcc64f069c52ccd6": {
    "verdict": "ok"
   },
@@ -1249,6 +1255,9 @@
    "verdict": "second-look",
    "why": "The metaphor softens a fact the reader needs stated directly: the player earns no crop income during this period."
   },
+  "2288a5711f74d8c374e3": {
+   "verdict": "ok"
+  },
   "2290efa08ee414d617bd": {
    "verdict": "ok"
   },
@@ -1753,6 +1762,9 @@
   "2fcfc4754127b61debdb": {
    "verdict": "ok"
   },
+  "2ff22bf88b9586722bba": {
+   "verdict": "ok"
+  },
   "2fffcd88143c372eda7e": {
    "verdict": "ok"
   },
@@ -1826,6 +1838,12 @@
    "quote": "The last time the studio used up its allowance before the clock reset, it had spent ….",
    "verdict": "decode",
    "why": "The bare pronoun \"it\" could refer to either the studio or the allowance, and \"allowance\" itself needs introduction—for this reader, spending what would cost to do what is not explained."
+  },
+  "31e99bf3025f57d1f03e": {
+   "instead": "A cow produces 0.4 to 1.0 units of milk per day, or 0.7 units on average, and adds one unit to the barn's milk supply whenever she has at least one.",
+   "quote": "A cow's hidden milk gauge gains 0.4 to 1.0 units per day, or 0.7 units on average, and she sends one unit into the line whenever she has at least one.",
+   "verdict": "decode",
+   "why": "“Hidden milk gauge” and “the line” describe internal machinery instead of plainly stating how much milk a cow produces."
   },
   "31f4dc4613a1e4f7bcc5": {
    "verdict": "ok"
@@ -2387,6 +2405,9 @@
   "454b9a5ae0fff3189d0d": {
    "verdict": "ok"
   },
+  "4563a80bfa1ed945e38e": {
+   "verdict": "ok"
+  },
   "45cd8befab9d6764ae50": {
    "verdict": "ok"
   },
@@ -2749,6 +2770,9 @@
    "verdict": "second-look",
    "why": "The bare pronoun 'she' has no referent in the visible context, and 'where she was lost' is a metaphor for the actual consequence the reader cares about."
   },
+  "4e9dc0d22aff574f421e": {
+   "verdict": "ok"
+  },
   "4eb6e4be5f15230de3e1": {
    "verdict": "ok"
   },
@@ -2948,6 +2972,9 @@
    "verdict": "ok"
   },
   "53fd833287e76f791b8e": {
+   "verdict": "ok"
+  },
+  "5422897549217afbbf2b": {
    "verdict": "ok"
   },
   "542599a9be28ff923bdb": {
@@ -3760,6 +3787,9 @@
   "69ace6adfea2cc5c5e1c": {
    "verdict": "ok"
   },
+  "69f0c0e6b3532813c250": {
+   "verdict": "ok"
+  },
   "6a04545b8ba50b4030cc": {
    "instead": "important to how the farm opens up throughout the first phase",
    "quote": "load-bearing for how the farm opens up over the whole first phase",
@@ -4413,6 +4443,9 @@
   "7d2f28cdfc3a5db7811e": {
    "verdict": "ok"
   },
+  "7d35740d27a3867ea52e": {
+   "verdict": "ok"
+  },
   "7d5230c1a4fc042d4918": {
    "verdict": "ok"
   },
@@ -4756,6 +4789,9 @@
    "quote": "None of these for one of the sounds",
    "verdict": "second-look",
    "why": "The wording makes the reader reread it to understand that one sound should use no listed option."
+  },
+  "866b2a4518bb2e58d3c7": {
+   "verdict": "ok"
   },
   "867e6d04077d383a1906": {
    "instead": "The last processing job began at …",
@@ -5271,6 +5307,9 @@
    "verdict": "ok"
   },
   "93e7ccbab50d5ffb8971": {
+   "verdict": "ok"
+  },
+  "94192ac2a5b8649ba38d": {
    "verdict": "ok"
   },
   "941ccf35f3cae6bdc81e": {
@@ -5789,6 +5828,9 @@
   "a2e7699dfd70f084ebe2": {
    "verdict": "ok"
   },
+  "a2f9375558f3ca3ee5a6": {
+   "verdict": "ok"
+  },
   "a30f6bdbcb0b02d17901": {
    "instead": "Any Mark III can use the studio's trained model. A robot that has already learned loses what it learned on your farm, and in testing it did slightly worse afterwards.",
    "quote": "the studio's brain",
@@ -5967,6 +6009,9 @@
    "verdict": "ok"
   },
   "a6cffb635f6fe4d6539e": {
+   "verdict": "ok"
+  },
+  "a6e2c17f3d3c41b81e12": {
    "verdict": "ok"
   },
   "a6e34afbdf1934bb047a": {
@@ -6283,6 +6328,9 @@
   "aee6253f6a8183fb2e59": {
    "verdict": "ok"
   },
+  "af078813a7d785ecca5b": {
+   "verdict": "ok"
+  },
   "af13915f7e9d921077e6": {
    "verdict": "ok"
   },
@@ -6520,6 +6568,9 @@
   "b8cc67e303e7956c12b2": {
    "verdict": "ok"
   },
+  "b8ce3c9e9c84babf407d": {
+   "verdict": "ok"
+  },
   "b8f80175b06462de1dce": {
    "instead": "What must be true for this work to be complete",
    "quote": "Definition of done",
@@ -6581,6 +6632,9 @@
    "why": "The reader must translate “tablet numbers” and “costs the tablet its frame rate” into the visible result: the tablet stutters."
   },
   "bac3aaecc31e6abbc388": {
+   "verdict": "ok"
+  },
+  "bae59414784187c1a4fc": {
    "verdict": "ok"
   },
   "bafe54ff898cb92b20af": {
@@ -7786,6 +7840,9 @@
    "verdict": "second-look",
    "why": "“Read whether” describes how the system obtained the information instead of plainly stating that it could not determine the status."
   },
+  "db7f4bd731cec62a61c1": {
+   "verdict": "ok"
+  },
   "db8bd257bb812dd3f5e5": {
    "verdict": "ok"
   },
@@ -8431,6 +8488,9 @@
   "efbd83015d0ec8e96187": {
    "verdict": "ok"
   },
+  "efd38bece57f7788234a": {
+   "verdict": "ok"
+  },
   "efd3aa79ffd26ff5865d": {
    "verdict": "ok"
   },
@@ -8466,6 +8526,9 @@
    "why": "The reader has to infer that this means comparing the new art with the current game."
   },
   "f10a30745648451534e8": {
+   "verdict": "ok"
+  },
+  "f123dfd34c5b2b4fb66c": {
    "verdict": "ok"
   },
   "f13c0c236dddf54ce698": {
@@ -8809,6 +8872,9 @@
    "verdict": "ok"
   },
   "fb87aa84312ec21c07dd": {
+   "verdict": "ok"
+  },
+  "fbaedf2ae3f0a45ab9d5": {
    "verdict": "ok"
   },
   "fbb049b90956ef665ffb": {

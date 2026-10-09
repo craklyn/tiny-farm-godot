@@ -1,7 +1,10 @@
 # 17 — Industrial Barn and Cheese Line
 
-*Status: visual direction and original-game-art brief complete. This is a phase-2 livestock
-building; its economy, acquisition, finished art, and implementation remain unplanned.*
+*Status: visual direction, original-game-art brief, barn access, and barn pricing complete.
+This is a phase-2 livestock building. The barn unlocks after 10 collected eggs; the barn and
+its first cow cost 500 gold, and each added cow costs 250 gold. Herd size and cheese value
+remain open proposals in [Q-139 and Q-140](../DESIGNER_QUEUE.md). Finished art, factory
+capacity and storage, and implementation remain unplanned.*
 
 ## The building at a glance
 
@@ -180,6 +183,12 @@ size and over the shipped farm ground. Approval requires all of the following:
 
 ## What remains for later design
 
-- The barn's acquisition, price, and progression gate are not proposed here. They are player-facing economy and pacing decisions Daniel has not made.
-- The number of cows that can be owned, cheese values, batch duration, storage, and collection interaction are not proposed here. They need the phase-2 livestock economy to be designed as one loop.
+- Daniel ruled that the barn unlocks after 10 collected eggs, and that its shop bundle includes
+  one cow for 500 gold; each added cow costs 250 gold ([Q-137 and Q-138](../DESIGNER_QUEUE.md)).
+  The proposed four-cow limit remains in [Q-139](../DESIGNER_QUEUE.md), and the proposed cheese
+  value remains in [Q-140](../DESIGNER_QUEUE.md).
+- Batch duration, receiver and finished-cheese storage, and collection interaction remain
+  undecided. The economic ceilings in Q-138 through Q-140 require a line that can finish and
+  store at least 2.8 batches per day for four cows; they are not a promise of actual income
+  until those decisions are made.
 - The exact action vocabulary and the factory's saved state need an engineering design before implementation, using the action gateway and replay tests described above.

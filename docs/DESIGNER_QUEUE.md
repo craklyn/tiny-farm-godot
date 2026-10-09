@@ -11,6 +11,31 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
 
 ## Now — blocks M0 close or current work
 
+- ~~**Q-137 — When does the Industrial Barn appear in the shop?**~~ **Ruled 2026-10-08: after
+  the player collects 10 eggs.** The [Industrial Barn](design/17-industrial-barn-and-cheese-line.md)
+  comes with one cow. The shop sells each additional cow for 250 gold. Collecting 10 eggs gives
+  the player a small animal-care milestone before livestock becomes available.
+
+- ~~**Q-138 — What should the Industrial Barn cost?**~~ **Ruled 2026-10-08: 500 gold,
+  including the first cow.** If the later cheese line can finish and store the first cow's
+  average 0.7 batches per day, a 20-gold batch gives a 14-gold-per-day production ceiling and
+  about a 36-day repayment time. Batch duration and storage remain undecided, so this is a
+  production ceiling rather than a promised income rate.
+
+- **Q-139 — How many cows can a player own for one Industrial Barn?** **Ruling.**
+  **Recommendation: four cows.** The building has four voluntary stalls. Four cows supply
+  2.8 milk units per day on average; this is a 56-gold-per-day production ceiling at 20 gold
+  per batch only if the cheese line can finish and store at least 2.8 batches per day. The
+  alternatives are two cows, with a 28-gold-per-day ceiling, or one cow, with 14 gold per day.
+
+- **Q-140 — What is one cheese batch worth?** **Ruling.** **Recommendation: 20 gold per
+  finished batch.** If the cheese line can finish and store each cow's average output, one cow
+  has a 14-gold-per-day production ceiling, above an established crop plot's 10 to 12 gold per
+  day. Four cows require at least 2.8 finished batches per day to reach their 56-gold ceiling.
+  The 500-gold bundle repays in about 36 days at the one-cow ceiling. The alternatives are 15
+  gold per batch, making a cow's ceiling 10.5 gold per day, or 30 gold, making it 21 gold per
+  day.
+
 - ~~**Q-136 — Which look should the Industrial Barn use?**~~ **Ruled 2026-10-07: A, red
   dairy works.** The [Industrial Barn and Cheese Line](design/17-industrial-barn-and-cheese-line.md)
   has a red-painted timber exterior. Inside, cows freely enter a warm livestock section with

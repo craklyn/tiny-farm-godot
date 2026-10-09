@@ -1,0 +1,35 @@
+{
+  "id": "Q-139",
+  "owner": "milo",
+  "subject": "The Industrial Barn",
+  "title": "How many cows can a player own for one Industrial Barn?",
+  "question": "The Industrial Barn has four voluntary milk stalls. A cow produces 0.4 to 1.0 units of milk per day, or 0.7 units on average, and gives one unit to the cheese line whenever she has at least one. The ownership limit decides whether those four visible stalls are a promise the player can fill or only scenery.\n\nFour cows supply 2.8 milk units per day on average. They can make at most 2.8 finished cheese batches and 56 gold per day at 20 gold per batch only if the later factory design can finish and store at least 2.8 batches per day. Batch duration and storage are still undecided, so the number is a production ceiling, not a promised income rate.\n\nI recommend four cows. The building Daniel requested already makes room for four cows to use their stalls freely. Filling that capacity turns the repeated stalls into readable progress without making the first cow insufficient on her own.",
+  "why_now": "Cow ownership determines the barn's maximum output, the number of cow shop entries, and whether all four designed stalls can be used.",
+  "options": [
+    {
+      "key": "a",
+      "label": "Allow four cows for each barn (Recommended)",
+      "detail": "The player can fill all four visible stalls. The cows supply 2.8 milk units per day on average. If the factory can finish and store 2.8 batches per day, this is a 56-gold-per-day production ceiling at 20 gold per batch.",
+      "recommended": true
+    },
+    {
+      "key": "b",
+      "label": "Allow two cows for each barn",
+      "detail": "Two stalls are used and two remain visibly empty. The cows supply 1.4 milk units per day on average. If the factory can finish and store that output, this is a 28-gold-per-day production ceiling at 20 gold per batch."
+    },
+    {
+      "key": "c",
+      "label": "Allow one cow for each barn",
+      "detail": "The barn is a single-cow building despite four drawn stalls. The cow supplies 0.7 milk units per day on average. If the factory can finish and store that output, this is a 14-gold-per-day production ceiling at 20 gold per batch, leaving most of the building's animal space unused."
+    }
+  ],
+    "yes_causes": "Records the maximum herd for one barn and lets the shop's 250-gold additional-cow entries, cow simulation, factory queue, and art all target the same capacity.",
+  "walk_back": "This is a balance and building-capacity ruling. Raising or lowering it after implementation changes saved farms and needs a migration plan.",
+  "links": [
+    {
+      "type": "doc",
+      "src": "docs/design/17-industrial-barn-and-cheese-line.md",
+      "caption": "The four voluntary stalls and the deterministic milk-and-cheese flow."
+    }
+  ]
+}

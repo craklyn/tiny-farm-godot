@@ -1,0 +1,40 @@
+{
+  "id": "Q-140",
+  "owner": "milo",
+  "subject": "The Industrial Barn",
+  "title": "What is one cheese batch worth?",
+    "question": "One unit of milk starts one cheese batch. A cow gains 0.4 to 1.0 milk units per day, 0.7 on average, so the selling value of one finished cheese sets the ceiling for livestock income.\n\nFor comparison, an established wheat plot earns about 10 gold per growing day after it keeps one unit for replanting, and an established tomato plot earns about 12 gold per growing day. A chicken egg averages about 5 gold per day. If the later factory design can finish and store each cow's average 0.7 batches per day, a 20-gold batch gives one cow a 14-gold-per-day production ceiling and four cows a 56-gold-per-day ceiling. That four-cow case requires the factory to sustain at least 2.8 finished batches per day. Batch duration and storage are still undecided, so these are not promised income rates.\n\nI recommend 20 gold per finished cheese batch. It gives one cow a meaningful ceiling above a crop plot, which is appropriate for a phase-2 factory investment, while the 500-gold barn with its first cow has about a 36-day repayment time only if the factory sustains the one-cow rate.",
+  "why_now": "The barn price and herd size cannot be tested as a phase-2 economy without knowing what each completed batch pays.",
+  "options": [
+    {
+      "key": "a",
+      "label": "Sell each cheese batch for 20 gold (Recommended)",
+      "detail": "If the factory finishes and stores each cow's average output, one cow has a 14-gold-per-day production ceiling, close to but above an established crop plot. Four cows have a 56-gold-per-day ceiling only at 2.8 finished batches per day, and the 500-gold barn has about a 36-day repayment time at the one-cow rate.",
+      "recommended": true
+    },
+    {
+      "key": "b",
+      "label": "Sell each cheese batch for 15 gold",
+      "detail": "If the factory finishes and stores each cow's average output, one cow has a 10.5-gold-per-day production ceiling, about the same as an established wheat plot. Four cows have a 42-gold-per-day ceiling at 2.8 finished batches per day, and the 500-gold barn has about a 48-day repayment time at the one-cow rate."
+    },
+    {
+      "key": "c",
+      "label": "Sell each cheese batch for 30 gold",
+      "detail": "If the factory finishes and stores each cow's average output, one cow has a 21-gold-per-day production ceiling and four cows have an 84-gold-per-day ceiling at 2.8 finished batches per day. The 500-gold barn has about a 24-day repayment time at the one-cow rate, making livestock the strongest current income source quickly."
+    }
+  ],
+  "yes_causes": "Records the sale value for the shipping bin and gives the barn's price, cow limit, and future cow prices one common income number to balance against.",
+  "walk_back": "This is a balance ruling. The number can be changed after playtesting, but a shipped economy change needs a new decision and replay/save review.",
+  "links": [
+    {
+      "type": "doc",
+      "src": "docs/design/17-industrial-barn-and-cheese-line.md",
+      "caption": "The one-milk-unit batch rule and the daily milk gain used in these calculations."
+    },
+    {
+      "type": "doc",
+      "src": "docs/SEED_ECONOMY_PLAN.md",
+      "caption": "The current crop surplus and shipping-reserve economy used for the crop comparison."
+    }
+  ]
+}
