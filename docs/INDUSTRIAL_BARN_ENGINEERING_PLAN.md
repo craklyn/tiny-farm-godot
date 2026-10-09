@@ -208,15 +208,17 @@ stall turn area. Placement uses the existing general building path: it validates
 of the three-by-two footprint, creates the anchored room with the building, and removes both
 together only after the barn-state checks above pass.
 
-As built (2026-10-08), the room's layout follows the interior picture
+As built (2026-10-08), the room's layout follows the redrawn interior picture
 (`industrial_barn_interior_kit.png`). All 24 cells are inside the walls, as in the Spiral
-Tower. The livestock doorway is cell (1, 3), under the door drawn in the picture's
-bottom-left corner. The outdoor doorstep is under the barn's middle doors. The four stalls are the picture's two-by-two block
-in the top-left corner, numbered deepest first. Cows do not block one another, so a near
-stall never shuts in a cow at the back. The right half (columns 3–5) holds the cheese line and
-is fixed machinery that no one walks through. Picking the barn up is refused while a cow holds
-a stall or any milk or cheese is inside. Otherwise the barn record, its pending line event and
-the room come up together.
+Tower. The livestock doorway is the south-west cell (0, 3), and the outdoor doorstep is under
+the barn's middle doors. The hay rack and feed bin occupy the left supply cells (0, 0) and
+(1, 0). The four stalls form the central two-by-two block at (2, 0), (3, 0), (2, 1), and
+(3, 1), numbered deepest first. The open route runs from the doorway through the left and
+central floor cells to every stall, so a near stall never shuts in a cow at the back. The
+processing cells (4, 0), (5, 0), (4, 1), (5, 1), (4, 2), (5, 2), (4, 3), and (5, 3) are
+fixed machinery for the visible cheese route and cannot be walked through. Picking the barn up
+is refused while a cow holds a stall or any milk or cheese is inside. Otherwise the barn
+record, its pending line event and the room come up together.
 
 The building and room must support the approved red dairy works art without encoding visual
 details in simulation. Open doors, stall occupancy, station state, product shape, and

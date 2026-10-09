@@ -18284,10 +18284,9 @@ func _placed_barn_world(seed_value: int) -> Array:
 	return [world, spot, String(laid.get("room", "")), String(laid.get("cow", ""))]
 
 
-# The room the interior picture draws: all six-by-four cells usable, the
-# livestock door under the picture's door, the stalls in its stall block and the
-# cheese line's half closed to walkers (INDUSTRIAL_BARN_ENGINEERING_PLAN,
-# "Building and interior").
+# The room the interior picture draws: its south-west livestock doorway, central
+# stall block, open cow route, and exact supply and machine blockers agree with
+# the kit's named cells (INDUSTRIAL_BARN_ENGINEERING_PLAN, "Building and interior").
 func test_barn_room_layout() -> void:
 	print("\n--- Industrial barn: the placed building and its six-by-four room ---")
 	var placed := _placed_barn_world(1721)
@@ -18308,21 +18307,21 @@ func test_barn_room_layout() -> void:
 		footprint_ok = footprint_ok and (obj == WorldLayout.INDUSTRIAL_BARN or obj == WorldLayout.INDUSTRIAL_BARN_PART)
 	_assert(footprint_ok and MachineDefs.footprint_cells("industrial_barn", spot).size() == 6,
 		"the building stands on all six squares of its three-by-two footprint")
-	_assert(Vector2i(room["door"]) == origin + Vector2i(1, 3)
-		and world.get_object(origin.x + 1, origin.y + 3) == WorldLayout.ROOM_DOORWAY,
-		"the livestock doorway is under the interior picture's door, bottom left")
-	var machinery_blocked := true
-	var cow_side_open := true
-	for y in 4:
-		for x in 6:
-			var c := origin + Vector2i(x, y)
-			if x >= 3:
-				machinery_blocked = machinery_blocked and not world.is_walkable(c.x, c.y) \
-					and world.get_object(c.x, c.y) == WorldLayout.INDUSTRIAL_BARN_MACHINERY
-			else:
-				cow_side_open = cow_side_open and world.is_walkable(c.x, c.y)
-	_assert(machinery_blocked, "nobody walks through the cheese line's half of the room")
-	_assert(cow_side_open, "and the whole cow half is open floor")
+	_assert(Vector2i(room["door"]) == origin + Vector2i(0, 3)
+		and world.get_object(origin.x, origin.y + 3) == WorldLayout.ROOM_DOORWAY,
+		"the livestock doorway is under the kit's south-west door")
+	var blocked_cells: Array = MachineDefs.room_of("industrial_barn").get("blocked_cells", [])
+	var blockers_match := true
+	for cell in blocked_cells:
+		var c: Vector2i = origin + Vector2i(cell)
+		blockers_match = blockers_match and not world.is_walkable(c.x, c.y) \
+			and world.get_object(c.x, c.y) == WorldLayout.INDUSTRIAL_BARN_MACHINERY
+	_assert(blockers_match, "cows cannot stand on the hay rack, feed bin, or cheese machinery")
+	var route_open := true
+	for cell in MachineDefs.room_of("industrial_barn").get("cow_route", []):
+		var c: Vector2i = origin + Vector2i(cell)
+		route_open = route_open and world.is_walkable(c.x, c.y)
+	_assert(route_open, "the kit's named cow route stays open from the door to the stalls")
 	var stall_cells: Array = []
 	var reachable := true
 	for stall in world.barns[room_id]["stalls"]:
@@ -18330,8 +18329,8 @@ func test_barn_room_layout() -> void:
 		stall_cells.append(cell - origin)
 		reachable = reachable and not Movement.path(world, SpeciesDefs.GROUND,
 			Vector2i(room["door"]), cell).is_empty()
-	_assert(stall_cells == [Vector2i(0, 0), Vector2i(1, 0), Vector2i(0, 1), Vector2i(1, 1)],
-		"the four stalls are the picture's two-by-two stall block, deepest first (%s)" % str(stall_cells))
+	_assert(stall_cells == [Vector2i(2, 0), Vector2i(3, 0), Vector2i(2, 1), Vector2i(3, 1)],
+		"the four stalls are the kit's central two-by-two block, deepest first (%s)" % str(stall_cells))
 	_assert(reachable, "and a cow can walk from the doorway to every one of them")
 	_assert(ActionRouter.SPECIAL_OBJECTS.get(WorldLayout.INDUSTRIAL_BARN, "") == "open_structure"
 		and ActionRouter.SPECIAL_OBJECTS.get(WorldLayout.INDUSTRIAL_BARN_PART, "") == "open_structure",

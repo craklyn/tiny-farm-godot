@@ -26,18 +26,20 @@ const TILE := 16
 # Kit-space pixel positions (`industrial_barn_interior_kit.png`, 96x64, one 16px
 # cell per room cell). Measured off the picture, which is why they are numbers.
 const PIPE_Y := 12                  # the stall pipe into the receiver
-const PIPE_FROM_X := 34
-const PIPE_TO_X := 50
-const RECEIVER_LIGHT := Vector2(56, 6)
-const VAT := Rect2(68, 8, 24, 6)    # the vat's open top
-const DRAIN_DRIP_X := 55
-const DRAIN_DRIP_Y := 31
-const PRESS_XS: Array[int] = [74, 81, 88]
-const PRESS_TOP_Y := 15
-const BELT_Y := 54
-const BELT_FROM_X := 90
-const BELT_TO_X := 50
-const STORE := Vector2(60, 59)      # the finished wheels' shelf, by the exit
+const PIPE_FROM_X := 46
+const PIPE_TO_X := 67
+const RECEIVER_LIGHT := Vector2(75, 6)
+const VAT := Rect2(81, 5, 14, 9)
+const CUTTER_TRACK := Rect2(83, 19, 10, 6)
+const RAKE_TRACK := Rect2(67, 23, 10, 4)
+const DRAIN_DRIP_X := 78
+const DRAIN_DRIP_Y := 40
+const PRESS_XS: Array[int] = [82, 87, 92]
+const PRESS_TOP_Y := 35
+const BELT_Y := 57
+const BELT_FROM_X := 82
+const BELT_TO_X := 90
+const STORE := Vector2(82, 52)
 
 const COW_STATES_CROSSING: Array[String] = ["crossing_in", "crossing_out"]
 const HOP_FRAMES := 4
@@ -226,12 +228,13 @@ static func draw(canvas: CanvasItem, kit: Texture2D, state: Dictionary) -> void:
 		canvas.draw_rect(Rect2(o + VAT.position, VAT.size), glow, true)
 	for key in ["cutter_x", "rake_x"]:
 		if float(tools[key]) >= 0.0:
-			var x := roundf(VAT.position.x + float(tools[key]) * (VAT.size.x - 1))
-			canvas.draw_line(o + Vector2(x, VAT.position.y - 3), o + Vector2(x, VAT.end.y), STEEL_DARK, 1.0)
+			var track: Rect2 = CUTTER_TRACK if key == "cutter_x" else RAKE_TRACK
+			var x := roundf(track.position.x + float(tools[key]) * (track.size.x - 1))
+			canvas.draw_line(o + Vector2(x, track.position.y - 3), o + Vector2(x, track.end.y), STEEL_DARK, 1.0)
 			if key == "rake_x":
-				canvas.draw_rect(Rect2(o + Vector2(x - 1, VAT.end.y - 1), Vector2(3, 1)), STEEL_DARK, true)
+				canvas.draw_rect(Rect2(o + Vector2(x - 1, track.end.y - 1), Vector2(3, 1)), STEEL_DARK, true)
 			else:
-				canvas.draw_rect(Rect2(o + Vector2(x - 2, VAT.position.y + 1), Vector2(1, 4)), CURD, true)
+				canvas.draw_rect(Rect2(o + Vector2(x - 2, track.position.y + 1), Vector2(1, 4)), CURD, true)
 	if int(tools["drip_y"]) >= 0:
 		canvas.draw_rect(Rect2(o + Vector2(DRAIN_DRIP_X, DRAIN_DRIP_Y + int(tools["drip_y"])), Vector2(1, 1)), WHEY, true)
 	if state["line"]["press"] != null:

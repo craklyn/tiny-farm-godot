@@ -983,15 +983,17 @@ func make_barn(barn_id: String, anchor: Vector2i = Vector2i.ZERO) -> Dictionary:
 	if origin.x < 0 or size != Vector2i(6, 4):
 		return {}
 	var stalls: Array[Dictionary] = []
-	for i in 4:
-		# The four stalls are the two-by-two block the interior picture draws in
-		# the room's top-left corner, deepest first: stall 0 is the back-left one,
-		# so the first cow in walks furthest and leaves the near stalls free.
+	var layout: Dictionary = MachineDefs.room_of("industrial_barn")
+	var stall_cells: Array = layout.get("stalls", [])
+	for i in stall_cells.size():
+		# The four stalls are the kit's two-by-two centre block, deepest first.
+		# The named cow route leads from the south-west doorway to this block.
 		# Cows do not block one another (`tile_exclusive` is false), so a cow
 		# in a near stall never shuts one in at the back. The rows below them
 		# are the turn area between the livestock door and the stalls.
+		var cell: Vector2i = stall_cells[i]
 		stalls.append({"index": i, "cow_id": "",
-			"cell": [origin.x + i % 2, origin.y + i / 2]})
+			"cell": [origin.x + cell.x, origin.y + cell.y]})
 	var stations := {}
 	for station in BARN_STATIONS:
 		stations[station] = null
@@ -1267,12 +1269,13 @@ func open_room(item: String, anchor: Vector2i) -> String:
 	# other room keeps the centre of its south wall.
 	var doorway := origin + Vector2i(spec.get("door", WorldLayout.room_door_cell(size)))
 	set_object(doorway.x, doorway.y, WorldLayout.ROOM_DOORWAY)
-	# Fixed machinery the row declares (the barn's cheese line) blocks those cells
-	# for every walker. `close_room` clears every object in the room, these too.
-	var machinery: Rect2i = spec.get("machinery", Rect2i())
-	for y in range(machinery.position.y, machinery.end.y):
-		for x in range(machinery.position.x, machinery.end.x):
-			set_object(origin.x + x, origin.y + y, WorldLayout.INDUSTRIAL_BARN_MACHINERY)
+	# Fixed fittings and machinery the row declares block those cells for every
+	# walker. `close_room` clears every object in the room, these too. The barn
+	# uses named cells rather than a rectangle because its redrawn route bends
+	# around hay, feed, and the processing stations.
+	for cell in spec.get("blocked_cells", []):
+		var blocked: Vector2i = cell
+		set_object(origin.x + blocked.x, origin.y + blocked.y, WorldLayout.INDUSTRIAL_BARN_MACHINERY)
 	var id := "%s_room_%d" % [item, slot + 1]
 	rooms[id] = {
 		"item": item,

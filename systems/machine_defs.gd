@@ -165,16 +165,19 @@ static var TYPES: Dictionary = {
 		"configs": [], "default_config": "", "unlock_requirement": { "crop": "egg", "count": 10 },
 		"object": WorldLayout.INDUSTRIAL_BARN, "part": WorldLayout.INDUSTRIAL_BARN_PART,
 		"footprint": Vector2i(3, 2),
-		# Every one of the six-by-four cells is usable, as the Spiral Tower's are,
-		# because the interior picture fills the whole grid
-		# (`industrial_barn_interior_kit.png`). That picture puts the livestock
-		# door under its left half and the outside doors under the middle tile,
-		# so the room names both instead of taking the coop's centred defaults.
-		# The cheese line stands on the right half: fixed machinery nobody walks
-		# through.
+		# The interior kit names the room: supplies are at the north-west, stalls
+		# fill the centre columns, and the cheese line bends down the east edge.
+		# The doorway and route are explicit so a cow never stands on supplies or
+		# machinery after a redraw. The outside doors remain under the middle tile.
 		"room": { "cells": Vector2i(6, 4), "pitch": 2, "edge_walls": true,
-			"exit_offset": Vector2i(1, 1), "door": Vector2i(1, 3),
-			"machinery": Rect2i(3, 0, 3, 4) },
+			"exit_offset": Vector2i(1, 1), "door": Vector2i(0, 3),
+			"stalls": [Vector2i(2, 0), Vector2i(3, 0), Vector2i(2, 1), Vector2i(3, 1)],
+			"cow_route": [Vector2i(0, 3), Vector2i(0, 2), Vector2i(0, 1),
+				Vector2i(1, 1), Vector2i(1, 2), Vector2i(2, 2), Vector2i(3, 2),
+				Vector2i(1, 3), Vector2i(2, 3), Vector2i(3, 3)],
+			"blocked_cells": [Vector2i(0, 0), Vector2i(1, 0),
+				Vector2i(4, 0), Vector2i(5, 0), Vector2i(4, 1), Vector2i(5, 1),
+				Vector2i(4, 2), Vector2i(5, 2), Vector2i(4, 3), Vector2i(5, 3)] },
 		"icon": { "sheet": "res://assets/sprites/generated/industrial_barn.png", "region": Rect2(0, 0, 48, 32) },
 	},
 	# The first automation the player meets — `design/03`'s "watch your old job

@@ -26,11 +26,17 @@ before the first public build ships.*
   `assets/raw/2026-10-08-w8081d9bfb69-industrial-barn-exterior/`. It was
   background-keyed, reduced with nearest-neighbour sampling, and palette-locked
   to the Industrial Barn brief. The 6×4 interior atlas is original local pixel
-  work assembled from the same approved palette so its four open stalls, shared
-  milk receiver, vat, drain table, press bank, and winding outfeed retain an
-  exact, readable route. `tools/build_industrial_barn_art.py` rebuilds both
-  PNGs and checks their dimensions, hard alpha, and palette. Output rights for
-  the generated exterior follow the Retro Diffusion terms verified below.
+  work assembled from the approved palette. Its machinery silhouettes and
+  product sequence were informed by one Retro Diffusion Plus 96×64 reference
+  generation, $0.06, archived with its service metadata under
+  `assets/raw/2026-10-08-w035e7891955-industrial-barn-cheese-line-reference/`.
+  The shipped atlas contains four open stalls, hay, a feed bin, a shared milk
+  receiver, vat, cutter, rake, drain table, press bank, and outfeed conveyor;
+  one continuous product run joins its milk, curd, slab, forming-hoop, and round-wheel
+  shapes in that order.
+  `tools/build_industrial_barn_art.py` rebuilds both PNGs and checks their
+  dimensions, hard alpha, and palette. Output rights for the generated exterior
+  and reference follow the Retro Diffusion terms verified below.
 - **Industrial Barn prototype boards** (2026-10-07) — six Retro Diffusion Plus
   pixel-art concept-board generations at 384×288, made to compare the three
   proposed Industrial Barn looks before any game asset is selected. The raw PNGs
