@@ -1957,6 +1957,12 @@
    "verdict": "second-look",
    "why": "The reader has to infer that the card is a work item and that the review records which problem was resolved."
   },
+  "364c869b5717541abb56": {
+   "instead": "Keep the tablet's 2 October play recording; it was saved before the version with peas was installed",
+   "quote": "rescued before the pea build was installed",
+   "verdict": "decode",
+   "why": "The reader has to work out what “pea build” is and what was done to the recording."
+  },
   "369580575e0d8e800067": {
    "baselined": "2026-09-19",
    "instead": "The player walks out of the bloom",
@@ -3308,6 +3314,9 @@
    "quote": "close it with its commit and CI run ( hq/card.py close ), send it back to its owner's queue, or move an unknown state with hq/migrate_card_states.py",
    "verdict": "decode",
    "why": "The reader cannot tell what “it” refers to or what it means to move an unknown state."
+  },
+  "5db3a8966cec4edb098a": {
+   "verdict": "ok"
   },
   "5db489ef4d43e51babf8": {
    "verdict": "ok"
