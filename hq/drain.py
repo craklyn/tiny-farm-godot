@@ -2135,6 +2135,17 @@ def record_landing_suites(suites, head):
 # of these goes to Daniel however green everything else is.
 NEVER_LANDS = ("docs/design/", "docs/DEPLOY.md", "ITCH_PAGE.md", ".github/",
                "hq/data/releases.json")
+# Pictures and recordings under the design mockups are evidence a design is judged
+# on, not the design: refreshing a capture decides nothing (2026-10-09: a re-capture
+# of the barn after its doorway was widened waited for Daniel). The text that says
+# what the studio will do stays his.
+EVIDENCE_MEDIA = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".mp4", ".webm", ".wav", ".ogg")
+
+
+def needs_daniels_ok(path):
+    if path.startswith("docs/design/mockups/") and path.lower().endswith(EVIDENCE_MEDIA):
+        return False
+    return any(path == n or path.startswith(n) for n in NEVER_LANDS)
 
 
 def _checked_tier(item, rec):
@@ -2425,8 +2436,7 @@ def meets_landing_bar(item, rec, applied, suites, *, repo=None):
     else:
         return False, "the read of it says this should not go in as it stands"
 
-    blocked = sorted({f for f in files
-                      if any(f == n or f.startswith(n) for n in NEVER_LANDS)})
+    blocked = sorted({f for f in files if needs_daniels_ok(f)})
     # Daniel's yes (work.landing_approved) covers the exact patch he was shown.
     approved = approval_carries(item, rec.get("patch", ""))
     if blocked and not approved:

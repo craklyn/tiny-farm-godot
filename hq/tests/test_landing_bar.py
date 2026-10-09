@@ -166,6 +166,13 @@ def main():
     finally:
         drain.git_blobs, drain.integration.main_head = real_blobs, real_head
 
+    check(not drain.needs_daniels_ok("docs/design/mockups/industrial_barn/review_interior.png"),
+          "a refreshed capture under the mockups lands without his OK")
+    check(drain.needs_daniels_ok("docs/design/17-industrial-barn-and-cheese-line.md"),
+          "the design text itself still needs his OK")
+    check(drain.needs_daniels_ok("docs/design/mockups/notes.md"),
+          "text beside the mockups still needs his OK")
+
     # The writing check refusing a card title must not cost the whole attempt again.
     refused = """This commit subject is one Daniel would have to decode.
   you wrote : Draw Industrial Barn cheese shelf sale feedback
