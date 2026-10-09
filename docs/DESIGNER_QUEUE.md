@@ -32,8 +32,9 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   cheese batch for 20 gold.** If the cheese line can finish and store each cow's average output,
   one cow has a 14-gold-per-day production ceiling. Four cows require at least 2.8 finished
   batches per day to reach their 56-gold ceiling. The 500-gold barn bundle repays in about 36
-  days at the one-cow ceiling. Cheese collection and sale interaction still need design before
-  this value can reach the game.
+  days at the one-cow ceiling. The settled collection-and-sale interaction sends finished cheese
+  to a shelf and sells every stored batch for 20 gold with one tap; engineering and art can now
+  implement it.
 
 - ~~**Q-141 — How long should a cheese-making station show its work?**~~ **Ruled 2026-10-08:
   A, show every station for 5 seconds.** The receiver, set vat, curd cutter, stirring rake,

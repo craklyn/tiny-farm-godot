@@ -20,8 +20,8 @@ The proposed [Industrial Barn and Cheese Line](../design/17-industrial-barn-and-
 is the cow's later livestock building: four cows may voluntarily give milk at once, then
 watchable fixed machinery turns each batch into cheese. Daniel selected the red dairy works:
 a warm cow section with hay and other supplies sits apart from a clean stainless-steel cheese
-processing section. Each finished cheese batch is worth 20 gold. The collection and sale
-interaction for finished cheese remains unplanned.
+processing section. Each finished cheese batch is worth 20 gold. Finished cheese waits on a
+shelf in the barn, and one tap sells every stored batch.
 
 **The statics ladder continues here**: fencing per-tile (yard size becomes a cost),
 buried chicken wire (the anti-burrower), scarecrow habituation (it wants moving), and

@@ -1,7 +1,8 @@
 # 17 — Industrial Barn and Cheese Line
 
 *Status: visual direction, original-game-art brief, barn access, pricing, herd size, cheese
-value, and cheese-line timing complete.
+value, cheese-line timing, and collection-and-sale interaction complete. The cheese shelf sale
+is ready for engineering and art implementation.
 This is a phase-2 livestock building. The barn unlocks after 10 collected eggs; the barn and
 its first cow cost 500 gold, and each added cow costs 250 gold, up to four cows for each barn;
 each finished cheese batch sells for 20 gold. The simulation is built
@@ -52,6 +53,64 @@ The four stall pipes meet at one shared receiver. If several cows give milk toge
 | 7 | Outfeed conveyor | Yellow wheels or blocks travel on a long, winding belt toward the exit. | Conveyor belt to the collection point |
 
 The early version uses fixed machinery throughout. It does not need a robot that chooses tasks, because the player has not yet earned that level of autonomy elsewhere. A later upgrade can replace one fixed station with a directed robot only when it creates a new player decision rather than making the first barn more capable than its role needs.
+
+## Collection and sale interaction
+
+Finished cheese has one visible destination and one player action.
+
+### The cheese shelf
+
+The outfeed conveyor ends at a **cheese shelf**, a low open shelf at the edge of the processing
+space nearest the barn doors. A finished batch moves from the last visible belt onto this shelf
+when the cheese line completes it. The shelf is the barn's only finished-cheese storage: a
+stored batch remains there until the player sells it. The storage limit remains a separate
+unsettled value; when the shelf is full, the outfeed and then the rest of the line wait as they
+do today.
+
+The shelf shows its state without a label. An empty shelf has bare wood and an open space. A
+stored batch is a large yellow wheel or block, using the same product shape as the outfeed. The
+first stored batch makes the shelf and its small brass coin disc gently pulse until the player
+taps it. Further batches make the stack grow rather than adding a new symbol or a count the
+player must read. The shelf must remain visible from the open interior doorway so a player who
+has just entered the barn can find it by looking toward the end of the moving line.
+
+The cheese shelf is not the crop pouch, the seed picker, or the outdoor shipping bin. Cheese
+never takes a crop-storage slot and never needs a second trip to the shipping bin. Its place is
+the shelf until its own sale action changes it into gold.
+
+### One tap sells the stored cheese
+
+A player taps the cheese shelf from anywhere in the barn. As with an egg or another usable
+object, the farmer walks to the shelf before the action resolves. At the shelf, she lifts the
+stored cheese into a small handcart beneath the shelf. The shelf empties, gold coins travel from
+the cart toward the gold display, and the gold display makes its ordinary gain motion. One tap
+sells every batch currently on the shelf. This avoids asking a pre-reader to repeat a profitable
+action once for every wheel while still making the player deliberately collect the barn's work.
+
+The first sale needs no words, tutorial panel, or confirmation. The yellow cheese, the coin
+disc, the cart, and the coin motion show the sequence: cheese waits, a tap takes it, and gold
+arrives. A player who reads may see the normal gold total change, but no part of selling cheese
+depends on reading that number.
+
+### Simulation and replay contract
+
+The player request is one `collect_cheese` Action with the barn identifier. The request resolves
+only when the farmer has reached that barn's cheese-shelf cell and the barn stores at least one
+finished batch. The action atomically removes all stored batches in that barn and adds 20 gold
+for each removed batch. The action has no energy cost and does not advance the game day.
+
+The action does not accept a player-supplied quantity or price. The action gateway derives the
+number of batches from the saved barn state and derives the payment from the ruled 20-gold batch
+value. An empty shelf refuses the Action without changing the world. The replay records the same
+player request and reproduces the same sale from the saved finished-cheese count; the cart,
+coin flight, and shelf pulse are presentation only.
+
+### Teaching check
+
+The first time a barn finishes cheese, the shelf's pulse remains until its first successful sale.
+No extra prompt competes with the moving cheese line. A playtest should check that a pre-reader
+who enters the barn follows the product to the pulsing shelf and taps it without being told to
+read, and that an adult understands that all visible stored cheese sells in one tap.
 
 ## Selected visual direction: red dairy works
 
@@ -226,16 +285,20 @@ still to come.
 The native-size redraw is complete. To capture again, run
 `godot --path . res://tools/capture_industrial_barn_review.tscn` (it needs a display).
 
-## What remains for later design
+## What remains before implementation
 
 - Daniel ruled that the barn unlocks after 10 collected eggs, that its shop bundle includes one
   cow for 500 gold, and that each added cow costs 250 gold up to four cows for each barn
   ([Q-137, Q-138, and Q-139](../DESIGNER_QUEUE.md)). He also ruled that each finished cheese
   batch sells for 20 gold ([Q-140](../DESIGNER_QUEUE.md)), and that every cheese-making station
   shows its work for five seconds ([Q-141](../DESIGNER_QUEUE.md)).
-- Receiver and finished-cheese storage, and the collection interaction, remain undecided.
-  Cheese collection must define its interaction, inventory destination, and sale action before
-  the ruled 20-gold value can reach the game. The economic ceilings in Q-138 through Q-140
-  require a line that can finish and store at least 2.8 batches per day for four cows; they are
-  not a promise of actual income until those decisions are made.
-- The exact action vocabulary and the factory's saved state need an engineering design before implementation, using the action gateway and replay tests described above.
+- The collection-and-sale interaction above sends finished cheese to the shelf, sells every
+  stored batch with one tap, and pays 20 gold for each batch. The economic ceilings in Q-138
+  through Q-140 require a line that can finish and store at least 2.8 batches per day for four
+  cows; they are not a promise of actual income until this interaction is built.
+- Finished-cheese storage capacity remains undecided. Engineering must map its
+  `collect_cheese` request to the repository's Action schema,
+  including its serialized field names and any required source field. Engineering must also
+  add a save migration and canonical serialization for any cheese-shelf state that needs to
+  persist. Those details must preserve the validation, payment, and replay behavior specified
+  above.

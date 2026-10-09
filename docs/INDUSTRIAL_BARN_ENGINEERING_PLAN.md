@@ -24,9 +24,9 @@ meter. The line waits when blocked and resumes when its next station is free. No
 lost and no cow is penalized.
 
 This build ends when the barn holds a finished-cheese count. It does not add cheese
-collection, player inventory transfer, storage outside the barn, shipping, or sale. Daniel
-settled the value of a finished cheese batch at 20 gold; Milo Fern's later design work will
-settle cheese acquisition before a collection story extends the gateway.
+collection, player inventory transfer, storage outside the barn, shipping, or sale. The settled
+collection-and-sale design extends the gateway in the follow-up implementation: cheese waits on
+the barn shelf, and one player action sells every stored batch for 20 gold.
 
 ## Decisions and named parameters
 
@@ -167,9 +167,9 @@ wait. Refusals change nothing. Factory Actions use the stable source identifier
 `barn:<room_id>` for replay signatures, but that identifier is not present in the actor
 registry and has no energy field.
 
-Reserve `collect_cheese` as the later collection story's gateway hook. That story must
-define its interaction, inventory or other destination, value, validation, and replay
-contract before enabling the verb. This build does not accept the verb or decrement
+The follow-up collection implementation adds `collect_cheese` at the action gateway. The
+settled design defines the shelf destination, 20-gold batch value, validation, and replay
+contract. This production build does not yet accept the verb or decrement
 `finished_cheese_count`. Each production row is 50 simulation ticks, which is five seconds at
 the simulation clock's rate of 10 ticks per second.
 
@@ -365,9 +365,12 @@ the work, not the person who wrote this plan.
 | Run milk through the cheese line | 2 days | Tomás Herrera | Scheduled gateway Actions move ordered batches through all seven stations into a capped, saved finished-cheese count. |
 | Add the placeable barn and six-by-four room | 2 days | Jade Okafor | The three-by-two building places, opens its anchored interior, and renders saved stall and line state. |
 | Draw the barn, cows, and working cheese line | 2 days | Yuki Tanaka | Approved palette-locked production sprites cover the exterior, happy cows, stalls, seven stations, and product states. |
+| Add the cheese shelf sale action | 1 day | Tomás Herrera | `collect_cheese` validates the farmer at a nonempty shelf, atomically removes every stored batch, pays 20 gold for each, and reproduces in saves and replays. |
+| Draw the cheese shelf and sale feedback | 0.5 day | Yuki Tanaka | Original art shows an empty shelf, growing cheese stack, pulsing coin disc, handcart, and coin flight without required text. |
 | Add wordless barn controls | 1 day | Sam Kowalski | Touch targets place, enter, and inspect the barn without required reading or exposing the milk amount. |
 | Connect barn animation to simulation state | 2 days | Jade Okafor | Door, cow, pipe, vat, tool, press, and belt motion follows saved ticks without mutating the simulation. |
-| Settle the remaining barn build value | 1 day | Milo Fern | A decision card gives Daniel a concrete recommendation for finished-cheese capacity; cheese acquisition stays with the later collection design, and its value is ruled at 20 gold. |
+| Add the cheese shelf touch and sale feedback | 1 day | Jade Okafor | A tap walks the farmer to the shelf and shows the shelf, handcart, and coin feedback only after the accepted sale Action. |
+| Settle the remaining barn build value | 1 day | Milo Fern | A decision card gives Daniel a concrete recommendation for finished-cheese capacity. |
 | Apply the remaining barn build value | 0.5 day | Tomás Herrera | The ruled finished-cheese capacity replaces the remaining named parameter used by this build. |
 | Settle the cheese station timings | 1 day | Sam Kowalski | A wordless timing proposal shows each station long enough to read, and Daniel approves the production durations. |
 | Test saves, replays, touch flow, and performance | 2 days | Grace Ademola | Both test suites, the gateway check, benchmark, migration cases, and full cheese replay pass on one candidate tree. |

@@ -789,16 +789,17 @@ art, and implementation remain to be planned. Design: `design/17-industrial-barn
 Barn after the player collects 10 eggs. The barn comes with its first cow and costs 500 gold.
 Each additional cow costs 250 gold, up to four cows for each barn. The egg requirement gives
 livestock a small animal-care milestone while keeping every owned thing in the shop under P-12.
-Batch duration, storage, and collection interaction still need design. Design:
+Finished-cheese storage capacity remains undecided. Design:
 `design/17-industrial-barn-and-cheese-line.md`.
 
 ### S-42. Each finished cheese batch sells for 20 gold
 **Ruled by Daniel on 2026-10-08 (Q-140, option A).** A completed cheese batch sells for
 20 gold. If the cheese line finishes and stores a cow's average 0.7 batches per day, one cow
 has a 14-gold-per-day production ceiling; four cows have a 56-gold-per-day ceiling only when
-the line finishes and stores at least 2.8 batches per day. The game currently has no cheese
-collection or sale interaction, so a later design must define that player action before this
-value reaches the game. Design: `design/17-industrial-barn-and-cheese-line.md`.
+the line finishes and stores at least 2.8 batches per day. The settled collection-and-sale
+interaction sends finished cheese to a shelf and sells every stored batch for 20 gold with one
+tap. Engineering and art implementation remain. Design:
+`design/17-industrial-barn-and-cheese-line.md`.
 
 ### S-43. Every Industrial Barn cheese-making station shows its work for five seconds
 **Ruled by Daniel on 2026-10-08 (Q-141, option A).** Each of the Industrial Barn's seven
