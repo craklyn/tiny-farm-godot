@@ -7527,6 +7527,12 @@
   "cf964e3c44ee4e9b0a33": {
    "verdict": "ok"
   },
+  "cfc10b035be8938e5d3c": {
+   "instead": "The Zoo test that counts 200 updates no longer sometimes counts 201",
+   "quote": "200 ticks",
+   "verdict": "decode",
+   "why": "“Ticks” is internal timing shorthand, so a stranger would have to work out what is being counted."
+  },
   "cfc63c732d161e70beec": {
    "verdict": "ok"
   },

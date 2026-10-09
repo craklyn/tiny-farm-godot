@@ -3640,8 +3640,11 @@ func _scenario_ac_the_zoo() -> void:
 	# 200 ticks with the whole bestiary awake, in the real scene, drawing.
 	# The zoo's own _process also pumps its clock on the frames awaited below,
 	# which made this count 201 now and then; only this loop may advance it.
+	# Its leftover part-tick from those frames is cleared too: carried in, it
+	# could tip one of the 200 pumps over into a second tick (CI, 2026-10-09: 201).
 	var tick_before: int = zfarm.sim.clock.tick
 	zoo.set_process(false)
+	zoo._tick_debt = 0.0
 	for i in 200:
 		zoo.pump(0.1)
 		if i % 40 == 0:
