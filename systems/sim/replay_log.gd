@@ -208,8 +208,10 @@ func apply_to(world: SimWorld, gs) -> bool:
 			divergence = "base save could not be restored (save version %d)" \
 				% int(base_save.get("version", 0))
 			return false
+		# ...and back to where in the stream the saved farm had got to, when the
+		# save says (2026-10-08), so the brains draw what they drew live.
 		if version >= 2 and gen_seed != 0:
-			SimRng.reseed(gen_seed, SimRng.stateless_revision)
+			SaveGame.resume_stream(base_save, gen_seed)
 	else:
 		SimRng.reseed(gen_seed, SimRng.STATELESS_CURRENT if version >= 3 else SimRng.STATELESS_LEGACY)
 		world.generate()

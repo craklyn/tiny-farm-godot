@@ -187,7 +187,7 @@ func _rewind_world() -> void:
 	else:
 		SaveGame.restore(_log.base_save, farm.sim, gs)
 		if _log.version >= 2 and _log.gen_seed != 0:
-			SimRng.reseed(_log.gen_seed)
+			SaveGame.resume_stream(_log.base_save, _log.gen_seed)
 
 
 # Whose turn it is to be waited for. Most beats are the farmer's, but the cold

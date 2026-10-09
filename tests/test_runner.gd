@@ -5475,14 +5475,15 @@ class LiveSession:
 
 	func rebase() -> void:
 		log = ReplayLog.new()
-		log.start_from_save(
-			JSON.parse_string(JSON.stringify(SaveGame.capture(world, gs))), world.gen_seed)
-		# ...and back onto that seed, which is the whole of the WI-5 seed fix seen
-		# from the live side: `main.gd` reseeds from the restored world before the
-		# continued session takes a single action, so the session and its replay
-		# draw from the same stream position. A fixture that skipped this would be
-		# testing a session no player can have.
-		SimRng.reseed(world.gen_seed)
+		var base = JSON.parse_string(JSON.stringify(SaveGame.capture(world, gs)))
+		log.start_from_save(base, world.gen_seed)
+		# ...and back onto that seed and that save's place in its stream, which is
+		# the WI-5 seed fix (and its 2026-10-08 completion) seen from the live side:
+		# `main.gd` resumes the stream from the restored save before the continued
+		# session takes a single action, so the session and its replay draw from
+		# the same stream position. A fixture that skipped this would be testing a
+		# session no player can have.
+		SaveGame.resume_stream(base, world.gen_seed)
 
 	func done() -> void:
 		gs.free()
@@ -7753,7 +7754,7 @@ func test_ants() -> void:
 	_assert(SaveGame.restore(mid, w_cont, gs_cont), "the mid-raid save restores")
 	_assert(mid_ants and AntScoutBrain.raid_is_live(w_cont),
 		"with the raid still on the farm — a column is part of a snapshot of one, unlike a bird in flight")
-	SimRng.reseed(w_cont.gen_seed)
+	SaveGame.resume_stream(mid, w_cont.gen_seed)
 	var cont_log := ReplayLog.new()
 	cont_log.start_from_save(mid, w_cont.gen_seed)
 	var spent := 0
@@ -8242,7 +8243,7 @@ func test_grazers() -> void:
 	gs_cont.reset()
 	var w_cont := SimWorld.new()
 	_assert(SaveGame.restore(mid, w_cont, gs_cont), "the mid-visit save restores")
-	SimRng.reseed(w_cont.gen_seed)
+	SaveGame.resume_stream(mid, w_cont.gen_seed)
 	var cont_log := ReplayLog.new()
 	cont_log.start_from_save(mid, w_cont.gen_seed)
 	var walked_in := false
@@ -8354,7 +8355,7 @@ func test_songbird() -> void:
 	var w_cont := SimWorld.new()
 	_assert(SaveGame.restore(mid, w_cont, gs_cont) and bird_in_save,
 		"a mid-visit save restores, with the bird in it")
-	SimRng.reseed(w_cont.gen_seed)
+	SaveGame.resume_stream(mid, w_cont.gen_seed)
 	var cont_log := ReplayLog.new()
 	cont_log.start_from_save(mid, w_cont.gen_seed)
 	var flew := 0
@@ -8729,7 +8730,7 @@ func test_mole() -> void:
 	var w_cont := SimWorld.new()
 	_assert(SaveGame.restore(mid, w_cont, gs_cont), "the mid-tunnel save restores")
 	_assert(Movement.is_under(w_cont, SpeciesDefs.MOLE), "with the mole still under the farm")
-	SimRng.reseed(w_cont.gen_seed)
+	SaveGame.resume_stream(mid, w_cont.gen_seed)
 	var cont_log := ReplayLog.new()
 	cont_log.start_from_save(mid, w_cont.gen_seed)
 	var walked_in := false
@@ -9049,7 +9050,7 @@ func test_worm() -> void:
 	gs_cont.reset()
 	var w_cont := SimWorld.new()
 	_assert(SaveGame.restore(mid, w_cont, gs_cont), "the mid-crawl save restores")
-	SimRng.reseed(w_cont.gen_seed)
+	SaveGame.resume_stream(mid, w_cont.gen_seed)
 	var cont_log := ReplayLog.new()
 	cont_log.start_from_save(mid, w_cont.gen_seed)
 	var lived := 0
@@ -9591,7 +9592,7 @@ func test_bots() -> void:
 	gs_cont2.reset()
 	var w2 := SimWorld.new()
 	_assert(SaveGame.restore(mid_save, w2, gs_cont2), "the mid-session save restores")
-	SimRng.reseed(w2.gen_seed)
+	SaveGame.resume_stream(mid_save, w2.gen_seed)
 	var log2 := ReplayLog.new()
 	log2.start_from_save(mid_save, w2.gen_seed)
 
@@ -12402,12 +12403,14 @@ func test_mark_one_robot() -> void:
 	# not exist in the replayed farm and the lesson would be taught to a machine
 	# standing in a different field.
 	var log := ReplayLog.new()
-	log.start_from_save(SaveGame.capture(live, GameState), 5151)
-	# Reseeded at the snapshot, which is what `main.gd` does when the player taps
-	# Continue — and is what `ReplayLog.apply_to` does on the other side. Without
-	# it the session runs on a stream half-spent by worldgen while its replay runs
-	# on a fresh one, and the hen wanders somewhere else in the reproduction.
-	SimRng.reseed(5151)
+	var base := SaveGame.capture(live, GameState)
+	log.start_from_save(base, 5151)
+	# Resumed at the snapshot, which is what `main.gd` does when the player taps
+	# Continue — and is what `ReplayLog.apply_to` does on the other side. Before
+	# the save carried its place in the stream, a session that did not go back to
+	# its start ran on a stream half-spent by worldgen while its replay ran on a
+	# fresh one, and the hen wandered somewhere else in the reproduction.
+	SaveGame.resume_stream(base, 5151)
 	var script: Array[Dictionary] = [
 		{ "verb": "buy_machine", "item": "bot_mk1", "actor": "player" },
 		{ "verb": "place", "target": here, "item": "bot_mk1", "actor": "player" },
@@ -16012,8 +16015,9 @@ func test_robot_stall() -> void:
 		lesson.append(t)
 	# Staged before the base save, because the replay rebuilds the world from it.
 	var log := ReplayLog.new()
-	log.start_from_save(SaveGame.capture(live, GameState), 6363)
-	SimRng.reseed(6363)
+	var base := SaveGame.capture(live, GameState)
+	log.start_from_save(base, 6363)
+	SaveGame.resume_stream(base, 6363)
 	var script: Array[Dictionary] = [
 		{ "verb": "buy_machine", "item": "stall", "actor": "player" },
 		{ "verb": "place", "target": here, "item": "stall", "actor": "player" },

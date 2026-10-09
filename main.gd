@@ -212,9 +212,12 @@ func _ready() -> void:
 			# never reproduce it. The seed is part of what a farm *is*, and the
 			# save has carried it since this WI. Saves written before that say
 			# nothing, and those continue exactly as they did.
+			# The save's place in that seed's stream comes back with it (2026-10-08),
+			# which is what lets this session's replay, started from the same save,
+			# draw the same numbers.
 			if farm.sim.gen_seed != 0:
 				gen_seed = farm.sim.gen_seed
-				SimRng.reseed(gen_seed, SimRng.stateless_revision)
+				SaveGame.resume_stream(save_data, gen_seed)
 			SaveGame.note_session(GameState, farm.sim, "resume")
 			farm.start_replay_log_from_save(save_data, farm.sim.gen_seed)
 			farm.start_trace(0, true)

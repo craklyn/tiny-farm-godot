@@ -30,6 +30,23 @@ static func current_seed() -> int:
 	return int(rng.seed)
 
 
+# How far along the shared stream is (2026-10-08). The seed says which stream;
+# this says where in it the next `randi()` comes from. A save carries it as text
+# (JSON would round a 64-bit state to a double), and whoever owns a session puts
+# it back with `resume` after reseeding, so a session continued from a save draws
+# the same numbers the farm would have drawn had it never been saved. Setting the
+# state leaves `rng.seed` alone, so `stateless()` is unaffected.
+static func current_state() -> String:
+	return str(rng.state)
+
+
+static func resume(new_seed: int, state_text: String,
+		revision: int = STATELESS_CURRENT) -> void:
+	reseed(new_seed, revision)
+	if state_text.is_valid_int():
+		rng.state = state_text.to_int()
+
+
 static func randi() -> int:
 	return rng.randi()
 

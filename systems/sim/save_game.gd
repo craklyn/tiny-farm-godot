@@ -87,6 +87,15 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 			# closing note filed and this closes.
 			"gen_seed": world.gen_seed,
 			"stateless_revision": SimRng.stateless_revision,
+			# ...and where in that seed's stream the farm had got to (2026-10-08).
+			# The seed alone puts a continued farm back at the *start* of its
+			# stream, but a farm has always drawn from it by the time it is saved —
+			# generation itself does — so the hen's next wander on the continued
+			# farm, and on its replay, came from numbers the saved farm had already
+			# spent. Whoever owns the session puts it back (`resume_stream`);
+			# `restore` does not, for the gen_seed's reason below. Additive: absent
+			# ⇒ the start of the stream, which is how every older save continues.
+			"rng_state": SimRng.current_state(),
 			# What kind of night the farm last had, and which of those nights it
 			# has already had (P-15, design/04). Additive in the same way as
 			# everything above: absent ⇒ an ordinary night and no story told yet,
@@ -241,6 +250,22 @@ static func _restore_schedules(raw) -> Dictionary:
 				days.append(int(v))
 		out[String(species)] = days
 	return out
+
+
+# Put the shared stream back where the saved farm left it: its own seed, then its
+# position in that seed's stream when the save carries one. Called by whoever owns
+# a session after a successful `restore` — `main.gd` on Continue, `ReplayLog.apply_to`
+# before it replays — never by `restore` itself. A save from before the farm knew
+# its seed changes nothing; one from before it knew its position starts the stream
+# over, exactly as it always has.
+static func resume_stream(data: Dictionary, seed_value: int) -> void:
+	if seed_value == 0:
+		return
+	var w = data.get("world", {})
+	var state_text := ""
+	if w is Dictionary and w.get("rng_state", null) is String:
+		state_text = w["rng_state"]
+	SimRng.resume(seed_value, state_text, SimRng.stateless_revision)
 
 
 static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
@@ -926,6 +951,11 @@ static func capture_canonical(world: SimWorld, gs) -> String:
 # canonical text a second time.
 static func _canonical_capture(world: SimWorld, gs) -> Dictionary:
 	var c := capture(world, gs)
+	# The stream position is the process's, not the farm's: `capture` reads it off
+	# `SimRng`, so a world restored only to be compared would report whatever the
+	# process happened to be at. What it decides — every wander and every egg — is
+	# compared already, as the positions and the tiles it produced.
+	c.get("world", {}).erase("rng_state")
 	var s: Dictionary = c.get("state", {})
 	s.erase("build_id")
 	s.erase("lineage")
