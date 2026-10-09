@@ -260,6 +260,12 @@
   "07ccda9dcd06a7d3d937": {
    "verdict": "ok"
   },
+  "07ee6d4c65ea09d7d882": {
+   "instead": "A fresh copy of the game can run its tests again: eleven missing Godot files are restored",
+   "quote": "test suites",
+   "verdict": "decode",
+   "why": "The reader has not been told what these suites are, so they must infer that they mean the game's tests."
+  },
   "0800f7f73f760824569c": {
    "verdict": "ok"
   },
@@ -1488,6 +1494,9 @@
    "quote": "It decides whether v0.2.1 needs any new screen",
    "verdict": "decode",
    "why": "“It” has no clear referent in the sentence."
+  },
+  "297146a13f986aeafe2c": {
+   "verdict": "ok"
   },
   "2979ff1f9186833b2028": {
    "verdict": "ok"
