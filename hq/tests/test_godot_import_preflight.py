@@ -92,6 +92,29 @@ class GodotImportPreflight(unittest.TestCase):
         self.assertFalse(drain.needs_godot_import({"tier": 0, "ask": "Review systems/sim/weather.gd"}))
         self.assertFalse(drain.needs_godot_import({"tier": 1, "ask": "Update the HQ decision card"}))
 
+    def test_new_script_sidecar_is_in_the_candidate_and_landed_commit(self):
+        base = git(self.repo, "rev-parse", "HEAD")
+        (self.repo / "new_weather.gd").write_text("class_name NewWeather\n")
+        original = drain.sh
+
+        def run(args, **kwargs):
+            if args[0] == "godot":
+                (self.repo / "new_weather.gd.uid").write_text("uid://new-weather\n")
+                return subprocess.CompletedProcess(args, 0, "import complete", "")
+            return original(args, **kwargs)
+
+        with patch.object(drain, "sh", side_effect=run):
+            captured = drain.capture_added_godot_sidecars(str(self.repo), base)
+        self.assertEqual(captured, ["new_weather.gd.uid"])
+        candidate = git(self.repo, "write-tree")
+        self.assertEqual(git(self.repo, "ls-tree", "--name-only", candidate,
+                             "new_weather.gd", "new_weather.gd.uid"),
+                         "new_weather.gd\nnew_weather.gd.uid")
+
+        git(self.repo, "commit", "-qm", "Land candidate")
+        self.assertEqual(git(self.repo, "ls-tree", "--name-only", "HEAD",
+                             "new_weather.gd.uid"), "new_weather.gd.uid")
+
     def test_failed_preflight_never_launches_owner(self):
         item = {"id": "wimport", "owner": "sam", "model": "sonnet", "tier": 1,
                 "title": "Weather", "ask": "Change weather.gd", "started": ""}

@@ -175,6 +175,7 @@ AUTO_RESUMES = 2
 WORKER_TIMEOUT = 3600
 CHECK_TIMEOUT = 900
 GODOT_IMPORT_TIMEOUT = 180
+GODOT_IMPORTED_SUFFIXES = (".png", ".wav", ".ogg", ".csv", ".ttf")
 # The checker's turns. Eight read a small diff; a 650-line sim change with four
 # new tests ran the checker out of turns before it answered, and a check that
 # does not come back is a diff nobody read.
@@ -1282,6 +1283,75 @@ def preflight_godot_import(tree):
         raise GodotImportHold(f"Godot import tooling hold: {detail}. {tail}"[:400])
 
 
+def _godot_sidecar(source):
+    """Return the sidecar Godot owns for a project-visible source file."""
+    if source.endswith(".gd"):
+        return source + ".uid"
+    if source.endswith(GODOT_IMPORTED_SUFFIXES):
+        return source + ".import"
+    return ""
+
+
+def _godot_ignores(tree, source):
+    """Godot does not scan a source below a directory containing .gdignore."""
+    parent = os.path.dirname(source)
+    while parent:
+        if os.path.isfile(os.path.join(tree, parent, ".gdignore")):
+            return True
+        parent = os.path.dirname(parent)
+    return False
+
+
+def capture_added_godot_sidecars(tree, base):
+    """Import new Godot sources and add their generated sidecars to the candidate.
+
+    The worker cannot be expected to race Godot's editor indexing. This runs at
+    the snapshot boundary: the paired sidecars become authored candidate files,
+    while every other import byproduct is restored or removed.
+    """
+    # Only a Godot project has sidecars to make; without project.godot the
+    # import would wait out its timeout for nothing (a test's scratch tree).
+    if not os.path.isfile(os.path.join(tree, "project.godot")):
+        return []
+    sh(["git", "add", "-A"], cwd=tree, timeout=120, check=True)
+    added = sh(["git", "diff", "--cached", "--diff-filter=A", "--name-only", "-z", base,
+                "--"], cwd=tree, timeout=120, check=True).stdout.split("\0")
+    wanted = sorted({sidecar for source in added if source and not _godot_ignores(tree, source)
+                     for sidecar in [_godot_sidecar(source)] if sidecar
+                     and not os.path.lexists(os.path.join(tree, sidecar))})
+    if not wanted:
+        return []
+
+    before = sh(["git", "write-tree"], cwd=tree, timeout=120, check=True).stdout.strip()
+    try:
+        result = sh(["godot", "--headless", "--path", ".", "--import"], cwd=tree,
+                    timeout=GODOT_IMPORT_TIMEOUT)
+    except (OSError, subprocess.TimeoutExpired) as exc:
+        raise GodotImportHold(f"Godot sidecar import hold: {type(exc).__name__} after at most "
+                              f"{GODOT_IMPORT_TIMEOUT} seconds.") from exc
+    output = (result.stdout or "") + "\n" + (result.stderr or "")
+    parse_error = re.search(r"(?m)^(?:SCRIPT ERROR:|ERROR:|Parse Error:)", output)
+    missing = [name for name in wanted if not os.path.isfile(os.path.join(tree, name))]
+    if result.returncode or parse_error or missing:
+        detail = ("Godot reported a parse/import error" if parse_error else
+                  f"Godot exited {result.returncode}" if result.returncode else
+                  "Godot did not create " + ", ".join(missing))
+        raise GodotImportHold(f"Godot sidecar import hold: {detail}."[:400])
+
+    changed = sh(["git", "diff", "--name-only", "-z", before, "--"], cwd=tree, check=True)
+    for name in changed.stdout.split("\0"):
+        if name and _is_generated(name) and name not in wanted:
+            sh(["git", "restore", "--source=" + before, "--worktree", "--", name],
+               cwd=tree, check=True)
+    untracked = sh(["git", "ls-files", "--others", "--exclude-standard", "-z"],
+                   cwd=tree, check=True)
+    for name in untracked.stdout.split("\0"):
+        if name and _is_generated(name) and name not in wanted:
+            os.unlink(os.path.join(tree, name))
+    sh(["git", "add", "--"] + wanted, cwd=tree, timeout=120, check=True)
+    return wanted
+
+
 # ---------------------------------------------------------------------------
 # the phases
 # ---------------------------------------------------------------------------
@@ -1395,6 +1465,9 @@ def do_item(item, org, run_id, log, action=None):
         rec["result"] = text
         rec["error"] = err
         checkpoint(item, rec, "worker_finished")
+        captured_sidecars = capture_added_godot_sidecars(tree, base)
+        if captured_sidecars:
+            log(f"{item['id']} · Godot sidecars added: " + ", ".join(captured_sidecars))
         # What the drain lands is what the real tree does not have yet. After a
         # revision of an attempt that already landed, that is this pass alone;
         # after a revision of a held attempt, it is both passes together.

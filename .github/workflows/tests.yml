@@ -135,6 +135,9 @@ jobs:
       - name: Import project
         run: '"$GODOT" --headless --path . --import || true'
 
+      - name: Every Godot source has its tracked sidecar
+        run: python3 tools/check_godot_sidecars.py
+
       # T-17: the generator IS the test. It hard-fails on any quality assertion,
       # so a demo replay that verifies perfectly but reads as a broken farm
       # cannot ship (the T-16 spike's lesson).

@@ -457,6 +457,12 @@
   "0c6557a5497550f9b777": {
    "verdict": "ok"
   },
+  "0ca22774896d445867c5": {
+   "instead": "The main version now includes the new scripts and images and the Godot project files needed to load them in a new copy of the game.",
+   "quote": "reach main with the Godot files a fresh copy needs to load them",
+   "verdict": "decode",
+   "why": "The reader has to work out that the new files were added to the main version together with the project files needed to load them."
+  },
   "0cdbe4f40b61c66a2fc3": {
    "verdict": "ok"
   },
@@ -3312,6 +3318,12 @@
    "verdict": "decode",
    "why": "'It' refers to 'feedback' from the previous sentence; rule 3 requires the referent be in the same sentence."
   },
+  "5cc24f1671eae3e500ae": {
+   "instead": "Every new script and image is included in the main game, along with the files a new copy needs to open.",
+   "quote": "reaches the main version of the game with the supporting files needed for a fresh copy to open it",
+   "verdict": "second-look",
+   "why": "The reader has to work out that the new files are included in the main game together with everything needed to open a new copy."
+  },
   "5ccedda7ff2f183c9c84": {
    "verdict": "ok"
   },
@@ -4460,6 +4472,12 @@
   },
   "7d711e56025757f4eed4": {
    "verdict": "ok"
+  },
+  "7dd4b95583cd93131934": {
+   "instead": "Every new script and image now reaches the main version of the game with the supporting files needed for a fresh copy to open it",
+   "quote": "Every new script and image now arrives on main with the small Godot files a new copy of the game needs to open it",
+   "verdict": "decode",
+   "why": "“main” is an engineering branch and “small Godot files” does not tell the reader what changed or what those files do."
   },
   "7dd9e52abef561baa736": {
    "verdict": "ok"
