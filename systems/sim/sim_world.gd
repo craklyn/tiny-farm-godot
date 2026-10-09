@@ -950,6 +950,22 @@ const BARN_LINE_VERBS: Array[String] = ["set_curd", "cut_curd", "stir_curd", "dr
 	"fill_cheese_hoops", "press_cheese", "finish_cheese"]
 const FINISHED_CHEESE_CAPACITY := 8
 const COW_GIVE_MILK_ENERGY := 20
+# How long a batch stays at each station before the line may move it on, in sim
+# ticks (SimClock.RATE = 10 a second), in line order. One ordered table, as
+# `docs/INDUSTRIAL_BARN_ENGINEERING_PLAN.md` ("Decisions and named parameters")
+# asks: a batch's `ready_tick` is its entry tick plus its station's row. These are
+# placeholders — two to four seconds a station, about twenty from pipe to outfeed —
+# until Sam Kowalski's wordless timing proposal is approved; the production
+# figures are the timing the player watches, not an engineering guess.
+const STATION_DURATION_TICKS := {
+	"receiver": 10,
+	"set_vat": 40,
+	"cutter": 30,
+	"rake": 30,
+	"drain": 30,
+	"press": 40,
+	"outfeed": 30,
+}
 var barns: Dictionary = {}
 var _barn_events: Dictionary = {}
 
@@ -2600,6 +2616,10 @@ func schedule_all_brains() -> void:
 
 
 func _schedule_all_barns() -> void:
+	# Cancel before forgetting, for the reason `schedule_all_brains` gives above:
+	# a handle dropped without cancelling leaves a second line event in the heap.
+	for id in _barn_events.keys():
+		clock.cancel(int(_barn_events[id]))
 	_barn_events.clear()
 	var ids: Array = barns.keys()
 	ids.sort()
@@ -4123,6 +4143,9 @@ func _practice_copy() -> SimWorld:
 	out.tiles = tiles.duplicate(true)
 	out.objects = objects.duplicate(true)
 	out.rooms = rooms.duplicate(true)
+	# The barns go with the cows: a copied cow whose stall was left behind would
+	# hold a reservation on a barn that does not exist in the copy.
+	out.barns = barns.duplicate(true)
 	out.actors = actors.duplicate(true)
 	out.gen_seed = gen_seed
 	out.story_night = story_night
@@ -4320,9 +4343,11 @@ func _parcel_with_gate(gate: Vector2i) -> Dictionary:
 	return {}
 
 
-# `gs` is optional and is only needed by the machines below (M2.5 WI-10): a day
-# turn without a GameState is a test fixture arranging a grid, not a farm waking
-# up, and the sleep verb — the only caller in the running game — always has one.
+# --- the Industrial Barn's gateway (docs/INDUSTRIAL_BARN_ENGINEERING_PLAN.md) ---
+#
+# Every change to a cow's stall visit and to the cheese line lands here, through
+# `apply_action`. A refusal changes nothing. The cow's brain and the barn's clock
+# event only ever return one of these verbs; neither writes a stall or a batch.
 func _reserve_milk_stall(action: Dictionary) -> Dictionary:
 	var cow_id := String(action.get("actor", "")); var barn_id := String(action.get("barn_id", ""))
 	var index := int(action.get("stall_index", -1))
@@ -4339,49 +4364,74 @@ func _reserve_milk_stall(action: Dictionary) -> Dictionary:
 	return {"ok": true}
 
 
-func _enter_milk_stall(action: Dictionary) -> Dictionary:
-	var cow_id := String(action.get("actor", "")); var barn_id := String(action.get("barn_id", ""))
-	var index := int(action.get("stall_index", -1))
-	if species_of(cow_id) != SpeciesDefs.COW or not barns.has(barn_id): return _fail("wrong_stall")
-	if index < 0 or index >= 4: return _fail("wrong_stall")
+# The stall a cow's own reservation names, or {} when the action names a barn or
+# stall that does not exist or that is not hers.
+func _cows_stall(cow_id: String, barn_id: String, index: int) -> Dictionary:
+	if cow_id == "" or species_of(cow_id) != SpeciesDefs.COW or not barns.has(barn_id):
+		return {}
+	if index < 0 or index >= 4:
+		return {}
 	var extra: Dictionary = actors[cow_id]["extra"]
 	var stall: Dictionary = barns[barn_id]["stalls"][index]
 	if String(stall.get("cow_id", "")) != cow_id or String(extra.get("barn_id", "")) != barn_id \
-			or int(extra.get("stall_index", -1)) != index: return _fail("wrong_stall")
+			or int(extra.get("stall_index", -1)) != index:
+		return {}
+	return stall
+
+
+func _at_stall(cow_id: String, stall: Dictionary) -> bool:
 	var cell: Array = stall.get("cell", [])
-	if cell.size() != 2 or actor_pos(cow_id) != Vector2i(int(cell[0]), int(cell[1])):
-		return _fail("not_at_stall")
-	extra["state"] = "giving"
+	return cell.size() == 2 and actor_pos(cow_id) == Vector2i(int(cell[0]), int(cell[1]))
+
+
+func _enter_milk_stall(action: Dictionary) -> Dictionary:
+	var cow_id := String(action.get("actor", ""))
+	var stall := _cows_stall(cow_id, String(action.get("barn_id", "")), int(action.get("stall_index", -1)))
+	if stall.is_empty(): return _fail("wrong_stall")
+	if not _at_stall(cow_id, stall): return _fail("not_at_stall")
+	actors[cow_id]["extra"]["state"] = "giving"
 	return {"ok": true}
 
 
+# One unit out of the cow and one batch into the receiver, in one step: there is
+# no state between them for a refusal or a crash to leave milk counted twice.
+# Only a cow standing in her own stall, having entered it, with the energy the
+# visit costs, may give.
 func _give_milk(action: Dictionary) -> Dictionary:
 	var cow_id := String(action.get("actor", "")); var barn_id := String(action.get("barn_id", ""))
-	var index := int(action.get("stall_index", -1))
-	if species_of(cow_id) != SpeciesDefs.COW or not barns.has(barn_id): return _fail("invalid_transfer")
+	var stall := _cows_stall(cow_id, barn_id, int(action.get("stall_index", -1)))
+	if stall.is_empty(): return _fail("wrong_stall")
 	var extra: Dictionary = actors[cow_id]["extra"]
-	if String(extra.get("barn_id", "")) != barn_id or int(extra.get("stall_index", -1)) != index: return _fail("wrong_stall")
+	if String(extra.get("state", "")) != "giving" or not _at_stall(cow_id, stall):
+		return _fail("not_at_stall")
 	if int(extra.get("milk_milliunits", 0)) < 1000: return _fail("not_ready")
+	if energy_of(cow_id) < COW_GIVE_MILK_ENERGY: return _fail("too_tired")
 	var barn: Dictionary = barns[barn_id]; var batch_id := int(barn["next_batch_id"])
 	extra["milk_milliunits"] = int(extra["milk_milliunits"]) - 1000
+	extra["state"] = "leaving_stall"
 	spend_actor_energy(cow_id, COW_GIVE_MILK_ENERGY)
 	barn["next_batch_id"] = batch_id + 1
 	barn["receiver"].append({"batch_id": batch_id, "cow_id": cow_id, "amount_milliunits": 1000,
-		"station": "receiver", "entry_tick": clock.tick, "ready_tick": clock.tick})
+		"station": "receiver", "entry_tick": clock.tick,
+		"ready_tick": clock.tick + int(STATION_DURATION_TICKS["receiver"])})
 	_schedule_barn(barn_id, clock.tick + 1)
 	return {"ok": true, "batch_id": batch_id}
 
 
+# Clears the cow's own reservation. It is how she leaves after giving milk, and
+# also how she gives a stall back without using it (her route was blocked, or the
+# stall refused her): either way the stall is free for the next cow. Leaving is
+# never refused for congestion — only for a stall that is not hers.
 func _leave_milk_stall(action: Dictionary) -> Dictionary:
-	var cow_id := String(action.get("actor", "")); var barn_id := String(action.get("barn_id", ""))
-	var index := int(action.get("stall_index", -1))
-	if not barns.has(barn_id) or index < 0 or index >= 4: return _fail("wrong_stall")
-	var stall: Dictionary = barns[barn_id]["stalls"][index]
-	if String(stall.get("cow_id", "")) != cow_id: return _fail("wrong_stall")
-	stall["cow_id"] = ""
+	var cow_id := String(action.get("actor", ""))
+	var stall := _cows_stall(cow_id, String(action.get("barn_id", "")), int(action.get("stall_index", -1)))
+	if stall.is_empty(): return _fail("wrong_stall")
 	var extra: Dictionary = actors[cow_id]["extra"]
-	extra["barn_id"] = ""; extra["stall_index"] = -1; extra["state"] = "leaving_barn"
-	return {"ok": true}
+	var was_inside := _at_stall(cow_id, stall)
+	stall["cow_id"] = ""
+	extra["barn_id"] = ""; extra["stall_index"] = -1
+	extra["state"] = "leaving_barn" if was_inside else "idle"
+	return {"ok": true, "was_in_stall": was_inside}
 
 
 func _apply_barn_line(action: Dictionary) -> Dictionary:
@@ -4411,12 +4461,16 @@ func _apply_barn_line(action: Dictionary) -> Dictionary:
 	if slots[destination] != null: return _fail("destination_occupied")
 	if source == "receiver": barn["receiver"].pop_front()
 	else: slots[source] = null
-	batch["station"] = destination; batch["entry_tick"] = clock.tick; batch["ready_tick"] = clock.tick + 1
+	batch["station"] = destination; batch["entry_tick"] = clock.tick
+	batch["ready_tick"] = clock.tick + int(STATION_DURATION_TICKS[destination])
 	slots[destination] = batch
 	_schedule_barn(barn_id, clock.tick + 1)
 	return {"ok": true}
 
 
+# `gs` is optional and is only needed by the machines below (M2.5 WI-10): a day
+# turn without a GameState is a test fixture arranging a grid, not a farm waking
+# up, and the sleep verb — the only caller in the running game — always has one.
 func advance_day(weather: String, gs = null) -> void:
 	player_water_actions_today = 0
 	# **What kind of night this was, asked first and answered last** (P-15). The

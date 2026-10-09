@@ -133,6 +133,21 @@ const PLAYER_VERBS: Array[String] = [
 # animal has and she does not. What it answers is P-18's coop — a hen who could not
 # open the door of her own hut would be an animal locked out of the one building in
 # the game that is for her.
+# The cow's five joined on 2026-10-08 (docs/INDUSTRIAL_BARN_ENGINEERING_PLAN.md):
+#   gain_milk — not a capability at all: the morning's milk, applied inside the
+#     `sleep` that turns the day, the way a hen's egg is hers and not the
+#     player's. Nobody chooses it during the day.
+#   reserve_milk_stall — the cow claiming an empty stall before she walks to it,
+#     so two cows cannot head for the same one. The player has no stall to claim
+#     and no milk to give; a future player command must use this same verb.
+#   enter_milk_stall — the cow stepping into the stall she reserved. Same reason.
+#   give_milk — the cow's one contribution, like `lay_egg`: one unit out of her
+#     and one batch into the barn's line. Nothing the player would do.
+#   leave_milk_stall — giving the stall back, after milking or without it. It is
+#     what keeps the barn voluntary (design/17): a cow may always leave.
+# The cheese line's seven verbs (`SimWorld.BARN_LINE_VERBS`) are in no row: they
+# are the barn's fixed machinery, issued as `actor: "world"` by its clock event,
+# the way `open_gate` is issued for a tool proof.
 const ENTITY_VERBS: Array[String] = ["eat_crop", "eat_acorn", "lay_egg", "crow_scared",
 		"open_gate", "use_door", "gain_milk", "reserve_milk_stall", "enter_milk_stall", "give_milk",
 		"leave_milk_stall"]

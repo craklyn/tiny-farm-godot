@@ -18058,29 +18058,36 @@ func test_workbench_shelf() -> void:
 
 func test_barn_simulation() -> void:
 	print("\n--- Industrial barn: voluntary cows and the scheduled cheese line ---")
-	var world := SimWorld.new(); world.generate()
-	for y in range(9, 13):
-		for x in range(10, 14):
-			world.set_tile_state(x, y, "cleared"); world.set_object(x, y, "")
-	var barn: Dictionary = world.make_barn("barn_1", Vector2i(10, 10))
+	GameState.reset()
+	SimRng.reseed(1708)
+	var world := _barn_world()
+	var barn: Dictionary = world.barns["barn_1"]
 	world.spawn_actor("cow_1", SpeciesDefs.COW, Vector2i(10, 12), {"milk_milliunits": 1000})
 	var replay_base := SaveGame.capture(world, GameState)
 	var trip := world.advance_ticks(5000, GameState)
 	var verbs: Array[String] = []
 	var line_verbs: Array[String] = []
+	var line_ticks: Array[int] = []
 	for taken in trip:
 		var verb := String(taken.action.get("verb", ""))
 		if String(taken.action.get("actor", "")) == "cow_1": verbs.append(verb)
-		if String(taken.action.get("actor", "")) == "world": line_verbs.append(verb)
+		if String(taken.action.get("actor", "")) == "world":
+			line_verbs.append(verb); line_ticks.append(int(taken.tick))
 	_assert(verbs.slice(0, 4) == ["reserve_milk_stall", "enter_milk_stall", "give_milk", "leave_milk_stall"],
-		"a ready cow reserves the first stall, walks through its door, gives one unit and leaves (%s)" % str(verbs))
-	_assert(world.actor_pos("cow_1") == Vector2i(10, 10) and String(barn.stalls[0].cow_id) == "",
-		"the cow leaves by the barn door and releases the stall for another cow")
+		"a ready cow reserves the first stall, walks by the barn's door tile to it, gives one unit and leaves (%s)" % str(verbs))
+	_assert(world.actor_pos("cow_1") == Vector2i(10, 10) and String(barn.stalls[0].cow_id) == ""
+		and String(world.actor("cow_1").extra.state) == "idle",
+		"the cow walks back out to the door tile, idle, and the stall is free for another cow")
 	_assert(int(world.actor("cow_1").extra.milk_milliunits) == 0
 		and world.energy_of("cow_1") == SpeciesDefs.max_energy_of(SpeciesDefs.COW) - SimWorld.COW_GIVE_MILK_ENERGY,
 		"one visit transfers one unit and spends cow energy")
 	_assert(line_verbs == SimWorld.BARN_LINE_VERBS,
 		"the clock advances one batch through all seven stations in order (%s)" % str(line_verbs))
+	var stations: Array = SimWorld.STATION_DURATION_TICKS.keys()
+	var paced := line_ticks.size() == 7
+	for i in range(1, line_ticks.size()):
+		paced = paced and line_ticks[i] - line_ticks[i - 1] == int(SimWorld.STATION_DURATION_TICKS[stations[i]])
+	_assert(paced, "each station holds its batch for its row of STATION_DURATION_TICKS (%s)" % str(line_ticks))
 	_assert(int(barn.finished_cheese_count) == 1, "the completed batch becomes one stored cheese")
 	var log := ReplayLog.new(); log.start_from_save(replay_base, world.gen_seed)
 	for taken in trip: log.record(taken.action, taken.result, int(taken.tick), true)
@@ -18090,6 +18097,26 @@ func test_barn_simulation() -> void:
 		"the cow trip and every scheduled factory action recompute from the replay log (%s)" % log.divergence)
 	_assert(replayed.barns == world.barns and replayed.actor_pos("cow_1") == world.actor_pos("cow_1"),
 		"the replay ends with the same cow and cheese-line state")
+	# MUST 2: the same log, through a file. JSON gives back `batch_id: 1.0` and
+	# `stall_index: 0.0`, and the recomputed actions say 1 and 0.
+	var path := "user://test_barn_replay.json"
+	_assert(log.save_to(path), "the barn replay writes to disk")
+	var from_disk := ReplayLog.load_from(path)
+	var replayed_from_disk := SimWorld.new()
+	_assert(from_disk != null and from_disk.apply_to(replayed_from_disk, GameState) and from_disk.divergence == "",
+		"a barn replay saved and loaded back from disk verifies (%s)"
+			% ("no log" if from_disk == null else from_disk.divergence))
+	# The barn and the cow, compared in canonical form. (The default hen is left
+	# out: her wandering after a fresh `generate()` does not replay from a base
+	# save taken on that world, with or without a barn on it — a property of this
+	# fixture, not of the barn, and the robot session covers real sessions.)
+	var live_c := SaveGame._canonical_capture(world, GameState)
+	var disk_c := SaveGame._canonical_capture(replayed_from_disk, GameState)
+	var barn_diff := SaveGame._first_difference(disk_c.world.barns, live_c.world.barns, "barns")
+	if barn_diff == "":
+		barn_diff = SaveGame._first_difference(disk_c.world.actors.cow_1, live_c.world.actors.cow_1, "cow_1")
+	_assert(barn_diff == "", "and ends on the live farm's barn and cow, canonically (%s)" % barn_diff)
+	DirAccess.remove_absolute(path)
 
 	var blocked := SimWorld.new(); blocked.generate(); var b := blocked.make_barn("b", Vector2i(8, 8))
 	b.stations.outfeed = {"batch_id": 1, "cow_id": "cow", "amount_milliunits": 1000,
@@ -18105,6 +18132,8 @@ func test_barn_simulation() -> void:
 	var due := blocked.advance_to_tick(20, GameState)
 	_assert(due.size() == 1 and String(due[0].action.verb) == "press_cheese",
 		"the saved batch advances when its ready tick arrives")
+	_assert(int(b.stations.outfeed.ready_tick) == 20 + int(SimWorld.STATION_DURATION_TICKS["outfeed"]),
+		"and is due off the outfeed after the outfeed's duration")
 
 	var saved := SaveGame.capture(world, GameState)
 	var restored := SimWorld.new()
@@ -18121,6 +18150,249 @@ func test_barn_simulation() -> void:
 		"amount_milliunits": 1000, "station": "press", "entry_tick": 1, "ready_tick": 2}
 	wrong_station.world.barns.barn_1.next_batch_id = 10
 	_assert(not SaveGame.restore(wrong_station, SimWorld.new(), GameState), "a batch stored under the wrong station is refused")
+
+	test_barn_save_from_disk()
+	test_barn_gateway_refusals()
+	test_barn_cow_gives_a_stall_back()
+	test_barn_milk_gain_at_sleep()
+	test_barn_save_v6_migration()
+
+
+# A small cleared yard with one barn: door tile (10, 10), stalls on (10..13, 9).
+func _barn_world() -> SimWorld:
+	var world := SimWorld.new(); world.generate()
+	for y in range(9, 13):
+		for x in range(10, 14):
+			world.set_tile_state(x, y, "cleared"); world.set_object(x, y, "")
+	world.make_barn("barn_1", Vector2i(10, 10))
+	world.schedule_all_brains()
+	return world
+
+
+# Runs the farm until `done` says so (or `limit` ticks pass), one tick at a time.
+func _barn_run_until(world: SimWorld, done: Callable, limit: int = 5000) -> bool:
+	for i in limit:
+		if done.call():
+			return true
+		world.advance_ticks(1, GameState)
+	return done.call()
+
+
+# MUST 1: a barn and its cow survive the trip through a file, mid-visit and mid-line.
+func test_barn_save_from_disk() -> void:
+	print("\n--- Industrial barn: a save read back from disk ---")
+	GameState.reset()
+	SimRng.reseed(1709)
+	var world := _barn_world()
+	world.spawn_actor("cow_1", SpeciesDefs.COW, Vector2i(10, 12), {"milk_milliunits": 1700})
+	world.spawn_actor("cow_2", SpeciesDefs.COW, Vector2i(11, 12), {"milk_milliunits": 1000})
+	var barn: Dictionary = world.barns["barn_1"]
+	# Stop with one cow on her way and a batch already in the line.
+	_assert(_barn_run_until(world, func(): return barn.stations.set_vat != null),
+		"two cows give milk and the first batch reaches the set vat")
+	var moments := 0
+	var all_ok := true
+	var first_failure := ""
+	for i in 40:
+		var text := JSON.stringify(SaveGame.capture(world, GameState))
+		var parsed = JSON.parse_string(text)
+		var back := SimWorld.new()
+		var ok: bool = typeof(parsed) == TYPE_DICTIONARY and SaveGame.restore(parsed, back, GameState)
+		var same := ok and back.barns == world.barns \
+			and SaveGame.capture_canonical(back, GameState) == SaveGame.capture_canonical(world, GameState)
+		for cow in ["cow_1", "cow_2"]:
+			same = same and typeof(back.actor(cow).extra.milk_milliunits) == TYPE_INT \
+				and typeof(back.actor(cow).extra.stall_index) == TYPE_INT \
+				and back.actor(cow).extra.milk_milliunits == world.actor(cow).extra.milk_milliunits
+		if not same and all_ok:
+			all_ok = false
+			first_failure = "tick %d (restored: %s)" % [world.clock.tick, str(ok)]
+		moments += 1
+		world.advance_ticks(5, GameState)
+	_assert(all_ok, "capture → JSON text → parse → restore succeeds and equals at %d moments of cow and line (%s)"
+		% [moments, first_failure])
+	var fraction: Dictionary = JSON.parse_string(JSON.stringify(SaveGame.capture(world, GameState)))
+	fraction.world.barns.barn_1.next_batch_id = 3.5
+	_assert(not SaveGame.restore(fraction, SimWorld.new(), GameState),
+		"a fractional number in the barn block is refused rather than rounded")
+	var milk_fraction: Dictionary = JSON.parse_string(JSON.stringify(SaveGame.capture(world, GameState)))
+	milk_fraction.world.actors.cow_1.extra.milk_milliunits = 500.5
+	_assert(not SaveGame.restore(milk_fraction, SimWorld.new(), GameState),
+		"a fractional milk amount is refused rather than rounded")
+
+
+# SHOULD 6: a malformed stall call changes nothing.
+func test_barn_gateway_refusals() -> void:
+	print("\n--- Industrial barn: the gateway refuses malformed stall calls ---")
+	GameState.reset()
+	SimRng.reseed(1710)
+	var world := _barn_world()
+	var barn: Dictionary = world.barns["barn_1"]
+	world.spawn_actor("cow_1", SpeciesDefs.COW, Vector2i(10, 12), {"milk_milliunits": 1500})
+	world.spawn_actor("chicken_x", SpeciesDefs.CHICKEN, Vector2i(12, 12))
+	var before := SaveGame.capture_canonical(world, GameState)
+	var refusals := [
+		{"actor": "", "verb": "leave_milk_stall", "barn_id": "barn_1", "stall_index": 0},
+		{"actor": "chicken_x", "verb": "leave_milk_stall", "barn_id": "barn_1", "stall_index": 0},
+		{"actor": "cow_1", "verb": "leave_milk_stall", "barn_id": "barn_1", "stall_index": 0},
+		{"actor": "cow_1", "verb": "leave_milk_stall", "barn_id": "barn_1", "stall_index": 7},
+		{"actor": "cow_1", "verb": "give_milk", "barn_id": "barn_1", "stall_index": 0},
+		{"actor": "", "verb": "give_milk", "barn_id": "barn_1", "stall_index": 0},
+		{"actor": "cow_1", "verb": "enter_milk_stall", "barn_id": "barn_1", "stall_index": 0},
+		{"actor": "cow_1", "verb": "reserve_milk_stall", "barn_id": "nowhere", "stall_index": 0},
+		{"actor": "chicken_x", "verb": "reserve_milk_stall", "barn_id": "barn_1", "stall_index": 0},
+	]
+	var all_refused := true
+	for action in refusals:
+		all_refused = all_refused and not bool(world.apply_action(action, GameState).get("ok", true))
+	_assert(all_refused and SaveGame.capture_canonical(world, GameState) == before,
+		"leave and give with no cow, a non-cow, or no reservation are refused and change nothing")
+
+	# A reservation she has not walked to yet: giving from outside the stall is refused.
+	var reserve := {"actor": "cow_1", "verb": "reserve_milk_stall", "barn_id": "barn_1", "stall_index": 0}
+	_assert(bool(world.apply_action(reserve, GameState).get("ok", false)), "the cow reserves stall 0")
+	var give := {"actor": "cow_1", "verb": "give_milk", "barn_id": "barn_1", "stall_index": 0}
+	var away := world.apply_action(give, GameState)
+	_assert(not bool(away.get("ok", true)) and int(world.actor("cow_1").extra.milk_milliunits) == 1500
+		and barn.receiver.is_empty(), "give_milk from outside the stall is refused (%s)" % away.get("reason", ""))
+	# Standing on the stall tile but never having entered it.
+	world.set_actor_pos("cow_1", Vector2i(10, 9))
+	_assert(not bool(world.apply_action(give, GameState).get("ok", true)) and barn.receiver.is_empty(),
+		"give_milk on the stall tile before entering the stall is refused")
+	var enter := {"actor": "cow_1", "verb": "enter_milk_stall", "barn_id": "barn_1", "stall_index": 0}
+	_assert(bool(world.apply_action(enter, GameState).get("ok", false)), "she enters the stall she reserved")
+	# Too tired to give: the gateway, not only the brain, holds the energy line.
+	world.set_actor_energy("cow_1", SimWorld.COW_GIVE_MILK_ENERGY - 1)
+	var tired := world.apply_action(give, GameState)
+	_assert(not bool(tired.get("ok", true)) and String(tired.get("reason", "")) == "too_tired"
+		and int(world.actor("cow_1").extra.milk_milliunits) == 1500 and barn.receiver.is_empty(),
+		"give_milk below the visit's energy cost is refused and moves no milk")
+	world.set_actor_energy("cow_1", SimWorld.COW_GIVE_MILK_ENERGY)
+	var gave := world.apply_action(give, GameState)
+	_assert(bool(gave.get("ok", false)) and int(world.actor("cow_1").extra.milk_milliunits) == 500
+		and barn.receiver.size() == 1 and world.energy_of("cow_1") == 0,
+		"with exactly the energy, she gives one unit and one batch enters the receiver")
+	_assert(not bool(world.apply_action(give, GameState).get("ok", true)) and barn.receiver.size() == 1,
+		"a second give in the same visit is refused")
+	var leave := {"actor": "cow_1", "verb": "leave_milk_stall", "barn_id": "barn_1", "stall_index": 0}
+	var left := world.apply_action(leave, GameState)
+	_assert(bool(left.get("ok", false)) and bool(left.get("was_in_stall", false))
+		and String(barn.stalls[0].cow_id) == "" and String(world.actor("cow_1").extra.barn_id) == "",
+		"and leaving frees the stall")
+
+	# SHOULD 7: arriving at the door tile on the way out is idle, not "entering".
+	var brain := CowBrain.new()
+	var extra: Dictionary = world.actor("cow_1").extra
+	extra["state"] = "leaving_barn"
+	_assert(brain._plan_stage(world, "cow_1", extra, world.actor_pos("cow_1"), "exit", world.clock.tick)
+		and String(extra.state) == "idle", "an exit planned from the door tile itself ends idle")
+
+
+# MUST 3: a cow that cannot reach her stall gives it back through the gateway.
+func test_barn_cow_gives_a_stall_back() -> void:
+	print("\n--- Industrial barn: a blocked cow gives her stall back by a verb ---")
+	GameState.reset()
+	SimRng.reseed(1711)
+	var world := _barn_world()
+	var barn: Dictionary = world.barns["barn_1"]
+	# Stall 0's tile is walled off, so she can reach the door tile and no further.
+	world.set_object(10, 9, "rock")
+	world.spawn_actor("cow_1", SpeciesDefs.COW, Vector2i(10, 12), {"milk_milliunits": 1000})
+	var taken := world.advance_ticks(300, GameState)
+	var verbs: Array[String] = []
+	var released := false
+	for t in taken:
+		if String(t.action.actor) != "cow_1": continue
+		verbs.append(String(t.action.verb))
+		if String(t.action.verb) == "leave_milk_stall" and bool(t.result.get("ok", false)) \
+				and not bool(t.result.get("was_in_stall", true)):
+			released = true
+	_assert(verbs.size() >= 2 and verbs[0] == "reserve_milk_stall" and verbs[1] == "leave_milk_stall" and released,
+		"she reserves the stall, cannot reach it, and gives it back with leave_milk_stall (%s)" % str(verbs.slice(0, 4)))
+	_assert(not ("enter_milk_stall" in verbs) and not ("give_milk" in verbs)
+		and int(world.actor("cow_1").extra.milk_milliunits) == 1000 and barn.receiver.is_empty(),
+		"and keeps her milk, since she never reached it")
+	var source: String = FileAccess.get_file_as_string("res://systems/sim/brains/cow_brain.gd")
+	_assert(not source.contains("[\"cow_id\"] =") and not source.contains("[\"barn_id\"] =")
+		and not source.contains("[\"stall_index\"] ="),
+		"the cow's brain writes no stall record and no reservation field of its own")
+
+
+# Morning milk: one gain per cow inside `sleep`, in range, capped, and once on replay.
+func test_barn_milk_gain_at_sleep() -> void:
+	print("\n--- Industrial barn: the morning's milk, inside sleep ---")
+	GameState.reset()
+	SimRng.reseed(1712)
+	var world := SimWorld.new(); world.generate()
+	# Far from any barn, so nothing but sleep changes her milk.
+	world.spawn_actor("cow_a", SpeciesDefs.COW, Vector2i(20, 10), {"milk_milliunits": 0})
+	world.spawn_actor("cow_b", SpeciesDefs.COW, Vector2i(22, 10), {"milk_milliunits": 1800})
+	var base := SaveGame.capture(world, GameState)
+	var log := ReplayLog.new(); log.start_from_save(base, world.gen_seed)
+	var gains: Array[int] = []
+	var in_range := true
+	var b_capped := true
+	for night in 6:
+		var before := int(world.actor("cow_a").extra.milk_milliunits)
+		var sleep := {"verb": "sleep", "actor": "world", "weather": "sunny"}
+		var at_tick := world.clock.tick
+		var r := world.apply_action(sleep, GameState)
+		log.record(sleep, r, at_tick)
+		var after := int(world.actor("cow_a").extra.milk_milliunits)
+		gains.append(after - before)
+		if after < 2000:
+			in_range = in_range and after - before >= 400 and after - before <= 1000
+		b_capped = b_capped and int(world.actor("cow_b").extra.milk_milliunits) == 2000
+	_assert(in_range and gains[0] >= 400 and gains[0] <= 1000,
+		"each night's gain is 400–1000 milliunits until she is full (%s)" % str(gains))
+	_assert(int(world.actor("cow_a").extra.milk_milliunits) == 2000 and b_capped,
+		"and the store caps at 2000 (cow_a %d, cow_b %d)"
+			% [int(world.actor("cow_a").extra.milk_milliunits), int(world.actor("cow_b").extra.milk_milliunits)])
+	var direct := world.apply_action({"actor": "cow_a", "verb": "gain_milk", "amount_milliunits": 1001}, GameState)
+	_assert(not bool(direct.get("ok", true)), "a gain outside 400–1000 is refused at the gateway")
+	var gained_live := {"cow_a": int(world.actor("cow_a").extra.milk_milliunits),
+		"cow_b": int(world.actor("cow_b").extra.milk_milliunits)}
+	# Replay: the log holds only the sleeps; the gains are recomputed inside them, once.
+	var gain_entries := 0
+	for e in log.entries:
+		if String(e.get("verb", "")) == "gain_milk": gain_entries += 1
+	_assert(gain_entries == 0, "the replay log records the sleeps, not the gains")
+	log.mark_tick(world.clock.tick)
+	var path := "user://test_barn_milk_replay.json"
+	log.save_to(path)
+	var again := ReplayLog.load_from(path)
+	var replayed := SimWorld.new()
+	_assert(again.apply_to(replayed, GameState) and again.divergence == "", "the sleeps replay from disk (%s)" % again.divergence)
+	DirAccess.remove_absolute(path)
+	# Before the cap, compare the first night alone: a gain applied twice on replay
+	# would show there even though both cows end at 2000.
+	var one := ReplayLog.new(); one.start_from_save(base, log.gen_seed)
+	one.entries.append(log.entries[0].duplicate(true)); one.mark_tick(int(log.entries[0].tick))
+	var first_night := SimWorld.new()
+	_assert(one.apply_to(first_night, GameState) and int(first_night.actor("cow_a").extra.milk_milliunits) == gains[0],
+		"replaying the first night gives cow_a exactly that night's %d, once (got %d)"
+			% [gains[0], int(first_night.actor("cow_a").extra.milk_milliunits)])
+	_assert(int(replayed.actor("cow_a").extra.milk_milliunits) == gained_live.cow_a
+		and int(replayed.actor("cow_b").extra.milk_milliunits) == gained_live.cow_b,
+		"and the whole run replays to the same milk")
+
+
+func test_barn_save_v6_migration() -> void:
+	print("\n--- Industrial barn: a v6 save migrates to v7 ---")
+	GameState.reset()
+	SimRng.reseed(1713)
+	var world := SimWorld.new(); world.generate()
+	var v6 := SaveGame.capture(world, GameState)
+	v6["version"] = 6
+	v6.world.erase("barns")
+	var migrated := SaveGame.migrate(v6)
+	_assert(int(migrated.get("version", 0)) == 7 and SaveGame.VERSION == 7
+		and migrated.world.barns is Dictionary and migrated.world.barns.is_empty(),
+		"a v6 save becomes v7 with an empty barn block")
+	_assert(not v6.world.has("barns"), "and the migration leaves the v6 dictionary it was given untouched")
+	var restored := SimWorld.new()
+	_assert(SaveGame.restore(JSON.parse_string(JSON.stringify(v6)), restored, GameState) and restored.barns.is_empty(),
+		"and a v6 file restores to a farm with no barns")
 
 
 func test_room_edge_styles() -> void:
