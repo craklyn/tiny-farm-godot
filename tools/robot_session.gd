@@ -667,7 +667,14 @@ func _free_barn_anchor() -> Vector2i:
 				continue
 			# Clear of the robot row and of both bays of the stall she builds next:
 			# a building may not stand on another, so a barn there would refuse it.
-			var kept_free: Array = BOT_ROW + MachineDefs.footprint_cells("stall", STALL_TILE)
+			var kept_free: Array = BOT_ROW.duplicate()
+			# A one-square margin round the stall as well: the barn keeps a walkway
+			# beside itself, and with its edge one square from the stall's second bay
+			# (a barn at (15, 2), 2026-10-09) that walkway is where the stall goes.
+			for bay in MachineDefs.footprint_cells("stall", STALL_TILE):
+				for dy in range(-1, 2):
+					for dx in range(-1, 2):
+						kept_free.append(bay + Vector2i(dx, dy))
 			var clear := true
 			for cell in MachineDefs.footprint_cells("industrial_barn", anchor):
 				if cell in kept_free:
