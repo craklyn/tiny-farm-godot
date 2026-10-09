@@ -18172,6 +18172,12 @@ func test_barn_simulation() -> void:
 	_assert(line_verbs == SimWorld.BARN_LINE_VERBS,
 		"the clock advances one batch through all seven stations in order (%s)" % str(line_verbs))
 	var stations: Array = SimWorld.STATION_DURATION_TICKS.keys()
+	var all_stations_show_for_five_seconds := stations.size() == 7
+	for station in stations:
+		all_stations_show_for_five_seconds = all_stations_show_for_five_seconds \
+			and int(SimWorld.STATION_DURATION_TICKS[station]) == SimClock.RATE * 5
+	_assert(all_stations_show_for_five_seconds,
+		"every cheese-making station shows its work for five seconds")
 	var paced := line_ticks.size() == 7
 	for i in range(1, line_ticks.size()):
 		paced = paced and line_ticks[i] - line_ticks[i - 1] == int(SimWorld.STATION_DURATION_TICKS[stations[i]])
@@ -18551,6 +18557,22 @@ func test_barn_acquisition() -> void:
 		gave_milk = gave_milk or String(taken.action.get("verb", "")) == "give_milk"
 	_assert(gave_milk, "the bundled cow can walk through the placed barn's open livestock doors to give milk")
 
+	# Prepare a separate yard before capturing the replay base. The later second
+	# placement must start from the same cleared ground in a live run and replay.
+	var second_spot := Vector2i(-1, -1)
+	for y in range(12, 18):
+		for x in range(5, 24):
+			for dy in range(-1, 3):
+				for dx in range(-1, 5):
+					world.set_tile_state(x + dx, y + dy, "cleared")
+			if world.placeable_at(Vector2i(x, y), "industrial_barn") \
+					and world.placeable_at(Vector2i(x, y + 2)):
+				second_spot = Vector2i(x, y)
+				break
+		if second_spot.x >= 0:
+			break
+	_assert(second_spot.x >= 0, "a separate cleared yard has room for the second barn")
+
 	# Further cows are one atomic shop transaction: spend, actor creation and
 	# replay identity either all happen or none do.
 	GameState.gold = SimWorld.COW_PRICE * SimWorld.HERD_LIMIT
@@ -18568,7 +18590,7 @@ func test_barn_acquisition() -> void:
 	var full := _replay_do(world, cow_log, {"verb": "buy_cow", "actor": "player"})
 	_assert(not full.get("ok", false) and String(full.get("reason", "")) == "herd_full"
 		and GameState.gold == gold_at_limit and world.cow_count() == SimWorld.HERD_LIMIT,
-		"the named herd limit refuses another cow without spending or spawning (%s)" % full)
+		"one placed barn admits four cows and refuses the next purchase without spending or spawning (%s)" % full)
 	var cows_live := SaveGame.capture_canonical(world, GameState)
 	var cows_replayed := SimWorld.new()
 	var cows_state = load("res://systems/game_state.gd").new()
@@ -18576,6 +18598,30 @@ func test_barn_acquisition() -> void:
 		and SaveGame.capture_canonical(cows_replayed, cows_state) == cows_live,
 		"the added cows and their 250-gold purchases replay to the same herd (%s)" % cow_log.divergence)
 	cows_state.free()
+
+	# A second placed barn adds its own four-cow allowance through the ordinary
+	# shop-and-placement path, rather than a hand-made barn record.
+	GameState.gold = 500
+	var second_bought := _replay_do(world, cow_log,
+		{ "verb": "buy_machine", "item": "industrial_barn", "actor": "player" })
+	var second_laid := _replay_do(world, cow_log,
+		{ "verb": "place", "target": second_spot, "item": "industrial_barn", "actor": "player" })
+	_assert(second_bought.get("ok", false) and second_laid.get("ok", false)
+		and world.barns.size() == 2 and world.cow_count() == SimWorld.HERD_LIMIT,
+		"placing a second barn adds barn space without adding an unbought cow (%s)" % second_laid)
+	GameState.gold = SimWorld.COW_PRICE * SimWorld.HERD_LIMIT
+	var second_barn_purchases_ok := true
+	for purchase in range(SimWorld.HERD_LIMIT):
+		var extra_cow := _replay_do(world, cow_log, {"verb": "buy_cow", "actor": "player"})
+		second_barn_purchases_ok = second_barn_purchases_ok and bool(extra_cow.get("ok", false))
+	_assert(second_barn_purchases_ok and world.cow_count() == SimWorld.HERD_LIMIT * 2,
+		"four more cows may be bought while two placed barns have space")
+	var gold_at_two_barns: int = GameState.gold
+	var two_barns_full := _replay_do(world, cow_log, {"verb": "buy_cow", "actor": "player"})
+	_assert(not two_barns_full.get("ok", false) and String(two_barns_full.get("reason", "")) == "herd_full"
+		and GameState.gold == gold_at_two_barns and world.cow_count() == SimWorld.HERD_LIMIT * 2,
+		"two placed barns admit eight cows and refuse the ninth purchase without spending or spawning (%s)"
+			% two_barns_full)
 
 
 # A small cleared yard with one barn and its real six-by-four interior.

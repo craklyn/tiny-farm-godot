@@ -22,19 +22,24 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   about a 36-day repayment time. Batch duration and storage remain undecided, so this is a
   production ceiling rather than a promised income rate.
 
-- **Q-139 — How many cows can a player own for one Industrial Barn?** **Ruling.**
-  **Recommendation: four cows.** The building has four voluntary stalls. Four cows supply
-  2.8 milk units per day on average; this is a 56-gold-per-day production ceiling at 20 gold
-  per batch only if the cheese line can finish and store at least 2.8 batches per day. The
-  alternatives are two cows, with a 28-gold-per-day ceiling, or one cow, with 14 gold per day.
+- ~~**Q-139 — How many cows can a player own for one Industrial Barn?**~~ **Ruled 2026-10-08:
+  four cows for each barn.** The building has four voluntary stalls, so the player can fill
+  every stall. Four cows supply 2.8 milk units per day on average. At 20 gold per finished
+  batch, that is a 56-gold-per-day production ceiling only if the cheese line can finish and
+  store at least 2.8 batches per day.
 
-- **Q-140 — What is one cheese batch worth?** **Ruling.** **Recommendation: 20 gold per
-  finished batch.** If the cheese line can finish and store each cow's average output, one cow
-  has a 14-gold-per-day production ceiling, above an established crop plot's 10 to 12 gold per
-  day. Four cows require at least 2.8 finished batches per day to reach their 56-gold ceiling.
-  The 500-gold bundle repays in about 36 days at the one-cow ceiling. The alternatives are 15
-  gold per batch, making a cow's ceiling 10.5 gold per day, or 30 gold, making it 21 gold per
-  day.
+- ~~**Q-140 — What is one cheese batch worth?**~~ **Ruled 2026-10-08: sell each finished
+  cheese batch for 20 gold.** If the cheese line can finish and store each cow's average output,
+  one cow has a 14-gold-per-day production ceiling. Four cows require at least 2.8 finished
+  batches per day to reach their 56-gold ceiling. The 500-gold barn bundle repays in about 36
+  days at the one-cow ceiling. Cheese collection and sale interaction still need design before
+  this value can reach the game.
+
+- ~~**Q-141 — How long should a cheese-making station show its work?**~~ **Ruled 2026-10-08:
+  A, show every station for 5 seconds.** The receiver, set vat, curd cutter, stirring rake,
+  whey drain and curd table, hoops and presses, and outfeed conveyor each visibly hold one
+  batch for 5 seconds before it moves on. The equal pace gives a player time to see every
+  change in the milk-to-cheese journey without reading a label.
 
 - ~~**Q-136 — Which look should the Industrial Barn use?**~~ **Ruled 2026-10-07: A, red
   dairy works.** The [Industrial Barn and Cheese Line](design/17-industrial-barn-and-cheese-line.md)

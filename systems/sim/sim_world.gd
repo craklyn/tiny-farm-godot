@@ -951,8 +951,8 @@ var rooms: Dictionary = {}
 const BARN_STATIONS: Array[String] = ["set_vat", "cutter", "rake", "drain", "press", "outfeed"]
 const BARN_LINE_VERBS: Array[String] = ["set_curd", "cut_curd", "stir_curd", "drain_whey",
 	"fill_cheese_hoops", "press_cheese", "finish_cheese"]
-# Named until Daniel rules Q-139. The current proposal matches the four voluntary
-# stalls; changing the ruling changes this value, not the purchase path.
+# Daniel ruled that each Industrial Barn supports four cows. The purchase path
+# allows four cows for every placed barn.
 const HERD_LIMIT := 4
 const COW_PRICE := 250
 const FINISHED_CHEESE_CAPACITY := 8
@@ -960,18 +960,17 @@ const COW_GIVE_MILK_ENERGY := 20
 # How long a batch stays at each station before the line may move it on, in sim
 # ticks (SimClock.RATE = 10 a second), in line order. One ordered table, as
 # `docs/INDUSTRIAL_BARN_ENGINEERING_PLAN.md` ("Decisions and named parameters")
-# asks: a batch's `ready_tick` is its entry tick plus its station's row. These are
-# placeholders — two to four seconds a station, about twenty from pipe to outfeed —
-# until Sam Kowalski's wordless timing proposal is approved; the production
+# asks: a batch's `ready_tick` is its entry tick plus its station's row. Daniel
+# ruled on Q-141 that every station visibly works for five seconds. The production
 # figures are the timing the player watches, not an engineering guess.
 const STATION_DURATION_TICKS := {
-	"receiver": 10,
-	"set_vat": 40,
-	"cutter": 30,
-	"rake": 30,
-	"drain": 30,
-	"press": 40,
-	"outfeed": 30,
+	"receiver": 50,
+	"set_vat": 50,
+	"cutter": 50,
+	"rake": 50,
+	"drain": 50,
+	"press": 50,
+	"outfeed": 50,
 }
 var barns: Dictionary = {}
 var _barn_events: Dictionary = {}
@@ -2962,7 +2961,7 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 		"buy_cow":
 			if gs == null: return _fail("no_state")
 			if barns.is_empty(): return _fail("no_barn")
-			if cow_count() >= HERD_LIMIT: return _fail("herd_full")
+			if cow_count() >= barns.size() * HERD_LIMIT: return _fail("herd_full")
 			if int(gs.gold) < COW_PRICE: return _fail("not_enough_gold")
 			var arrival := added_cow_arrival_cell()
 			if arrival.x < 0: return _fail("no_cow_arrival_space")

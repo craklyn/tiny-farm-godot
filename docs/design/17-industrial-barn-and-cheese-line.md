@@ -1,14 +1,15 @@
 # 17 — Industrial Barn and Cheese Line
 
-*Status: visual direction, original-game-art brief, barn access, and barn pricing complete.
+*Status: visual direction, original-game-art brief, barn access, pricing, herd size, cheese
+value, and cheese-line timing complete.
 This is a phase-2 livestock building. The barn unlocks after 10 collected eggs; the barn and
-its first cow cost 500 gold, and each added cow costs 250 gold. Herd size and cheese value
-remain open proposals in [Q-139 and Q-140](../DESIGNER_QUEUE.md). The simulation is built
-(cows, milk, the station-by-station cheese line, saving and replay; see
+its first cow cost 500 gold, and each added cow costs 250 gold, up to four cows for each barn;
+each finished cheese batch sells for 20 gold. The simulation is built
+(cows, milk, the station-by-station cheese line, saving, and replay; see
 [the engineering plan](../INDUSTRIAL_BARN_ENGINEERING_PLAN.md)). A player can buy the barn
-from the shop, put it down, go inside and come back out by touch alone, and the cow's milk
-amount appears on none of those screens. The building panel's two choices, go inside and pick
-up, are still written words, as they are for the coop and the tower.*
+from the shop, place it, enter and leave by touch alone, and see no cow milk amount on those
+screens. The building panel's two choices, go inside and pick up, are still written words, as
+they are for the coop and the tower.*
 
 ## The building at a glance
 
@@ -34,7 +35,9 @@ The future implementation records each daily gain, voluntary stall visit, milk t
 
 ## The cheese line
 
-One milk unit starts one batch. The line runs automatically after a cow gives milk. Each station makes a distinct, watchable change, so a pre-reader can follow the product by its colour and shape rather than by a recipe.
+One milk unit starts one batch. The line runs automatically after a cow gives milk. Each station
+makes a distinct, watchable change and shows its work for five seconds, so a pre-reader can
+follow the product by its colour and shape rather than by a recipe.
 
 The four stall pipes meet at one shared receiver. If several cows give milk together, each visible unit arrives in a fixed order and waits there until the vat is ready. Only one batch occupies a station at a time; a batch moves forward as soon as the next station is clear. This preserves the pleasure of four simultaneous stall visits without making the player read or manage a factory queue.
 
@@ -187,12 +190,14 @@ size and over the shipped farm ground. Approval requires all of the following:
 
 ## What remains for later design
 
-- Daniel ruled that the barn unlocks after 10 collected eggs, and that its shop bundle includes
-  one cow for 500 gold; each added cow costs 250 gold ([Q-137 and Q-138](../DESIGNER_QUEUE.md)).
-  The proposed four-cow limit remains in [Q-139](../DESIGNER_QUEUE.md), and the proposed cheese
-  value remains in [Q-140](../DESIGNER_QUEUE.md).
-- Batch duration, receiver and finished-cheese storage, and collection interaction remain
-  undecided. The economic ceilings in Q-138 through Q-140 require a line that can finish and
-  store at least 2.8 batches per day for four cows; they are not a promise of actual income
-  until those decisions are made.
+- Daniel ruled that the barn unlocks after 10 collected eggs, that its shop bundle includes one
+  cow for 500 gold, and that each added cow costs 250 gold up to four cows for each barn
+  ([Q-137, Q-138, and Q-139](../DESIGNER_QUEUE.md)). He also ruled that each finished cheese
+  batch sells for 20 gold ([Q-140](../DESIGNER_QUEUE.md)), and that every cheese-making station
+  shows its work for five seconds ([Q-141](../DESIGNER_QUEUE.md)).
+- Receiver and finished-cheese storage, and the collection interaction, remain undecided.
+  Cheese collection must define its interaction, inventory destination, and sale action before
+  the ruled 20-gold value can reach the game. The economic ceilings in Q-138 through Q-140
+  require a line that can finish and store at least 2.8 batches per day for four cows; they are
+  not a promise of actual income until those decisions are made.
 - The exact action vocabulary and the factory's saved state need an engineering design before implementation, using the action gateway and replay tests described above.

@@ -3,8 +3,8 @@
 *Written 2026-10-08 from the approved design in [17 — Industrial Barn and Cheese
 Line](design/17-industrial-barn-and-cheese-line.md). This plan defines the simulation,
 save, replay, building, test, and tablet work. The approved first barn costs 500 gold and
-includes the first cow. Herd limit and finished-cheese capacity remain named parameters until
-Milo Fern's livestock-economy decisions settle them.*
+includes the first cow. Each barn holds up to four cows. Finished-cheese capacity remains a
+named parameter until Milo Fern's livestock-economy decision settles it.*
 
 ## Purpose and boundaries
 
@@ -24,9 +24,9 @@ meter. The line waits when blocked and resumes when its next station is free. No
 lost and no cow is penalized.
 
 This build ends when the barn holds a finished-cheese count. It does not add cheese
-collection, player inventory transfer, storage outside the barn, shipping, or sale. Milo
-Fern's later design work will settle cheese acquisition and value before a collection story
-extends the gateway.
+collection, player inventory transfer, storage outside the barn, shipping, or sale. Daniel
+settled the value of a finished cheese batch at 20 gold; Milo Fern's later design work will
+settle cheese acquisition before a collection story extends the gateway.
 
 ## Decisions and named parameters
 
@@ -36,15 +36,17 @@ spreading placeholders through the simulation:
 | Parameter | Meaning | Owner before release |
 | --- | --- | --- |
 | `BARN_PRICE` | Price of one Industrial Barn, including the first cow | Settled: 500 gold |
-| `HERD_LIMIT` | Maximum cows a farm may own; independent of the four-stall occupancy limit | Milo Fern's livestock decision |
+| `HERD_LIMIT` | Cows allowed for each placed barn | Settled: 4 cows per barn |
 | `FINISHED_CHEESE_CAPACITY` | Maximum finished units held inside one barn | Milo Fern's livestock-economy decision |
-| `STATION_DURATION_TICKS` | Visible duration of each cheese-making step | Sam Kowalski's wordless timing proposal and Daniel's approval |
+| `STATION_DURATION_TICKS` | Visible duration of each cheese-making step | Settled: every station shows its work for 5 seconds |
 
-The shop and acquisition flow expose the settled 500-gold barn-plus-first-cow bundle. Code and
-tests may inject explicit values for the remaining unresolved parameters. Their settled values
-belong in the same data definitions that existing shops use. Station durations live in one
-ordered table and tests replace them with short values; production timing is not an
-engineering guess because the player watches it to understand the process.
+The shop and acquisition flow expose the settled 500-gold barn-plus-first-cow bundle and the
+four-cow ownership limit. The later collection design must add a `CHEESE_BATCH_VALUE` data value
+of 20 gold with the action that pays it. Code and tests may inject explicit values for the
+remaining unresolved parameters. Their settled values belong in the same data definitions that
+existing shops use. Station durations live in one ordered table and tests replace them with short
+values; production timing is not an engineering guess because the player watches it to understand
+the process.
 
 The following values are already settled and are not tuning parameters:
 
@@ -168,7 +170,8 @@ registry and has no energy field.
 Reserve `collect_cheese` as the later collection story's gateway hook. That story must
 define its interaction, inventory or other destination, value, validation, and replay
 contract before enabling the verb. This build does not accept the verb or decrement
-`finished_cheese_count`.
+`finished_cheese_count`. Each production row is 50 simulation ticks, which is five seconds at
+the simulation clock's rate of 10 ticks per second.
 
 ### Cheese line state
 
@@ -362,8 +365,8 @@ the work, not the person who wrote this plan.
 | Draw the barn, cows, and working cheese line | 2 days | Yuki Tanaka | Approved palette-locked production sprites cover the exterior, happy cows, stalls, seven stations, and product states. |
 | Add wordless barn controls | 1 day | Sam Kowalski | Touch targets place, enter, and inspect the barn without required reading or exposing the milk amount. |
 | Connect barn animation to simulation state | 2 days | Jade Okafor | Door, cow, pipe, vat, tool, press, and belt motion follows saved ticks without mutating the simulation. |
-| Settle the barn build values | 1 day | Milo Fern | Decision cards give Daniel concrete recommendations for the barn price, herd limit, and finished-cheese capacity; cheese acquisition and value stay with the later collection design. |
-| Apply the settled barn build values | 0.5 day | Tomás Herrera | The ruled barn price, herd limit, and finished-cheese capacity replace the three named parameters used by this build. |
+| Settle the remaining barn build value | 1 day | Milo Fern | A decision card gives Daniel a concrete recommendation for finished-cheese capacity; cheese acquisition stays with the later collection design, and its value is ruled at 20 gold. |
+| Apply the remaining barn build value | 0.5 day | Tomás Herrera | The ruled finished-cheese capacity replaces the remaining named parameter used by this build. |
 | Settle the cheese station timings | 1 day | Sam Kowalski | A wordless timing proposal shows each station long enough to read, and Daniel approves the production durations. |
 | Test saves, replays, touch flow, and performance | 2 days | Grace Ademola | Both test suites, the gateway check, benchmark, migration cases, and full cheese replay pass on one candidate tree. |
 | Prepare the Android barn build | 1 day | Ravi Nair | Main contains the finished barn, both test suites and the robot session pass, and the clean Android debug build is ready for the approved tablet. |

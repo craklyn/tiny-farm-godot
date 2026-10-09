@@ -784,13 +784,28 @@ doors stays clear, and the milk path remains visible from stalls through the fix
 line. This settles the building's visual direction only; economy, acquisition, original
 art, and implementation remain to be planned. Design: `design/17-industrial-barn-and-cheese-line.md`.
 
-### S-41. The Industrial Barn unlocks through egg collection and starts at 500 gold
-**Ruled by Daniel on 2026-10-08 (Q-137 and Q-138).** The shop unlocks the Industrial Barn
-after the player collects 10 eggs. The barn comes with its first cow and costs 500 gold.
-Each additional cow costs 250 gold. The egg requirement gives livestock a small animal-care
-milestone while keeping every owned thing in the shop under P-12. Herd size and cheese value
-remain open in Q-139 and Q-140; batch duration, storage, and collection interaction still need
-design. Design: `design/17-industrial-barn-and-cheese-line.md`.
+### S-41. The Industrial Barn unlocks through egg collection, starts at 500 gold, and holds four cows
+**Ruled by Daniel on 2026-10-08 (Q-137, Q-138, and Q-139).** The shop unlocks the Industrial
+Barn after the player collects 10 eggs. The barn comes with its first cow and costs 500 gold.
+Each additional cow costs 250 gold, up to four cows for each barn. The egg requirement gives
+livestock a small animal-care milestone while keeping every owned thing in the shop under P-12.
+Batch duration, storage, and collection interaction still need design. Design:
+`design/17-industrial-barn-and-cheese-line.md`.
+
+### S-42. Each finished cheese batch sells for 20 gold
+**Ruled by Daniel on 2026-10-08 (Q-140, option A).** A completed cheese batch sells for
+20 gold. If the cheese line finishes and stores a cow's average 0.7 batches per day, one cow
+has a 14-gold-per-day production ceiling; four cows have a 56-gold-per-day ceiling only when
+the line finishes and stores at least 2.8 batches per day. The game currently has no cheese
+collection or sale interaction, so a later design must define that player action before this
+value reaches the game. Design: `design/17-industrial-barn-and-cheese-line.md`.
+
+### S-43. Every Industrial Barn cheese-making station shows its work for five seconds
+**Ruled by Daniel on 2026-10-08 (Q-141, option A).** Each of the Industrial Barn's seven
+cheese-making stations holds a batch visibly for five seconds before the batch moves to the
+next station. The shared timing gives players time to follow the product changing from milk to
+cheese without a label, while the deterministic clock and replayed station actions continue to
+set every completion. Design: `design/17-industrial-barn-and-cheese-line.md`.
 
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
