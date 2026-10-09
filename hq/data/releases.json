@@ -129,6 +129,14 @@
       "subtitle": "the workbench where you teach it what matters"
     },
     {
+      "id": "update-1-3",
+      "name": "Player Update 1.3",
+      "tag_intent": "v0.2.3",
+      "subtitle": "the red dairy barn",
+      "goal": "The red dairy barn: after collecting 10 eggs, buy a barn with its first cow, watch cows walk in on their own to give milk, and follow it through a steel cheese line to finished cheese.",
+      "definition_of_done": "On the tablet, a barn bought from the shop places, opens its room, and cows give milk that becomes cheese, all saved and replayed exactly; both test suites, the robot session and the gateway check pass on main; the build is installed on the tablet per docs/DEPLOY.md (approved by Daniel 2026-10-08)."
+    },
+    {
       "id": "m3",
       "name": "M3 — the next content milestone (parked)",
       "tag_intent": null,
