@@ -329,6 +329,11 @@ static func _value_text(v) -> String:
 		return "%d,%d" % [v.x, v.y]
 	if v is Array and v.size() == 2 and not (v[0] is Array):
 		return "%d,%d" % [int(v[0]), int(v[1])]
+	# JSON has one number type: a log read from disk holds `1.0` where the brain
+	# that recomputes it says `1` (a barn's `batch_id`, a cow's `stall_index`).
+	# A whole float is printed as the int it was recorded as, so the two compare.
+	if v is float and is_finite(v) and v == floorf(v) and absf(v) < 9.0e15:
+		return str(int(v))
 	return str(v)
 
 

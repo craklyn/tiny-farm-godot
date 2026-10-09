@@ -288,8 +288,11 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 	_restore_rooms(world, w.get("rooms", {}))
 	if typeof(w.get("barns", {})) != TYPE_DICTIONARY:
 		return false
-	world.barns = w.get("barns", {}).duplicate(true)
-	if not _valid_barns(world):
+	# JSON has one number type, so a barn read from disk holds `1.0` where the live
+	# one held `1`. Every number in a barn record is a whole count or tick, so whole
+	# floats come back as ints; anything else stays a float and is refused below.
+	world.barns = _whole_ints(w.get("barns", {}))
+	if _holds_float(world.barns) or not _valid_barns(world):
 		return false
 	# A farm saved before the home joined the registry has no entry for it, and a
 	# player indoors on such a save would look out at nothing. Added on load rather
@@ -478,18 +481,56 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 	return true
 
 
+# A deep copy with every whole-number float turned back into the int it was
+# saved as. Fractions, NaN and infinities are left as floats for the caller to
+# refuse.
+static func _whole_ints(v):
+	match typeof(v):
+		TYPE_FLOAT:
+			var f := float(v)
+			return int(f) if is_finite(f) and f == floorf(f) and absf(f) < 9.0e15 else f
+		TYPE_DICTIONARY:
+			var out := {}
+			for k in v:
+				out[k] = _whole_ints(v[k])
+			return out
+		TYPE_ARRAY:
+			var out := []
+			for item in v:
+				out.append(_whole_ints(item))
+			return out
+	return v
+
+
+static func _holds_float(v) -> bool:
+	match typeof(v):
+		TYPE_FLOAT:
+			return true
+		TYPE_DICTIONARY:
+			for k in v:
+				if _holds_float(v[k]):
+					return true
+		TYPE_ARRAY:
+			for item in v:
+				if _holds_float(item):
+					return true
+	return false
+
+
 static func _valid_barns(world: SimWorld) -> bool:
 	for barn_id in world.barns:
 		var barn = world.barns[barn_id]
 		if typeof(barn) != TYPE_DICTIONARY: return false
 		var stalls = barn.get("stalls", [])
 		if typeof(stalls) != TYPE_ARRAY or stalls.size() != 4: return false
-		var seen := {}
-		for stall in stalls:
+		# Stall i is stored at position i: the cow's `stall_index` is read as a
+		# position in this array, so an out-of-order list would hand her a
+		# different stall than the one the record names.
+		for i in stalls.size():
+			var stall = stalls[i]
 			if typeof(stall) != TYPE_DICTIONARY: return false
-			var index := int(stall.get("index", -1))
-			if index < 0 or index >= 4 or seen.has(index): return false
-			seen[index] = true
+			if typeof(stall.get("index", null)) != TYPE_INT or int(stall["index"]) != i: return false
+			if typeof(stall.get("cow_id", "")) != TYPE_STRING: return false
 		var receiver = barn.get("receiver", [])
 		var stations = barn.get("stations", {})
 		if typeof(receiver) != TYPE_ARRAY or typeof(stations) != TYPE_DICTIONARY: return false
@@ -512,6 +553,10 @@ static func _valid_barns(world: SimWorld) -> bool:
 		var highest_batch_id := 0
 		for batch in batches:
 			if typeof(batch) != TYPE_DICTIONARY or int(batch.get("amount_milliunits", 0)) != 1000: return false
+			for key in ["batch_id", "amount_milliunits", "entry_tick", "ready_tick"]:
+				if typeof(batch.get(key, null)) != TYPE_INT: return false
+			for key in ["cow_id", "station"]:
+				if typeof(batch.get(key, null)) != TYPE_STRING: return false
 			var batch_id := int(batch.get("batch_id", -1))
 			if batch_id < 1 or batch_ids.has(batch_id): return false
 			batch_ids[batch_id] = true
@@ -544,7 +589,8 @@ static func _valid_barn_ownership(world: SimWorld) -> bool:
 		var milk = extra.get("milk_milliunits", null)
 		if typeof(milk) != TYPE_INT or int(milk) < 0 or int(milk) > 2000: return false
 		var state := String(extra.get("state", "idle"))
-		if state not in ["idle", "going_to_stall", "moving", "at_door", "entering", "giving", "leaving_stall", "leaving_barn"]: return false
+		if state not in CowBrain.STATES: return false
+		if typeof(extra.get("stall_index", -1)) != TYPE_INT: return false
 		var barn_id := String(extra.get("barn_id", "")); var index := int(extra.get("stall_index", -1))
 		if barn_id == "":
 			if index != -1 or claimed.has(String(actor_id)): return false
@@ -1120,12 +1166,21 @@ static func _restore_actors(raw: Dictionary) -> Dictionary:
 		if typeof(a) != TYPE_DICTIONARY:
 			continue
 		var extra = a.get("extra", {})
+		var species := String(a.get("species", ""))
+		var restored_extra: Dictionary = extra.duplicate(true) if typeof(extra) == TYPE_DICTIONARY else {}
+		# A cow's milk and stall are whole numbers the barn checks by type, and
+		# JSON hands them back as floats; put them back as the ints she held.
+		# (Other scratch fields keep JSON's shape, as every actor's always has.)
+		if species == SpeciesDefs.COW:
+			for key in ["milk_milliunits", "stall_index"]:
+				if restored_extra.has(key):
+					restored_extra[key] = _whole_ints(restored_extra[key])
 		out[String(id)] = {
-			"species": String(a.get("species", "")),
+			"species": species,
 			"pos": Vector2i(int(a.get("x", -1)), int(a.get("y", -1))),
 			"facing": String(a.get("facing", "down")),
 			"energy": int(a.get("energy", SimWorld.ACTOR_MAX_ENERGY)),
-			"extra": extra.duplicate(true) if typeof(extra) == TYPE_DICTIONARY else {},
+			"extra": restored_extra,
 		}
 	return out
 
