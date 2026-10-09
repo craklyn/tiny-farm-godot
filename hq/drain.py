@@ -531,7 +531,7 @@ What Daniel asked for: {item.get('ask', '')}
 The next step, which is yours to take now: {item.get('first_action', '')}
 {said}{prior_checks(item)}{prior_session(item)}{verification_brief}{revising}{resume_brief(item, continuing, turns)}{action_dispatch.reconcile_brief(action or {}, blocker)}{"" if int(item.get("tier") or 0) == 0 else art_requests.WORKER_BRIEF}"""
     return f"""{card_context}
-Include outcome: {{"status": "complete|blocked|unfinished", "reason": "concrete reason"}} in the final WHAT FOLLOWS JSON object. Use items: [] rather than NONE.
+Include outcome: {{"status": "complete|blocked|unfinished", "reason": "concrete reason", "cause": "environment|capability|scope|review|code if not complete"}} in the final WHAT FOLLOWS JSON object. Use items: [] rather than NONE.
 Do the work in your worktree. Then reply with the deliverable Daniel reads: what
 you changed, what it now does, and anything you found that he should know.
 Plain language, no preamble, no ticket IDs, as short as the work allows. Do not
@@ -2630,6 +2630,21 @@ def _write_back(item, rec, applied, why_not, suites, org):
         "list_usd": round(float(prev.get("list_usd") or 0.0) + this["list_usd"], 4),
         "unknown_cost_calls": int(prev.get("unknown_cost_calls") or 0) + this["unknown_cost_calls"],
     }
+    # A retry must not erase the attempt it follows. This runs before every
+    # early return below, including automatic continuation after a turn limit.
+    work.preserve_attempt(item)
+    item["attempt_outcome"] = work.attempt_outcome(
+        visible_result, rec.get("error"), rec.get("limited"))
+    item["attempt_outcome"].update({
+        "id": rec.get("attempt_id") or work.evidence_id([item["id"], item["attempts"], rec["result"]]),
+        "tokens": this["tokens"],
+    })
+    check = rec.get("check") or {}
+    if check.get("verdict") in ("concerns", "fail") or check.get("findings"):
+        item["attempt_outcome"]["cause"] = "review"
+    elif any(not (suites.get(name) or {}).get("ok")
+             for name in ("unit", "integration") if suites and suites.get(name)):
+        item["attempt_outcome"]["cause"] = "code"
     if resume:
         turns = WORKER_TURNS * 2
         item["resume"] = {"why": resume, "turns": turns, "attempt": item["spent"]["attempts"],
@@ -2659,9 +2674,7 @@ def _write_back(item, rec, applied, why_not, suites, org):
         # the deliverable path.
         item["deliverable"] = {**(item.get("deliverable") if isinstance(item.get("deliverable"), dict) else {}),
                                **deliverable}
-    item["attempt_outcome"] = work.attempt_outcome(visible_result, rec.get("error"), rec.get("limited"))
-    item["attempt_outcome"].update({"id": rec.get("attempt_id") or work.evidence_id([item["id"], item["attempts"], rec["result"]]),
-                                    "landing_verified": landed_ok,
+    item["attempt_outcome"].update({"landing_verified": landed_ok,
                                     "patch_id": work.evidence_id(rec.get("patch", "")),
                                     "check_evidence": rec.get("check_evidence"),
                                     "test_evidence": rec.get("test_evidence"),

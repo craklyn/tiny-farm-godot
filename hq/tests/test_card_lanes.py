@@ -316,6 +316,8 @@ class WaitingOnYou(unittest.TestCase):
         pillars = (HQ / "static" / "pillars.js").read_text()
         engineering = pillars[pillars.index("async function instEngineering"):]
         self.assertIn('api("/api/work-health")', engineering[:engineering.index("async function mountVerify")])
+        self.assertIn("Why work attempts failed", engineering)
+        self.assertIn("attempt_causes", engineering)
         for page in ("app.js", "queue.js", "work.js"):
             self.assertNotIn("/api/work-health", (HQ / "static" / page).read_text(),
                              "the guard's failures are never counted on Daniel's pages")

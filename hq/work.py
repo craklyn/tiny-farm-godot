@@ -1503,6 +1503,114 @@ def work_view(item, repo_facts=None, now=None):
                if outside_live and not terminal else {})}
 
 
+ATTEMPT_CAUSES = ("environment", "capability", "scope", "review", "code")
+
+
+def attempt_cause(status, *, reason="", error="", limited=False):
+    """Return the stable cause for an attempt that did not finish cleanly."""
+    if limited:
+        return "capability"
+    detail = str(error or reason).lower()
+    if detail:
+        if any(word in detail for word in (
+                "turn limit", "token limit", "allowance", "context window", "model could not")):
+            return "capability"
+        if any(word in detail for word in (
+                "sandbox", "permission denied", "read-only", "filesystem", "worktree",
+                "command not found", "executable", "network", "timed out", "timeout")):
+            return "environment"
+        if any(word in detail for word in ("review", "checker", "finding")):
+            return "review"
+        if any(word in detail for word in (
+                "needs a decision", "need a decision", "needs daniel", "need daniel",
+                "credential", "dependency", "outside the scope", "out of scope")):
+            return "scope"
+        if any(word in detail for word in (
+                "test fail", "tests fail", "assertion", "syntax error", "implementation")):
+            return "code"
+    if status == "blocked":
+        return "scope"
+    if status == "unknown":
+        return "capability"
+    if status == "unfinished":
+        return "code"
+    return ""
+
+
+def normalize_attempt_records(item):
+    """Give legacy failed attempts a durable cause and token count."""
+    changed = False
+    current = item.get("attempt_outcome") or {}
+    attempts = list(item.get("attempt_history") or [])
+    if current:
+        attempts.append(current)
+    check = item.get("check") or {}
+    for attempt in attempts:
+        status = attempt.get("status")
+        if status not in ("blocked", "unfinished", "unknown") and not attempt.get("cause"):
+            continue
+        cause = attempt.get("cause")
+        if cause not in ATTEMPT_CAUSES:
+            if (attempt is current and check.get("attempt_id") == attempt.get("id")
+                    and (check.get("verdict") in ("concerns", "fail") or check.get("findings"))):
+                cause = "review"
+            else:
+                cause = attempt_cause(status, reason=attempt.get("reason", ""))
+            if cause:
+                attempt["cause"] = cause
+                changed = True
+        if "tokens" not in attempt:
+            # What an attempt recorded before 2026-10-09 cost was never kept per
+            # attempt; the card's running total belongs to all of them, so the
+            # honest figure for one is unknown, not that total and not zero.
+            attempt["tokens"] = None
+            changed = True
+    return changed
+
+
+def preserve_attempt(item, attempt=None, *, cause=""):
+    """Archive one attempt once, before another attempt can replace it."""
+    row = dict(attempt or item.get("attempt_outcome") or {})
+    if not row:
+        return None
+    if cause:
+        if cause not in ATTEMPT_CAUSES:
+            raise ValueError("Invalid attempt cause")
+        row["cause"] = cause
+    ident = row.get("id")
+    history = item.setdefault("attempt_history", [])
+    existing = next((saved for saved in history
+                     if ident and saved.get("id") == ident), None)
+    if existing is not None:
+        return existing
+    history.append(row)
+    return row
+
+
+def attempt_cause_totals(records):
+    """Attempts that did not land, by cause: unfinished ones, and finished ones
+    the review or the tests turned back. Tokens are summed only where an attempt
+    recorded its own; the rest are counted as unknown."""
+    totals = {cause: {"attempts": 0, "tokens": 0, "unknown_tokens": 0} for cause in ATTEMPT_CAUSES}
+    for item in records:
+        normalize_attempt_records(item)
+        attempts = list(item.get("attempt_history") or [])
+        current = item.get("attempt_outcome") or {}
+        if current and not any(current.get("id") and row.get("id") == current.get("id")
+                               for row in attempts):
+            attempts.append(current)
+        for attempt in attempts:
+            cause = attempt.get("cause")
+            if cause not in totals:
+                continue
+            totals[cause]["attempts"] += 1
+            if attempt.get("tokens") is None:
+                totals[cause]["unknown_tokens"] += 1
+            else:
+                totals[cause]["tokens"] += int(attempt["tokens"])
+    return [{"cause": cause, **totals[cause]} for cause in ATTEMPT_CAUSES]
+
+
 def attempt_outcome(text, error="", limited=False):
     body, _, tail = (text or "").partition(FOLLOW_MARK)
     doc = _follow_doc(tail) or {}
@@ -1519,8 +1627,19 @@ def attempt_outcome(text, error="", limited=False):
         status, reason = "unknown", "No usable result was returned."
     if status not in ("complete", "blocked", "unfinished"):
         status, reason = "unknown", reason or "The owner did not record whether the work finished."
-    return {"version": 1, "status": status, "reason": reason,
-            "result_id": evidence_id(body.strip())}
+    result = {"version": 1, "status": status, "reason": reason,
+              "result_id": evidence_id(body.strip())}
+    # Only an attempt that did not finish carries its own cause; a finished one
+    # gets "review" or "code" from the drain if it is turned back, and none if
+    # it lands, so the totals count only attempts that did not land.
+    if status != "complete":
+        explicit_cause = outcome.get("cause") if isinstance(outcome, dict) else ""
+        if explicit_cause not in ATTEMPT_CAUSES:
+            explicit_cause = ""
+        cause = explicit_cause or attempt_cause(status, reason=reason, error=error, limited=limited)
+        if cause:
+            result["cause"] = cause
+    return result
 
 
 def completion_assessment(item):
@@ -1576,7 +1695,9 @@ def queue_one_repair(item):
         return False
     item["automatic_repairs"] = repairs + 1
     item["repair_brief"] = check.get("summary", "") + "\n" + json.dumps(check.get("findings") or [])
-    item.setdefault("attempt_history", []).append(dict(attempt))
+    # The drain assigns the final cause when it records the outcome. Archival
+    # only preserves that record; a later workflow step cannot reclassify it.
+    preserve_attempt(item, attempt)
     requeue_for_revision(item)
     # The checked drain also handles read-only repairs; the intake worker must not claim them.
     item["state"] = "waiting_session"
@@ -1997,7 +2118,7 @@ def _follows_spec(org, amendable=False, moves=None, wait="", completion=False):
                  if not moves else
                  "NONE — only when nothing more should happen AND your move is "
                  "\"answer\" — or\n")
-    outcome_field = (', "outcome": {"status": "complete|blocked|unfinished", "reason": "concrete reason if unfinished"}'
+    outcome_field = (', "outcome": {"status": "complete|blocked|unfinished", "reason": "concrete reason if unfinished", "cause": "environment|capability|scope|review|code if not complete"}'
                      if completion else "")
     if completion:
         none_line = ""

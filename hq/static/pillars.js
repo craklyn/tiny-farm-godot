@@ -659,11 +659,20 @@ async function instEngineering(root, below, sig, g) {
   try {
     const wh = await api("/api/work-health");
     if (healthEl.isConnected && wh && wh.available) {
+      const causes = (wh.attempt_causes || []).map(row => {
+        const n = Number(row.attempts || 0), u = Number(row.unknown_tokens || 0);
+        const used = `${n.toLocaleString()} failed attempt${n === 1 ? "" : "s"}. AI usage: ${Number(row.tokens || 0).toLocaleString()} tokens.`;
+        const older = u ? ` AI usage was not recorded for ${u.toLocaleString()} older attempt${u === 1 ? "" : "s"}.` : "";
+        return `<div class="inv-row">
+        <span><b>${esc(row.cause[0].toUpperCase() + row.cause.slice(1))}</b></span>
+        <span class="small muted">${used}${older}</span><span></span></div>`;
+      }).join("");
       const rows = (wh.problems || []).map(p => `<div class="inv-row">
         <i class="dot d-attn"></i>
         <span><a class="plain" href="#/work/${encodeURIComponent(p.id)}">${esc(p.title)}</a></span>
         <span class="small muted">${esc(p.problem)}</span></div>`).join("");
-      healthEl.innerHTML = `<h2>Work cards nobody will pick up <span class="small muted">— every card must be closed, being worked, next for a worker, on Daniel's Work page, or held with a stated reason</span></h2>
+      healthEl.innerHTML = `<h2>Why work attempts failed</h2><div class="card invcard">${causes}</div>
+        <h2>Work cards nobody will pick up <span class="small muted">— every card must be closed, being worked, next for a worker, on Daniel's Work page, or held with a stated reason</span></h2>
         <div class="card invcard">${rows ? rows + `<div class="small muted" style="margin-top:8px">The chief of staff fixes each work card listed here: close the card with the commit and CI run that finished its work (<code>hq/card.py close</code>), return the card to its owner's queue, or give the card a state HQ knows with the migration tool (<code>hq/migrate_card_states.py</code>).</div>`
           : `<div class="inv-row"><i class="dot d-ok"></i><span>All ${wh.checked} work cards are in exactly one place, with an owner from the org chart.</span><span></span></div>`}</div>`;
     } else if (healthEl.isConnected) {

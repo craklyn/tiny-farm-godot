@@ -687,12 +687,18 @@ def work_health():
         items = work.items(strict=True)
     except Exception as exc:
         return {"available": False, "error": f"Work records could not be read: {exc}"[:300]}
+    # Legacy rows are normalized in memory for this projection. A page read
+    # must not advance a card's durable revision; the attempt-record migration
+    # command is the explicit, idempotent write path for old records.
+    for item in items:
+        work.normalize_attempt_records(item)
     head_result = drain.sh(["git", "rev-parse", "main"], cwd=drain.REPO, timeout=10)
     head = head_result.stdout.strip() if head_result.returncode == 0 else ""
     active = drain.server.drain_state()
     org_ids = [e.get("id") for e in load_org().get("employees", [])]
     entries = [(item, drain.project_work(item, head=head, active=active)) for item in items]
     return {"available": True, **work.card_health(entries, org_ids),
+            "attempt_causes": work.attempt_cause_totals(items),
             "lanes": work.LANE_LABELS}
 
 

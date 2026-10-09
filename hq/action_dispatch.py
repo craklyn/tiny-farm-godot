@@ -16,6 +16,19 @@ RECOVERY_ACTIONS = frozenset(("recover",))
 LEASE_SECONDS = 6 * 60 * 60
 
 
+def migrate_attempt_records(work):
+    """Backfill legacy attempt accounting through HQ's mutation dispatcher."""
+    migrated = []
+    ids = [item["id"] for item in work.items(strict=True)]
+    for item_id in ids:
+        with work.mutation_lock():
+            item = work.load_item(item_id)
+            if work.normalize_attempt_records(item):
+                work.save_item(item)
+                migrated.append(item_id)
+    return migrated
+
+
 def choose(drain, *, include_thinking=False, ids=(), limit=0):
     """Select the same projected actions the Queue shows, with bounded WIP."""
     wanted = set(ids)

@@ -13,6 +13,12 @@
    "verdict": "second-look",
    "why": "“Resting” and “treatment” make the intended final way of displaying the counts take a second read."
   },
+  "008354b26fb920e5c374": {
+   "instead": "… older failed attempt… did not record how much model processing it used.",
+   "quote": "how many tokens … used",
+   "verdict": "decode",
+   "why": "“Tokens” is internal engineering shorthand, so the reader cannot tell what was being measured."
+  },
   "008a60e6a00967c63e0f": {
    "instead": "Record on nine decision cards what Daniel chose and where each decision was implemented",
    "quote": "where it was built",
@@ -57,6 +63,12 @@
   },
   "015d91ed73d359ae5ab4": {
    "verdict": "ok"
+  },
+  "017cda26dd367663bda0": {
+   "instead": "Why work attempts failed",
+   "quote": "Why work attempts did not land",
+   "verdict": "decode",
+   "why": "“Did not land” is a metaphor that leaves the reader to work out that the attempts failed."
   },
   "018256c2b9276cf72135": {
    "instead": "Choosing the picture is a design decision, not an engineering decision.",
@@ -589,6 +601,18 @@
   "1047899ea5a751b33394": {
    "verdict": "ok"
   },
+  "105d322d4d89987e47dd": {
+   "instead": "the amount of model output used by those failed attempts",
+   "quote": "model tokens spent on them",
+   "verdict": "decode",
+   "why": "The reader has to work out what “model tokens” measure and what “them” refers to."
+  },
+  "106d0824794d1e30aeea": {
+   "instead": "the failed attempt used part of the available model budget",
+   "quote": "tokens of the model allowance",
+   "verdict": "decode",
+   "why": "“Model allowance” is an internal term; the reader has to infer that it means the available model budget."
+  },
   "106e58c37edb22e04d98": {
    "instead": "Work cards that have used all their repair attempts wait for the chief of staff instead of asking Daniel",
    "quote": "repairs are used up",
@@ -806,6 +830,12 @@
    "verdict": "second-look",
    "why": "This makes the reader stop to work out whether the work card page is an option or the place where options were previously shown."
   },
+  "155d139fbde68ea05e73": {
+   "instead": "how much computer work",
+   "quote": "how much model processing",
+   "verdict": "second-look",
+   "why": "The phrase names an internal mechanism rather than plainly saying how much computer work the attempt used."
+  },
   "15c22d4221e7c340938b": {
    "verdict": "ok"
   },
@@ -970,6 +1000,9 @@
    "why": "The metaphor does not plainly say whether the meal duration changes with the planting location."
   },
   "1992c2c01502e4138ff2": {
+   "verdict": "ok"
+  },
+  "19a230d9cada4c6ada59": {
    "verdict": "ok"
   },
   "19a9a5242dbded830be2": {
@@ -1170,6 +1203,12 @@
   },
   "1ec0101a17536c0b277a": {
    "verdict": "ok"
+  },
+  "1f23b1397af22d11a57e": {
+   "instead": "The failed attempt used some of the model’s processing time.",
+   "quote": "failed attempt… used … units of model processing.",
+   "verdict": "decode",
+   "why": "“Units of model processing” is internal measurement language and does not tell the reader what resource the attempt used."
   },
   "1f4bf984e3547637db91": {
    "verdict": "ok"
@@ -2924,6 +2963,12 @@
    "verdict": "decode",
    "why": "The sentence does not identify what object “the neighbour” refers to, so a cold reader would have to ask which thing to render."
   },
+  "5123022e369b198d86fa": {
+   "instead": "… failed attempt… used … model processing.",
+   "quote": "tokens of model work",
+   "verdict": "decode",
+   "why": "“Tokens” is an internal measure, so the reader has to work out what resource the failed attempt used."
+  },
   "5134846e0904e9275aa2": {
    "verdict": "ok"
   },
@@ -3541,6 +3586,12 @@
   "60d038c1376e94f983ce": {
    "verdict": "ok"
   },
+  "6109935dd19a26bdcc29": {
+   "instead": "The earlier attempt did not record how much of the available model text it used.",
+   "quote": "; the amount used by … older attempt… not recorded",
+   "verdict": "decode",
+   "why": "It does not say what amount was used or clearly state that the earlier attempt failed to record it."
+  },
   "61485ceae61c7b996a88": {
    "instead": "Renumber the question about the crop count shown in the bottom bar to Q-123 and add a card recording the decision",
    "quote": "Renumber the bottom-bar crop count question to Q-123 and add its decision card",
@@ -4045,6 +4096,12 @@
   "6f9f11a417782cdf091b": {
    "verdict": "ok"
   },
+  "6fa6815278c881601a7f": {
+   "instead": "the amount used by the older attempt was not recorded",
+   "quote": "the allowance used was not recorded",
+   "verdict": "decode",
+   "why": "“Allowance” is internal shorthand for a usage limit, so the reader has to work out what was not recorded."
+  },
   "6faeee08a2456120dcc1": {
    "verdict": "ok"
   },
@@ -4086,6 +4143,9 @@
    "verdict": "ok"
   },
   "70a2c8ec5f1c2d26490b": {
+   "verdict": "ok"
+  },
+  "70b55c63d3d2e1229b39": {
    "verdict": "ok"
   },
   "712238655b095f004acb": {
@@ -5447,6 +5507,12 @@
   "948adcb64a2242bb7cdf": {
    "verdict": "ok"
   },
+  "94afb3bdac3db1a8efd2": {
+   "instead": "units of computer processing",
+   "quote": "tokens of model processing",
+   "verdict": "decode",
+   "why": "A stranger would not know what these tokens measure or what their amount means."
+  },
   "94b653533cb4746b6143": {
    "verdict": "ok"
   },
@@ -5847,6 +5913,9 @@
    "verdict": "ok"
   },
   "a0026b3a30162e6ab14b": {
+   "verdict": "ok"
+  },
+  "a00e1fba35ec3a141df6": {
    "verdict": "ok"
   },
   "a028835926dddc429357": {
@@ -6370,6 +6439,9 @@
    "verdict": "decode",
    "why": "“Candidate” and “landed” are internal terms for a proposed version that has not been merged."
   },
+  "ad0c0f02753d7d269b5f": {
+   "verdict": "ok"
+  },
   "ad29d0abaa5786c69689": {
    "instead": "without buying the card where the drag begins",
    "quote": "instead of buying the card it starts on",
@@ -6661,6 +6733,12 @@
   "b6627ba3091fbf4bcb2b": {
    "verdict": "ok"
   },
+  "b66edfe19fda4f954891": {
+   "instead": "Work cards with no worker assigned",
+   "quote": "Work cards nobody will pick up",
+   "verdict": "second-look",
+   "why": "“Pick up” is a metaphor for assignment, so the reader has to translate it into the actual status."
+  },
   "b6b8df2c76e1431686f1": {
    "verdict": "ok"
   },
@@ -6678,6 +6756,12 @@
   },
   "b798094b925671e1070f": {
    "verdict": "ok"
+  },
+  "b7b3fc2d2e7f668a0543": {
+   "instead": "The attempt failed; the token count was not recorded.",
+   "quote": "attempt… that did not land … tokens…",
+   "verdict": "decode",
+   "why": "It does not say whether the attempt failed or what the tokens represent."
   },
   "b7ca3785b6d77784399c": {
    "instead": "The experiments can use any amount of capacity",
@@ -6924,6 +7008,12 @@
   },
   "bef331dad9ebcb87b848": {
    "verdict": "ok"
+  },
+  "bf1c1d3e3a822a1ae9de": {
+   "instead": "plus an older failed attempt whose amount of generated text was not recorded",
+   "quote": "older failed attempt… whose token count was not recorded",
+   "verdict": "decode",
+   "why": "“Token count” is internal model terminology, so the reader cannot tell what was measured."
   },
   "bf3f15e13c61fff4a29b": {
    "verdict": "ok"
@@ -7485,6 +7575,12 @@
    "verdict": "decode",
    "why": "A stranger cannot tell whether this is a visible sheet, a list, or internal data shared by the two views."
   },
+  "cdfafd7fb84bc6c92057": {
+   "instead": "HQ's engineering page shows why work attempts failed and how much processing each reason used",
+   "quote": "how many tokens each reason cost",
+   "verdict": "decode",
+   "why": "“Tokens” is internal engineering shorthand for the amount of text processing used, which a cold reader may not know."
+  },
   "ce193dfa5597d0264261": {
    "verdict": "ok"
   },
@@ -7672,6 +7768,12 @@
   },
   "d3107b9098b38adccc4d": {
    "verdict": "ok"
+  },
+  "d36e627ca494984d8f73": {
+   "instead": "The failed attempt used some of the available model text, but the amount is not shown.",
+   "quote": "… failed attempt… … tokens of the available model budget used…",
+   "verdict": "decode",
+   "why": "“Model budget” and the fragmentary ellipses leave the reader to work out what was used and what happened."
   },
   "d38bd40a438bbcb1ba53": {
    "verdict": "ok"
