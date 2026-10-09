@@ -18353,6 +18353,21 @@ func test_barn_room_layout() -> void:
 	other.set_tile_state(at.x + 2, at.y - 1, "obstacle_rock")
 	_assert(not other.placeable_at(at, "industrial_barn"),
 		"a rock under the barn's far back corner refuses the whole footprint")
+	other.set_tile_state(at.x + 2, at.y - 1, "cleared")
+	_assert(other.placeable_at(at, "industrial_barn"), "with the rock gone the spot is free")
+	# Building cells and eggs are ground a foot may cross, but `place` writes the
+	# barn over every cell of its block, so either would be lost under it.
+	other.set_object(at.x + 2, at.y - 1, "egg")
+	_assert(not other.placeable_at(at, "industrial_barn"),
+		"an egg under the back corner refuses the barn rather than vanishing beneath it")
+	other.set_object(at.x + 2, at.y - 1, "")
+	var first_spot: Vector2i = second[1]
+	var overlapped := 0
+	for off in [Vector2i(2, 0), Vector2i(-2, 0), Vector2i(1, 1), Vector2i(-1, 1)]:
+		if other.placeable_at(first_spot + off, "industrial_barn"):
+			overlapped += 1
+	_assert(overlapped == 0,
+		"a second barn cannot be set down half on top of the first (%d overlaps allowed)" % overlapped)
 
 
 # Picking the barn up: refused while it would take a cow's stall or any milk or

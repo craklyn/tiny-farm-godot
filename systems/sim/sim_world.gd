@@ -2159,6 +2159,18 @@ func placeable_at(t: Vector2i, item: String = "") -> bool:
 		for cell in MachineDefs.footprint_cells(item, t):
 			if cell != t and not placeable_at(cell):
 				return false
+	# **A structure needs bare ground under every cell** (2026-10-08, found by
+	# putting the barn down by tap). `place` writes the structure's own object onto
+	# each cell of its block, so a cell that already holds one would lose it: an
+	# egg or an acorn on the ground, or the open floor of another building — the
+	# tower's, the barn's — which `is_walkable` lets a foot onto and so let a
+	# second building be set down half on top of the first. A machine that is an
+	# actor stands over what is there and writes nothing, so it is not asked.
+	if item != "" and MachineDefs.has(item) and not MachineDefs.spawns_actor(item) \
+			and MachineDefs.terrain_of(item) == "":
+		for cell in MachineDefs.footprint_cells(item, t):
+			if get_object(cell.x, cell.y) != "":
+				return false
 	for raw in actors:
 		var id := String(raw)
 		if id == ACTOR_PLAYER:
