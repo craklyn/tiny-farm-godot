@@ -4831,6 +4831,9 @@
    "verdict": "decode",
    "why": "This indirect phrase makes the reader work out whether you mean the figure's feet, its contact shadow, or something else."
   },
+  "84d9ce5c640b5806e465": {
+   "verdict": "ok"
+  },
   "84e487262995aac8a505": {
    "verdict": "ok"
   },
