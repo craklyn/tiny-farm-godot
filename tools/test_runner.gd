@@ -187,6 +187,7 @@ func _run_scenarios() -> void:
 	await _scenario_bj_a_tap_on_the_tower_goes_inside()
 	await _scenario_bk_the_bin_hint_hides_on_touch()
 	await _scenario_bl_the_shelf_sells_a_pace()
+	await _scenario_bo_the_barn_by_finger_alone()
 	await _scenario_bn_the_barn_is_entered_and_drawn_from_its_saved_state()
 
 
@@ -9015,6 +9016,301 @@ func _scenario_bn_the_barn_is_entered_and_drawn_from_its_saved_state() -> void:
 		_assert(asked_again and gone and not farm.sim.barns.has(id) and not farm.sim.rooms.has(id)
 			and int(GameState.machines.get("industrial_barn", 0)) == 1,
 			"an idle barn is picked up with its room and barn record, back into the crate")
+	_restore_session_paths(real_paths)
+
+
+# The red dairy barn's whole player flow by finger alone (INDUSTRIAL_BARN_ENGINEERING_PLAN,
+# "Add wordless barn controls"). Scenario BN puts the barn down and picks its panel
+# rows by calling the menu's own selection, which proves the gateway and the panel's
+# wiring but not that a finger can get there. Here every step is a tap through the
+# input path a tablet uses — a screen touch into InputManager for the world, a
+# pointer press into the root viewport for a button — and nothing calls the gateway
+# or a menu-selection method: the seed box opens the shop, the barn's card buys it,
+# a tap on a spot it cannot fit is refused and one on a free spot puts it down, a
+# tap on the barn opens its panel, the panel's go-inside row takes her into the
+# room, and a tap on the doorway brings her out. At every screen on the way, the
+# cow's milk amount is nowhere in the text (design/17, "The cow milk cycle").
+#
+# The farm, clock and random stream are put back afterwards, so Scenario BN after
+# it starts from the farm it always has.
+func _scenario_bo_the_barn_by_finger_alone() -> void:
+	print("\n--- Scenario BO: the barn is bought, put down, gone into and left by taps alone ---")
+	var real_paths := [GameState.save_path, GameState.replay_path, GameState.trace_path]
+	GameState.save_path = "user://barn_taps_autosave.json"
+	GameState.replay_path = "user://barn_taps_replay.json"
+	GameState.trace_path = "user://barn_taps_trace.jsonl"
+	var menus = main_scene.menus
+	menus.close_menu()
+	main_scene.end_teaching()
+	await get_tree().process_frame
+	var before := SaveGame.capture(farm.sim, GameState)
+	var rng_seed := SimRng.current_seed()
+	var rng_state := SimRng.rng.state
+	var rng_revision := SimRng.stateless_revision
+	var replay_from: int = farm.replay.entries.size()
+
+	# The farm the story starts from: ten eggs collected, exactly the barn's price
+	# in the purse, nothing in the crate and nothing in her hands.
+	GameState.harvest_counts["egg"] = 10
+	GameState.gold = int(MachineDefs.TYPES["industrial_barn"].price)
+	GameState.machines = {}
+	GameState.selected_seed_type = ""
+	GameState.set_energy(GameState.max_energy)
+	_assert(not farm.sim.has_cow() and farm.sim.barns.is_empty(),
+		"the farm starts with no barn and no cow")
+
+	# She starts in the yard, beside the seed box.
+	var start := Vector2i(8, 3)
+	player.init_position(start.x, start.y)
+	farm.sim.set_actor_pos(SimWorld.ACTOR_PLAYER, start)
+	player.path.clear()
+	player.pending_action = {}
+	player.tap_indicator = {}
+	InputManager.has_click = false
+	await get_tree().process_frame
+	await get_tree().process_frame
+
+	# --- 1. the seed box opens the shop; the barn's card buys it ----------------------
+	await _finger_tap(Vector2i(8, 1))
+	var shop_open := await _wait_until(func(): return menus.active_menu == "shop", 600)
+	_assert(shop_open, "a tap on the seed box opens the shop (%s)" % menus.active_menu)
+	if not shop_open:
+		await _bo_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
+		return
+	await get_tree().create_timer(0.3).timeout   # the panel's pop-in spring settles
+	var barn_row := -1
+	for i in menus.shop_items.size():
+		if String(menus.shop_items[i].get("seed_type", "")) == "industrial_barn":
+			barn_row = i
+	_assert(barn_row >= 0 and bool(menus.shop_items[barn_row].get("unlocked", false))
+			and bool(menus.shop_items[barn_row].get("affordable", false)),
+		"ten eggs put the barn's card on the shelf, unlocked and affordable at 500 gold")
+	_bo_assert_no_milk("the shop")
+	if barn_row < 0:
+		await _bo_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
+		return
+	var shop_buttons: Array = menus.options_container.find_children("*", "Button", true, false)
+	var barn_card: Button = shop_buttons[barn_row]
+	var shop_scroll: ScrollContainer = menus.options_container.find_child("shop_scroll", true, false)
+	var card_shown := shop_scroll != null \
+		and shop_scroll.get_global_rect().encloses(barn_card.get_global_rect())
+	_assert(card_shown, "the barn's card is inside the shelf's window, where a finger can reach it")
+	await _gui_tap(barn_card)
+	var bought := await _wait_until(
+		func(): return int(GameState.machines.get("industrial_barn", 0)) == 1, 60)
+	_assert(bought and GameState.gold == 0,
+		"a tap on the card buys the barn for all 500 gold (gold %d)" % GameState.gold)
+	_assert(String(GameState.selected_seed_type) == "industrial_barn",
+		"and she is holding it, ready to put down (%s)" % GameState.selected_seed_type)
+	# The shelf is rebuilt after a purchase, so its close card is looked up again.
+	var close_card: Button = null
+	shop_buttons = menus.options_container.find_children("*", "Button", true, false)
+	if shop_buttons.size() > menus.shop_items.size():
+		close_card = shop_buttons[menus.shop_items.size()]
+	_assert(close_card != null, "the shop has its close card under the shelf")
+	if close_card != null:
+		await _gui_tap(close_card)
+	var shut := await _wait_until(func(): return menus.active_menu == "", 60)
+	_assert(shut and not get_tree().paused, "a tap on the close card shuts the shop")
+	if not bought or not shut:
+		await _bo_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
+		return
+
+	# --- 2. a spot it cannot fit is refused; a free one takes it ----------------------
+	# Under the shipping bin: open yard to stand on, but the barn's block would
+	# take the bin and the well with it.
+	var bin_t := Vector2i(4, 1)
+	var refused := bin_t + Vector2i(0, 1)
+	_assert(farm.sim.is_walkable(refused.x, refused.y) and farm.get_object(refused.x, refused.y) == ""
+			and not farm.sim.placeable_at(refused, "industrial_barn"),
+		"the square under the bin is open yard the barn cannot stand on")
+	await _finger_tap(refused)
+	await _wait_until(func(): return player.path.is_empty(), 600)
+	var since: int = farm.trace.entries.size()
+	var answer := await _finger_tap(refused)
+	_assert(String(answer.get("why", "")) == "occupied" and farm.get_object(refused.x, refused.y) == ""
+			and int(GameState.machines.get("industrial_barn", 0)) == 1,
+		"a tap there is answered as occupied and the barn stays in her hands (%s)" % str(answer))
+	_assert(_last_tap_reason(since) == "occupied", "and the answer is the refusal she can see")
+
+	# The world is held from choosing the spot to putting the barn on it, so the
+	# hen cannot lay an egg on the spot while she walks there — which the barn now
+	# refuses rather than burying (`SimWorld.placeable_at`). Her walk is hers and
+	# does not wait on the clock.
+	_hold_sim_clock()
+	var anchor := _bo_free_barn_spot()
+	_assert(anchor.x >= 0, "the yard has a free three-by-two spot for the barn (%s)" % anchor)
+	if anchor.x < 0:
+		_release_sim_clock()
+		await _bo_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
+		return
+	await _finger_tap(anchor)
+	var beside := await _wait_until(func():
+		var at: Vector2i = player.get_tile_pos()
+		return player.path.is_empty() and absi(at.x - anchor.x) + absi(at.y - anchor.y) <= 1, 900)
+	_assert(beside, "a first tap walks her up beside the spot (%s)" % player.get_tile_pos())
+	var blocker := _clear_ground_for_fixture(anchor, "industrial_barn")
+	_assert(blocker == "", "nothing has wandered onto the spot (%s)" % blocker)
+	await _finger_tap(anchor)
+	_release_sim_clock()
+	var stood := await _wait_until(
+		func(): return farm.get_object(anchor.x, anchor.y) == WorldLayout.INDUSTRIAL_BARN, 200)
+	var barn_id := ""
+	for id in farm.sim.barns:
+		barn_id = String(id)
+	_assert(stood and barn_id != "" and farm.sim.rooms.has(barn_id)
+			and int(GameState.machines.get("industrial_barn", 0)) == 0,
+		"a second tap puts the barn down, with its room and its barn record (%s)" % barn_id)
+	var cow_id := ""
+	for raw in farm.sim.actors:
+		if farm.sim.species_of(String(raw)) == SpeciesDefs.COW:
+			cow_id = String(raw)
+	_assert(cow_id != "", "and her first cow arrives with it")
+	if not stood or barn_id == "":
+		await _bo_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
+		return
+	for i in 20:
+		await get_tree().process_frame
+	_assert(menus.active_menu == "", "putting it down opens no screen (%s)" % menus.active_menu)
+
+	# A milk amount no screen could show by accident: if this number turns up in
+	# any text from here on, the amount is on screen.
+	if cow_id != "":
+		farm.sim.actor(cow_id)["extra"]["milk_milliunits"] = BO_MILK
+	_bo_assert_no_milk("the farm with the barn and its cow on it")
+
+	# A tap on the cow herself opens nothing that could read her out.
+	if cow_id != "":
+		await _finger_tap(farm.sim.actor_pos(cow_id))
+		for i in 20:
+			await get_tree().process_frame
+		_assert(menus.active_menu == "", "a tap on the cow opens no screen about her (%s)" % menus.active_menu)
+		_bo_assert_no_milk("the farm after a tap on the cow")
+
+	# --- 3. a tap on the barn opens its panel; its go-inside control takes her in -----
+	var roof := anchor + Vector2i(1, -1)
+	await _finger_tap(roof)
+	var asked := await _wait_until(func(): return menus.active_menu == "structure", 900)
+	_assert(asked and menus.structure_item == "industrial_barn",
+		"a tap on the barn opens the building panel for it (%s)" % menus.structure_item)
+	if not asked:
+		await _bo_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
+		return
+	await get_tree().create_timer(0.3).timeout
+	_bo_assert_no_milk("the barn's panel")
+	var enter_row := -1
+	for i in menus.structure_options.size():
+		if String(menus.structure_options[i].get("kind", "")) == "enter":
+			enter_row = i
+	var panel_buttons: Array = menus.options_container.find_children("*", "Button", true, false)
+	_assert(enter_row >= 0 and enter_row < panel_buttons.size(),
+		"the panel has a control that goes inside")
+	if enter_row < 0 or enter_row >= panel_buttons.size():
+		await _bo_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
+		return
+	var go_in: Button = panel_buttons[enter_row]
+	_assert(go_in.size.x >= 64.0 and go_in.size.y >= 44.0,
+		"at a size a small finger can hit (%s)" % go_in.size)
+	await _gui_tap(go_in)
+	var room: Dictionary = farm.sim.rooms[barn_id]
+	var inside := await _wait_until(
+		func(): return farm.sim.room_of_cell(player.get_tile_pos()) == barn_id, 900)
+	_assert(inside, "a tap on it takes her into the barn's room (%s)" % player.get_tile_pos())
+	await _wait_until(func(): return player.path.is_empty() and not player.is_acting, 300)
+	for i in 10:
+		await get_tree().process_frame
+	_bo_assert_no_milk("the barn's room")
+
+	# --- 4. a tap on the doorway brings her back out -----------------------------------
+	await _finger_tap(Vector2i(room["door"]))
+	var outside := await _wait_until(func(): return farm.sim.page_of(player.get_tile_pos()) == 0, 900)
+	_assert(outside, "a tap on the barn's doorway brings her back out onto the farm (%s)"
+		% player.get_tile_pos())
+	for i in 10:
+		await get_tree().process_frame
+	_bo_assert_no_milk("the farm after leaving the barn")
+	if cow_id != "":
+		_assert(int(farm.sim.actor(cow_id)["extra"].get("milk_milliunits", 0)) == BO_MILK,
+			"and the cow's milk is still the amount set, so every check above looked for the right number")
+
+	# What the taps did to the world is what the replay holds: her four Actions,
+	# in order, each through the one gateway.
+	var hers: Array = []
+	for i in range(replay_from, farm.replay.entries.size()):
+		var e: Dictionary = farm.replay.entries[i]
+		if String(e.get("actor", "")) == SimWorld.ACTOR_PLAYER \
+				and String(e.get("verb", "")) in ["buy_machine", "place", "use_door", "collect"]:
+			hers.append(String(e.verb))
+	_assert(hers == ["buy_machine", "place", "use_door", "use_door"],
+		"the replay records her buying, placing, going in and coming out, and nothing else (%s)" % str(hers))
+
+	await _bo_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
+
+
+const BO_MILK := 1371
+
+
+# Every piece of text on screen, from every visible Control in the tree, checked
+# for the cow's milk amount in any form a screen might print it: the stored
+# thousandths, units, or a share of her two-unit capacity.
+func _bo_assert_no_milk(where: String) -> void:
+	var shown: Array = []
+	for node in get_tree().root.find_children("*", "Control", true, false):
+		var c := node as Control
+		if not c.is_visible_in_tree():
+			continue
+		if c is Label or c is Button or c is RichTextLabel or c is LineEdit:
+			var t := String(c.get("text"))
+			if t != "":
+				shown.append(t)
+	var forms := ["%d" % BO_MILK, "%.3f" % (BO_MILK / 1000.0), "%.2f" % (BO_MILK / 1000.0),
+		"%.1f" % (BO_MILK / 1000.0), "%d%%" % roundi(BO_MILK / 20.0), "%d%%" % int(BO_MILK / 20.0)]
+	var found: Array = []
+	for t in shown:
+		for f in forms:
+			if String(t).contains(f):
+				found.append(t)
+	_assert(shown.size() > 0 and found.is_empty(),
+		"the cow's milk amount is not in any of the %d pieces of text on %s%s"
+		% [shown.size(), where, "" if found.is_empty() else " — found %s" % str(found)])
+
+
+# A yard square the barn can stand on: its whole block free, with yard under every
+# cell, room for the bundled cow to arrive, and a free square beside it for her.
+func _bo_free_barn_spot() -> Vector2i:
+	for ty in range(2, WorldLayout.PAGE_ROWS - 1):
+		for tx in range(2, SimWorld.MAP_WIDTH - 3):
+			var at := Vector2i(tx, ty)
+			var all_yard := true
+			for cell in MachineDefs.footprint_cells("industrial_barn", at):
+				if String(farm.get_tile(cell.x, cell.y).get("state", "")) != WorldLayout.YARD:
+					all_yard = false
+			if not all_yard or not farm.sim.placeable_at(at, "industrial_barn"):
+				continue
+			if farm.sim.barn_cow_arrival_cell(at).x < 0:
+				continue
+			if not farm.sim.placeable_at(at + Vector2i(-1, 0)):
+				continue
+			return at
+	return Vector2i(-1, -1)
+
+
+func _bo_put_farm_back(before: Dictionary, rng_seed: int, rng_state: int, rng_revision: int,
+		real_paths: Array) -> void:
+	if main_scene.menus.is_open():
+		main_scene.menus.close_menu()
+	get_tree().paused = false
+	_assert(SaveGame.restore(before, farm.sim, GameState), "the scenario farm restores after the barn taps")
+	SimRng.reseed(rng_seed, rng_revision)
+	SimRng.rng.state = rng_state
+	var returned: Vector2i = farm.sim.actor_pos(SimWorld.ACTOR_PLAYER)
+	player.init_position(returned.x, returned.y)
+	player.path.clear()
+	player.pending_action = {}
+	player.tap_indicator = {}
+	farm.sync_actors()
+	farm.queue_redraw()
+	await get_tree().process_frame
 	_restore_session_paths(real_paths)
 
 

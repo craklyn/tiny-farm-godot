@@ -5,8 +5,10 @@ This is a phase-2 livestock building. The barn unlocks after 10 collected eggs; 
 its first cow cost 500 gold, and each added cow costs 250 gold. Herd size and cheese value
 remain open proposals in [Q-139 and Q-140](../DESIGNER_QUEUE.md). The simulation is built
 (cows, milk, the station-by-station cheese line, saving and replay; see
-[the engineering plan](../INDUSTRIAL_BARN_ENGINEERING_PLAN.md)); a player cannot reach it yet,
-because the barn's room, art, shop entry and touch controls are still being built.*
+[the engineering plan](../INDUSTRIAL_BARN_ENGINEERING_PLAN.md)). A player can buy the barn
+from the shop, put it down, go inside and come back out by touch alone, and the cow's milk
+amount appears on none of those screens. The building panel's two choices, go inside and pick
+up, are still written words, as they are for the coop and the tower.*
 
 ## The building at a glance
 
