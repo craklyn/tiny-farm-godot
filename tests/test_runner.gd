@@ -18368,6 +18368,16 @@ func test_barn_room_layout() -> void:
 			overlapped += 1
 	_assert(overlapped == 0,
 		"a second barn cannot be set down half on top of the first (%d overlaps allowed)" % overlapped)
+	# A building she holds counts as held, but it is not a seed: sowing one is
+	# refused rather than reaching the seed pouch.
+	other.set_tile_state(at.x, at.y, "tilled")
+	GameState.machines["stall"] = 1
+	var sown := other.apply_action({ "verb": "plant", "target": at, "seed_type": "stall",
+		"actor": "player" }, GameState)
+	_assert(not sown.get("ok", false) and String(sown.get("reason", "")) == "no_seeds"
+			and other.get_tile(at.x, at.y).get("state", "") == "tilled",
+		"planting a stall in tilled soil is refused and the soil is left as it was (%s)" % sown)
+	GameState.machines.erase("stall")
 
 
 # Picking the barn up: refused while it would take a cow's stall or any milk or

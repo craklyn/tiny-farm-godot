@@ -405,7 +405,9 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 	# 5. Tilled → plant active seed
 	if state == "tilled":
 		var seed_type: String = gs.selected_seed_type
-		if gs.held_count(seed_type) > 0:
+		# A machine in her hands is not a seed: tilled soil it cannot be set down on
+		# answers as occupied (`blocked_reason`) rather than as a sowing of it.
+		if CropDefs.TYPES.has(seed_type) and gs.held_count(seed_type) > 0:
 			return check_result.call({ "action": "plant", "tool_idx": 5, "target_t": tap_t, "walk_to": true, "seed_type": seed_type })
 		return {}
 

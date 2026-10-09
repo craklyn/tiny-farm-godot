@@ -663,9 +663,16 @@ func _free_barn_anchor() -> Vector2i:
 	for ty in range(2, WorldLayout.PAGE_ROWS - 3):
 		for tx in range(2, SimWorld.MAP_WIDTH - 4):
 			var anchor := Vector2i(tx, ty)
-			if sim.placeable_at(anchor, "industrial_barn") \
-					and sim.is_walkable(tx - 1, ty) \
-					and not (anchor in BOT_ROW) and anchor != STALL_TILE:
+			if not sim.placeable_at(anchor, "industrial_barn") or not sim.is_walkable(tx - 1, ty):
+				continue
+			# Clear of the robot row and of both bays of the stall she builds next:
+			# a building may not stand on another, so a barn there would refuse it.
+			var kept_free: Array = BOT_ROW + MachineDefs.footprint_cells("stall", STALL_TILE)
+			var clear := true
+			for cell in MachineDefs.footprint_cells("industrial_barn", anchor):
+				if cell in kept_free:
+					clear = false
+			if clear:
 				return anchor
 	return Vector2i(-1, -1)
 

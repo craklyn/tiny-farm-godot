@@ -3915,6 +3915,10 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			if charged and gs.hard_energy and gs.energy < cost: return _fail("no_energy")
 			var seed_type: String = action.get("seed_type", "")
 			if charged and verb == "water" and gs.watering_can_charges <= 0: return _fail("no_water")
+			# Only a crop is sown. A machine she is holding counts as held too, and
+			# without this a sowing of one reached the seed pouch and stopped the game.
+			if verb == "plant" and not CropDefs.TYPES.has(seed_type):
+				return _fail("no_seeds")
 			if (charged or is_machine) and verb == "plant" and gs.held_count(seed_type) <= 0:
 				return _fail("no_seeds")
 			# **A full pouch refuses the harvest and leaves the crop standing**
