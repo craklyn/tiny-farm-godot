@@ -109,6 +109,7 @@ func test_barn_simulation() -> void:
 	_assert(not SaveGame.restore(wrong_station, SimWorld.new(), GameState), "a batch stored under the wrong station is refused")
 
 	test_barn_save_from_disk()
+	test_cheese_shelf_sale()
 	test_barn_gateway_refusals()
 	test_barn_cow_gives_a_stall_back()
 	test_barn_milk_gain_at_sleep()
@@ -116,6 +117,60 @@ func test_barn_simulation() -> void:
 	test_barn_room_layout()
 	test_barn_pick_up()
 	test_barn_animation_follows_sim_ticks()
+
+
+func test_cheese_shelf_sale() -> void:
+	print("\n--- Industrial barn: one shelf action sells every finished batch ---")
+	GameState.reset()
+	SimRng.reseed(1725)
+	var world := _barn_world()
+	var barn: Dictionary = world.barns["barn_1"]
+	var room: Dictionary = world.rooms["barn_1"]
+	var shelf := Vector2i(room["origin"]) \
+		+ Vector2i(MachineDefs.room_of("industrial_barn")["cheese_shelf"])
+	barn["finished_cheese_count"] = 3
+	GameState.set_gold(7)
+	var base := SaveGame.capture(world, GameState)
+	var before := SaveGame.capture_canonical(world, GameState)
+	var refusals := [
+		{"actor": "cow_1", "verb": "collect_cheese", "barn_id": "barn_1"},
+		{"actor": "player", "verb": "collect_cheese", "barn_id": "missing"},
+		{"actor": "player", "verb": "collect_cheese", "barn_id": "barn_1"},
+	]
+	var refused := true
+	for action in refusals:
+		refused = refused and not bool(world.apply_action(action, GameState).get("ok", true))
+	_assert(refused and SaveGame.capture_canonical(world, GameState) == before,
+		"a non-player, unknown barn, or farmer away from the shelf changes neither cheese nor gold")
+
+	world.set_actor_pos(SimWorld.ACTOR_PLAYER, shelf)
+	var log := ReplayLog.new(); log.start_from_save(base, world.gen_seed)
+	# The base save predates the walk, so record the same free movement a live
+	# session records before applying the shelf Action.
+	log.record_walk("move", "right", shelf, world.clock.tick)
+	var action := {"actor": "player", "verb": "collect_cheese", "barn_id": "barn_1",
+		"quantity": 1, "price": 999}
+	var sold := world.apply_action(action, GameState)
+	log.record(action, sold, world.clock.tick); log.mark_tick(world.clock.tick)
+	_assert(bool(sold.get("ok", false)) and int(sold.get("batches", 0)) == 3
+		and int(sold.get("gold", 0)) == 60 and int(barn.finished_cheese_count) == 0
+		and GameState.gold == 67,
+		"one Action empties all three batches and pays the fixed 20 gold each, ignoring supplied price and quantity")
+	var after_sale := SaveGame.capture(world, GameState)
+	var restored := SimWorld.new()
+	_assert(SaveGame.restore(JSON.parse_string(JSON.stringify(after_sale)), restored, GameState)
+		and int(restored.barns.barn_1.finished_cheese_count) == 0 and GameState.gold == 67,
+		"the empty shelf and its payment survive a save round-trip")
+	var replayed := SimWorld.new()
+	_assert(log.apply_to(replayed, GameState) and log.divergence == ""
+		and int(replayed.barns.barn_1.finished_cheese_count) == 0 and GameState.gold == 67,
+		"the recorded barn identifier replays the same all-batch sale (%s)" % log.divergence)
+	var empty_before := SaveGame.capture_canonical(replayed, GameState)
+	var empty := replayed.apply_action({"actor": "player", "verb": "collect_cheese",
+		"barn_id": "barn_1"}, GameState)
+	_assert(not bool(empty.get("ok", true)) and String(empty.get("reason", "")) == "shelf_empty"
+		and SaveGame.capture_canonical(replayed, GameState) == empty_before,
+		"an empty shelf refuses the Action without changing the world")
 
 
 # The room the interior picture draws: its south-west livestock doorway, central

@@ -171,6 +171,9 @@ static var TYPES: Dictionary = {
 		# machinery after a redraw. The outside doors remain under the middle tile.
 		"room": { "cells": Vector2i(6, 4), "pitch": 2, "edge_walls": true,
 			"exit_offset": Vector2i(1, 1), "door": Vector2i(0, 3),
+			# The shelf itself is fixed machinery at the end of the outfeed. This
+			# is its open-floor interaction cell, where the farmer stands to sell.
+			"cheese_shelf": Vector2i(3, 3),
 			"stalls": [Vector2i(2, 0), Vector2i(3, 0), Vector2i(2, 1), Vector2i(3, 1)],
 			"cow_route": [Vector2i(0, 3), Vector2i(0, 2), Vector2i(0, 1),
 				Vector2i(1, 1), Vector2i(1, 2), Vector2i(2, 2), Vector2i(3, 2),

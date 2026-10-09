@@ -956,6 +956,7 @@ const BARN_LINE_VERBS: Array[String] = ["set_curd", "cut_curd", "stir_curd", "dr
 const HERD_LIMIT := 4
 const COW_PRICE := 250
 const FINISHED_CHEESE_CAPACITY := 8
+const CHEESE_BATCH_VALUE := 20
 const COW_GIVE_MILK_ENERGY := 20
 # How long a batch stays at each station before the line may move it on, in sim
 # ticks (SimClock.RATE = 10 a second), in line order. One ordered table, as
@@ -2885,6 +2886,8 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			return _give_milk(action)
 		"leave_milk_stall":
 			return _leave_milk_stall(action)
+		"collect_cheese":
+			return _collect_cheese(action, gs)
 		"set_curd", "cut_curd", "stir_curd", "drain_whey", "fill_cheese_hoops", "press_cheese", "finish_cheese":
 			return _apply_barn_line(action)
 		# -- special-object verbs (no energy cost, pre-M2 behavior) --
@@ -4598,6 +4601,27 @@ func _leave_milk_stall(action: Dictionary) -> Dictionary:
 	extra["barn_id"] = ""; extra["stall_index"] = -1
 	extra["state"] = "leaving_barn" if was_inside else "idle"
 	return {"ok": true, "was_in_stall": was_inside}
+
+
+# One player request empties one barn's shelf and pays its ruled value. The
+# request carries neither quantity nor price: both come from simulation truth.
+func _collect_cheese(action: Dictionary, gs) -> Dictionary:
+	if String(action.get("actor", "")) != ACTOR_PLAYER: return _fail("not_player")
+	if gs == null: return _fail("no_state")
+	var barn_id := String(action.get("barn_id", ""))
+	if not barns.has(barn_id) or not rooms.has(barn_id): return _fail("no_such_barn")
+	var shelf_offset: Vector2i = MachineDefs.room_of("industrial_barn").get(
+		"cheese_shelf", Vector2i(-1, -1))
+	var shelf_cell := Vector2i(rooms[barn_id]["origin"]) + shelf_offset
+	if actor_pos(ACTOR_PLAYER) != shelf_cell: return _fail("not_at_shelf")
+	var barn: Dictionary = barns[barn_id]
+	var batches := int(barn.get("finished_cheese_count", 0))
+	if batches <= 0: return _fail("shelf_empty")
+	var payment := batches * CHEESE_BATCH_VALUE
+	barn["finished_cheese_count"] = 0
+	gs.set_gold(int(gs.gold) + payment)
+	_schedule_barn(barn_id, clock.tick + 1)
+	return {"ok": true, "batches": batches, "gold": payment}
 
 
 func _apply_barn_line(action: Dictionary) -> Dictionary:
