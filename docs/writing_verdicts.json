@@ -293,6 +293,9 @@
   "0878f4d491c631be4354": {
    "verdict": "ok"
   },
+  "089f1cd83eb2a14fafcd": {
+   "verdict": "ok"
+  },
   "08b18d1a1883861bd2ad": {
    "instead": "These would make the robot's improvement easier to notice on the farm.",
    "quote": "These are easier to see paying off on the farm.",
@@ -900,6 +903,9 @@
    "verdict": "ok"
   },
   "1876931cfba0e62d4211": {
+   "verdict": "ok"
+  },
+  "187d6143a80bb162e85f": {
    "verdict": "ok"
   },
   "1888ed16df471d1a6ac5": {
@@ -1942,6 +1948,9 @@
   "34ace10b1957325793f3": {
    "verdict": "ok"
   },
+  "34d7232f349f52b13c73": {
+   "verdict": "ok"
+  },
   "35139fa9ec19ac591228": {
    "verdict": "ok"
   },
@@ -2056,6 +2065,9 @@
    "quote": "The randomness currently buys nothing",
    "verdict": "second-look",
    "why": "“Buys nothing” is a metaphor for providing no benefit."
+  },
+  "373448c7610d6d530e53": {
+   "verdict": "ok"
   },
   "3748340bf4da686f7fb4": {
    "verdict": "ok"
@@ -4059,6 +4071,9 @@
    "verdict": "second-look",
    "why": "\"A seat\" is org vocabulary not introduced; the reader doesn't know this means a role."
   },
+  "727eb76835a12d1a2382": {
+   "verdict": "ok"
+  },
   "728dc604e717661ad03b": {
    "verdict": "ok"
   },
@@ -4312,6 +4327,9 @@
   "79bfb6ee9498e857b162": {
    "verdict": "ok"
   },
+  "79cd987b2f5d90a901a0": {
+   "verdict": "ok"
+  },
   "79ea0dd9d95c1735a9bb": {
    "verdict": "ok"
   },
@@ -4388,6 +4406,12 @@
    "quote": "animation sheet loading",
    "verdict": "second-look",
    "why": "This uses an internal asset-loading term where a stranger needs the plain fact: the two scenes should use the same animation files."
+  },
+  "7b4377b3b06f86715e0a": {
+   "instead": "Your decisions page says how long each cheese station takes to finish its work",
+   "quote": "How long each cheese station shows its work",
+   "verdict": "decode",
+   "why": "“Shows its work” does not clearly say whether this means the station's production time or an animation displayed to the player."
   },
   "7b4e58a2842b5e0ad24e": {
    "verdict": "ok"
@@ -4759,6 +4783,9 @@
   "848c02b9ffbf203033df": {
    "verdict": "ok"
   },
+  "849145046a85b301f41e": {
+   "verdict": "ok"
+  },
   "84921caa700433f1d76d": {
    "instead": "The picture display appeared in a draft of the already-made tap decision. Daniel rejected that decision, but the picture display was never judged on its own. Q-78 has already made the can gauge permanent, so the remaining choice is the basket's crop-count words versus its picture. The game's minimal-literacy direction makes it worth asking before the picture option is deleted.",
    "quote": "picture HUD",
@@ -4852,6 +4879,9 @@
    "quote": "derived sprite frames from shipped pixels",
    "verdict": "decode",
    "why": "A reader has to work out that this means making new animation images from pixels already in the game."
+  },
+  "871ad6d4163ed638ccc6": {
+   "verdict": "ok"
   },
   "87337fce4eaee88bd8cf": {
    "instead": "Fix background removal so it removes the background showing through the fence's gaps",
@@ -4983,6 +5013,9 @@
    "why": "The reader has to translate “pen,” “home,” and especially “give it a nose” into three different design changes."
   },
   "8b20e2cd2afb68125b81": {
+   "verdict": "ok"
+  },
+  "8b26b79dc5a750c645bf": {
    "verdict": "ok"
   },
   "8b3a420dc8fb9f8e2a9b": {
@@ -5789,6 +5822,12 @@
    "verdict": "second-look",
    "why": "The reader must untangle a nested description to understand which earlier question was settled."
   },
+  "a09cc1ad13790b2a0f60": {
+   "instead": "Set every station to show its work for 5 seconds.",
+   "quote": "STATION_DURATION_TICKS to 50 ticks",
+   "verdict": "decode",
+   "why": "The code name and tick unit make the reader translate an implementation setting into the five-second station timing."
+  },
   "a0bc94e710ffb8638e4f": {
    "verdict": "ok"
   },
@@ -6018,6 +6057,9 @@
    "verdict": "ok"
   },
   "a61b7a34feb87bef2dcb": {
+   "verdict": "ok"
+  },
+  "a631ab2e9f6b444c3d43": {
    "verdict": "ok"
   },
   "a67ff8e7221a0cbb4289": {
@@ -6826,6 +6868,9 @@
   "bef331dad9ebcb87b848": {
    "verdict": "ok"
   },
+  "bf3f15e13c61fff4a29b": {
+   "verdict": "ok"
+  },
   "bf7119555ed3bff1c975": {
    "verdict": "ok"
   },
@@ -7209,6 +7254,9 @@
    "quote": "As (a)",
    "verdict": "decode",
    "why": "The referenced option is not named here, so the reader must look elsewhere to know what this choice includes."
+  },
+  "c8f9601553ae102e798b": {
+   "verdict": "ok"
   },
   "c943200ba715deeec085": {
    "verdict": "ok"
@@ -8145,6 +8193,9 @@
    "verdict": "ok"
   },
   "e17e7055c441d4572de0": {
+   "verdict": "ok"
+  },
+  "e191c353bbebaa83ff9b": {
    "verdict": "ok"
   },
   "e1ed9c04b95db5ebcead": {

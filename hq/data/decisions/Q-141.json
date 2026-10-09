@@ -1,0 +1,40 @@
+{
+  "id": "Q-141",
+  "owner": "sam",
+  "subject": "The Industrial Barn",
+  "title": "How long should each cheese station show its work?",
+  "question": "The Industrial Barn turns one milk unit into one cheese batch through seven visible stops: the milk receiver, set vat, curd cutter, stirring rake, whey drain and curd table, hoops and presses, and outfeed conveyor. The player should be able to follow the product by its changing shape and motion without needing a label. The line moves a batch forward as soon as its next stop is clear.\n\nThe current placeholder timing gives the receiver 1 second, the vat and press 4 seconds each, and the other four stops 3 seconds each. The first batch reaches the outfeed after 18 seconds and finishes after 21 seconds. A child looking at a tablet from arm's length has little time to find each new station before the next change starts.\n\nI recommend 5 seconds at every stop. The first batch reaches the outfeed after 30 seconds and finishes after 35 seconds. Five seconds is long enough to find a station, see one calm motion and notice the product's next shape, while the whole journey still resolves during one short look inside the barn. The same number for every row also keeps the first version easy to read and tune after a tablet playtest.\n\nTiming capture:\n\n| Choice | Each visible stop | Reaches outfeed | Finishes |\n| --- | --- | --- | --- |\n| Today, placeholders | 1 to 4 seconds | 18 seconds | 21 seconds |\n| A, recommended | 5 seconds | 30 seconds | 35 seconds |\n| B | 3 seconds | 18 seconds | 21 seconds |\n| C | 7 seconds | 42 seconds | 49 seconds |",
+  "why_now": "The simulation table already holds placeholder durations. This ruling gives the cheese-line build one player-facing pace before its active station art and tablet review are made.",
+  "options": [
+    {
+      "key": "a",
+      "label": "A: Show every station for 5 seconds (Recommended)",
+      "detail": "Every station shows its work for 5 seconds. A batch reaches the outfeed after 30 seconds and finishes after 35 seconds, and each station has one equal, readable turn. The team reviews the timing on a tablet once the active station art exists.",
+      "recommended": true
+    },
+    {
+      "key": "b",
+      "label": "B: Show every station for 3 seconds",
+      "detail": "Every station shows its work for 3 seconds. A batch finishes its first journey in 21 seconds. The line feels brisk, but a player who looks up after milk arrives can miss more than one product change."
+    },
+    {
+      "key": "c",
+      "label": "C: Show every station for 7 seconds",
+      "detail": "Every station shows its work for 7 seconds. A batch reaches the outfeed after 42 seconds and finishes after 49 seconds. Each change is especially easy to catch, but the player may wait through a long quiet stretch after understanding the line."
+    }
+  ],
+  "yes_causes": "Sets how long each of the seven cheese stations shows its work, in the game and in its animation, to the chosen number of seconds.",
+  "walk_back": "The duration table is saved with each in-progress batch. Changing it after release needs a save and replay check for batches already in the line.",
+  "links": [
+    {
+      "type": "doc",
+      "src": "docs/design/17-industrial-barn-and-cheese-line.md",
+      "caption": "The seven visible cheese stops and the rule that their product changes must be readable without labels."
+    },
+    {
+      "type": "code",
+      "src": "systems/sim/sim_world.gd",
+      "caption": "Where the game keeps each cheese station's time today: placeholder values."
+    }
+  ]
+}
