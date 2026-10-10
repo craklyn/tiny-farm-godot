@@ -3264,6 +3264,70 @@ def _ci_history_thread():
         _t.sleep(CI_HISTORY_TTL)
 
 
+# What each step of the newest finished runs on main concluded, polled off the
+# request path for the `ci_steps` measure. The workflow's verdict alone cannot
+# say whether a game replayed: a red run may have failed long before the replay
+# step, and a goal named for replays should read the replay step itself. A
+# finished run's steps never change, so each run is fetched from GitHub once.
+CI_STEPS_PATH = os.path.join(DATA, "ci_steps.json")
+CI_STEPS_RUNS = 5
+
+
+def _refresh_ci_steps():
+    import time as _t
+    out = run_cmd(["gh", "run", "list", "--branch", "main", "--workflow", "tests.yml",
+                   "--limit", "10", "--json",
+                   "databaseId,status,conclusion,displayTitle,updatedAt,url"], timeout=20)
+    try:
+        runs = json.loads(out) if out else []
+    except ValueError:
+        runs = []
+    done = [r for r in runs if r.get("status") == "completed"][:CI_STEPS_RUNS]
+    if not done:
+        return
+    try:
+        known = {r["id"]: r for r in (load_json(CI_STEPS_PATH).get("runs") or [])}
+    except (OSError, ValueError, AttributeError, KeyError, TypeError):
+        known = {}
+    rows = []
+    for r in done:
+        rid = r.get("databaseId")
+        if rid in known:
+            rows.append(known[rid])
+            continue
+        view = run_cmd(["gh", "run", "view", str(rid), "--json", "jobs"], timeout=20)
+        try:
+            jobs = json.loads(view).get("jobs") or []
+        except (ValueError, AttributeError):
+            # A run we could not read is left out rather than recorded as
+            # having no steps; the next poll tries it again.
+            continue
+        rows.append({"id": rid, "url": r.get("url"),
+                     "title": (r.get("displayTitle") or "")[:80],
+                     "at": (r.get("updatedAt") or "")[:16],
+                     "conclusion": r.get("conclusion"),
+                     "jobs": {j.get("name"): {s.get("name"): s.get("conclusion")
+                                              for s in (j.get("steps") or [])}
+                              for j in jobs}})
+    if not rows:
+        return
+    try:
+        with open(CI_STEPS_PATH, "w", encoding="utf-8") as f:
+            json.dump({"polled_at": _t.strftime("%Y-%m-%dT%H:%M:%S"), "runs": rows}, f)
+    except OSError:
+        pass
+
+
+def _ci_steps_thread():
+    import time as _t
+    while True:
+        try:
+            _refresh_ci_steps()
+        except Exception:
+            pass
+        _t.sleep(CI_HISTORY_TTL)
+
+
 # Network readings are written by background threads, never by a page request.
 # The profile/games response documents cumulative views and downloads; it does
 # not document browser plays or a daily breakdown.
@@ -4321,6 +4385,62 @@ def eval_measure(spec, depth=0):
             return _reading(val, "%" if field == "pass_rate" else "runs",
                             f"the last {h.get('window')} finished runs on main",
                             "gh run list --limit 100 (polled off the page)", "cached", stale=stale)
+
+        if kind == "ci_steps":
+            # Named steps of one CI job, read from the newest finished run on
+            # main that got as far as them. The step list is part of the
+            # measure, so a step added to CI is one more entry here. Each entry
+            # is a step name, or {"name", "proves"} where "proves" says in
+            # plain words what passing it showed.
+            import datetime
+            job = spec.get("job", "tests")
+            steps = [s if isinstance(s, dict) else {"name": s} for s in (spec.get("steps") or [])]
+            if not steps:
+                return _reading(None, error="the measure names no CI steps")
+            try:
+                polled = load_json(CI_STEPS_PATH)
+            except Exception:
+                polled = None
+            runs = (polled or {}).get("runs") or []
+            if not runs:
+                return _reading(None, error="GitHub has not been reachable since HQ started, "
+                                            "so CI's step results have not been read yet")
+            stale = False
+            try:
+                age = (datetime.datetime.now()
+                       - datetime.datetime.strptime(polled["polled_at"], "%Y-%m-%dT%H:%M:%S")).total_seconds()
+                stale = age > CI_HISTORY_TTL * 3
+            except (ValueError, KeyError, TypeError):
+                stale = True
+            machine = "gh run view (polled off the page)"
+            first_with_job = True
+            for i, run in enumerate(runs):
+                got = (run.get("jobs") or {}).get(job)
+                if got is None:
+                    continue
+                results = [got.get(s["name"]) for s in steps]
+                if first_with_job:
+                    missing = [s["name"] for s, r in zip(steps, results) if r is None]
+                    if missing:
+                        return _reading(None, error=f"the newest run on main has no step named "
+                                                    f"“{missing[0]}” in its {job} job")
+                    first_with_job = False
+                if not all(r in ("success", "failure") for r in results):
+                    continue   # skipped or cancelled: an earlier step stopped the run
+                where = ("the newest finished run on main" if i == 0 else
+                         f"the newest run on main to get that far ({run.get('at', '')[:10]})")
+                failed = [s["name"] for s, r in zip(steps, results) if r != "success"]
+                if failed:
+                    human = f"in {where}, “{failed[0]}” failed"
+                else:
+                    human = where + " " + " and ".join(
+                        s.get("proves") or f"passed “{s['name']}”" for s in steps)
+                return _reading(not failed, "bool", human, machine, "cached", stale=stale,
+                                extra={"url": run.get("url"), "run_at": run.get("at"),
+                                       "steps": [{"name": s["name"], "conclusion": r}
+                                                 for s, r in zip(steps, results)]})
+            return _reading(None, error=f"none of the last {len(runs)} finished runs on main "
+                                        f"got as far as these steps")
 
         if kind == "job_state":
             r = latest_job_result(spec["job"])
@@ -6498,8 +6618,27 @@ def save_goal(payload):
             existing = found
             break
     if existing:
+        # How an existing goal is checked and repaired is a work session's to
+        # change, through this same endpoint (the page's form never sends
+        # these). A measure HQ cannot evaluate is refused rather than saved.
+        measure = payload.get("measure")
+        if measure is not None:
+            if not isinstance(measure, dict):
+                return {"error": "a measure is a JSON object"}
+            r = eval_measure(measure)
+            unknown = [x for x in [r] + (r.get("members") or [])
+                       if str(x.get("error") or "").startswith("no such measurement kind")]
+            if unknown:
+                return {"error": unknown[0]["error"]}
+        p2g = payload.get("path_to_green")
+        if p2g is not None and not isinstance(p2g, dict):
+            return {"error": "a path to green is a JSON object"}
         existing.update({"statement": statement, "owner": owner,
                          "severity": severity, "why_it_matters": why})
+        if measure is not None:
+            existing["measure"] = measure
+        if p2g is not None:
+            existing["path_to_green"] = p2g
         if short:
             existing["statement_short"] = short
         # Saving a parked goal is how it comes back — that is what "update it
@@ -7526,6 +7665,7 @@ def main():
     # a strip nobody is looking at yet.
     if not canary:
         threading.Thread(target=_ci_history_thread, daemon=True).start()
+        threading.Thread(target=_ci_steps_thread, daemon=True).start()
         threading.Thread(target=_probes_thread, daemon=True).start()
     # Two of the four escalation tests are about time, which needs more than one
     # reading. Hourly, off the request path, because it writes a tracked file.
