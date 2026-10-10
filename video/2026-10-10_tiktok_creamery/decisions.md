@@ -59,3 +59,9 @@ in from outside), `barnin` (she taps the barn, its panel, Go inside, the room op
 colour (#e8cfa6), so inside the barn a cow shows only her outline. Daniel chose to fix the game first; a
 separate session ("Make the cows visible inside the creamery") is doing it, and the inside shots will be
 re-recorded once it is on main.
+
+## Shots v2 (contact sheet sent 2026-10-10, about 4 p.m.)
+
+All five shots re-recorded on main at a75b0c69 or later, after the black-and-white cow (PR 11, Daniel's pick)
+made cows readable on the straw. Same staged farms and the same scripted moments; the outside shots start
+before any cow has given milk, so the doorstep stacking does not appear in them.
