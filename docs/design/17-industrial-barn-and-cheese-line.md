@@ -279,6 +279,36 @@ at the shipped farm scale.
 The native-size redraw is complete. To capture again, run
 `godot --path . res://tools/capture_industrial_barn_review.tscn` (it needs a display).
 
+### Cows on the straw — 2026-10-10
+
+**In-game verdict with cows: failed, then fixed.** The review above passed the room with no
+cows in it. The first cow's tan hide was `#e8cfa6`, the same colour as the cow side's straw
+floor (and as tilled soil). Inside the barn a cow walking to her stall showed only a few dark
+outline pixels. Daniel saw it on 2026-10-10 while the creamery video was being recorded.
+
+Three fixes were captured in the game at the same moment, with the same cows in the same
+places: a black-and-white cow, a brown cow, and a darker straw floor with the cow unchanged
+([comparison](mockups/industrial_barn/cow_readability_options.png)). Daniel picked the
+**black-and-white cow**: a cream `#f8f4e6` body with two broad `#2f2b3d` patches, the
+outline, nose and stance unchanged. It gives the strongest contrast on the straw, on the
+grass and in the dark doorway. The room he approved stays as it is, and cows no longer
+vanish on tilled soil. The brown cow also read, but less strongly in the doorway and against
+the stalls' wooden posts. The darker floor only just made the old cow readable, changed the
+approved room, and left the soil problem.
+
+- **Pass — cows in the room:** walking in across the straw and standing in their stalls, each
+  cow reads as a whole animal at play scale
+  ([walking](mockups/industrial_barn/cows_walking.png),
+  [stalls](mockups/industrial_barn/cows_stalls.png)).
+- **Pass — cows on the grass:** the herd in front of the barn reads clearly
+  ([grass](mockups/industrial_barn/cows_grass.png)).
+- **Pass — palette:** every cow pixel is `#f8f4e6`, `#2f2b3d` or `#c84e39`, all in the brief's
+  palette. `tools/build_cow_art.py` now refuses a cow drawn in the straw colour.
+
+To capture again, run `godot --path . --fixed-fps 60 res://tools/capture_cow_readability.tscn`
+(it needs a display). It stages a barn with four cows on a fixed farm, then captures the herd
+on the grass, two cows walking in, and three at their stalls.
+
 ## What remains before implementation
 
 - Daniel ruled that the barn unlocks after 10 collected eggs, that its shop bundle includes one
