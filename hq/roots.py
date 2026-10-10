@@ -49,7 +49,7 @@ STORE_MARKER = ".hq-store"
 # Runtime output HQ writes and main already ignored before Q-125.
 RUNTIME = (
     "runs", "history", "patches", "outbox", "probes", "captures", "loop_previews",
-    "sprite_backups", "ci_history.json",
+    "sprite_backups", "ci_history.json", "ci_steps.json",
 )
 
 

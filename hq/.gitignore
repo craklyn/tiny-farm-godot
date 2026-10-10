@@ -6,6 +6,7 @@ __pycache__/
 data/history/
 data/probes/
 data/ci_history.json
+data/ci_steps.json
 
 # Q-125 (a): HQ's live records live in their own store outside this repository
 # (docs/hq/HQ_DATA_MIGRATION.md). Main keeps no copy, so there is nothing to

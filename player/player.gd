@@ -297,11 +297,28 @@ func update_player(delta: float) -> void:
 		# can become impossible to catch. The captured id survives that movement.
 		if not resolved.is_empty() and not bool(resolved.get("walk_to", true)):
 			var menu_tile: Vector2i = resolved.get("target_t", target_vec)
+			# A building that does not fit where she tapped (2026-10-09) also takes
+			# this road, straight to the gateway with no walk, and the gateway's
+			# refusal is the answer: the buzz and the outline of its block. So no
+			# green ring here, and the trace says "refused" rather than "acted".
+			var fits := bool(resolved.get("fits", true))
 			tap_indicator = { "tx": menu_tile.x, "ty": menu_tile.y,
 				"timer": TAP_INDICATOR_DURATION, "r": 0.2, "g": 0.9, "b": 0.3 }
 			if farm.trace != null:
 				farm.trace.tap("tap", tapped_t, player_t, gs.selected_tool,
-					String(resolved.get("action", "")), "acted", "", Vector2i(-1, -1))
+					String(resolved.get("action", "")), "acted" if fits else "refused",
+					"" if fits else "occupied", Vector2i(-1, -1))
+			if not fits:
+				path = []
+				pending_action = {}
+				approach_target = Vector2i(-1, -1)
+				tap_indicator = {}
+				var d := menu_tile - player_t
+				if d != Vector2i.ZERO:
+					if absi(d.x) >= absi(d.y):
+						facing = "right" if d.x > 0 else "left"
+					else:
+						facing = "down" if d.y > 0 else "up"
 			_execute_resolved_action(resolved)
 			return
 		

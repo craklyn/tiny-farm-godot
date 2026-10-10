@@ -1731,6 +1731,102 @@ func test_spiral_tower_pick_up() -> void:
 	GameState.reset()
 
 
+func test_building_that_will_not_fit() -> void:
+	print("\n--- A building that will not fit is refused, never tilled, and shows its block ---")
+	# From play on the tablet, 2026-10-09: "I am having trouble placing the tower.
+	# When I try, it just tills the ground." Holding a building on ground it would
+	# not fit on fell through to the hoe. The tap now goes to the gateway as the
+	# `place` it was meant to be, the gateway refuses it, and the farm draws the
+	# building's whole block with the squares in the way marked.
+	GameState.reset()
+	SimRng.reseed(9152)   # the farm `test_spiral_tower_interior` finds room on
+	var farm = load("res://world/farm.gd").new()
+	farm.generate_on_ready = false
+	farm.sim.generate()
+	var world: SimWorld = farm.sim
+	var spot := Vector2i(-1, -1)
+	for y in range(10, 18):
+		for x in range(5, 23):
+			if world.placeable_at(Vector2i(x, y), "spiral_tower"):
+				spot = Vector2i(x, y)
+				break
+		if spot.x >= 0:
+			break
+	_assert(spot.x >= 0, "a four-by-four tower can fit on the generated farm")
+	if spot.x < 0:
+		farm.free()
+		return
+	world.set_tile_state(spot.x, spot.y, "cleared")
+	_assert(world.placeable_at(spot, "spiral_tower") and world.footprint_blockers(spot, "spiral_tower").is_empty(),
+		"where the tower fits, nothing is in the way")
+
+	# One weed in the block's far corner: the tower no longer fits, and that weed
+	# is the one square to blame.
+	var corner := spot + Vector2i(3, -3)
+	world.set_tile_state(corner.x, corner.y, "obstacle_weed")
+	var blockers := world.footprint_blockers(spot, "spiral_tower")
+	_assert(not world.placeable_at(spot, "spiral_tower") and blockers == [corner],
+		"a weed in the far corner stops it, and it is the only square named (%s)" % str(blockers))
+
+	GameState.machines["spiral_tower"] = 1
+	GameState.selected_seed_type = "spiral_tower"
+	GameState.energy = 100
+	var beside := spot + Vector2i(-1, 0)
+	var near: Dictionary = ActionRouter.resolve(farm, GameState, spot, beside)
+	_assert(String(near.get("action", "")) == "place" and not bool(near.get("fits", true))
+			and not bool(near.get("walk_to", true)),
+		"a tap beside it is an attempt to place, not a till (%s)" % str(near))
+	var far: Dictionary = ActionRouter.resolve(farm, GameState, spot, spot + Vector2i(-6, 2))
+	_assert(far.is_empty(),
+		"a tap from across the farm is a walk, as it is where the tower fits (%s)" % str(far))
+	_assert(ActionRouter.resolve(farm, GameState, spot, beside, true).is_empty(),
+		"a drag never places, so a stroke is not a row of buzzes and never a row of tilling")
+	var weed_tap: Dictionary = ActionRouter.resolve(farm, GameState, corner, corner + Vector2i(0, 1))
+	_assert(String(weed_tap.get("action", "")) == "clear_weed",
+		"a tap on the weed itself still pulls it: the tower in her hands is not a mode (%s)" % str(weed_tap))
+
+	var refused: Dictionary = farm.apply_action({ "verb": "place", "target": spot,
+		"item": "spiral_tower", "actor": "player" }, GameState)
+	_assert(not refused.get("ok", true) and String(refused.get("reason", "")) == "occupied",
+		"the gateway refuses it as occupied (%s)" % str(refused))
+	_assert(String(world.get_tile(spot.x, spot.y).get("state", "")) == "cleared"
+			and world.get_object(spot.x, spot.y) == ""
+			and int(GameState.machines.get("spiral_tower", 0)) == 1,
+		"and nothing changed: the square is not tilled and the tower is still in her hands")
+	var shown: Dictionary = farm.footprint_refusal()
+	_assert(shown.get("anchor", Vector2i(-1, -1)) == spot and Array(shown.get("cells", [])).size() == 16,
+		"the farm shows the tower's whole four-by-four block at the spot (%s)" % str(shown.get("cells", [])))
+	_assert(Dictionary(shown.get("blocked", {})).keys() == [corner],
+		"with the weed's square marked as the one in the way")
+
+	# The block hangs off the map at the top: the squares off the edge are in the way.
+	var top := Vector2i(spot.x, 1)
+	_assert(Vector2i(spot.x, -1) in world.footprint_blockers(top, "spiral_tower"),
+		"a tower whose block runs off the top of the map names the squares past the edge")
+
+	# Every building on the shelf, read from its own row: the blockers are empty
+	# exactly when it fits, and are always squares of its own block.
+	for raw in MachineDefs.ORDER:
+		var item := String(raw)
+		if MachineDefs.terrain_of(item) != "":
+			continue
+		var agreed := true
+		for y in range(0, 20, 3):
+			for x in range(0, 32, 3):
+				var t := Vector2i(x, y)
+				var b := world.footprint_blockers(t, item)
+				var cells := MachineDefs.footprint_cells(item, t)
+				if b.is_empty() != world.placeable_at(t, item):
+					agreed = false
+				for c in b:
+					if not c in cells:
+						agreed = false
+		_assert(agreed, "%s: blockers are empty exactly where it fits, and lie in its own %s block"
+			% [item, str(MachineDefs.footprint_of(item))])
+	GameState.reset()
+	farm.free()
+
+
 func test_senses_stop_at_space_boundary() -> void:
 	print("\n--- Senses stop at the farm/home boundary ---")
 	var world := SimWorld.new()

@@ -346,9 +346,43 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 				"action": "place", "tool_idx": 0, "target_t": tap_t,
 				"walk_to": true, "seed_type": "", "item": gs.selected_seed_type,
 			})
-		# She is holding a machine and this square cannot take one. Fall through
-		# to the ordinary tile handling below, so tapping a weed while carrying a
-		# robot still pulls the weed — the machine in her hands is not a mode.
+		# **She is holding a machine and it does not fit here** (2026-10-09, from
+		# play: "I am having trouble placing the tower. When I try, it just tills
+		# the ground."). This used to fall through to the ground's own states, so a
+		# tap meant to set a four-by-four tower down on cleared ground tilled the
+		# square instead, and the till hid that the placing had failed.
+		#
+		# Ground she could stand on is where a building goes, so a tap there from
+		# beside it (or on it) is an attempt to put it down, and it goes to the
+		# gateway as the `place` it was meant to be. The gateway refuses it —
+		# nothing changes, and a refused Action is not a replay entry — and the
+		# refusal is the answer she sees: the buzz, and the building's whole block
+		# drawn at the spot with the squares in the way marked (`farm.gd`,
+		# `show_footprint_refusal`).
+		#
+		# **A far tap is still a walk** (Q-30), exactly as it is where the building
+		# fits: she walks over, and the tap she makes from there is the one that
+		# places or buzzes. Answering a far tap with the buzz instead stopped her
+		# walking anywhere the building did not fit — with a four-by-four tower in
+		# her hands that is nearly the whole farm (found by the robot session,
+		# 2026-10-09, when a hen stood on the stall's spot as she set off for it).
+		#
+		# What is *not* ground keeps its own job, as before: a weed, a rock or a
+		# tree is not walkable and still answers below, so the machine in her
+		# hands is still not a mode. A boundary stays the wordless "not yet" (T-8).
+		# A drag never places, so a stroke across the farm is not a row of buzzes.
+		if world != null and world.is_walkable(tx, ty):
+			if is_drag:
+				return {}
+			if player_t != null:
+				var pt4: Vector2i = player_t
+				if absi(pt4.x - tx) + absi(pt4.y - ty) > 1:
+					return {}
+			return check_result.call({
+				"action": "place", "tool_idx": 0, "target_t": tap_t,
+				"walk_to": false, "seed_type": "", "item": gs.selected_seed_type,
+				"fits": false,
+			})
 
 	# 2. Get tile state
 	var tile: Dictionary = farm.get_tile(tx, ty)

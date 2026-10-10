@@ -799,6 +799,9 @@ func _record(action: Dictionary, result: Dictionary, at_tick: int,
 				acknowledge_at(rt, reason)
 			else:
 				refuse_at(rt, reason)
+				# A building that would not fit also shows its block (2026-10-09).
+				if String(action.get("verb", "")) == "place" and String(action.get("item", "")) != "":
+					show_footprint_refusal(rt, String(action["item"]))
 
 	if result.get("ok", false):
 		var unlocked := String(result.get("unlocked", ""))
@@ -1236,6 +1239,118 @@ func soil_tap_active_at(t: Vector2i) -> bool:
 	return _soil_taps.has(t)
 
 
+# --- A building that will not fit (2026-10-09) ---------------------------------
+#
+# From play on the tablet: "I am having trouble placing the tower. When I try, it
+# just tills the ground." Then: "Oh the tower is 4x4, I thought it was 3x3." The
+# tap now refuses instead of tilling, and the refusal has to say *why* without a
+# word: the building's whole block, drawn at the square she tapped, with the
+# squares that stop it filled red. She sees at once how big the thing in her hands
+# is and what is in the way. The block shudders with the refusal wobble, holds long
+# enough to be read, then fades.
+#
+# Presentation only: the gateway has already refused the `place` (nothing changed,
+# nothing reached the replay), and the block and its blockers are read off the
+# sim's own answers — `MachineDefs.footprint_cells` and `SimWorld.footprint_blockers`
+# — never a size written here. One block at a time, a handful of squares, drawn
+# only while it shows.
+const FOOTPRINT_REFUSE_MS := 1600.0
+const FOOTPRINT_HOLD := 0.6          # share of its life at full strength before the fade
+const FOOTPRINT_EDGE := Color(1.0, 0.95, 0.85)
+const FOOTPRINT_FREE := Color(1.0, 0.95, 0.85, 0.16)
+# Light enough that the weed, the rock or the hen in the way still shows through:
+# what stops the building is the answer, so it must not be painted over.
+const FOOTPRINT_BLOCKED := Color(0.95, 0.2, 0.15, 0.26)
+const FOOTPRINT_BLOCKED_EDGE := Color(1.0, 0.3, 0.22)
+const FOOTPRINT_SHADOW := Color(0.1, 0.05, 0.08, 0.6)
+var _footprint_refusal: Dictionary = {}
+
+
+func show_footprint_refusal(anchor: Vector2i, item: String) -> void:
+	if mute_feedback or sim == null or not MachineDefs.has(item):
+		return
+	var blocked := {}
+	for cell in sim.footprint_blockers(anchor, item):
+		blocked[cell] = true
+	var cells: Array[Vector2i] = []
+	for cell in MachineDefs.footprint_cells(item, anchor):
+		# Off the edge of the map there is nothing to draw on; the squares that
+		# are there still show the block's size and what stops it.
+		if cell.x >= 0 and cell.x < MAP_WIDTH and cell.y >= 0 and cell.y < MAP_HEIGHT:
+			cells.append(cell)
+	_footprint_refusal = { "t": Time.get_ticks_msec(), "item": item, "anchor": anchor,
+		"cells": cells, "blocked": blocked }
+	set_process(true)
+	queue_redraw()
+
+
+## The block a refused placement is showing right now, or {} — for tests and
+## captures: `item`, `anchor`, `cells` (on the map) and `blocked` (a set).
+func footprint_refusal() -> Dictionary:
+	return _footprint_refusal
+
+
+# The block's strength over its life: full, then fading to nothing.
+func _footprint_alpha(e: float) -> float:
+	if e <= FOOTPRINT_HOLD:
+		return 1.0
+	return clampf(1.0 - (e - FOOTPRINT_HOLD) / (1.0 - FOOTPRINT_HOLD), 0.0, 1.0)
+
+
+func _queue_footprint_refusal(render_queue: Array[Dictionary], canvas: CanvasItem,
+		y0: int, y1: int) -> void:
+	if _footprint_refusal.is_empty():
+		return
+	var elapsed: float = Time.get_ticks_msec() - int(_footprint_refusal["t"])
+	var e: float = elapsed / FOOTPRINT_REFUSE_MS
+	if e >= 1.0:
+		return
+	var a := _footprint_alpha(e)
+	# The same sideways shudder the refused tile gives, over the same span, so the
+	# block and the buzz arrive as one answer.
+	var we: float = elapsed / REFUSE_MS
+	var dx: float = 0.0 if we >= 1.0 else sin(we * PI * 6.0) * 2.2 * (1.0 - we)
+	var inside := {}
+	for cell in _footprint_refusal["cells"]:
+		inside[cell] = true
+	var blocked: Dictionary = _footprint_refusal["blocked"]
+	var fills: Array = []      # [Rect2, blocked]
+	var edges: Array = []      # [from, to]
+	for raw in _footprint_refusal["cells"]:
+		var cell: Vector2i = raw
+		if cell.y < y0 or cell.y >= y1:
+			continue
+		var r := Rect2(cell.x * TILE_SIZE + dx, cell.y * TILE_SIZE, TILE_SIZE, TILE_SIZE)
+		fills.append([r, blocked.has(cell)])
+		# Only the block's outer edge is drawn, so it reads as one shape.
+		if not inside.has(cell + Vector2i(0, -1)):
+			edges.append([r.position, r.position + Vector2(TILE_SIZE, 0)])
+		if not inside.has(cell + Vector2i(0, 1)):
+			edges.append([r.position + Vector2(0, TILE_SIZE), r.end])
+		if not inside.has(cell + Vector2i(-1, 0)):
+			edges.append([r.position, r.position + Vector2(0, TILE_SIZE)])
+		if not inside.has(cell + Vector2i(1, 0)):
+			edges.append([r.position + Vector2(TILE_SIZE, 0), r.end])
+	if fills.is_empty():
+		return
+	render_queue.append({
+		"y": 99500.0,   # over the farm and its actors, under the refusal icons
+		"draw": func():
+			for f in fills:
+				var fr: Rect2 = f[0]
+				if f[1]:
+					canvas.draw_rect(fr, Color(FOOTPRINT_BLOCKED, FOOTPRINT_BLOCKED.a * a), true)
+					canvas.draw_rect(fr.grow(-1.5), Color(FOOTPRINT_BLOCKED_EDGE, 0.95 * a), false, 1.5)
+				else:
+					canvas.draw_rect(fr, Color(FOOTPRINT_FREE, FOOTPRINT_FREE.a * a), true)
+			for ed in edges:
+				canvas.draw_line(ed[0] + Vector2(0.5, 0.5), ed[1] + Vector2(0.5, 0.5),
+					Color(FOOTPRINT_SHADOW, FOOTPRINT_SHADOW.a * a), 2.0)
+			for ed in edges:
+				canvas.draw_line(ed[0], ed[1], Color(FOOTPRINT_EDGE, 0.95 * a), 1.5)
+	})
+
+
 func react_at(t) -> void:
 	if t is Vector2i:
 		_reactions[t] = Time.get_ticks_msec()
@@ -1261,14 +1376,16 @@ func _process(_delta: float) -> void:
 	# Only runs while a reaction is in flight; cost scales with acted tiles, not
 	# map area (ARCHITECTURE guardrail).
 	if _reactions.is_empty() and _refusals.is_empty() and _acks.is_empty() and _soil_taps.is_empty() \
-			and _wetting.is_empty() and _cheese_sales.is_empty() and not _tower_cloud_active:
+			and _wetting.is_empty() and _cheese_sales.is_empty() and _footprint_refusal.is_empty() \
+			and not _tower_cloud_active:
 		set_process(false)
 		return
 	# The cloud layer is independent of the farm page.  Remember whether a page
 	# animation was present so removing its final mark still redraws that page,
 	# while a cloud-only frame redraws only its small overlay node.
 	var had_farm_animation := not _reactions.is_empty() or not _refusals.is_empty() \
-		or not _acks.is_empty() or not _soil_taps.is_empty() or not _wetting.is_empty()
+		or not _acks.is_empty() or not _soil_taps.is_empty() or not _wetting.is_empty() \
+		or not _footprint_refusal.is_empty()
 	var now := Time.get_ticks_msec()
 	for key in _reactions.keys():
 		if now - _reactions[key] > REACT_MS:
@@ -1289,6 +1406,9 @@ func _process(_delta: float) -> void:
 	for barn_id in _cheese_sales.keys():
 		if now - int(_cheese_sales[barn_id]["t"]) > CHEESE_SALE_MS:
 			_cheese_sales.erase(barn_id)
+	if not _footprint_refusal.is_empty() \
+			and now - int(_footprint_refusal["t"]) > FOOTPRINT_REFUSE_MS:
+		_footprint_refusal = {}
 	if _tower_cloud_active and _tower_cloud_node != null:
 		_tower_cloud_node.queue_redraw()
 	if had_farm_animation:
@@ -2086,6 +2206,8 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 
 	# The missing-thing picture rides above everything, including the farmer —
 	# it is the whole message, so it must never be the thing that gets occluded.
+	_queue_footprint_refusal(render_queue, canvas, y0, y1)
+
 	for key in _refusals.keys():
 		var rk: Vector2i = key
 		if not _rows_hold(rk.y * TILE_SIZE, y0, y1):
