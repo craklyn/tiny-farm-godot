@@ -517,6 +517,9 @@
   "0d1ced1edf1b3b300bea": {
    "verdict": "ok"
   },
+  "0d24b4f418779efdb76b": {
+   "verdict": "ok"
+  },
   "0d29f3bc7971745f32a8": {
    "verdict": "ok"
   },
@@ -3290,6 +3293,12 @@
    "quote": "pale figures' own edges",
    "verdict": "second-look",
    "why": "The possessive construction makes the reader pause to understand that the cleanup is erasing the figures' edges."
+  },
+  "58b90d2693ab283771f8": {
+   "instead": "A hen loaded from a save now makes the same choice it made before you saved the game",
+   "quote": "gets the same decision check as the same hen in memory",
+   "verdict": "decode",
+   "why": "The reader has to work out that the saved hen should make the same choice after being loaded as it did before saving."
   },
   "58b9e84387db3fe71724": {
    "verdict": "ok"
