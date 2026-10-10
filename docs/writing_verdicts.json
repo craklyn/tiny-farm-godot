@@ -3796,6 +3796,9 @@
    "verdict": "decode",
    "why": "“Provenance” is internal shorthand for where the sound came from and its rights."
   },
+  "64eebca1659a5f885ba4": {
+   "verdict": "ok"
+  },
   "64f0185c9f9a1bf9c3b6": {
    "baselined": "2026-09-19",
    "instead": "Rewrite the store page to match the current build",
@@ -8305,6 +8308,12 @@
   },
   "dcdfe98a988cd32e8c92": {
    "verdict": "ok"
+  },
+  "dcf007ba2129240f1ff0": {
+   "instead": "Features and fixes Daniel requests are developed separately, then returned as proposed code changes for review, not added through HQ's work queue.",
+   "quote": "built in their own sessions and come back as pull requests",
+   "verdict": "decode",
+   "why": "“Sessions” and “pull requests” are internal engineering terms that do not tell a cold reader how the work is developed and returned."
   },
   "dcf85e5f0765326e5f06": {
    "baselined": "2026-09-19",

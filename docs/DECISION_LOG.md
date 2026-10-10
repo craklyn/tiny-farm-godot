@@ -828,6 +828,20 @@ tap, a farm surviving a reload) are no longer checked by a person. Bars that nee
 player are scored only if such a session happens; they hold no release. Supersedes the
 playtesting-cadence rule of 2026-09-02 in `ROADMAP.md`'s standing rules.
 
+### S-46. Features are built in sessions, not through HQ's work queue
+**Ruled by Daniel on 2026-10-10, extending S-44.** A feature or fix Daniel asks for goes from
+the orchestrator session straight to its own session, comes back as a pull request, and is
+reviewed, merged and put on the tablet by the orchestrator. It is no longer filed through HQ's
+request front door or built by the queue's workers. The reason is speed: the Industrial Barn
+took about two and a half days through HQ (7 October 11:39 to 9 October 22:15), much of it lost
+to the queue's own faults, while on the night of 9 October the session route merged seven pull
+requests and made two tablet installs in about two and a half hours. When Daniel is in the
+conversation, questions for him are asked there, with a recommendation; a decision card on
+HQ is for a question that can wait while he is away. HQ keeps its dashboard, its home page
+checks and its records of decisions, and its workers keep small unattended chores. To spare
+Daniel's Claude plan, sessions doing mechanical work (recording shots, renames, test fixes)
+run on cheaper models, and the most capable model is kept for judgement.
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported

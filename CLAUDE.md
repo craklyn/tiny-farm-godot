@@ -307,6 +307,8 @@ Working agreements (from README):
 - Commit straight to main while the team is small (Q-4 ruling); commit immediately.
   The exception (S-44): a feature handed to its own sub-session comes back as a pull
   request for the orchestrator to review and merge — see the `orchestrator` skill.
+  Features and fixes Daniel asks for are built that way, not filed through HQ's request
+  front door or the queue's workers (S-46); HQ keeps its dashboard, checks and records.
 - Current art/audio are placeholders (`CREDITS.md`). **Updated 2026-08-28:** modest
   investment in new placeholder art is fine — the Retro Diffusion pipeline (the
   `retro-diffusion-pixel-art` skill; output rights verified) makes a sprite cheap, so
