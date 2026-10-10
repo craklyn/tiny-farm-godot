@@ -815,6 +815,12 @@
    "verdict": "decode",
    "why": "Internal vocabulary for holding capacity that loses the plain meaning; the reader would not know what is being counted (items, weight, volume) or what mechanism applies to each phase."
   },
+  "14b1cf6b4a7f46e10623": {
+   "instead": "Four tests that tap the farm no longer fail when a hen, an egg or a previous movement blocks them",
+   "quote": "when a hen, an egg or an earlier walk is in the way",
+   "verdict": "second-look",
+   "why": "“An earlier walk is in the way” makes the reader work out that a previous movement is blocking the test."
+  },
   "14b468815817b869fe6f": {
    "verdict": "ok"
   },
@@ -6436,6 +6442,9 @@
   "aa4b5cac10fb13ae3363": {
    "verdict": "ok"
   },
+  "aa554e8ab2e2ad136388": {
+   "verdict": "ok"
+  },
   "aa55a3c25e810f4e64cd": {
    "verdict": "ok"
   },
@@ -7338,6 +7347,9 @@
    "verdict": "ok"
   },
   "c436e32f165b63e0e422": {
+   "verdict": "ok"
+  },
+  "c438c4e11fde71d5432e": {
    "verdict": "ok"
   },
   "c439f09f5fdccade0e06": {

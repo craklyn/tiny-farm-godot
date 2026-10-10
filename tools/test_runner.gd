@@ -5742,9 +5742,17 @@ func _scenario_am_the_mark_three_shows_its_practice() -> void:
 	player.path.clear()
 	player.pending_action = {}
 	await get_tree().process_frame
+	# The fixture owns this square: a hen that has wandered onto it is moved off,
+	# and the farm's clock is held until the tap has landed so she cannot step
+	# back on in between (CI, 2026-10-10: the tap was refused and the Mark III
+	# stayed in her hands).
+	var blocker := _clear_ground_for_fixture(spot, "bot_mk3")
+	_assert(blocker == "", "nothing is standing on the Mark III's square (%s)" % blocker)
+	_hold_sim_clock()
 	InputManager.click_tile = spot
 	InputManager.has_click = true
 	var placed := await _wait_until(func(): return farm.sim.machine_at(spot) != "", 200)
+	_release_sim_clock()
 	_assert(placed, "a tap puts the Mark III down")
 	var mk3: String = farm.sim.machine_at(spot)
 	_assert(farm.sim.machine_key_of(mk3) == "bot_mk3",
@@ -7952,7 +7960,12 @@ func _scenario_ax_she_can_get_back_out_of_the_coop() -> void:
 		"...and the router knows a tap on it is the door")
 
 	# --- tap one: in ------------------------------------------------------------
-	player.pos = Vector2(hut.x * 16.0 + 8.0, (hut.y + 1) * 16.0 + 8.0)
+	# Her body and the farm's record of where she stands move together. Moving
+	# only the body left the record wherever an earlier scenario's walk stopped,
+	# and the door — which asks the record — refused her as too far away on the
+	# farms where that was across the yard (seed 11, 2026-10-10).
+	farm.sim.set_actor_pos(SimWorld.ACTOR_PLAYER, hut + Vector2i(0, 1))
+	player.init_position(hut.x, hut.y + 1)
 	player.path.clear()
 	player.pending_action = {}
 	await get_tree().process_frame
@@ -9493,7 +9506,8 @@ func _scenario_bo_the_barn_by_finger_alone() -> void:
 	# does not wait on the clock.
 	_hold_sim_clock()
 	var anchor := _bo_free_barn_spot()
-	_assert(anchor.x >= 0, "the yard has a free three-by-two spot for the barn (%s)" % anchor)
+	_assert(anchor.x >= 0, "the yard has a free three-by-two spot for the barn (%s%s)"
+		% [anchor, "" if anchor.x >= 0 else ", spots ruled out: %s" % _bo_spot_refusals])
 	if anchor.x < 0:
 		_release_sim_clock()
 		await _bo_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
@@ -9804,7 +9818,21 @@ func _bo_assert_no_milk(where: String) -> void:
 
 # A yard square the barn can stand on: its whole block free, with yard under every
 # cell, room for the bundled cow to arrive, and a free square beside it for her.
+#
+# **The ground is the fixture's, not whoever is standing on it** (CI, 2026-10-10:
+# no spot at all). Called with the farm's clock held, so the hen, a crow or a
+# robot standing on a spot is moved off it here, and an egg the hen left on it is
+# lifted, rather than either ruling the spot out. On a slow runner more of the
+# farm's time passed in the scenarios before this one: the animals spread wider
+# and the eggs nobody collects piled up, until between them they covered every
+# spot. Only what was on the spot that is then chosen stays moved.
+# When nothing qualifies, `_bo_spot_refusals` says what ruled each spot out.
+var _bo_spot_refusals := {}
+
+
 func _bo_free_barn_spot() -> Vector2i:
+	_bo_spot_refusals = {}
+	var here: Vector2i = player.get_tile_pos()
 	for ty in range(2, WorldLayout.PAGE_ROWS - 1):
 		for tx in range(2, SimWorld.MAP_WIDTH - 3):
 			var at := Vector2i(tx, ty)
@@ -9812,24 +9840,97 @@ func _bo_free_barn_spot() -> Vector2i:
 			for cell in MachineDefs.footprint_cells("industrial_barn", at):
 				if String(farm.get_tile(cell.x, cell.y).get("state", "")) != WorldLayout.YARD:
 					all_yard = false
-			if not all_yard or not farm.sim.placeable_at(at, "industrial_barn"):
-				continue
-			if farm.sim.barn_cow_arrival_cell(at).x < 0:
-				continue
-			if not farm.sim.placeable_at(at + Vector2i(-1, 0)):
+			if not all_yard:
 				continue
 			# Not right beside her: a first tap there would put the barn down at once
 			# instead of walking her up to it (CI, 2026-10-09: she stood under the bin
 			# at (4, 2), the spot was (4, 3), and the step after it opened the panel).
 			var near := false
-			var here: Vector2i = player.get_tile_pos()
 			for cell in MachineDefs.footprint_cells("industrial_barn", at):
 				if absi(cell.x - here.x) + absi(cell.y - here.y) <= 2:
 					near = true
 			if near:
+				_bo_refuse_spot("beside her")
 				continue
-			return at
+			# Everything the barn and its cow need: the block, the square beside it,
+			# and every square the cow may arrive on.
+			var needed: Array[Vector2i] = MachineDefs.footprint_cells("industrial_barn", at)
+			needed.append(at + Vector2i(-1, 0))
+			for offset in [Vector2i(0, 2), Vector2i(1, 2), Vector2i(-1, 2), Vector2i(2, 2), Vector2i(-2, 2)]:
+				needed.append(at + offset)
+			var moved := _bo_move_off(needed)
+			if moved.has("cannot"):
+				_bo_refuse_spot(String(moved["cannot"]))
+				continue
+			var eggs := _bo_lift_eggs(needed)
+			var why := ""
+			if not farm.sim.placeable_at(at, "industrial_barn"):
+				why = "barn not placeable: %s" % _placement_blocker(at, "industrial_barn").get_slice(" at ", 0)
+			elif farm.sim.barn_cow_arrival_cell(at).x < 0:
+				why = "no square for the cow"
+			elif not farm.sim.placeable_at(at + Vector2i(-1, 0)):
+				why = "no square beside it"
+			if why == "":
+				return at
+			_bo_refuse_spot(why)
+			for id in moved:
+				farm.sim.set_actor_pos(String(id), moved[id])
+			for cell in eggs:
+				farm.sim.set_object(cell.x, cell.y, "egg")
 	return Vector2i(-1, -1)
+
+
+func _bo_refuse_spot(why: String) -> void:
+	_bo_spot_refusals[why] = int(_bo_spot_refusals.get(why, 0)) + 1
+
+
+# Move every animal and robot standing on `cells` to the nearest square outside
+# them, and return where each one was so the caller can put it back. A body longer
+# than one square cannot be moved that way (see `_clear_ground_for_fixture`), so a
+# spot one is standing on is reported under "cannot" instead.
+func _bo_move_off(cells: Array[Vector2i]) -> Dictionary:
+	var moved := {}
+	for raw in farm.sim.actors:
+		var id := String(raw)
+		if id == SimWorld.ACTOR_PLAYER:
+			continue
+		var occupied := Movement.occupied_tiles(farm.sim, id)
+		var on_spot := false
+		for cell in occupied:
+			if cell in cells:
+				on_spot = true
+		if not on_spot:
+			continue
+		if occupied.size() != 1:
+			for back in moved:
+				farm.sim.set_actor_pos(String(back), moved[back])
+			return {"cannot": "%s stands on it" % farm.sim.species_of(id)}
+		moved[id] = occupied[0]
+		farm.sim.set_actor_pos(id, _bo_parking_outside(cells, occupied[0]))
+	return moved
+
+
+# Eggs on `cells`, taken off the ground; returns where they were.
+func _bo_lift_eggs(cells: Array[Vector2i]) -> Array[Vector2i]:
+	var lifted: Array[Vector2i] = []
+	for cell in cells:
+		if farm.sim.get_object(cell.x, cell.y) == "egg":
+			farm.sim.set_object(cell.x, cell.y, "")
+			lifted.append(cell)
+	return lifted
+
+
+func _bo_parking_outside(cells: Array[Vector2i], near: Vector2i) -> Vector2i:
+	for r in range(1, 8):
+		for dy in range(-r, r + 1):
+			for dx in range(-r, r + 1):
+				var t := near + Vector2i(dx, dy)
+				if t in cells or not farm.sim.is_walkable(t.x, t.y) or farm.get_object(t.x, t.y) != "":
+					continue
+				if farm.sim.space_of(t) != "farm" or t == player.get_tile_pos():
+					continue
+				return t
+	return near + Vector2i(0, 8)
 
 
 func _bo_put_farm_back(before: Dictionary, rng_seed: int, rng_state: int, rng_revision: int,

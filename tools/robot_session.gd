@@ -721,6 +721,7 @@ func _check(cond: bool, label: String) -> void:
 
 func _tap_and_wait(tile: Vector2i) -> void:
 	await _walk_beside(tile)
+	var since: int = main_scene.farm.trace.entries.size()
 	InputManager.click_tile = tile
 	InputManager.has_click = true
 	var acted := await _wait_until(func(): return player.is_acting, ACT_FRAMES)
@@ -732,6 +733,7 @@ func _tap_and_wait(tile: Vector2i) -> void:
 			GameState.pouch, GameState.selected_seed_type, GameState.energy])
 		print("  [diag] resolve=", ActionRouter.resolve(
 			main_scene.farm, GameState, tile, player.get_tile_pos(), false))
+		_print_what_happened(tile, since)
 		return
 	await _wait_until(func(): return not player.is_acting, ACT_FRAMES)
 
@@ -745,6 +747,7 @@ func _tap_until(tile: Vector2i, done: Callable) -> bool:
 	# just taps again once she has wandered off, so the robot does too — the
 	# 2026-09-06 CI run where the stall would not build was one seed's loiterer
 	# (nothing can scatter there; the parcel's density is zero).
+	var since: int = main_scene.farm.trace.entries.size()
 	for _attempt in 5:
 		InputManager.click_tile = tile
 		InputManager.has_click = true
@@ -752,6 +755,7 @@ func _tap_until(tile: Vector2i, done: Callable) -> bool:
 			return true
 		for _i in 40:
 			await get_tree().process_frame
+	_print_what_happened(tile, since)
 	return false
 
 
@@ -768,12 +772,31 @@ func _tap_until(tile: Vector2i, done: Callable) -> bool:
 func _walk_beside(tile: Vector2i) -> void:
 	if _reach_of(tile) <= 1:
 		return
+	var since: int = main_scene.farm.trace.entries.size()
 	InputManager.click_tile = tile
 	InputManager.has_click = true
 	var arrived := await _wait_until(
 		func(): return _reach_of(tile) <= 1 and player.path.is_empty(), WALK_FRAMES)
 	if not arrived:
 		_check(false, "she could walk to %s (stopped at %s)" % [tile, player.get_tile_pos()])
+		_print_what_happened(tile, since)
+
+
+# What a tap that went wrong actually did, from the session's own trace, and who
+# and what was on the square at the end — enough to tell a hen standing on it
+# from an egg she laid there from a tap that never arrived.
+func _print_what_happened(tile: Vector2i, since: int) -> void:
+	var farm = main_scene.farm
+	for i in range(since, farm.trace.entries.size()):
+		var e: Dictionary = farm.trace.entries[i]
+		if String(e.get("kind", "")) in ["tap", "act"]:
+			print("  [diag] trace: ", e)
+	var standing: Array = []
+	for raw in farm.sim.actors:
+		if tile in Movement.occupied_tiles(farm.sim, String(raw)):
+			standing.append(String(raw))
+	print("  [diag] on %s: object=%s actors=%s tick=%d" % [
+		tile, farm.get_object(tile.x, tile.y), standing, farm.sim.clock.tick])
 
 
 func _reach_of(tile: Vector2i) -> int:
