@@ -479,7 +479,9 @@ deep, on grounds of legibility (§6); portals survive only for exits that are no
 - **The hen lets herself in.** `use_door` stopped being the player's alone — it is a verb she
   already had, so nothing has a private one (S-3 read from the other side). On a wet day the
   hen walks to the coop's doorstep and through it; on a dry one she walks to the doorway and
-  back out. A coop with no room under it still gets the front-row shelter P-17 shipped, so
+  back out. When the coop's front is blocked and it lets out of a side square instead, that
+  side square is her doorstep and she reaches for the hut beside her rather than the square
+  above (found by the many-games check, 2026-10-09). A coop with no room under it still gets the front-row shelter P-17 shipped, so
   the fallback is a fallback rather than a failure. While rain falls, she uses her ordinary
   idle-and-wander behaviour among the room's reachable floor tiles; this is not a separate
   coop pattern. She never chooses the doorway as a wander destination, so the farmer can
