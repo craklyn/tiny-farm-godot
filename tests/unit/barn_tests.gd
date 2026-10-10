@@ -128,6 +128,16 @@ func test_cheese_shelf_sale() -> void:
 	var room: Dictionary = world.rooms["barn_1"]
 	var shelf := Vector2i(room["origin"]) \
 		+ Vector2i(MachineDefs.room_of("industrial_barn")["cheese_shelf"])
+	var facade := preload("res://world/farm.gd").new()
+	facade.sim = world
+	facade.gs = GameState
+	var shelf_tap: Dictionary = ActionRouter.resolve(facade, GameState, shelf, Vector2i(0, 0))
+	_assert(String(shelf_tap.get("action", "")) == "collect_cheese"
+		and String(shelf_tap.get("barn_id", "")) == "barn_1" and bool(shelf_tap.get("walk_to", false)),
+		"a shelf tap carries this barn's collection action and sends the farmer to it")
+	facade.show_cheese_sale("barn_1", 0, 0)
+	_assert(not facade.cheese_sale_active("barn_1"),
+		"a refused or empty collection result cannot start cart or coin feedback")
 	barn["finished_cheese_count"] = 3
 	GameState.set_gold(7)
 	var base := SaveGame.capture(world, GameState)
@@ -156,6 +166,10 @@ func test_cheese_shelf_sale() -> void:
 		and int(sold.get("gold", 0)) == 60 and int(barn.finished_cheese_count) == 0
 		and GameState.gold == 67,
 		"one Action empties all three batches and pays the fixed 20 gold each, ignoring supplied price and quantity")
+	facade.show_cheese_sale("barn_1", int(sold.get("batches", 0)), int(sold.get("gold", 0)))
+	_assert(facade.cheese_sale_active("barn_1"),
+		"the accepted collection result starts the cart and coin feedback")
+	facade.free()
 	var after_sale := SaveGame.capture(world, GameState)
 	var restored := SimWorld.new()
 	_assert(SaveGame.restore(JSON.parse_string(JSON.stringify(after_sale)), restored, GameState)

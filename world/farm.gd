@@ -12,6 +12,7 @@ const GROUND_VARIANTS := 3
 const EGG_SIZE := TILE_SIZE / 2.0  # half a tile, centred (see the egg draw below)
 const MAP_WIDTH := SimWorld.MAP_WIDTH
 const MAP_HEIGHT := SimWorld.MAP_HEIGHT
+const CHEESE_SALE_MS := 900
 
 # What the dark outside a room looks like (2026-09-06, `WorldLayout.VOID`). Not
 # black, a shade off it — a hair of blue so it reads as unlit air rather than as a
@@ -51,6 +52,12 @@ var gs: Node = null
 # Silences the feedback cues. The attract farm must not tick, beep or play the
 # nope sound into a title screen the player is not playing.
 var mute_feedback := false
+
+# A completed shelf sale gets a short cart-and-coin picture. It is deliberately
+# transient presentation state: the saved shelf and gold total have already
+# changed through `collect_cheese`, and a replay only needs that Action to draw
+# the same farm state. Nothing here is a second sale or a source of game truth.
+var _cheese_sales: Dictionary = {}  # barn id -> { t, batches, gold }
 
 # Q-104: whether the watering-shot inset has already played for this farm. Her
 # cold-open row is watered three times over (twice, then once more inside the
@@ -1235,11 +1242,26 @@ func react_at(t) -> void:
 		set_process(true)
 
 
+## Show the result of an accepted cheese-shelf sale. Callers pass the gateway's
+## result, so an empty shelf or a request made from the wrong cell cannot create
+## a cart, coin flight, or success sound.
+func show_cheese_sale(barn_id: String, batches: int, gold: int) -> void:
+	if barn_id == "" or batches <= 0 or gold <= 0:
+		return
+	_cheese_sales[barn_id] = { "t": Time.get_ticks_msec(), "batches": batches, "gold": gold }
+	set_process(true)
+	queue_redraw()
+
+
+func cheese_sale_active(barn_id: String) -> bool:
+	return _cheese_sales.has(barn_id)
+
+
 func _process(_delta: float) -> void:
 	# Only runs while a reaction is in flight; cost scales with acted tiles, not
 	# map area (ARCHITECTURE guardrail).
 	if _reactions.is_empty() and _refusals.is_empty() and _acks.is_empty() and _soil_taps.is_empty() \
-			and _wetting.is_empty() and not _tower_cloud_active:
+			and _wetting.is_empty() and _cheese_sales.is_empty() and not _tower_cloud_active:
 		set_process(false)
 		return
 	# The cloud layer is independent of the farm page.  Remember whether a page
@@ -1264,6 +1286,9 @@ func _process(_delta: float) -> void:
 		# A held soak (t = -1) waits for release_tile_look; a finished one is done.
 		if _wetting[key]["t"] >= 0.0 and now - _wetting[key]["t"] > _wetting[key]["ms"]:
 			_wetting.erase(key)
+	for barn_id in _cheese_sales.keys():
+		if now - int(_cheese_sales[barn_id]["t"]) > CHEESE_SALE_MS:
+			_cheese_sales.erase(barn_id)
 	if _tower_cloud_active and _tower_cloud_node != null:
 		_tower_cloud_node.queue_redraw()
 	if had_farm_animation:
@@ -1497,7 +1522,13 @@ func _draw_barn_rooms(canvas: CanvasItem, y0: int, y1: int) -> void:
 		# rule the walk above applies square by square.
 		if _backdrop_active and not _backdrop_rect.has_point(origin):
 			continue
-		BarnPresentation.draw(canvas, industrial_barn_interior_texture, barn_drawn_state(barn_id))
+		var state := barn_drawn_state(barn_id)
+		BarnPresentation.draw(canvas, industrial_barn_interior_texture, state)
+		if _cheese_sales.has(barn_id):
+			var sale: Dictionary = _cheese_sales[barn_id]
+			BarnPresentation.draw_sale_feedback(canvas, state,
+				float(Time.get_ticks_msec() - int(sale["t"])) / float(CHEESE_SALE_MS),
+				int(sale["batches"]))
 
 
 # What the renderer draws for one barn right now: the sim's tick, never a frame

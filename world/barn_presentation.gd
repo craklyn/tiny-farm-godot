@@ -245,3 +245,35 @@ static func draw(canvas: CanvasItem, kit: Texture2D, state: Dictionary) -> void:
 		canvas.draw_rect(Rect2(o + Vector2(bx, BELT_Y), Vector2(4, 3)), CHEESE, true)
 	for i in mini(int(state["finished"]), SimWorld.FINISHED_CHEESE_CAPACITY):
 		canvas.draw_rect(Rect2(o + STORE + Vector2((i % 4) * 4, -(i / 4) * 3), Vector2(3, 2)), CHEESE, true)
+
+
+## The short result picture for an accepted cheese-shelf sale. The cart carries
+## the wheels away from the outfeed, then its coins rise toward the farm's gold
+## display. `progress` comes from the presentation clock; the saved shelf has
+## already been emptied by the action gateway before this is ever called.
+static func draw_sale_feedback(canvas: CanvasItem, state: Dictionary, progress: float,
+		batches: int) -> void:
+	if state.is_empty():
+		return
+	var t := clampf(progress, 0.0, 1.0)
+	var o := Vector2(int(state["origin"][0]) * TILE, int(state["origin"][1]) * TILE)
+	# The cart emerges below the shelf, rolls one small step toward the door, and
+	# fades before the coins finish their flight.
+	var cart_alpha := clampf(1.0 - maxf(0.0, (t - 0.68) / 0.32), 0.0, 1.0)
+	var cart := o + STORE + Vector2(-4.0 - t * 12.0, 5.0)
+	var wood := Color(0.46, 0.27, 0.14, cart_alpha)
+	var wheel := Color(STEEL_DARK.r, STEEL_DARK.g, STEEL_DARK.b, cart_alpha)
+	canvas.draw_rect(Rect2(cart, Vector2(10, 4)), wood, true)
+	canvas.draw_line(cart + Vector2(9, 1), cart + Vector2(13, -2), wood, 1.0)
+	canvas.draw_circle(cart + Vector2(2, 5), 1.5, wheel)
+	canvas.draw_circle(cart + Vector2(8, 5), 1.5, wheel)
+	for i in mini(batches, 4):
+		canvas.draw_rect(Rect2(cart + Vector2(1 + (i % 2) * 4, -2 - (i / 2) * 2), Vector2(3, 2)),
+			Color(CHEESE.r, CHEESE.g, CHEESE.b, cart_alpha), true)
+	# A small fan of coins begins at the cart only after the cart has appeared.
+	var coin_t := clampf((t - 0.24) / 0.76, 0.0, 1.0)
+	for i in 3:
+		var start := cart + Vector2(4 + i * 2, -3)
+		var end := start + Vector2(12 + i * 4, -20 - i * 3)
+		var at := start.lerp(end, coin_t)
+		canvas.draw_circle(at, 1.5, Color(CHEESE.r, CHEESE.g, CHEESE.b, 1.0 - coin_t * 0.25))

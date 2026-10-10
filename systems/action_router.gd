@@ -356,6 +356,22 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 		return {}  # Out of bounds
 	var state: String = tile.get("state", "")
 
+	# Finished cheese waits at one specific open-floor cell in an Industrial Barn.
+	# It is a destination, not a machine tile: the farmer walks to this cell before
+	# the gateway decides whether there is cheese to sell.  Keeping the barn id on
+	# the resolved request lets the gateway validate the exact shelf she reached.
+	if world != null:
+		var room_id: String = world.room_of_cell(tap_t)
+		if room_id != "" and world.room_kind(room_id) == "industrial_barn":
+			var room: Dictionary = world.rooms.get(room_id, {})
+			var shelf := Vector2i(room.get("origin", Vector2i(-1, -1))) \
+				+ Vector2i(MachineDefs.room_of("industrial_barn").get("cheese_shelf", Vector2i(-1, -1)))
+			if tap_t == shelf:
+				return check_result.call({
+					"action": "collect_cheese", "tool_idx": 0, "target_t": tap_t,
+					"walk_to": true, "seed_type": "", "barn_id": room_id,
+				})
+
 	# 2-i. A building's floor is not ground to work (2026-09-25). A stall bay, a
 	# coop cell or the tower's floor may sit on soil, and the gateway refuses every
 	# tile verb there because the structure wins (`SimWorld.is_structure_floor`).

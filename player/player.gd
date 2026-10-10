@@ -882,8 +882,19 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 	# and therefore its replay signature — is byte-for-byte what it always was.
 	if String(pa.get("item", "")) != "":
 		act["item"] = pa["item"]
+	if String(pa.get("barn_id", "")) != "":
+		act["barn_id"] = pa["barn_id"]
 	var result: Dictionary = farm.apply_action(act, gs)
 	if not result.get("ok", false):
+		return
+
+	# The cart and its coins answer an accepted sale, never the tap that asked for
+	# one. The gateway has already emptied the shelf and paid the farm here; this
+	# is only the short picture of that completed result.
+	if action == "collect_cheese":
+		farm.show_cheese_sale(String(act.get("barn_id", "")), int(result.get("batches", 0)),
+			int(result.get("gold", 0)))
+		AudioManager.play_sfx("jingle")
 		return
 
 	if action == "sell" or action == "refill":
