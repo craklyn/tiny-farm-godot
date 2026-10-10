@@ -1625,6 +1625,9 @@
    "verdict": "decode",
    "why": "The reader has to work out whether this is a playtest status, a team relationship, or an instruction."
   },
+  "2af222856528739ba96c": {
+   "verdict": "ok"
+  },
   "2b1553174c7d2b9c191b": {
    "verdict": "ok"
   },

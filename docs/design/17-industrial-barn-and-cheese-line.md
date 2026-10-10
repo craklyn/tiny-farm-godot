@@ -256,31 +256,25 @@ command checked both dimensions, fully opaque or fully transparent pixels, exact
 in the brief's palette, the harp, comb, hoops and wheels at their native coordinates, and an
 unbroken product-colour route through every station.
 
-**In-game verdict: pending.** The art director's review worker could not open a display.
-The chief of staff ran the capture scene on the desktop on 2026-10-09; it places the barn on
-the shipped farm ground and walks the farmer in through the barn's panel, as a player would.
-The two captures are [outside](mockups/industrial_barn/review_farm_ground.png) and
-[inside](mockups/industrial_barn/review_interior.png). The art director's verdict on them is
-still to come.
+**In-game verdict: approved.** The [outside](mockups/industrial_barn/review_farm_ground.png)
+and [inside](mockups/industrial_barn/review_interior.png) captures pass all seven requirements
+at the shipped farm scale.
 
-- **Pass — red barn:** the exterior reads as a red timber barn before its roof vents.
-- **Pass — doors:** the open livestock doors remain the strongest dark shape and read wide
-  enough for the cow sprite.
-- **Pass — cow space:** the warm floor, hay rack, feed bin and four low open stalls read as a
-  cared-for space. The art contains no gates, headlocks, chains or equipment attached to a
-  cow.
-- **Pass — seven station silhouettes:** the receiver, vat, drain table, press bank and
-  outfeed have distinct shapes. The redrawn cutter descends as a wire harp, while the rake
-  travels as a broad comb, so all seven stations remain distinct at native size.
-- **Pass — product path:** milk, clustered curds, a slab, three forming hoops and round
-  cheese wheels carry the route. The fixed pipe, trough and belt connect those changing
-  shapes into one continuous run without labels or status text.
-- **Pass — shared room and cow route:** the warm and steel sides remain visible together.
-  The open floor from the livestock doors to all four stalls is not blocked by props or
-  machinery.
-- **Pass — pixel finish:** every pixel is fully transparent or fully opaque, and every
-  opaque pixel uses a colour from the brief. The kit has hard edges with no fringe, baked
-  shadow or backdrop.
+- **Pass — red barn:** the broad red body, pale roof and familiar gable read as a barn before
+  the three small roof vents.
+- **Pass — doors:** the open doors are the strongest dark shape; their 16-pixel-wide exterior
+  opening admits the 16-pixel-long cow, and the interior threshold widens to 22 pixels.
+- **Pass — cow space:** the large warm floor, hay rack, feed bin and four low open stalls read
+  as open, cared-for space with no restraint imagery.
+- **Pass — seven station silhouettes:** the receiver, vat, wire-harp cutter, broad-comb rake,
+  drain table, press bank and low outfeed remain distinct, and the cheese side reads as clean
+  steel in the in-game room view.
+- **Pass — product path:** milk, curds, slab, hoops and wheels trace one connected route through
+  the pipe, trough and belt without labels, status text or colour as the only cue.
+- **Pass — shared room and cow route:** the warm livestock side and steel cheese side remain
+  visible together, and props and equipment leave the doorway-to-stalls route open.
+- **Pass — pixel finish:** the exterior and interior retain hard palette-locked edges in-game,
+  with no fringe, baked shadow, backdrop or partially transparent pixel.
 
 The native-size redraw is complete. To capture again, run
 `godot --path . res://tools/capture_industrial_barn_review.tscn` (it needs a display).
