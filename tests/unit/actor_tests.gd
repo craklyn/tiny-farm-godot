@@ -1335,6 +1335,68 @@ func test_hen_replay_from_fresh_save() -> void:
 	gs_replayed.free()
 
 
+# Found by the many-games check, 2026-10-09 (seed 918801901): a coop whose front is
+# blocked lets out of a side square (`SimWorld.room_exit_for`), and the hen, standing
+# on that side square in the rain, reached for "the hut above her" — which from the
+# side is grass. The gateway answered "no door here" about once a tick all day. She
+# reaches for the hut beside her now, so she goes in.
+func test_hen_side_door() -> void:
+	print("\n--- A hen lets herself into a coop by its side door Tests ---")
+	GameState.reset()
+	SimRng.reseed(9111)
+	var world := SimWorld.new()
+	world.generate()
+	GameState.gold = 1000
+	var spot := Vector2i(-1, -1)
+	for y in range(10, 17):
+		for x in range(5, 23):
+			if world.placeable_at(Vector2i(x, y), "coop"):
+				spot = Vector2i(x, y)
+				break
+		if spot.x >= 0:
+			break
+	for dy in range(-3, 3):
+		for dx in range(-2, 4):
+			var t: Vector2i = spot + Vector2i(dx, dy)
+			world.set_tile_state(t.x, t.y, "cleared")
+	_assert(world.apply_action({ "verb": "buy_machine", "item": "coop",
+			"actor": "player" }, GameState).get("ok", false)
+			and world.apply_action({ "verb": "place", "target": spot, "item": "coop",
+				"actor": "player" }, GameState).get("ok", false),
+		"a coop is bought and put down the ordinary way (%s)" % spot)
+
+	# Fence off both squares under the hut, so the room lets out of its side.
+	for front in [spot + Vector2i(0, 1), spot + Vector2i(1, 1)]:
+		world.set_tile_state(front.x, front.y, WorldLayout.FENCE_BUILT)
+	var room_id := ""
+	for id in world.room_ids():
+		if String(world.rooms[id].get("item", "")) == SimWorld.COOP_ITEM:
+			room_id = id
+	var side := world.room_exit_for(world.rooms[room_id])
+	_assert(side.x >= 0 and side.y <= spot.y,
+		"with its front fenced off the coop lets out of a side square (%s)" % side)
+
+	# She starts on that side square on a wet day: the one place the old aim missed.
+	world.spawn_actor(SimWorld.ACTOR_CHICKEN, SpeciesDefs.CHICKEN, side)
+	GameState.weather = "rainy"
+	var refused := 0
+	var went_in := false
+	for taken in world.advance_ticks(600, GameState):
+		var action: Dictionary = taken["action"]
+		if String(action.get("verb", "")) != "use_door":
+			continue
+		if taken["result"].get("ok", false):
+			went_in = true
+		else:
+			refused += 1
+	_assert(refused == 0,
+		"she never asks for a door that is not there (%d refused)" % refused)
+	_assert(went_in and world.room_of_cell(world.actor_pos(SimWorld.ACTOR_CHICKEN)) == room_id,
+		"she lets herself in by the side and is standing on the coop's floor (%s)"
+			% world.actor_pos(SimWorld.ACTOR_CHICKEN))
+	GameState.weather = "sunny"
+
+
 func test_replay_v2() -> void:
 	print("\n--- Replay format v4 + the dual-record net (M2.5 WI-5) Tests ---")
 
