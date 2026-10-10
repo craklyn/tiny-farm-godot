@@ -87,10 +87,13 @@ laptop's.
   along): `android/build/` (the Android build template, 1.2 GB, installed from the
   editor), `debug.keystore` (the preset signs with `res://debug.keystore`), and an empty
   `build/` folder (the export refuses a missing target folder). Copy the first two in and
-  `mkdir build`; the script does the rest. Do not run `godot --import` there first: it
-  writes untracked `.import` and `.uid` sidecars, and the deploy refuses the checkout as
-  dirty. If you already did, `git clean -fd` removes them and keeps the gitignored three
-  (2026-09-25).
+  `mkdir build`. Then run `godot --headless --path . --import` once and
+  `git clean -fdq -e playtests`: the deploy regenerates the demo replay with a script that
+  needs the class list only an import writes (2026-10-09: without it the deploy stopped at
+  "Regenerating the demo replay" with `Identifier "ColdOpen" not declared`), and the clean
+  removes the untracked `.import` and `.uid` sidecars the import leaves, which would make
+  the deploy refuse the checkout as dirty, while keeping the gitignored three and any
+  rescued play sessions.
 - **Wireless debugging switches off when the tablet reboots**, and the port changes every
   time it is toggled. Re-pair with the code from the tablet's screen.
 - **The script pulls the device's session before installing, and that is not optional

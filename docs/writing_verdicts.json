@@ -3613,6 +3613,12 @@
   "617b057b7662072182ca": {
    "verdict": "ok"
   },
+  "61a060bbbe9446e6d9dc": {
+   "instead": "The tablet deploy instructions say to import the project once in a fresh copy, since the deploy fails unless the project has been imported.",
+   "quote": "since the deploy fails without it",
+   "verdict": "second-look",
+   "why": "“It” makes the reader work out whether it means the project or the import."
+  },
   "61ae7489e28f942a8344": {
    "verdict": "ok"
   },
