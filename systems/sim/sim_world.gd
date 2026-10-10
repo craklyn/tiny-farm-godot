@@ -2183,6 +2183,42 @@ func placeable_at(t: Vector2i, item: String = "") -> bool:
 	return true
 
 
+# **Which squares of the block are in the way** (2026-10-09, from play: "I am having
+# trouble placing the tower. When I try, it just tills the ground."). The answer a
+# refused placement shows her: the building's whole block drawn where she tapped,
+# with the squares that stop it marked. Empty exactly when `placeable_at` says yes.
+#
+# Asked square by square with the same questions `placeable_at` asks of the block —
+# open ground nobody else is standing on outdoors, bare floor of the same room
+# indoors, and no object under a structure that writes its own. When no single
+# square is to blame (a fitting carried outdoors, a room that does not take this
+# row, a stall bay that takes only robots) the whole block is the answer, because
+# the whole block is what was refused. Pure, like the question it breaks down.
+func footprint_blockers(t: Vector2i, item: String) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	if placeable_at(t, item):
+		return out
+	var cells := MachineDefs.footprint_cells(item, t)
+	var indoors := space_of(t) != "farm"
+	var writes_objects := MachineDefs.has(item) and not MachineDefs.spawns_actor(item) \
+		and MachineDefs.terrain_of(item) == ""
+	for cell in cells:
+		var free: bool
+		if indoors:
+			free = space_of(cell) == space_of(t) and is_walkable(cell.x, cell.y) \
+				and String(get_tile(cell.x, cell.y).get("state", "")) == WorldLayout.FLOOR \
+				and objects[cell.y][cell.x] == ""
+		else:
+			free = placeable_at(cell)
+		if free and writes_objects and get_object(cell.x, cell.y) != "":
+			free = false
+		if not free:
+			out.append(cell)
+	if out.is_empty():
+		out = cells
+	return out
+
+
 # **May this row be set down on this room cell?** (S-22) The room's kind has to be
 # one the row names, and every cell it would stand on has to be bare floor of that
 # same room — not the doorway, not a wall, not a square with an egg or another
