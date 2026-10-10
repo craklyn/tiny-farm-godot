@@ -57,7 +57,11 @@ func _init() -> void:
 			print("  seed %d: FAILED %s" % [s, game["where"]])
 			print("    %s" % game["failure"])
 			print("    play it again: godot --headless --path . --script res://tools/replay_many_games.gd -- --seed=%d" % s)
-			print("    its save and recording: %s" % ProjectSettings.globalize_path(game["dir"]))
+			# Under tools/run_godot_test.py user:// is a private folder removed on
+			# exit, so this is only there afterwards when run directly; the --seed
+			# line above is what reproduces it either way.
+			print("    its save and recording (kept only when run directly, not under run_godot_test.py): %s"
+				% ProjectSettings.globalize_path(game["dir"]))
 		if verbose:
 			print("    %s" % _summary(counts))
 

@@ -47,6 +47,10 @@ const FIXED_SEEDS: Array[int] = [
 	916611627, 765668099, 937296070, 643819335, 1102423728, 1192673136,
 	1432438107, 1049957844, 922372480, 762069975, 743160575, 865559722,
 	1523783905, 1158924694,
+	# Two more that reach the workbench's shelf and buy a Mark III the starter
+	# brain (from 300 random games; worm practice and pace were still reached by
+	# 922372480 alone).
+	1725051930, 1635315767,
 	# Each of these caught a break when it was put back on purpose (the PR that
 	# added this file lists which): a Mark III sowing a different seed when two
 	# kinds were tied in her box —
@@ -92,7 +96,8 @@ class Game:
 	# A break put in on purpose, so the unit suite can show this check catches one
 	# (`persistence_tests.gd`): "" plays honestly; "unrecorded_action" leaves one
 	# of her successful actions out of the recording; "dice_not_saved" continues a
-	# farm from the start of its seed's stream, as the game did before c09dfb16.
+	# farm from the start of its seed's stream, as the game did before c09dfb16;
+	# "replay_draws_extra" has every replay draw one more number than the game did.
 	var plant := ""
 	var planted := false
 
@@ -136,7 +141,11 @@ class Game:
 						and String(taken.get("actor", "")) == SimWorld.ACTOR_CHICKEN:
 					log.record_brain_decision(taken)
 				if not action.is_empty():
-					count("brain refused %s %s (%s)" % [world.species_of(String(action.get("actor", ""))),
+					var refused_who := String(action.get("actor", ""))
+					var refused_kind := world.machine_key_of(refused_who)
+					if refused_kind == "":
+						refused_kind = world.species_of(refused_who)
+					count("brain refused %s %s (%s)" % [refused_kind,
 						action.get("verb", ""), taken["result"].get("reason", "")])
 				continue
 			log.record(action, taken["result"], int(taken["tick"]), true)
@@ -314,6 +323,16 @@ static func play(seed_value: int, plant := "") -> Dictionary:
 # `tools/verify_replay.gd`, on the files this game wrote: the recording replayed
 # into a fresh world has to recompute every brain decision it recorded and land on
 # the save exactly. Returns "" or the first thing that differed.
+#
+# **The farm's dice are the live game's, and the replay borrows them.** There is
+# one `SimRng`, and `ReplayLog.apply_to` reseeds it and draws from it, so without
+# putting it back the live game would carry on from wherever the replay left off.
+# A replay that drew one number more or fewer than the game did would then hand
+# its own position to the rest of the game, every later check would agree with
+# it, and the break would never show. So the position is put back afterwards, and
+# a replay that finishes anywhere other than where the game stood is a failure of
+# its own — the save leaves the dice out of the comparison (`rng_state` is
+# stripped from the canonical capture), so nothing else would notice.
 static func _check(g: Game, _label: String) -> String:
 	var save := g.persist()
 	if save.is_empty():
@@ -321,8 +340,19 @@ static func _check(g: Game, _label: String) -> String:
 	var rlog := ReplayLog.load_from(g.replay_path)
 	if rlog == null:
 		return "the recording could not be read back"
+	var dice_seed := SimRng.current_seed()
+	var dice_at := SimRng.current_state()
+	var dice_revision := SimRng.stateless_revision
 	var report := SaveGame.replay_report(rlog, save)
+	if g.plant == "replay_draws_extra":
+		SimRng.randi()
+	var replay_dice_at := SimRng.current_state()
+	SimRng.resume(dice_seed, dice_at, dice_revision)
 	if report.get("matched", false):
+		if replay_dice_at != dice_at:
+			return ("the replay rebuilt the farm but drew a different amount from its dice " \
+				+ "than the game did (the game stood at %s, the replay ended at %s)") \
+				% [dice_at, replay_dice_at]
 		return ""
 	if not report.get("applied", false):
 		return "the replay could not start: %s" % report.get("divergence", "")

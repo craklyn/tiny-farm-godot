@@ -6539,6 +6539,9 @@
   "ae12c50a5843cc3bac3e": {
    "verdict": "ok"
   },
+  "ae15be8441839c658a98": {
+   "verdict": "ok"
+  },
   "ae17a2b077b318aadb5e": {
    "instead": "Move the studio dashboard's current records out of the code repository and close work cards only through the studio dashboard",
    "quote": "HQ's live records",
@@ -8950,6 +8953,12 @@
   },
   "f27580c9447f3618068b": {
    "verdict": "ok"
+  },
+  "f2ae3522051f373a76c5": {
+   "instead": "The many-games test now resets each farm's randomness after every replay check and fails if the replay produces a different result",
+   "quote": "puts the farm's dice back",
+   "verdict": "decode",
+   "why": "“Farm's dice” is a metaphor for the farm's random state, so the reader must infer what is being restored."
   },
   "f2bece054cd7c31b8865": {
    "verdict": "ok"

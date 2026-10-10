@@ -1952,7 +1952,10 @@ func _beside(world: SimWorld, actor_id: String, at: Vector2i) -> Vector2i:
 # So a Mark III with three of each sowed tomato on the farm she never left and pea
 # on the same farm continued — and on its replay (found by
 # `tools/replay_many_games.gd`, 2026-10-09). The shop's order is the order a new
-# farm's box already had, so every session recorded on one picks as it did.
+# farm's box already had, so a recording that began on a new farm picks as it
+# did. One that began from a Continue held its box alphabetically, so on an older
+# build a pea/tomato tie there went to pea and now goes to tomato; no session
+# under `playtests/` has such a tie (checked 2026-10-09).
 static func _best_seed(gs) -> String:
 	if gs == null or not ("pouch" in gs):
 		return ""

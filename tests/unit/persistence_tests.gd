@@ -385,6 +385,15 @@ func test_generated_games() -> void:
 	_assert(not dice["ok"] and String(dice["failure"]).contains("dice"),
 		"a Continue that loses the farm's place in its dice fails the check (%s)" % dice["failure"])
 
+	# A replay that rebuilds the farm but draws one more number from its dice than
+	# the game did (review of the first version, 2026-10-09): nothing in the save
+	# compares the dice, so the check has to, or the live game would carry on from
+	# the replay's position and every later check would agree with it.
+	var extra_draw: Dictionary = GeneratedGames.play(1111, "replay_draws_extra")
+	_assert(not extra_draw["ok"] and String(extra_draw["failure"]).contains("different amount"),
+		"a replay that draws one number more than the game did fails the check (%s)"
+			% extra_draw["failure"])
+
 	# Found by this check on its first run: a hen whose `use_door` the gateway
 	# refuses, in play and again on replay, used to read as a hen that changed her
 	# mind. On seed 1192673136 she is refused a nest square that was already taken.
