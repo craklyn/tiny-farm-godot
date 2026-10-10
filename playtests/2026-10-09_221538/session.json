@@ -1,0 +1,12 @@
+{
+  "build_matched": {
+    "commit": "033588557db28b391f409536cd40783ec5634c85",
+    "recorded_as": "v0.2.0.1-591-g894089c",
+    "checked_on": "2026-10-09",
+    "how": "godot --headless --path . --script res://tools/verify_replay.gd -- playtests/2026-10-09_221538",
+    "why": "The tablet was meant to be running build 03358855 (v0.2.0.1-858-g03358855) when this session was recorded, but the session is labelled 894089c, a September build that no longer exists. Either a bug carried the old label forward from the farm's save, or the tablet was still running an old install; which one is still being found out. On 2026-10-09 this short session replays exactly to its autosave both on 03358855 and on 0903cfee, which stands in for 894089c (see the 2026-09-25 sessions), so either way it is tied to a build on GitHub. It is tied to 03358855 here.",
+    "also_matches": [
+      "0903cfee02e265141ae10629a0c622bbe3470806"
+    ]
+  }
+}

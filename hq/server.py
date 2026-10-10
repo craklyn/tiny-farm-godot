@@ -1685,15 +1685,24 @@ def parse_playtest(name):
     # A session whose build was destroyed by a history rewrite says so on its
     # own record. It cannot be replayed and never will be, so counting it as an
     # open failure asks somebody to fix something that no longer exists.
-    lost = None
+    # A lost build whose session was later replayed exactly on a commit that
+    # still exists records that commit as "build_matched"; the session is then
+    # tied to it, and the label it was recorded under is kept beside it.
+    lost, matched = None, None
     try:
-        lost = load_json(os.path.join(tdir, "session.json")).get("build_lost")
+        conditions = load_json(os.path.join(tdir, "session.json"))
+        lost = conditions.get("build_lost")
+        matched = conditions.get("build_matched")
     except Exception:
         pass
+    recorded_build_id = _replay_build_id(tdir)
+    matched_commit = matched.get("commit") if isinstance(matched, dict) else None
     save_build_id, lineage = _save_build_history(tdir)
     return {
         "name": name,
-        "build_id": _replay_build_id(tdir),
+        "build_id": matched_commit or recorded_build_id,
+        "recorded_build_id": recorded_build_id,
+        "build_matched": matched,
         "save_build_id": save_build_id,
         "lineage": lineage,
         "build_lost": lost,
