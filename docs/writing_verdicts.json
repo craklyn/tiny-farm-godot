@@ -5315,6 +5315,12 @@
   "8f39bb969bb9a234a5b2": {
    "verdict": "ok"
   },
+  "8f5caa7fe3a72b864355": {
+   "instead": "Every tablet install now saves the installed version on GitHub, so recordings from that tablet can always be checked later",
+   "quote": "so its play recordings can always be checked later",
+   "verdict": "second-look",
+   "why": "“Its” appears to refer to the install, so the reader must infer that the recordings belong to the tablet."
+  },
   "8f65a4aeaecc5781fbd7": {
    "verdict": "ok"
   },
@@ -6091,6 +6097,9 @@
    "verdict": "ok"
   },
   "a3796ea2fd215276b3af": {
+   "verdict": "ok"
+  },
+  "a397b6f3446c96d0ed8d": {
    "verdict": "ok"
   },
   "a39bc41ce3c5a4d4c34b": {
