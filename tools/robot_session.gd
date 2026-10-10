@@ -672,6 +672,14 @@ func _free_barn_anchor() -> Vector2i:
 			var anchor := Vector2i(tx, ty)
 			if not sim.placeable_at(anchor, "industrial_barn") or not sim.is_walkable(tx - 1, ty):
 				continue
+			# ...and somewhere she can walk to. Free ground behind a fence she has
+			# no gate through is still free ground, and on some farms the first such
+			# spot was there: she walked to the fence, stopped, and kept the barn in
+			# her hands for the rest of the day (seed 100, 2026-10-10).
+			var stand := Vector2i(tx - 1, ty)
+			var here: Vector2i = player.get_tile_pos()
+			if stand != here and Pathfinding.find_path(main_scene.farm, here, stand).is_empty():
+				continue
 			# Clear of the robot row and of both bays of the stall she builds next:
 			# a building may not stand on another, so a barn there would refuse it.
 			var kept_free: Array = BOT_ROW.duplicate()

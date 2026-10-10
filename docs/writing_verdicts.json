@@ -3516,6 +3516,9 @@
    "verdict": "second-look",
    "why": "The sentence does not say who “her” is, so the reader has to infer that it means the player."
   },
+  "5d76e380c3ac487c5237": {
+   "verdict": "ok"
+  },
   "5d7e639c58d07cb01caa": {
    "instead": "The chief of staff fixes each work card: close the card after its commit and CI run, return it to its owner's queue, or use the migration tool to move the card out of its unknown state.",
    "quote": "close it with its commit and CI run ( hq/card.py close ), send it back to its owner's queue, or move an unknown state with hq/migrate_card_states.py",
@@ -8861,6 +8864,12 @@
   },
   "edd109e1c80401d92c56": {
    "verdict": "ok"
+  },
+  "edd6c4d0dd5fb8eb15c7": {
+   "instead": "The robot session now puts the barn only on ground the player can reach, so it no longer gets stuck behind a fence",
+   "quote": "no longer leaves the barn in her hands all day",
+   "verdict": "decode",
+   "why": "The phrase is figurative and does not say what happens to the barn or what the player must do."
   },
   "ee07ce06baf3f9a0ee6e": {
    "verdict": "ok"
