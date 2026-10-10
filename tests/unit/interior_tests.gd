@@ -1777,8 +1777,8 @@ func test_building_that_will_not_fit() -> void:
 			and not bool(near.get("walk_to", true)),
 		"a tap beside it is an attempt to place, not a till (%s)" % str(near))
 	var far: Dictionary = ActionRouter.resolve(farm, GameState, spot, spot + Vector2i(-6, 2))
-	_assert(String(far.get("action", "")) == "place" and not bool(far.get("fits", true)),
-		"and so is a tap from across the farm, answered at once (%s)" % str(far))
+	_assert(far.is_empty(),
+		"a tap from across the farm is a walk, as it is where the tower fits (%s)" % str(far))
 	_assert(ActionRouter.resolve(farm, GameState, spot, beside, true).is_empty(),
 		"a drag never places, so a stroke is not a row of buzzes and never a row of tilling")
 	var weed_tap: Dictionary = ActionRouter.resolve(farm, GameState, corner, corner + Vector2i(0, 1))

@@ -80,9 +80,10 @@ The loop, end to end, and it is four taps:
    square is its front-left corner and the block runs right and up the screen, its size
    read from its row's `footprint` — and until this date a tap that block would not fit
    fell through to the ground's own job, so the hoe took the square and hid that the
-   placing had failed. Now, while she holds a machine, a tap on any ground she could
-   stand on is an attempt to put it down, answered at once from wherever she is: the
-   `place` goes to the gateway, the gateway refuses it (nothing changes, and nothing
+   placing had failed. Now, while she holds a machine, a tap on ground she could stand
+   on is an attempt to put it down. A far tap is still a walk, as it is where the
+   building fits, so holding a tower never stops her crossing the farm; the tap from
+   beside the spot (or on it) is the attempt: the `place` goes to the gateway, the gateway refuses it (nothing changes, and nothing
    reaches the replay), and she gets the refusal buzz — the tile's shudder and the nope
    sound — with the building's **whole block drawn at the spot**, every square that stops
    it outlined in red (`SimWorld.footprint_blockers`). The block shudders with the

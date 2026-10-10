@@ -189,7 +189,7 @@ func _run_scenarios() -> void:
 	await _scenario_bl_the_shelf_sells_a_pace()
 	await _scenario_bo_the_barn_by_finger_alone()
 	await _scenario_bn_the_barn_is_entered_and_drawn_from_its_saved_state()
-	await _scenario_bp_a_tower_that_will_not_fit_buzzes()
+	await _scenario_bq_a_tower_that_will_not_fit_buzzes()
 
 
 func _scenario_ba_crow_spook_stops_at_room_wall() -> void:
@@ -9328,8 +9328,8 @@ func _scenario_bo_the_barn_by_finger_alone() -> void:
 # weed in its far corner stops it, and the game buzzes, shows the tower's whole
 # four-by-four block at that spot with the weed's square marked, and changes
 # nothing. With the weed gone, the same tap puts the tower down.
-func _scenario_bp_a_tower_that_will_not_fit_buzzes() -> void:
-	print("\n--- Scenario BP: a tower that will not fit buzzes and shows its block, and never tills ---")
+func _scenario_bq_a_tower_that_will_not_fit_buzzes() -> void:
+	print("\n--- Scenario BQ: a tower that will not fit buzzes and shows its block, and never tills ---")
 	var real_paths := [GameState.save_path, GameState.replay_path, GameState.trace_path]
 	GameState.save_path = "user://tower_fit_autosave.json"
 	GameState.replay_path = "user://tower_fit_replay.json"
@@ -9363,7 +9363,7 @@ func _scenario_bp_a_tower_that_will_not_fit_buzzes() -> void:
 				spot = at
 	_assert(spot.x >= 0, "the farm has a spot a four-by-four tower fits (%s)" % spot)
 	if spot.x < 0:
-		await _bp_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
+		await _bq_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
 		return
 	# Cleared ground under her finger — exactly what the hoe used to take — and a
 	# weed in the block's far corner, which is what stops the tower.
@@ -9380,6 +9380,43 @@ func _scenario_bp_a_tower_that_will_not_fit_buzzes() -> void:
 	await get_tree().process_frame
 	_assert(not farm.sim.placeable_at(spot, "spiral_tower"),
 		"with the weed there, the tower does not fit at %s" % spot)
+
+	# --- from across the farm, a tap is still a walk ------------------------------
+	# Holding a tower must never stop her walking: a far tap where it does not fit
+	# walks her over, exactly as a far tap where it fits does, and the tap she makes
+	# from there is the one that buzzes. (The robot session found this, 2026-10-09:
+	# a hen on the stall's spot, and a far tap that buzzed instead of walking.)
+	var far_start := Vector2i(-1, -1)
+	for raw in Pathfinding.find_path(farm, beside, Vector2i(beside.x, WorldLayout.PAGE_ROWS - 1)):
+		var step: Vector2i = raw
+		if far_start.x < 0 and absi(step.x - spot.x) + absi(step.y - spot.y) >= 4:
+			far_start = step
+	if far_start.x < 0:
+		for ty in range(1, WorldLayout.PAGE_ROWS):
+			for tx in range(1, SimWorld.MAP_WIDTH - 1):
+				var t := Vector2i(tx, ty)
+				if far_start.x < 0 and absi(tx - spot.x) + absi(ty - spot.y) >= 4 \
+						and farm.sim.is_walkable(tx, ty) and farm.get_object(tx, ty) == "" \
+						and not Pathfinding.find_path(farm, t, beside).is_empty():
+					far_start = t
+	_assert(far_start.x >= 0, "there is open ground a few squares from the spot (%s)" % far_start)
+	if far_start.x >= 0:
+		player.init_position(far_start.x, far_start.y)
+		farm.sim.set_actor_pos(SimWorld.ACTOR_PLAYER, far_start)
+		player.path.clear()
+		await get_tree().process_frame
+		var far_sounds: int = AudioManager.sfx_count
+		var far_answer := await _finger_tap(spot)
+		_assert(String(far_answer.get("out", "")) == "walk" and farm.footprint_refusal().is_empty()
+				and AudioManager.sfx_count == far_sounds,
+			"a tap from across the farm walks her toward it, with no buzz (%s)" % str(far_answer))
+		var arrived := await _wait_until(func():
+			var at: Vector2i = player.get_tile_pos()
+			return player.path.is_empty() and absi(at.x - spot.x) + absi(at.y - spot.y) <= 1, 900)
+		_assert(arrived, "and she arrives beside the spot (%s)" % player.get_tile_pos())
+		_assert(String(farm.get_tile(spot.x, spot.y).get("state", "")) == "cleared",
+			"with nothing tilled on the way")
+		beside = player.get_tile_pos()
 
 	# --- the tap that does not fit ---------------------------------------------
 	var world_before := JSON.stringify(SaveGame.capture(farm.sim, GameState))
@@ -9405,9 +9442,14 @@ func _scenario_bp_a_tower_that_will_not_fit_buzzes() -> void:
 		"the tower's whole four-by-four block is drawn at the spot she tapped (%s)" % str(shown_cells))
 	_assert(Dictionary(shown.get("blocked", {})).keys() == [corner],
 		"with the weed's square marked as the one in the way (%s)" % str(shown.get("blocked", {})))
-	_assert(JSON.stringify(SaveGame.capture(farm.sim, GameState)) == world_before
-			and farm.replay.entries.size() == replay_before,
-		"and nothing changed: no till, no tower, nothing in the replay")
+	# Her own footsteps are recorded too (the walk's last "stop" can land a frame
+	# after she arrives), so what must not appear is an Action.
+	var acted := 0
+	for i in range(replay_before, farm.replay.entries.size()):
+		if String(farm.replay.entries[i].get("kind", "")) != "walk":
+			acted += 1
+	_assert(JSON.stringify(SaveGame.capture(farm.sim, GameState)) == world_before and acted == 0,
+		"and nothing changed: no till, no tower, no action in the replay")
 	_assert(String(farm.get_tile(spot.x, spot.y).get("state", "")) == "cleared"
 			and int(GameState.machines.get("spiral_tower", 0)) == 1,
 		"the square is still cleared ground and the tower is still in her hands")
@@ -9428,10 +9470,10 @@ func _scenario_bp_a_tower_that_will_not_fit_buzzes() -> void:
 	_assert(farm.footprint_refusal().is_empty(), "and no block of refusal is shown for it")
 
 	_release_sim_clock()
-	await _bp_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
+	await _bq_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
 
 
-func _bp_put_farm_back(before: Dictionary, rng_seed: int, rng_state: int, rng_revision: int,
+func _bq_put_farm_back(before: Dictionary, rng_seed: int, rng_state: int, rng_revision: int,
 		real_paths: Array) -> void:
 	_release_sim_clock()
 	if main_scene.menus.is_open():

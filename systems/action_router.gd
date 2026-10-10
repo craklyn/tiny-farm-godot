@@ -352,13 +352,20 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 		# tap meant to set a four-by-four tower down on cleared ground tilled the
 		# square instead, and the till hid that the placing had failed.
 		#
-		# Ground she could stand on is where a building goes, so a tap there is an
-		# attempt to put it down, at any distance, and it goes to the gateway as the
-		# `place` it was meant to be. The gateway refuses it — nothing changes, and
-		# a refused Action is not a replay entry — and the refusal is the answer she
-		# sees: the buzz, and the building's whole block drawn at the spot with the
-		# squares in the way marked (`farm.gd`, `show_footprint_refusal`). No walk:
-		# walking over to a spot it cannot go would only delay the "no".
+		# Ground she could stand on is where a building goes, so a tap there from
+		# beside it (or on it) is an attempt to put it down, and it goes to the
+		# gateway as the `place` it was meant to be. The gateway refuses it —
+		# nothing changes, and a refused Action is not a replay entry — and the
+		# refusal is the answer she sees: the buzz, and the building's whole block
+		# drawn at the spot with the squares in the way marked (`farm.gd`,
+		# `show_footprint_refusal`).
+		#
+		# **A far tap is still a walk** (Q-30), exactly as it is where the building
+		# fits: she walks over, and the tap she makes from there is the one that
+		# places or buzzes. Answering a far tap with the buzz instead stopped her
+		# walking anywhere the building did not fit — with a four-by-four tower in
+		# her hands that is nearly the whole farm (found by the robot session,
+		# 2026-10-09, when a hen stood on the stall's spot as she set off for it).
 		#
 		# What is *not* ground keeps its own job, as before: a weed, a rock or a
 		# tree is not walkable and still answers below, so the machine in her
@@ -367,6 +374,10 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 		if world != null and world.is_walkable(tx, ty):
 			if is_drag:
 				return {}
+			if player_t != null:
+				var pt4: Vector2i = player_t
+				if absi(pt4.x - tx) + absi(pt4.y - ty) > 1:
+					return {}
 			return check_result.call({
 				"action": "place", "tool_idx": 0, "target_t": tap_t,
 				"walk_to": false, "seed_type": "", "item": gs.selected_seed_type,
