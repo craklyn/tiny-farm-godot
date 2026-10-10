@@ -30,6 +30,13 @@ var spook_radius: float = 3.0 * TILE_SIZE
 var path: Array[Vector2i] = []
 var pending_action: Dictionary = {}  # {action, tool_idx, target_t, seed_type}
 var approach_target: Vector2i = Vector2i(-1, -1)  # tile she is walking up to (Q-30)
+# How many more times she will set off again after a machine that moved while she
+# was walking up to pick it up (`pick_up_machine`). At most once a square, so this
+# is about twenty seconds of following: a follow robot coming to meet her re-plans
+# her route on every step it takes, and settles once she is close, while a robot
+# that keeps walking off is let go rather than chased forever.
+var _chase_left: int = 0
+const CHASE_LIMIT := 64
 var drag_tool_idx: int = -1
 # A drag is one gesture, even when Godot reports its path across several tiles.
 # Once its boundary response has started, later tiles must not replace it with
@@ -529,6 +536,11 @@ func update_player(delta: float) -> void:
 		if diff.length() < (0.01 if last_leg else CORNER_TOLERANCE):
 			path.remove_at(0)
 
+			# On her way to pick a machine up: it may have walked on, and she
+			# follows it until she is beside it (`pick_up_machine`).
+			if String(pending_action.get("machine", "")) != "" and _chase_machine():
+				return
+
 			# Q-30: stop the moment she is in range, from whichever side the route
 			# happened to bring her to — that is what makes the approach read as
 			# a continuation of the walk rather than a detour around the tile.
@@ -709,6 +721,84 @@ func _try_action() -> String:
 		
 	_execute_resolved_action(resolved)
 	return resolved.get("action", "")
+
+
+## Walk up to a machine and pick it up once she is beside it (2026-10-09).
+##
+## The machine panel opens from anywhere — a robot walks, and making her catch it
+## just to talk to it was its own bug (2026-09-07) — but lifting a thing is done
+## with her hands. Reported from play: "If I select a sprinkler, it'll pick up even
+## if I'm standing far away." So the panel's "Pick up" comes here: she walks over
+## the way she walks to anything she reaches for, and the `collect` goes to the
+## gateway on arrival. Beside it already, it comes up at once.
+##
+## Nothing new is recorded: the walk is her ordinary tile crossings and the pick-up
+## is the `collect` it always was, so a replay is the same kind of log as before.
+func pick_up_machine(machine_id: String) -> void:
+	if farm == null or not farm.sim.has_actor(machine_id):
+		return
+	path = []
+	tap_indicator = {}
+	pending_action = { "action": "collect", "tool_idx": 0, "walk_to": true,
+		"seed_type": "", "machine": machine_id,
+		"target_t": farm.sim.actor_pos(machine_id) }
+	approach_target = Vector2i(-1, -1)
+	_chase_left = CHASE_LIMIT
+	_chase_machine(true)
+
+
+# One look at the machine she is going to pick up: lift it if she is beside it,
+# otherwise (re)plan the walk toward where it stands now. Returns true when it has
+# taken over this frame — she picked it up, gave up, or set off on a new route.
+func _chase_machine(starting: bool = false) -> bool:
+	var id := String(pending_action.get("machine", ""))
+	if not farm.sim.has_actor(id):
+		# Gone while she walked (picked up, or put away by something else).
+		pending_action = {}
+		path = []
+		approach_target = Vector2i(-1, -1)
+		return true
+	var at: Vector2i = farm.sim.actor_pos(id)
+	var here := get_tile_pos()
+	# Stopped beside it the way every walk-up stops — a square to one side — or,
+	# when the walk has run out, at its corner: a robot can step on just as she
+	# arrives, and a corner is still within arm's reach.
+	var beside: bool = absi(here.x - at.x) + absi(here.y - at.y) <= 1
+	var corner: bool = absi(here.x - at.x) <= 1 and absi(here.y - at.y) <= 1
+	if beside or (path.is_empty() and corner):
+		var pa := pending_action
+		pa["target_t"] = at
+		pending_action = {}
+		path = []
+		approach_target = Vector2i(-1, -1)
+		var d := at - here
+		if d.x != 0 or d.y != 0:
+			if absi(d.x) >= absi(d.y):
+				facing = "right" if d.x > 0 else "left"
+			else:
+				facing = "down" if d.y > 0 else "up"
+		_execute_resolved_action(pa)
+		return true
+	if not starting and at == Vector2i(pending_action.get("target_t", at)) \
+			and not path.is_empty():
+		return false   # still where she is heading; keep walking
+	if not starting:
+		_chase_left -= 1
+	var route := Pathfinding.find_path_toward(farm, here, at)
+	if _chase_left < 0 or route.is_empty():
+		# She cannot get to it — across a hedge, or it would not stay put. The
+		# same wobble a tap she cannot act on gets, where the machine stands.
+		pending_action = {}
+		path = []
+		approach_target = Vector2i(-1, -1)
+		refuse_target(at, "too_far")
+		return true
+	path = route
+	pending_action["target_t"] = at
+	var last := route[route.size() - 1]
+	tap_indicator = { "tx": last.x, "ty": last.y, "timer": TAP_INDICATOR_DURATION,
+		"r": 0.2, "g": 0.9, "b": 0.3 }
+	return true
 
 
 # The same visible answer a sim refusal gives, for the case the sim never sees.

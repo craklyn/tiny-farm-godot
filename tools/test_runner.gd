@@ -151,6 +151,7 @@ func _run_scenarios() -> void:
 	await _scenario_af_a_pour_is_heard_whoever_pours()
 	await _scenario_bb_the_planting_beat_is_heard()
 	await _scenario_ag_a_machine_is_bought_placed_and_told_what_to_do()
+	await _scenario_ag_she_walks_over_to_pick_things_up()
 	await _scenario_ah_the_mark_one_takes_exact_orders()
 	await _scenario_ai_the_house_has_a_door()
 	await _scenario_room_wall_tap_answers()
@@ -630,6 +631,17 @@ func _ready_tiles() -> int:
 			if String(farm.sim.get_tile(tx, ty).get("state", "")) == "ready":
 				n += 1
 	return n
+
+# Put her on `t`, body and the sim's record of her both, with nothing queued.
+# Moving only her body (`player.pos`) leaves the sim thinking she is still where
+# she was, which matters wherever something follows her — a follow robot walks to
+# where the sim says she is.
+func _stand_her_at(t: Vector2i) -> void:
+	player.init_position(t.x, t.y)
+	farm.sim.set_actor_pos(SimWorld.ACTOR_PLAYER, t, player.facing)
+	player.path.clear()
+	player.pending_action = {}
+
 
 func _stage_tile(tx: int, ty: int, state: String, crop_type: String = "") -> void:
 	farm.set_tile_state(tx, ty, state, crop_type)
@@ -4103,9 +4115,7 @@ func _scenario_ag_a_machine_is_bought_placed_and_told_what_to_do() -> void:
 	# Keep the roaming hen away from the placement square while the tap is
 	# dispatched. A clear-ground check alone can turn false on the next sim tick.
 	farm.sim.set_actor_pos(SimWorld.ACTOR_CHICKEN, Vector2i(5, 5))
-	player.pos = Vector2((spot.x - 1) * 16.0 + 8.0, spot.y * 16.0 + 8.0)
-	player.path.clear()
-	player.pending_action = {}
+	_stand_her_at(spot - Vector2i(1, 0))
 	await get_tree().process_frame
 	var clear := await _wait_for_clear_ground(spot, "bot_mk2")
 	_assert(clear, "the square she is beside will take a machine")
@@ -4174,6 +4184,14 @@ func _scenario_ag_a_machine_is_bought_placed_and_told_what_to_do() -> void:
 	# A follow bot settles two tiles behind her but passes through adjacency on
 	# the way, so wait for the separation the test is actually about rather than
 	# sampling whenever this line happens to run.
+	#
+	# She is put five squares off first, body and sim record both, so the tap is a
+	# far one and "pick up" below has a walking robot to catch. (Until 2026-10-09
+	# only her body was moved when she was placed, and the robot settled beside the
+	# square the sim still thought she was on.)
+	for tx in range(spot.x - 5, spot.x + 1):
+		_stage_tile(tx, spot.y, "cleared")
+	_stand_her_at(spot - Vector2i(5, 0))
 	var apart := func() -> int:
 		var h: Vector2i = player.get_tile_pos()
 		var b: Vector2i = farm.sim.actor_pos(mid)
@@ -4188,7 +4206,7 @@ func _scenario_ag_a_machine_is_bought_placed_and_told_what_to_do() -> void:
 		"the input edge remembers which moving machine the finger touched")
 	# Guarantee the race the old test only happened to hit on some CI seeds:
 	# the machine leaves its tapped square before the player consumes the click.
-	farm.sim.set_actor_pos(mid, spot)
+	farm.sim.set_actor_pos(mid, spot if walking_at != spot else spot - Vector2i(1, 0))
 	_assert(farm.sim.machine_at(walking_at) == "",
 		"the touched square is empty by the time the tap is routed")
 	var reopened := await _wait_until(func(): return menus.active_menu == "machine", 2000)
@@ -4206,6 +4224,10 @@ func _scenario_ag_a_machine_is_bought_placed_and_told_what_to_do() -> void:
 		"asking for no walk at all — she never has to catch a machine to talk to it")
 
 	# --- and picking it up is the verb she already had ------------------------
+	#
+	# **From beside it** (2026-10-09). The panel opened from across the yard, but
+	# "pick up" walks her over first — and this robot is following her, so it is
+	# the case where the thing she is walking to keeps moving.
 	var pickup_row := -1
 	for i in menus.machine_options.size():
 		if String(menus.machine_options[i].get("kind", "")) == "collect":
@@ -4213,9 +4235,19 @@ func _scenario_ag_a_machine_is_bought_placed_and_told_what_to_do() -> void:
 	menus.selected_option = pickup_row
 	menus._select_current_option()
 	await get_tree().process_frame
-	_assert(not farm.sim.has_actor(mid), "'pick up' takes the robot off the farm")
-	_assert(GameState.machines.get("bot_mk2", 0) == 1, "and puts it back in the crate")
 	_assert(not menus.is_open() and not get_tree().paused, "the panel closes and the world starts again")
+	_assert(farm.sim.has_actor(mid), "the robot is not lifted from where she stood")
+	var reach_at := Vector2i(-1, -1)
+	for i in 2400:
+		if not farm.sim.has_actor(mid):
+			break
+		reach_at = farm.sim.actor_pos(mid)
+		await get_tree().process_frame
+	_assert(not farm.sim.has_actor(mid), "she follows it, and 'pick up' takes the robot off the farm")
+	var stood: Vector2i = farm.sim.actor_pos(SimWorld.ACTOR_PLAYER)
+	_assert(absi(stood.x - reach_at.x) <= 1 and absi(stood.y - reach_at.y) <= 1,
+		"from beside it: she at %s, it last at %s" % [stood, reach_at])
+	_assert(GameState.machines.get("bot_mk2", 0) == 1, "and puts it back in the crate")
 
 	# --- the refusal, and the one it must not become --------------------------
 	#
@@ -4236,6 +4268,160 @@ func _scenario_ag_a_machine_is_bought_placed_and_told_what_to_do() -> void:
 
 	GameState.machines = {}
 	GameState.selected_seed_type = "wheat"
+
+
+# **Picking a thing up walks her over to it first** (from play, 2026-10-09): "If I
+# select a sprinkler, it'll pick up even if I'm standing far away. Please make the
+# character walk to the sprinkler first, and only pick up when near the object."
+#
+# Driven by the finger, not the verb: a tap on the sprinkler from across the yard,
+# then "Pick up" on its panel. The sprinkler must still be standing while she
+# walks, and come up only once she is beside it. Then a robot that keeps moving,
+# which she has to follow. The coop's panel already waited for her to walk up
+# before it opened; it is checked here too, so the two kinds of "Pick up" are seen
+# to agree.
+func _scenario_ag_she_walks_over_to_pick_things_up() -> void:
+	print("\n--- Scenario AG-2: she walks over to a machine or a hut before picking it up ---")
+	var menus = main_scene.menus
+	main_scene.end_teaching()
+	menus.close_menu()
+	GameState.machines = { "sprinkler": 1 }
+	GameState.set_energy(GameState.max_energy)
+	for ty in range(7, 13):
+		for tx in range(8, 21):
+			_stage_tile(tx, ty, "cleared")
+	await get_tree().process_frame
+
+	# --- a sprinkler, six squares from her ------------------------------------
+	var spot := Vector2i(18, 10)
+	var from := Vector2i(12, 10)
+	var blocker := _clear_ground_for_fixture(spot, "sprinkler")
+	_assert(blocker == "", "the sprinkler's square is free (%s)" % blocker)
+	var laid: Dictionary = farm.apply_action({ "verb": "place", "target": spot,
+		"item": "sprinkler", "actor": "player" }, GameState)
+	var sprinkler := String(laid.get("machine", ""))
+	_assert(laid.get("ok", false) and sprinkler != "", "a sprinkler stands on the yard (%s)" % laid)
+	menus.close_menu()
+	_stand_her_at(from)
+	await get_tree().process_frame
+
+	InputManager.tap_tile(spot)
+	var opened := await _wait_until(func(): return menus.active_menu == "machine", 120)
+	_assert(opened, "a tap on the sprinkler from six squares away opens its panel")
+	_assert(player.get_tile_pos() == from, "without her moving yet — the panel is not the errand")
+	var row := -1
+	for i in menus.machine_options.size():
+		if String(menus.machine_options[i].get("kind", "")) == "collect":
+			row = i
+	_assert(row >= 0, "the panel offers 'Pick up'")
+	menus.selected_option = row
+	menus._select_current_option()
+	await get_tree().process_frame
+	_assert(not menus.is_open(), "the panel gets out of the way")
+	_assert(farm.sim.has_actor(sprinkler) and int(GameState.machines.get("sprinkler", 0)) == 0,
+		"and the sprinkler is still standing: nothing is lifted from across the yard")
+	_assert(not player.path.is_empty(), "she sets off toward it")
+	var last_near := Vector2i(-1, -1)
+	var walked := false
+	for i in 600:
+		if not farm.sim.has_actor(sprinkler):
+			break
+		last_near = player.get_tile_pos()
+		walked = walked or last_near != from
+		await get_tree().process_frame
+	_assert(walked, "she walks")
+	_assert(not farm.sim.has_actor(sprinkler) and int(GameState.machines.get("sprinkler", 0)) == 1,
+		"and the sprinkler comes up into the crate once she gets there")
+	var stood: Vector2i = farm.sim.actor_pos(SimWorld.ACTOR_PLAYER)
+	_assert(absi(stood.x - spot.x) + absi(stood.y - spot.y) == 1,
+		"she is standing beside it when it comes up (%s, it was at %s)" % [stood, spot])
+	_assert(absi(last_near.x - spot.x) + absi(last_near.y - spot.y) <= 1,
+		"and it was still there on the last frame before she arrived (%s)" % last_near)
+
+	# --- beside it already, it comes up at once --------------------------------
+	GameState.machines = { "sprinkler": 1 }
+	laid = farm.apply_action({ "verb": "place", "target": spot, "item": "sprinkler",
+		"actor": "player" }, GameState)
+	sprinkler = String(laid.get("machine", ""))
+	_assert(laid.get("ok", false), "put back down on the same square (%s)" % laid)
+	menus.open_machine_menu_for(sprinkler)
+	await get_tree().process_frame
+	for i in menus.machine_options.size():
+		if String(menus.machine_options[i].get("kind", "")) == "collect":
+			menus.selected_option = i
+	menus._select_current_option()
+	_assert(not farm.sim.has_actor(sprinkler),
+		"standing beside it, 'Pick up' lifts it straight away, with no walk")
+
+	# --- a robot on the move: she follows it until she is beside it -----------
+	GameState.machines = { "bot_mk2": 1 }
+	blocker = _clear_ground_for_fixture(spot, "bot_mk2")
+	_assert(blocker == "", "the robot's square is free (%s)" % blocker)
+	var bot_laid: Dictionary = farm.apply_action({ "verb": "place", "target": spot,
+		"item": "bot_mk2", "actor": "player" }, GameState)
+	var bot := String(bot_laid.get("machine", ""))
+	_assert(bot_laid.get("ok", false), "a robot stands on the yard (%s)" % bot_laid)
+	farm.apply_action({ "verb": "configure", "target": spot, "config": BotBrain.CONFIG_CIRCLE,
+		"actor": "player" }, GameState)
+	menus.close_menu()
+	_stand_her_at(from)
+	await get_tree().process_frame
+	menus.open_machine_menu_for(bot)
+	await get_tree().process_frame
+	for i in menus.machine_options.size():
+		if String(menus.machine_options[i].get("kind", "")) == "collect":
+			menus.selected_option = i
+	menus._select_current_option()
+	await get_tree().process_frame
+	_assert(farm.sim.has_actor(bot), "the circling robot is not lifted from across the yard")
+	var bot_last := Vector2i(-1, -1)
+	var bot_moved := false
+	for i in 1800:
+		if not farm.sim.has_actor(bot):
+			break
+		var now: Vector2i = farm.sim.actor_pos(bot)
+		bot_moved = bot_moved or now != spot
+		bot_last = now
+		await get_tree().process_frame
+	_assert(bot_moved, "it kept moving while she walked")
+	_assert(not farm.sim.has_actor(bot) and int(GameState.machines.get("bot_mk2", 0)) == 1,
+		"she catches up with it and it goes into the crate")
+	var caught: Vector2i = farm.sim.actor_pos(SimWorld.ACTOR_PLAYER)
+	_assert(absi(caught.x - bot_last.x) <= 1 and absi(caught.y - bot_last.y) <= 1,
+		"from beside it (she at %s, it last at %s)" % [caught, bot_last])
+
+	# --- a coop: the panel waits for her, and its "Pick up" still works --------
+	var hut := Vector2i(16, 10)
+	GameState.machines = { "coop": 1 }
+	blocker = _clear_ground_for_fixture(hut, "coop")
+	_assert(blocker == "", "the coop's squares are free (%s)" % blocker)
+	var built: Dictionary = farm.apply_action({ "verb": "place", "target": hut, "item": "coop",
+		"actor": "player" }, GameState)
+	_assert(built.get("ok", false), "a coop stands on the yard (%s)" % built)
+	menus.close_menu()
+	var far := Vector2i(9, 10)
+	_stand_her_at(far)
+	await get_tree().process_frame
+	InputManager.tap_tile(hut)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_assert(menus.active_menu != "structure", "a tap on the coop from across the yard walks her first")
+	var asked := await _wait_until(func(): return menus.active_menu == "structure", 600)
+	_assert(asked, "and its panel opens when she gets there")
+	var at_hut: Vector2i = farm.sim.actor_pos(SimWorld.ACTOR_PLAYER)
+	var hut_cells := MachineDefs.footprint_cells("coop", hut)
+	var by_hut := false
+	for c in hut_cells:
+		by_hut = by_hut or absi(at_hut.x - c.x) + absi(at_hut.y - c.y) == 1
+	_assert(by_hut, "beside the hut (%s)" % at_hut)
+	for i in menus.structure_options.size():
+		if String(menus.structure_options[i].get("kind", "")) == "collect":
+			menus.selected_option = i
+	menus._select_current_option()
+	await get_tree().process_frame
+	_assert(farm.sim.room_of_anchor(hut) == "" and int(GameState.machines.get("coop", 0)) == 1,
+		"'Pick up' lifts the coop into the crate")
+	GameState.machines = {}
 
 
 func _scenario_ah_the_mark_one_takes_exact_orders() -> void:

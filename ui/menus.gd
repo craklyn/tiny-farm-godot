@@ -1645,13 +1645,17 @@ func _select_current_option() -> void:
 				menu_action.emit("resume")
 				return
 			if choice.kind == "collect":
-				var took: bool = farm.apply_action({
-					"verb": "collect", "target": mid_tile, "actor": "player",
-				}, GameState).get("ok", false)
-				if took:
-					AudioManager.play_sfx("harvest")
+				# **She walks over and picks it up** (2026-10-09). The panel opens
+				# from anywhere, but lifting it is done beside it — reported from
+				# play: "it'll pick up even if I'm standing far away." The panel
+				# gets out of the way and hands her the errand; `player.gd` walks
+				# her up to the machine (following it, if it moves) and sends the
+				# same `collect` on arrival, which plays the pick-up's sound.
 				close_menu()
 				menu_action.emit("resume")
+				var main_node := get_tree().get_first_node_in_group("Main")
+				if main_node != null and main_node.has_method("pick_up_machine"):
+					main_node.pick_up_machine(machine_id)
 
 		"inventory":
 			# Choosing an item directly (Q-119/S-23) — the alternative to

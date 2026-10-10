@@ -2495,6 +2495,9 @@
   "450e0a92f81452280f6a": {
    "verdict": "ok"
   },
+  "450e8905a567103f8a6c": {
+   "verdict": "ok"
+  },
   "4514a9a8a6d4694f2a6c": {
    "verdict": "ok"
   },
@@ -2714,6 +2717,12 @@
   },
   "4a0e1effc9d3a8196a16": {
    "verdict": "ok"
+  },
+  "4a14a20bf8fe32930ed8": {
+   "instead": "Picking up a sprinkler or robot from its panel now walks the player over to it first, instead of lifting it from across the farm",
+   "quote": "her",
+   "verdict": "second-look",
+   "why": "The sentence makes the reader infer that “her” means the player."
   },
   "4a22e1b793920ea2ab63": {
    "verdict": "ok"
