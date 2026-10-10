@@ -43,7 +43,9 @@ const AtomicFileWriter := preload("res://systems/atomic_file.gd")
 # 3: new stateless RNG derivation for fresh farms; a base save owns its revision.
 # 4: the hen's no-Action wander decisions carry a compact state fingerprint, so
 # her movement joins the dual record instead of being checked only at the end.
-const VERSION := 4
+# 5: that fingerprint reads a whole-number decimal as the whole number, so an actor
+# restored from a save hashes like the same actor in memory (`_decision_fingerprint`).
+const VERSION := 5
 
 # Q-41: the *format* version above says how to parse the file; this says which game
 # produced it. They are different questions, and only the second one can tell you
@@ -154,7 +156,7 @@ func record_brain_decision(decision: Dictionary) -> void:
 		"kind": "brain_decision",
 		"actor": String(decision.get("actor", "")),
 		"brain": true,
-		"brain_fingerprint": _decision_fingerprint(decision),
+		"brain_fingerprint": _decision_fingerprint(decision, version),
 		"tick": tick,
 	})
 	end_tick = maxi(end_tick, tick)
@@ -379,7 +381,7 @@ func _decision_signature(decision: Dictionary, as_record := false) -> String:
 	return "%s decision=%s" % [
 		_signature({} if as_record else decision.get("action", {}),
 			int(decision.get("tick", -1))),
-		_decision_fingerprint(decision),
+		_decision_fingerprint(decision, version),
 	]
 
 
@@ -390,9 +392,22 @@ static func _decision_actor(decision: Dictionary) -> String:
 	return actor
 
 
-static func _decision_fingerprint(decision: Dictionary) -> String:
+# **Whole numbers are compared as whole numbers from format 5 on** (2026-10-10).
+# JSON has one number type, so an actor restored from a save holds `step: 9.0`
+# where the same actor in memory holds `step: 9`, and the two stringify
+# differently. A real Continue never showed it — the live game and its replay
+# both load the save — but `tools/robot_session.gd` keeps its farm in memory and
+# starts the recording from a capture of it, so a hen or robot caught mid-walk
+# decided identically and hashed differently (`tools/replay_many_games.gd`,
+# rebasing at a morning, seeds 202, 303 and 808). Both sides now go through
+# `SaveGame._whole_ints` first, the same rule the cow's restore uses. A v4 log
+# keeps the hash it was recorded with, so nothing already on disk moves.
+static func _decision_fingerprint(decision: Dictionary, format := VERSION) -> String:
 	var state: Dictionary = (decision.get("state", {}) as Dictionary).duplicate(true)
 	var before: Dictionary = (decision.get("before", {}) as Dictionary).duplicate(true)
+	if format >= 5:
+		state = SaveGame._whole_ints(state)
+		before = SaveGame._whole_ints(before)
 	# `wake` is scheduling scratch, not the choice the brain made. A restored
 	# world deliberately wakes every actor once to rebuild the clock queue, so
 	# that number can differ while its route, position, action and all other brain
@@ -406,6 +421,8 @@ static func _decision_fingerprint(decision: Dictionary) -> String:
 		"action": decision.get("action", {}),
 		"change": _changed_fields(before, state),
 	}
+	if format >= 5:
+		comparable = SaveGame._whole_ints(comparable)
 	return (JSON.stringify(comparable) as String).sha256_text()
 
 
