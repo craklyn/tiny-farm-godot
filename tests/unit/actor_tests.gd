@@ -1334,13 +1334,87 @@ func test_hen_replay_from_fresh_save() -> void:
 	gs_live.free()
 	gs_replayed.free()
 
+# The robot session's way of starting a recording (2026-10-10): the farm stays in
+# memory and the log starts again from a capture of it, so the live hen holds
+# `step: 9` while the replay's hen, restored from that capture, holds `step: 9.0`.
+# Caught mid-walk, she decided identically on both sides and used to hash
+# differently (`tools/replay_many_games.gd`, rebasing at a morning: seeds 202, 303
+# and 808). Format 5 reads a whole-number decimal as the whole number; a v4 log
+# keeps the hash it was recorded with, which the control below shows is the old one.
+func test_fingerprint_reads_whole_numbers() -> void:
+	print("\n--- Decision fingerprints across a save's whole numbers Tests ---")
+
+	var decision := {
+		"actor": SimWorld.ACTOR_CHICKEN, "tick": 40, "action": {},
+		"before": { "pos": Vector2i(3, 4), "extra": { "path": [3, 4, 4, 4, 5, 4], "step": 1, "home_x": 3 } },
+		"state": { "pos": Vector2i(4, 4), "extra": { "path": [3, 4, 4, 4, 5, 4], "step": 2, "home_x": 3 } },
+	}
+	var restored := decision.duplicate(true)
+	restored["before"]["extra"] = JSON.parse_string(JSON.stringify(decision["before"]["extra"]))
+	restored["state"]["extra"] = JSON.parse_string(JSON.stringify(decision["state"]["extra"]))
+	_assert(typeof(restored["state"]["extra"]["step"]) == TYPE_FLOAT,
+		"a save hands the hen's step back as a decimal, which is the whole problem")
+	_assert(ReplayLog._decision_fingerprint(decision, 5) == ReplayLog._decision_fingerprint(restored, 5),
+		"from format 5 the hen in memory and the hen from a save hash the same")
+	_assert(ReplayLog._decision_fingerprint(decision, 4) != ReplayLog._decision_fingerprint(restored, 4),
+		"a v4 log keeps the old hash, so recordings already on disk verify as they did")
+	var moved := restored.duplicate(true)
+	moved["state"]["extra"]["step"] = 3.0
+	_assert(ReplayLog._decision_fingerprint(decision, 5) != ReplayLog._decision_fingerprint(moved, 5),
+		"and a step that really differs still differs")
+
+	# End to end, as `tools/robot_session.gd` does it, and the same under v4 rules as
+	# the control that fails.
+	var v5 := _rebased_mid_walk(5)
+	_assert(v5["mid_walk"], "the hen is part-way along a path when the recording restarts")
+	_assert(v5["decisions"] > 0,
+		"and the recording holds her decisions after it (%d), so the fingerprint is exercised"
+			% v5["decisions"])
+	_assert(v5["matched"],
+		"a recording started from a capture of the farm in memory replays exactly %s" % v5["divergence"])
+	var v4 := _rebased_mid_walk(4)
+	_assert(not v4["matched"] and String(v4["divergence"]).contains("decision="),
+		"the same recording under v4 rules does not — that was the bug (%s)" % v4["divergence"])
+
+
+func _rebased_mid_walk(format: int) -> Dictionary:
+	var s := LiveSession.new(5150)
+	s.log.record_decisions = true
+	var mid_walk := false
+	for _i in 4000:
+		s.tick(1)
+		var extra: Dictionary = s.world.actor(SimWorld.ACTOR_CHICKEN).get("extra", {})
+		var route: Array = extra.get("path", [])
+		if int(extra.get("step", 0)) >= 1 and int(extra.get("step", 0)) * 2 + 1 < route.size():
+			mid_walk = true
+			break
+	# A farm loaded from a save wakes everybody on the next tick, as a morning does;
+	# a farm in memory mid-day does not. Lining the live farm up with that keeps
+	# this test on the number question alone — the timing one is separate, and the
+	# reason `tests/generated_games.gd` restarts its recording only at the start.
+	s.world.schedule_all_brains()
+	s.rebase()
+	s.log.record_decisions = true
+	s.log.version = format
+	s.tick(200)
+	var decisions := 0
+	for e in s.log.entries:
+		if String(e.get("kind", "")) == "brain_decision":
+			decisions += 1
+	var snap = JSON.parse_string(JSON.stringify(SaveGame.capture(s.world, s.gs)))
+	var report := SaveGame.replay_report(ReplayLog.from_json(s.log.to_json()), snap)
+	s.done()
+	return { "mid_walk": mid_walk, "decisions": decisions,
+		"matched": bool(report["matched"]), "divergence": String(report["divergence"]) }
+
 
 func test_replay_v2() -> void:
-	print("\n--- Replay format v4 + the dual-record net (M2.5 WI-5) Tests ---")
+	print("\n--- Replay format v5 + the dual-record net (M2.5 WI-5) Tests ---")
 
 	# --- the format ------------------------------------------------------------
 	var s := _session_with_brain_actions(4321)
-	_assert(ReplayLog.VERSION == 4, "the format version is 4 (all brain decisions are checked)")
+	_assert(ReplayLog.VERSION == 5,
+		"the format version is 5 (all brain decisions are checked, whole numbers as whole numbers)")
 	_assert(_brain_entry_count(s.log) > 0,
 		"the session contains Actions a brain decided (%d of %d entries)"
 			% [_brain_entry_count(s.log), s.log.entries.size()])
@@ -1359,7 +1433,7 @@ func test_replay_v2() -> void:
 
 	var text := s.log.to_json()
 	var reloaded := ReplayLog.from_json(text)
-	_assert(reloaded.version == 4, "a v4 log reads back as v4")
+	_assert(reloaded.version == 5, "a v5 log reads back as v5")
 	_assert(reloaded.entries.size() == s.log.entries.size()
 			and _brain_entry_count(reloaded) == _brain_entry_count(s.log),
 		"with every entry and every brain mark intact")
