@@ -394,6 +394,24 @@ class WorkflowProjection(unittest.TestCase):
         live = work.work_view(item, {"active_session": "run"})
         self.assertEqual((live["next_action"]["id"], live["availability"]), (running, "running"))
 
+    def test_a_hold_that_no_file_needs_any_more_leaves_his_page(self):
+        item = self.held_for_approval()
+        self.assertTrue(work.landing_awaits_approval(item))
+        shots = ["docs/design/mockups/industrial_barn/review_interior.png"]
+        outcome = dict(item["attempt_outcome"])
+        outcome["candidate"] = {**outcome["candidate"],
+                                "files": {f: "100644 blob new" for f in shots},
+                                "base_files": {f: "100644 blob old" for f in shots}}
+        item = {**item, "attempt_outcome": outcome,
+                "diff": {**item["diff"], "files": shots,
+                         "why_not_landed": work.approval_hold_reason(shots[0])}}
+        self.assertFalse(work.landing_awaits_approval(item))
+        view = drain.project_work(item)
+        self.assertNotEqual(view["next_action"]["owner"], "daniel")
+        self.assertFalse(work.work_ready_for_daniel(item, view))
+        self.assertEqual((view["next_action"]["type"], view["next_action"]["availability"]),
+                         ("reconcile", "runnable"))
+
     def test_his_yes_merges_that_patch_with_no_model_call(self):
         item = self.held_for_approval()
         before = item["_revision"]

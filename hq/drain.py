@@ -2133,19 +2133,10 @@ def record_landing_suites(suites, head):
 # diff: a release, the deploy runbook, the store page, the build pipeline, and
 # the design documents that hold the studio's direction. A patch touching any
 # of these goes to Daniel however green everything else is.
-NEVER_LANDS = ("docs/design/", "docs/DEPLOY.md", "ITCH_PAGE.md", ".github/",
-               "hq/data/releases.json")
-# Pictures and recordings under the design mockups are evidence a design is judged
-# on, not the design: refreshing a capture decides nothing (2026-10-09: a re-capture
-# of the barn after its doorway was widened waited for Daniel). The text that says
-# what the studio will do stays his.
-EVIDENCE_MEDIA = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".mp4", ".webm", ".wav", ".ogg")
-
-
-def needs_daniels_ok(path):
-    if path.startswith("docs/design/mockups/") and path.lower().endswith(EVIDENCE_MEDIA):
-        return False
-    return any(path == n or path.startswith(n) for n in NEVER_LANDS)
+# The list and its one exception live in work.py, which decides what reaches
+# Daniel's page; the landing bar below asks the same question.
+NEVER_LANDS = work.NEVER_LANDS
+needs_daniels_ok = work.needs_daniels_ok
 
 
 def _checked_tier(item, rec):

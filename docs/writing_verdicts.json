@@ -3483,6 +3483,9 @@
   "5db489ef4d43e51babf8": {
    "verdict": "ok"
   },
+  "5dd39dc1b6d153b6aaa3": {
+   "verdict": "ok"
+  },
   "5de1e0320c0a972afc66": {
    "instead": "the robot's existing learning was made for its old view and cannot be used unchanged with the wider view",
    "quote": "no longer fits what it knows",
@@ -5569,6 +5572,12 @@
   },
   "9590f12450dc27ee0536": {
    "verdict": "ok"
+  },
+  "95bb18dbd185ca87e3ca": {
+   "instead": "Cards on Daniel's page no longer wait for Daniel's approval or for repairs to a build that already passes.",
+   "quote": "Cards no longer wait on Daniel's page for approval they stopped needing, or to repair a build that already passes again",
+   "verdict": "decode",
+   "why": "The reader must untangle what the cards no longer wait for, and “already passes again” is difficult to interpret on a first read."
   },
   "9600a020bbd582ae4022": {
    "verdict": "ok"
