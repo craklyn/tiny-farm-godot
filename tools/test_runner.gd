@@ -505,6 +505,19 @@ func _wait_until(pred: Callable, max_frames: int) -> bool:
 	return false
 
 
+# For what the farm times on the wall clock rather than on frames — the short
+# answers it draws to a tap (a refusal's shudder, a footprint that fades). How many
+# frames those take depends on how fast this machine draws them, so the bound is
+# in milliseconds.
+func _wait_until_wall_ms(pred: Callable, max_ms: int) -> bool:
+	var deadline := Time.get_ticks_msec() + max_ms
+	while Time.get_ticks_msec() < deadline:
+		if pred.call():
+			return true
+		await get_tree().process_frame
+	return pred.call()
+
+
 # The ground a structure needs belongs to the scenario fixture, not to whichever
 # actor happens to arrive there while the test is drawing frames.  `placeable_at`
 # refuses every cell under a non-player actor, so waiting for the hen, crow, or a
@@ -9750,7 +9763,11 @@ func _scenario_bq_a_tower_that_will_not_fit_buzzes() -> void:
 		"the square is still cleared ground and the tower is still in her hands")
 	_assert(player.get_tile_pos() == beside and player.path.is_empty(),
 		"she stays where she is: the answer comes at once, without a walk")
-	var faded := await _wait_until(func(): return farm.footprint_refusal().is_empty(), 240)
+	# The block fades on the wall clock, like every answer the farm draws, so the
+	# wait is bounded in real time: a count of frames was 1.6 s on one machine and
+	# half that on a faster one.
+	var faded := await _wait_until_wall_ms(func(): return farm.footprint_refusal().is_empty(),
+		int(farm.FOOTPRINT_REFUSE_MS) + 2000)
 	_assert(faded, "the block fades after a moment")
 
 	# --- and the tap that fits -------------------------------------------------

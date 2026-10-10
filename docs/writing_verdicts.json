@@ -2978,6 +2978,9 @@
   "50b727a253159e02d41c": {
    "verdict": "ok"
   },
+  "50c33e8cc91b646843ee": {
+   "verdict": "ok"
+  },
   "50c8bfb85b3c8d43741d": {
    "verdict": "ok"
   },
@@ -8677,6 +8680,12 @@
    "verdict": "decode",
    "why": "The reader has to reconstruct the earlier decision and the work it requires."
   },
+  "e664582f1bdbb087559f": {
+   "instead": "The test waits for the building outline to disappear for the same number of seconds as it does in the game.",
+   "quote": "waits for its outline to fade in seconds, the way the game times it, not in screen redraws",
+   "verdict": "second-look",
+   "why": "The sentence makes the reader unpack an awkward timing distinction instead of plainly saying what the test waits for and how."
+  },
   "e6a47f97a1c40d675200": {
    "instead": "Say what is wrong.",
    "quote": "Say what misses.",
@@ -8873,6 +8882,12 @@
   },
   "ee07ce06baf3f9a0ee6e": {
    "verdict": "ok"
+  },
+  "ee42de5f79b750da18ce": {
+   "instead": "The placement test now makes the red outline fade at the same speed as in the game",
+   "quote": "gives its red outline as long to fade as the game does",
+   "verdict": "decode",
+   "why": "The reader has to work out what the outline is being compared with and what the test is checking."
   },
   "ee535dfc6f953d2a77f0": {
    "verdict": "ok"
