@@ -1,6 +1,10 @@
 extends SceneTree
 
 
+var _mode := ""
+var _frames := 0
+
+
 func _init() -> void:
 	var args := OS.get_cmdline_user_args()
 	if args.size() < 1:
@@ -21,6 +25,8 @@ func _init() -> void:
 		"status_failure":
 			print("Results: FAILED")
 			hang()
+		"frame_step":
+			_mode = "frame_step"
 		"script_error_green":
 			print("SCRIPT ERROR: Compile Error: Identifier not found: AudioManager")
 			print("Results: 1 PASSED, 0 FAILED")
@@ -57,6 +63,23 @@ func isolation(args: PackedStringArray) -> void:
 		return
 	print("Results: PASSED")
 	finish(0, "isolated " + token)
+
+
+# Every frame the runner starts is 1/60 s of game time, whatever the wall clock
+# did (`run_godot_test.py`'s FIXED_FPS).
+func _process(delta: float) -> bool:
+	if _mode != "frame_step":
+		return false
+	_frames += 1
+	if _frames < 4:
+		return false
+	if is_equal_approx(delta, 1.0 / 60.0):
+		print("Results: PASSED")
+		finish(0, "fixed frame step %f" % delta)
+	else:
+		print("Results: FAILED")
+		finish(1, "frame step followed the wall clock: %f" % delta)
+	return false
 
 
 func hang() -> void:

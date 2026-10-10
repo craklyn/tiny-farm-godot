@@ -53,6 +53,12 @@ python3 tools/run_godot_test.py -- godot --headless --path . res://tools/robot_s
 # `-- --seed=N` plays one again; `-- --verbose` prints what each game did
 python3 tools/run_godot_test.py -- godot --headless --path . --script res://tools/replay_many_games.gd
 
+# The integration suite and the robot session each boot one fixed farm, and the wrapper
+# gives every frame 1/60 s of game time however slow the machine, so a run repeats
+# exactly; add `-- --seed=N` to play another farm. To find checks that only hold on some
+# farms, sweep many (`--fps 20` imitates a slow, loaded runner; `--cores 0-1` squeezes CPU)
+python3 tools/sweep_suite_seeds.py --seeds 1-40 --jobs 6
+
 # Visual comparison (also available as Engineering's Run button)
 tools/check_visuals.sh
 
