@@ -279,3 +279,8 @@ fi
 # The launcher activity is GodotAppLauncher, not GodotApp; let the system resolve it.
 adb -s "$SERIAL" shell monkey -p "$PKG" -c android.intent.category.LAUNCHER 1 >/dev/null
 echo "Installed and launched $PKG on $SERIAL"
+# Every session the tablet records from now on names this commit, so keep it on
+# GitHub even if it is on an unmerged branch or later rebased. Warns and carries
+# on without a network; the next deploy retries.
+step "Saving the build's commit on GitHub"
+tools/save_build_marker.sh HEAD

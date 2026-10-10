@@ -5315,6 +5315,12 @@
   "8f39bb969bb9a234a5b2": {
    "verdict": "ok"
   },
+  "8f5caa7fe3a72b864355": {
+   "instead": "Every tablet install now saves the installed version on GitHub, so recordings from that tablet can always be checked later",
+   "quote": "so its play recordings can always be checked later",
+   "verdict": "second-look",
+   "why": "“Its” appears to refer to the install, so the reader must infer that the recordings belong to the tablet."
+  },
   "8f65a4aeaecc5781fbd7": {
    "verdict": "ok"
   },
@@ -6091,6 +6097,9 @@
    "verdict": "ok"
   },
   "a3796ea2fd215276b3af": {
+   "verdict": "ok"
+  },
+  "a397b6f3446c96d0ed8d": {
    "verdict": "ok"
   },
   "a39bc41ce3c5a4d4c34b": {
@@ -7119,6 +7128,12 @@
    "quote": "Version per-day stateless rolls to break visible schedule cycle",
    "verdict": "decode",
    "why": "“Stateless rolls” and “visible schedule cycle” are internal descriptions, so the reader must work out what changes and what repetition is being prevented."
+  },
+  "c07412dc10b698f1d113": {
+   "instead": "Four tablet play recordings from a version that is no longer available are now linked to GitHub versions of the game that reproduce them exactly",
+   "quote": "a build that is gone",
+   "verdict": "second-look",
+   "why": "This makes the reader translate a figurative phrase to learn that the original version is no longer available."
   },
   "c085b7ce1d42754c7386": {
    "verdict": "ok"
@@ -8969,6 +8984,12 @@
    "verdict": "second-look",
    "why": "The phrase makes the reader translate a value judgment into whether the robot retains learned behavior."
   },
+  "f3ef199887df5f6f086b": {
+   "instead": "Four tablet gameplay recordings from a September build that is no longer available are linked to GitHub commits that reproduce the same results exactly.",
+   "quote": "Four tablet sessions labelled with a lost September build are tied to commits on GitHub that replay them exactly",
+   "verdict": "decode",
+   "why": "A cold reader has to work out what the sessions are, what “lost” means, and how commits can replay them."
+  },
   "f44f2a87f511694a147c": {
    "instead": "Stop the work queue's game tests from stalling for fourteen minutes on every work item that only changes documents",
    "quote": "every card that only changes documents",
@@ -9135,6 +9156,12 @@
   },
   "f910f89b586b31f534a5": {
    "verdict": "ok"
+  },
+  "f92f1a6a339655225af2": {
+   "instead": "Four recordings of tablet gameplay are linked to GitHub commits that reproduce the same gameplay exactly, but the build used to make the recordings is no longer available",
+   "quote": "linked to GitHub commits that play them back exactly",
+   "verdict": "decode",
+   "why": "A commit cannot literally play a recording, so the reader must work out that the linked versions reproduce the recorded gameplay."
   },
   "f9441845278f2ec154ee": {
    "verdict": "ok"
