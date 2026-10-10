@@ -5003,6 +5003,12 @@
   "86376ae1756205d34797": {
    "verdict": "ok"
   },
+  "86450923f9de2af2a94c": {
+   "instead": "The tool that captures the worm crawl keeps the file identifying its game engine in the same folder",
+   "quote": "engine id file",
+   "verdict": "decode",
+   "why": "A reader would not know what this file contains or why it matters."
+  },
   "86493d977e2263ebe6a1": {
    "verdict": "ok"
   },
@@ -9086,6 +9092,9 @@
    "quote": "the demo that priced the Mark I",
    "verdict": "decode",
    "why": "The reader has to work out that this means the demonstration used to estimate the Mark I's cost."
+  },
+  "f6568681fc40e4d67a6b": {
+   "verdict": "ok"
   },
   "f656f679c1edcb214665": {
    "verdict": "ok"

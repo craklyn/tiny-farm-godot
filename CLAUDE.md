@@ -133,6 +133,10 @@ TINY_FARM_PROFILE_MODE=ripe tools/profile_android.sh
 # display
 godot --path . res://tools/profile_farm_page.tscn
 
+# A worm crawling through bends, four moments a step, as
+# docs/design/mockups/worm_crawl/staged_crawl.png — needs a display
+godot --path . res://tools/capture_worm_crawl.tscn
+
 # The training workbench's six plates as PNGs (tools/shot_workbench_0..5.png) on a fresh
 # Mark III — needs a display; saves to scratch so it never seeds the next suite run
 godot --path . res://tools/capture_workbench.tscn
