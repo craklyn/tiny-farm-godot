@@ -1,0 +1,13 @@
+{
+  "build_matched": {
+    "commit": "0903cfee02e265141ae10629a0c622bbe3470806",
+    "recorded_as": "v0.2.0.1-591-g894089c",
+    "also_matches": [
+      "0f671aac80ce7c92709a28d1ceffcd1bbb53dbf4",
+      "ec464b48d1d9353fb3d3a81dc8b66ab080eedc6a"
+    ],
+    "checked_on": "2026-10-09",
+    "how": "godot --headless --path . --script res://tools/verify_replay.gd -- playtests/2026-09-25_104447",
+    "why": "This session was recorded on build 894089c, which no longer exists: it was a commit on this desktop that was rebased before it was pushed, so its id was never on GitHub. The receipt beside the session shows it replayed exactly to the autosave on that build the morning it was recorded. On 2026-10-09 it was replayed again on pushed commits and matched exactly on 0903cfee, 0f671aac and ec464b48; today's code does not match. 894089c was 591 commits after v0.2.0.1, and the game's files are the same on every pushed commit from a362c07e to e04eb2a0 (576 to 591 after that tag), so 0903cfee stands in for the lost build. It did not record the session."
+  }
+}

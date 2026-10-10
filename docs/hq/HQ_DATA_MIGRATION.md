@@ -52,7 +52,7 @@ is what writes the file while the studio runs, per the reader/writer survey of
 ### Runtime output: the store only (already ignored on main before this change)
 
 `runs/`, `history/`, `patches/`, `outbox/`, `probes/`, `captures/`, `loop_previews/`,
-`sprite_backups/` and `ci_history.json`. The store keeps `runs/workers/` (162 MB of
+`sprite_backups/`, `ci_history.json` and `ci_steps.json` (added 2026-10-09). The store keeps `runs/workers/` (162 MB of
 worker logs), `loop_previews/` and `sprite_backups/` on disk but out of its history.
 
 ### Checked in on main, read beside the code (one copy)
