@@ -33,8 +33,8 @@ Flagged to Daniel: "every day I add a feature" — the creamery took three days.
 
 Shots stand on the day-62 playtest farm the first video used (`playtests/2026-09-29_234619`), so the two videos
 show the same farm. That farm has no barn, so `tools/record_video_shots.gd` (`cstage`) buys one through the real
-shop, places it with a real tap below the yard, buys three more cows, and runs one batch of each cow's milk
-through the line; the result is `edit/creamery-farm.json`, which every creamery shot loads. Two things are set
+shop, places it with a real tap, buys three more cows, and runs one batch of each cow's milk through the line,
+saving the farm before and after (below). Two things are set
 by hand for the stage: the farm's egg count is raised to the ten that unlock the barn (it had collected fewer),
 and each cow's milk is raised with the cow's own daily-gain action so she is ready on cue rather than after a
 night's sleep.

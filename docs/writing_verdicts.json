@@ -8628,6 +8628,9 @@
    "verdict": "second-look",
    "why": "The metaphor is understandable, but the concrete fact is that early harvests produce no gold."
   },
+  "e61a2183c150b25b7540": {
+   "verdict": "ok"
+  },
   "e633ee5ea674e11ce333": {
    "baselined": "2026-09-19",
    "instead": "sprites not in the sheet",
