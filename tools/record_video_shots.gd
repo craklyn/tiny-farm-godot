@@ -65,6 +65,13 @@ func _ready() -> void:
 	_scratch_paths()
 	match shot:
 		"survey": await _survey()
+		"overview": await _overview()
+		"cstage": await _creamery_stage()
+		"barnfarm": await _barn_farm()
+		"cowsin": await _cows_in()
+		"barnin": await _barn_in()
+		"stalls": await _stalls()
+		"sell": await _sell_cheese()
 		"walk": await _walk()
 		"yard": await _yard()
 		"eggs": await _eggs()
@@ -102,10 +109,10 @@ func _mark(name: String) -> void:
 	print("MARK %s %d" % [name, _frame])
 
 
-func _boot_farm(square := true, sunny := true) -> void:
+func _boot_farm(square := true, sunny := true, save := SAVE) -> void:
 	if square:
 		get_tree().root.content_scale_size = SQUARE
-	GameState.save_path = SAVE
+	GameState.save_path = save
 	GameState.pending_load = true
 	main = load("res://main.tscn").instantiate()
 	add_child(main)
@@ -205,6 +212,15 @@ func _tap(tile: Vector2i, label: String) -> void:
 
 
 # -- shots --
+
+# The whole farm page at 1x, to choose where things stand. Not a shot for the edit.
+func _overview() -> void:
+	var args := OS.get_cmdline_user_args()
+	await _boot_farm(true, true, String(args[1]) if args.size() > 1 else SAVE)
+	_free_camera(Vector2(256, 160), 1.0)
+	await _seconds(0.5)
+	await _shot("user://tt_overview.png")
+
 
 func _survey() -> void:
 	await _boot_farm()
@@ -545,3 +561,260 @@ func _house() -> void:
 	_mark("walk")
 	await _walk_to(Vector2i(18, 28))
 	await _seconds(1.0)
+
+
+# -- the creamery (the Industrial Barn and its cheese line), for the 2026-10-10 TikTok --
+#
+# Staged once on the day-62 playtest farm the first video used, through the real shop
+# and a real tap: the barn bought and placed below the left-hand field, near the yard, three more cows bought
+# (four, the most one barn holds), and one batch of each cow's milk run through the line
+# so the shelf has cheese (a second save). The ten-egg unlock is granted first (that farm has collected
+# fewer eggs). The staged farm is written beside the video's edit files; every creamery
+# shot boots from it.
+const CREAMERY_SAVE := "res://video/2026-10-10_tiktok_creamery/edit/creamery-farm.json"
+const CREAMERY_CHEESE_SAVE := "res://video/2026-10-10_tiktok_creamery/edit/creamery-farm-cheese.json"
+const BARN_ANCHORS: Array[Vector2i] = [Vector2i(4, 13), Vector2i(3, 13), Vector2i(5, 13), Vector2i(2, 13),
+	Vector2i(4, 12), Vector2i(3, 12), Vector2i(5, 12), Vector2i(6, 12), Vector2i(10, 16), Vector2i(11, 16), Vector2i(12, 16)]
+
+
+func _creamery_stage() -> void:
+	await _boot_farm()
+	GameState.harvest_counts["egg"] = maxi(10, int(GameState.harvest_counts.get("egg", 0)))
+	var sim: SimWorld = farm.sim
+	var anchor := Vector2i(-1, -1)
+	for a in BARN_ANCHORS:
+		# Every cow bought arrives on one of five squares two rows below the anchor and
+		# stays there until she goes in, so four of them must be free for four cows.
+		var free := 0
+		for dx in range(-2, 3):
+			if sim.placeable_at(a + Vector2i(dx, 2)):
+				free += 1
+		print("  anchor ", a, " barn fits ", sim.placeable_at(a, "industrial_barn"), " free arrivals ", free)
+		if sim.placeable_at(a, "industrial_barn") and free >= 4:
+			anchor = a
+			break
+	print("barn anchor ", anchor, " gold ", GameState.gold)
+	if anchor.x < 0:
+		push_error("no place for the barn")
+		return
+	if not await _buy_card("industrial_barn"):
+		push_error("could not buy the barn")
+		return
+	# Beside the footprint, not on it: a building will not go down on the farmer.
+	await _walk_to(anchor + Vector2i(-1, 0))
+	for _attempt in 5:
+		InputManager.click_tile = anchor
+		InputManager.has_click = true
+		if await _wait_until(func(): return farm.get_object(anchor.x, anchor.y) == WorldLayout.INDUSTRIAL_BARN, ACT_FRAMES):
+			break
+	var barn_id: String = sim.room_of_anchor(anchor)
+	print("barn ", barn_id, " placed ", farm.get_object(anchor.x, anchor.y))
+	if not sim.barns.has(barn_id):
+		push_error("the barn was not placed (held %s, player at %s)" % [GameState.selected_seed_type, player.get_tile_pos()])
+		return
+	for i in 3:
+		print("  cow ", await _buy_card("cow"))
+	GameState.select_held_item("wheat")
+	await _seconds(1.0)
+	# The cows stand where the shop delivered them, spread along the grass below the
+	# barn: the farm every shot but the sale starts from.
+	SaveGame.save_to(CREAMERY_SAVE, sim, GameState)
+	print("staged ", CREAMERY_SAVE)
+	_give_all_cows_milk()
+	# Let the four batches run the whole line, quickly: this run is not recorded.
+	Engine.time_scale = 8.0
+	var herd := _cows().size()
+	await _wait_until(func(): return int(sim.barns[barn_id].get("finished_cheese_count", 0)) >= herd, 30 * 240)
+	Engine.time_scale = 1.0
+	await _seconds(1.0)
+	print("cows ", _cows(), " cheese ", sim.barns[barn_id].get("finished_cheese_count", 0), " gold ", GameState.gold)
+	# After one batch each, the shelf holds four cheeses: the sale's farm.
+	SaveGame.save_to(CREAMERY_CHEESE_SAVE, sim, GameState)
+	print("staged ", CREAMERY_CHEESE_SAVE)
+	_free_camera(Vector2(256, 160), 1.0)
+	await _seconds(0.3)
+	await _shot("user://tt_creamery_stage.png")
+
+
+func _buy_card(item: String) -> bool:
+	var menus = main.menus
+	menus.open_menu("shop")
+	await _frames(2)
+	var card := -1
+	for i in menus.shop_items.size():
+		if String(menus.shop_items[i].get("seed_type", "")) == item:
+			card = i
+	if card < 0:
+		menus.close_menu()
+		return false
+	var gold_before: int = GameState.gold
+	menus.selected_option = card
+	menus._select_current_option()
+	await _frames(2)
+	menus.close_menu()
+	await _frames(2)
+	return GameState.gold < gold_before
+
+
+func _cows() -> Array[String]:
+	var ids: Array[String] = []
+	for id in farm.sim.actors:
+		if farm.sim.species_of(String(id)) == SpeciesDefs.COW:
+			ids.append(String(id))
+	ids.sort()
+	return ids
+
+
+# Each cow's daily milk gain, through the gateway as the day's own action is: enough
+# that she is ready to give one unit.
+func _give_all_cows_milk(only: Array = []) -> void:
+	for id in _cows():
+		if only.is_empty() or id in only:
+			print("  milk ", id, " ", farm.apply_action({"actor": id, "verb": "gain_milk", "amount_milliunits": 1000}, GameState))
+
+
+func _barn_room() -> String:
+	for id in farm.sim.barns:
+		return String(id)
+	return ""
+
+
+# The square outside the barn's doors, and the building square she taps from it.
+func _barn_doors(barn_id: String) -> Array[Vector2i]:
+	var room: Dictionary = farm.sim.rooms[barn_id]
+	var exit: Vector2i = farm.sim.room_exit_for(room)
+	for cell in MachineDefs.footprint_cells("industrial_barn", _v(room["anchor"])):
+		if absi(cell.x - exit.x) + absi(cell.y - exit.y) == 1:
+			return [exit, cell]
+	return [exit, Vector2i(-1, -1)]
+
+
+func _sprite_of(actor_id: String) -> Node2D:
+	for e in main.entities.get_children():
+		if "actor_id" in e and String(e.actor_id) == actor_id:
+			return e
+	return null
+
+
+# Close on the room itself, nearer than play's own framing, so each machine reads.
+func _frame_room(barn_id: String, zoom := 5.0) -> void:
+	var room: Dictionary = farm.sim.rooms[barn_id]
+	var centre := (Vector2(_v(room["origin"])) + Vector2(_v(room["size"])) / 2.0) * 16.0
+	_free_camera(centre, zoom)
+
+
+func _go_inside_barn(barn_id: String) -> void:
+	var doors := _barn_doors(barn_id)
+	_place_player(doors[0])
+	await _frames(2)
+	player._execute_resolved_action({ "action": "use_door", "target_t": doors[1] })
+
+
+# "Today's feature: the creamery": a drift from the yard down to the red barn beside the
+# field, the cows out on the grass in front of it.
+func _barn_farm() -> void:
+	await _boot_farm(true, true, CREAMERY_SAVE)
+	var anchor := _v(farm.sim.rooms[_barn_room()]["anchor"])
+	_place_player(Vector2i(9, 6))
+	_free_camera(Vector2(100, 70), 2.25)
+	await _seconds(0.5)
+	_mark("pan")
+	var tw := create_tween()
+	tw.tween_property(main.camera, "global_position", _px(anchor) + Vector2(16, 0), 4.0) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	tw.parallel().tween_property(main.camera, "zoom", Vector2(3.0, 3.0), 4.0) \
+		.set_trans(Tween.TRANS_SINE).set_ease(Tween.EASE_IN_OUT)
+	await _seconds(4.5)
+	_mark("held")
+	await _seconds(2.5)
+
+
+# "Your cows walk in on their own": close on the doors from outside; two cows are ready
+# and walk in by themselves, one after the other.
+func _cows_in() -> void:
+	await _boot_farm(true, true, CREAMERY_SAVE)
+	var barn_id := _barn_room()
+	var doors := _barn_doors(barn_id)
+	_place_player(doors[0] + Vector2i(9, 4))   # out of frame: the cows are the subject
+	_free_camera(_px(doors[0]) + Vector2(0, 8), 3.0)
+	await _seconds(0.6)
+	_mark("ready")
+	_give_all_cows_milk(["cow_1"])
+	await _seconds(1.5)
+	_give_all_cows_milk(["cow_3"])
+	await _seconds(14.0)
+
+
+# "Bigger on the inside": the farmer taps the barn and goes in; the 3-by-2 barn opens
+# into its 6-by-4 room in the same farm view.
+func _barn_in() -> void:
+	await _boot_farm(true, true, CREAMERY_SAVE)
+	var barn_id := _barn_room()
+	var doors := _barn_doors(barn_id)
+	_place_player(doors[0] + Vector2i(3, 2))
+	await _seconds(0.6)
+	_mark("tap")
+	# The barn itself, tapped as a player taps it: she walks to it, its panel opens, and
+	# "Go inside" (the panel's first choice) takes her in.
+	InputManager.click_tile = doors[1]
+	InputManager.has_click = true
+	await _wait_until(func(): return main.menus.is_open(), WALK_FRAMES)
+	_mark("panel")
+	await _seconds(0.8)
+	main.menus.selected_option = 0
+	main.menus._select_current_option()
+	await _wait_until(func(): return farm.sim.room_of_cell(player.get_tile_pos()) == barn_id, WALK_FRAMES)
+	_mark("inside")
+	await _seconds(3.0)
+
+
+# Inside, everything that runs by itself: all four cows are ready, come in through the
+# doorway to the stalls, give milk (a drop at each stall's pipe), and leave again; the
+# milk runs down the pipe and each of the seven steps works in turn for five seconds.
+func _stalls() -> void:
+	await _boot_farm(true, true, CREAMERY_SAVE)
+	var barn_id := _barn_room()
+	await _go_inside_barn(barn_id)
+	await _seconds(3.0)
+	var room: Dictionary = farm.sim.rooms[barn_id]
+	await _walk_to(_v(room["origin"]) + Vector2i(1, 2))
+	_frame_room(barn_id)
+	await _seconds(0.5)
+	_mark("ready")
+	_give_all_cows_milk()
+	for i in 80:
+		await _seconds(1.0)
+		var line: Dictionary = farm.sim.barns[barn_id].get("stations", {})
+		var busy: Array = []
+		for k in line:
+			if line[k] != null and not (line[k] is Dictionary and line[k].is_empty()):
+				busy.append(k)
+		print("  t=%d cheese=%d busy=%s" % [i + 1, int(farm.sim.barns[barn_id].get("finished_cheese_count", 0)), busy])
+
+
+# "One tap sells all your cheese": four wheels on the shelf; she taps it, walks over,
+# lifts them into the cart, and the coins fly to her gold.
+func _sell_cheese() -> void:
+	await _boot_farm(true, true, CREAMERY_CHEESE_SAVE)
+	var barn_id := _barn_room()
+	await _go_inside_barn(barn_id)
+	await _seconds(3.0)
+	var room: Dictionary = farm.sim.rooms[barn_id]
+	var shelf := _v(room["origin"]) + Vector2i(MachineDefs.room_of("industrial_barn")["cheese_shelf"])
+	await _walk_to(_v(room["origin"]) + Vector2i(1, 2))
+	_frame_room(barn_id)
+	# The gold total alone, from the HUD, so the coins have somewhere to land.
+	main.hud.visible = true
+	for c in main.hud.get_children():
+		if c != main.hud.top_bar and "visible" in c:
+			c.visible = false
+	for c in main.hud.top_bar.get_children():
+		if c != main.hud.gold_label and "visible" in c:
+			c.visible = false
+	await _seconds(0.6)
+	_mark("tap")
+	print("  gold before ", GameState.gold, " cheese ", farm.sim.barns[barn_id].get("finished_cheese_count", 0))
+	InputManager.click_tile = shelf
+	InputManager.has_click = true
+	await _seconds(4.0)
+	print("  gold after ", GameState.gold, " cheese ", farm.sim.barns[barn_id].get("finished_cheese_count", 0))
