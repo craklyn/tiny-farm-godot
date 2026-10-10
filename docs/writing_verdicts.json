@@ -7238,6 +7238,12 @@
   "c199a89f06dacb982a69": {
    "verdict": "ok"
   },
+  "c19a6f8dcb152b62e8dc": {
+   "instead": "Correct the creamery video notes to say which prepared farm setup appears in each shot",
+   "quote": "which staged farm each shot loads",
+   "verdict": "second-look",
+   "why": "“Loads” makes the reader translate a technical action into which prepared farm setup appears in the video shot."
+  },
   "c1b158abd5284e200bed": {
    "verdict": "ok"
   },
