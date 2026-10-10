@@ -808,6 +808,15 @@ next station. The shared timing gives players time to follow the product changin
 cheese without a label, while the deterministic clock and replayed station actions continue to
 set every completion. Design: `design/17-industrial-barn-and-cheese-line.md`.
 
+### S-44. A feature built in its own session comes back as a pull request
+**Ruled by Daniel on 2026-10-09, amending Q-4.** When the work splits into features, one
+long-lived orchestrator session hands each feature to its own session in the Claude app, the
+way Daniel already works on the StarCraft project. That session opens a pull request, and the
+orchestrator reviews it, runs both suites on it merged with main, and merges it. Small fixes
+made directly in a session still go straight to main, as Q-4 ruled. The playbook is the
+`orchestrator` skill in Daniel's own Claude settings; `.claude/skills/orchestrated-build/`
+covers the planning half and points at it.
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported

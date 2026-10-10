@@ -148,6 +148,9 @@
   "04969d63484713e7f58a": {
    "verdict": "ok"
   },
+  "04b61565970008885d3b": {
+   "verdict": "ok"
+  },
   "04bb224a923c6ee6721c": {
    "verdict": "ok"
   },
@@ -7355,6 +7358,12 @@
   },
   "c75bc8074ec54d4db1e9": {
    "verdict": "ok"
+  },
+  "c796f3b223a68a10b2ef": {
+   "instead": "A separately built feature is now submitted as a pull request for review",
+   "quote": "built in its own session now comes back as a pull request",
+   "verdict": "decode",
+   "why": "The reader has to work out what “its own session” and “comes back” mean in the studio's process."
   },
   "c7e132e2c2e67bc7b3c7": {
    "instead": "without making the device too slow or using too much power",

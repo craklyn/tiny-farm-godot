@@ -2,7 +2,7 @@
 name: orchestrated-build
 description: >-
   Build something substantial by writing the plan yourself and handing every
-  piece of implementation to worker subagents in their own git worktrees. Use
+  piece of implementation to worker sub-sessions that come back as pull requests. Use
   whenever Daniel says "build it the way we did the learning robot", "run this
   with workers", "orchestrate this", "delegate the code", or asks for a
   multi-day feature to be built while keeping the expensive model's budget for
@@ -29,6 +29,19 @@ does not have to edit.
 Measured on the run that produced this skill: about 3.7 million worker tokens
 built a reinforcement-learning agent, its instrumentation and its UI across two
 days, while the orchestrator read only structured reports and screenshots.
+
+## Workers are sub-sessions (S-44, 2026-10-09)
+
+A worker that builds a feature is a **sub-session in the Claude app**, not a
+background subagent: Daniel can see it in his sidebar and talk to it, and it
+comes back as a pull request. Starting, briefing, merging and archiving
+sub-sessions follow the global `orchestrator` skill
+(`~/.claude/skills/orchestrator/SKILL.md`), including its standing rules for
+every brief. A background subagent is for the other case, in Daniel's terms:
+the current session needs something done itself but should not spend its own
+context doing it — the read-only survey and review below, a measurement it
+must judge, a check before it merges. This skill adds the plan file, the plan
+review and the brief contents.
 
 ## The shape
 
@@ -76,7 +89,9 @@ One work item per worker, each in its own git worktree. Every brief carries:
 - **What to read, in order**, and an instruction not to read more than it needs.
 - **The deliverable**, pointing at the plan rather than restating it.
 - **The exact verification commands**, with the expected output line.
-- **Commit on the branch, do not push.** The orchestrator merges.
+- **Commit on the branch, push it, and open a pull request.** The orchestrator
+  reviews and merges; the sub-session watches the PR and says when it can be
+  archived (the `orchestrator` skill's standing rules).
 - **A report under 300 words**: files changed; tests added with counts; each
   suite's result line; **anything in the plan that was wrong or that it had to
   decide**; the worktree path and branch. **No diffs.**
@@ -115,7 +130,8 @@ decision with a recommendation rather than deciding it inside the build.
   the tests instead.
 - Re-survey what the plan already records.
 - Paste a diff into its own context.
-- Message a running worker. Corrections go into the next worker's brief.
+- Redirect a running worker mid-task with a new design. Relaying Daniel's words
+  or answering its question is fine; a changed plan goes into the next brief.
 
 ## Traps that have actually bitten
 

@@ -712,7 +712,8 @@ from a blank page. Claude drafts strawmen for any Creative item on request.*
   emergent possibility at zero committed scope; use-it-or-not decided at D-1.
 - **Q-4** ~~Repo process~~ — ✅ ruled 2026-08-18: commit immediately, straight-to-main
   while the team is this small; branches/PRs when code changes get risky. Docs committed
-  as of this ruling.
+  as of this ruling. Amended 2026-10-09 (S-44): a feature built in its own session
+  comes back as a pull request.
 - **Q-5** ~~Title~~ — ✅ ruled 2026-08-18: keep "Tiny Farm" as working title for now.
 - **Q-6** ~~Release strategy~~ — ✅ ruled 2026-08-18: staged — release publicly early
   and as often as possible; all early releases free to play without restrictions;
