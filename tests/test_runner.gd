@@ -102,6 +102,7 @@ func _init() -> void:
 	actor.test_pea()
 	actor.test_replay_v2()
 	actor.test_hen_replay_from_fresh_save()
+	actor.test_hen_side_door()
 	actor.test_ants()
 	actor.test_grazers()
 	actor.test_songbird()

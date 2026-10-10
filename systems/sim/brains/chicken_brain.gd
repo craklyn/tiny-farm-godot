@@ -194,8 +194,9 @@ func _head_for_shelter(world: SimWorld, actor_id: String, extra: Dictionary,
 	var doorstep := _nearest_doorstep(world, here)
 	if doorstep.x >= 0:
 		if here == doorstep:
-			return _step_through(world, actor_id, extra, tick, doorstep)
-		if _walk_to(world, actor_id, extra, tick, doorstep):
+			if _step_through(world, actor_id, extra, tick, doorstep):
+				return true
+		elif _walk_to(world, actor_id, extra, tick, doorstep):
 			return true
 	var cells := world.coop_perches()
 	if cells.is_empty():
@@ -269,12 +270,36 @@ func _step_through(world: SimWorld, actor_id: String, extra: Dictionary,
 		# is that same square: `room_door_at` reads it as the way out.
 		target = at
 	else:
-		# Outside, she is on the doorstep and the door is the hut above her.
-		target = at + Vector2i(0, -1)
+		# Outside, she is on the doorstep and the door is the hut beside her.
+		target = _hut_beside(world, at)
+		if target.x < 0:
+			return false
 	extra["door_wanted"] = [target.x, target.y]
 	extra["state"] = "idle"
 	extra["wake"] = tick + 1
 	return true
+
+
+# The square of hut she reaches for from a coop's doorstep. Usually the one above
+# her, since the arch is on the front — but **a coop whose front is blocked lets out
+# of its side** (`SimWorld.room_exit_for`), and from a side square the tile above is
+# grass. Found by the many-games check, 2026-10-09: a hen on a fenced-in coop's side
+# step asked for the grass above her about once a tick all through a wet day, and
+# the gateway said "no door here" every time. Up first, then the sides, then below,
+# so the front-door case is unchanged. No hut beside her answers (-1, -1) and she
+# falls back to waiting on the perch.
+func _hut_beside(world: SimWorld, at: Vector2i) -> Vector2i:
+	for id in world.room_ids():
+		var r: Dictionary = world.rooms[id]
+		if String(r.get("item", "")) != SimWorld.COOP_ITEM:
+			continue
+		if world.room_exit_for(r) != at:
+			continue
+		var building := world.room_building_rect(r)
+		for step in [Vector2i(0, -1), Vector2i(-1, 0), Vector2i(1, 0), Vector2i(0, 1)]:
+			if building.has_point(at + step):
+				return at + step
+	return Vector2i(-1, -1)
 
 
 func _walk_to(world: SimWorld, actor_id: String, extra: Dictionary,

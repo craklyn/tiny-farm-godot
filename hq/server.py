@@ -1194,6 +1194,8 @@ def api_doc(rel):
 # what lets a status say "green as of 12 minutes ago" instead of "trust me".
 # ---------------------------------------------------------------------------
 
+# The two played suites run with every frame the same length of game time, as
+# `tools/run_godot_test.py` runs them for CI, so a run here matches CI's.
 JOBS = {
     "unit": {
         "label": "Unit tests",
@@ -1202,12 +1204,12 @@ JOBS = {
     },
     "integration": {
         "label": "Integration tests",
-        "cmd": ["godot", "--headless", "--path", ".", "res://tools/test_runner.tscn"],
+        "cmd": ["godot", "--headless", "--fixed-fps", "60", "--path", ".", "res://tools/test_runner.tscn"],
         "verdict": re.compile(r"Results:\s*(\d+) PASSED, (\d+) FAILED"),
     },
     "robot": {
         "label": "Robot session",
-        "cmd": ["godot", "--headless", "--path", ".", "res://tools/robot_session.tscn"],
+        "cmd": ["godot", "--headless", "--fixed-fps", "60", "--path", ".", "res://tools/robot_session.tscn"],
         "verdict": re.compile(r"replay (MATCHES|MISMATCH)"),
     },
     "writing": {

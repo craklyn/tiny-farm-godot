@@ -815,6 +815,12 @@
    "verdict": "decode",
    "why": "Internal vocabulary for holding capacity that loses the plain meaning; the reader would not know what is being counted (items, weight, volume) or what mechanism applies to each phase."
   },
+  "14b1cf6b4a7f46e10623": {
+   "instead": "Four tests that tap the farm no longer fail when a hen, an egg or a previous movement blocks them",
+   "quote": "when a hen, an egg or an earlier walk is in the way",
+   "verdict": "second-look",
+   "why": "“An earlier walk is in the way” makes the reader work out that a previous movement is blocking the test."
+  },
   "14b468815817b869fe6f": {
    "verdict": "ok"
   },
@@ -2972,6 +2978,9 @@
   "50b727a253159e02d41c": {
    "verdict": "ok"
   },
+  "50c33e8cc91b646843ee": {
+   "verdict": "ok"
+  },
   "50c8bfb85b3c8d43741d": {
    "verdict": "ok"
   },
@@ -3510,6 +3519,9 @@
    "verdict": "second-look",
    "why": "The sentence does not say who “her” is, so the reader has to infer that it means the player."
   },
+  "5d76e380c3ac487c5237": {
+   "verdict": "ok"
+  },
   "5d7e639c58d07cb01caa": {
    "instead": "The chief of staff fixes each work card: close the card after its commit and CI run, return it to its owner's queue, or use the migration tool to move the card out of its unknown state.",
    "quote": "close it with its commit and CI run ( hq/card.py close ), send it back to its owner's queue, or move an unknown state with hq/migrate_card_states.py",
@@ -3795,6 +3807,9 @@
    "quote": "self-recorded provenance",
    "verdict": "decode",
    "why": "“Provenance” is internal shorthand for where the sound came from and its rights."
+  },
+  "64eebca1659a5f885ba4": {
+   "verdict": "ok"
   },
   "64f0185c9f9a1bf9c3b6": {
    "baselined": "2026-09-19",
@@ -4682,6 +4697,12 @@
   },
   "7d711e56025757f4eed4": {
    "verdict": "ok"
+  },
+  "7dcfe82f09d73905791d": {
+   "instead": "The robot session waits for a square to be free before it taps to put something down, instead of pausing for a fixed amount of time",
+   "quote": "pausing a fixed number of frames",
+   "verdict": "second-look",
+   "why": "Frames describe the game's internal timing rather than the time a reader would notice."
   },
   "7dd4b95583cd93131934": {
    "instead": "Every new script and image now reaches the main version of the game with the supporting files needed for a fresh copy to open it",
@@ -5648,6 +5669,9 @@
    "verdict": "decode",
    "why": "The reader must untangle what the cards no longer wait for, and “already passes again” is difficult to interpret on a first read."
   },
+  "95cf6f66f9b0e06a8668": {
+   "verdict": "ok"
+  },
   "9600a020bbd582ae4022": {
    "verdict": "ok"
   },
@@ -6434,6 +6458,9 @@
    "verdict": "ok"
   },
   "aa4b5cac10fb13ae3363": {
+   "verdict": "ok"
+  },
+  "aa554e8ab2e2ad136388": {
    "verdict": "ok"
   },
   "aa55a3c25e810f4e64cd": {
@@ -7344,6 +7371,9 @@
    "verdict": "ok"
   },
   "c436e32f165b63e0e422": {
+   "verdict": "ok"
+  },
+  "c438c4e11fde71d5432e": {
    "verdict": "ok"
   },
   "c439f09f5fdccade0e06": {
@@ -8315,6 +8345,12 @@
   "dcdfe98a988cd32e8c92": {
    "verdict": "ok"
   },
+  "dcf007ba2129240f1ff0": {
+   "instead": "Features and fixes Daniel requests are developed separately, then returned as proposed code changes for review, not added through HQ's work queue.",
+   "quote": "built in their own sessions and come back as pull requests",
+   "verdict": "decode",
+   "why": "“Sessions” and “pull requests” are internal engineering terms that do not tell a cold reader how the work is developed and returned."
+  },
   "dcf85e5f0765326e5f06": {
    "baselined": "2026-09-19",
    "instead": "Where do we stand right now? What's the fastest path to the next step",
@@ -8656,6 +8692,12 @@
    "verdict": "decode",
    "why": "The reader has to reconstruct the earlier decision and the work it requires."
   },
+  "e664582f1bdbb087559f": {
+   "instead": "The test waits for the building outline to disappear for the same number of seconds as it does in the game.",
+   "quote": "waits for its outline to fade in seconds, the way the game times it, not in screen redraws",
+   "verdict": "second-look",
+   "why": "The sentence makes the reader unpack an awkward timing distinction instead of plainly saying what the test waits for and how."
+  },
   "e6a47f97a1c40d675200": {
    "instead": "Say what is wrong.",
    "quote": "Say what misses.",
@@ -8844,8 +8886,20 @@
   "edd109e1c80401d92c56": {
    "verdict": "ok"
   },
+  "edd6c4d0dd5fb8eb15c7": {
+   "instead": "The robot session now puts the barn only on ground the player can reach, so it no longer gets stuck behind a fence",
+   "quote": "no longer leaves the barn in her hands all day",
+   "verdict": "decode",
+   "why": "The phrase is figurative and does not say what happens to the barn or what the player must do."
+  },
   "ee07ce06baf3f9a0ee6e": {
    "verdict": "ok"
+  },
+  "ee42de5f79b750da18ce": {
+   "instead": "The placement test now makes the red outline fade at the same speed as in the game",
+   "quote": "gives its red outline as long to fade as the game does",
+   "verdict": "decode",
+   "why": "The reader has to work out what the outline is being compared with and what the test is checking."
   },
   "ee535dfc6f953d2a77f0": {
    "verdict": "ok"

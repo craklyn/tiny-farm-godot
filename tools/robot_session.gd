@@ -69,6 +69,10 @@ const BOT_ROW := [Vector2i(14, 5), Vector2i(15, 5)]
 # days this run does not have.
 const OPENING_PURSE := 2000
 
+# The farm this session plays unless `-- --seed=N` asks for another
+# (tools/suite_seed.gd).
+const SESSION_SEED := 20261010
+
 # A walk of a dozen tiles at 3 tiles/sec is seconds of game time, and a headless
 # frame is short, so the legs below need a budget in the thousands rather than the
 # 300 frames a tap-and-act needs. Generous on purpose: it is a timeout, not a
@@ -109,6 +113,9 @@ func _ready() -> void:
 	# The purse, before the game boots: `main.gd` never resets GameState, so this
 	# is the balance the session opens with and the balance its base save records.
 	GameState.gold = OPENING_PURSE
+
+	# The same farm on every run, so a check that fails fails again (SuiteSeed).
+	SuiteSeed.apply(SESSION_SEED)
 
 	main_scene = preload("res://main.tscn").instantiate()
 	add_child(main_scene)
@@ -665,6 +672,14 @@ func _free_barn_anchor() -> Vector2i:
 			var anchor := Vector2i(tx, ty)
 			if not sim.placeable_at(anchor, "industrial_barn") or not sim.is_walkable(tx - 1, ty):
 				continue
+			# ...and somewhere she can walk to. Free ground behind a fence she has
+			# no gate through is still free ground, and on some farms the first such
+			# spot was there: she walked to the fence, stopped, and kept the barn in
+			# her hands for the rest of the day (seed 100, 2026-10-10).
+			var stand := Vector2i(tx - 1, ty)
+			var here: Vector2i = player.get_tile_pos()
+			if stand != here and Pathfinding.find_path(main_scene.farm, here, stand).is_empty():
+				continue
 			# Clear of the robot row and of both bays of the stall she builds next:
 			# a building may not stand on another, so a barn there would refuse it.
 			var kept_free: Array = BOT_ROW.duplicate()
@@ -714,6 +729,7 @@ func _check(cond: bool, label: String) -> void:
 
 func _tap_and_wait(tile: Vector2i) -> void:
 	await _walk_beside(tile)
+	var since: int = main_scene.farm.trace.entries.size()
 	InputManager.click_tile = tile
 	InputManager.has_click = true
 	var acted := await _wait_until(func(): return player.is_acting, ACT_FRAMES)
@@ -725,6 +741,7 @@ func _tap_and_wait(tile: Vector2i) -> void:
 			GameState.pouch, GameState.selected_seed_type, GameState.energy])
 		print("  [diag] resolve=", ActionRouter.resolve(
 			main_scene.farm, GameState, tile, player.get_tile_pos(), false))
+		_print_what_happened(tile, since)
 		return
 	await _wait_until(func(): return not player.is_acting, ACT_FRAMES)
 
@@ -735,16 +752,22 @@ func _tap_and_wait(tile: Vector2i) -> void:
 func _tap_until(tile: Vector2i, done: Callable) -> bool:
 	await _walk_beside(tile)
 	# A tap can land while a hen is parked on the tile and be refused. A player
-	# just taps again once she has wandered off, so the robot does too — the
+	# waits for her to wander off and taps again, so the robot does too — the
 	# 2026-09-06 CI run where the stall would not build was one seed's loiterer
-	# (nothing can scatter there; the parcel's density is zero).
+	# (nothing can scatter there; the parcel's density is zero). It waits for the
+	# square to be free for what she is holding rather than for a count of frames,
+	# which was a guess at how long whatever stood there would take to move on
+	# (CI, 2026-10-09: five taps, no stall). An egg on the square never leaves by
+	# itself, so that wait gives up and the tap picks the egg up instead.
+	var item := String(GameState.selected_seed_type)
+	var since: int = main_scene.farm.trace.entries.size()
 	for _attempt in 5:
+		await _wait_until(func(): return main_scene.farm.sim.placeable_at(tile, item), ACT_FRAMES)
 		InputManager.click_tile = tile
 		InputManager.has_click = true
 		if await _wait_until(done, ACT_FRAMES):
 			return true
-		for _i in 40:
-			await get_tree().process_frame
+	_print_what_happened(tile, since)
 	return false
 
 
@@ -761,12 +784,31 @@ func _tap_until(tile: Vector2i, done: Callable) -> bool:
 func _walk_beside(tile: Vector2i) -> void:
 	if _reach_of(tile) <= 1:
 		return
+	var since: int = main_scene.farm.trace.entries.size()
 	InputManager.click_tile = tile
 	InputManager.has_click = true
 	var arrived := await _wait_until(
 		func(): return _reach_of(tile) <= 1 and player.path.is_empty(), WALK_FRAMES)
 	if not arrived:
 		_check(false, "she could walk to %s (stopped at %s)" % [tile, player.get_tile_pos()])
+		_print_what_happened(tile, since)
+
+
+# What a tap that went wrong actually did, from the session's own trace, and who
+# and what was on the square at the end — enough to tell a hen standing on it
+# from an egg she laid there from a tap that never arrived.
+func _print_what_happened(tile: Vector2i, since: int) -> void:
+	var farm = main_scene.farm
+	for i in range(since, farm.trace.entries.size()):
+		var e: Dictionary = farm.trace.entries[i]
+		if String(e.get("kind", "")) in ["tap", "act"]:
+			print("  [diag] trace: ", e)
+	var standing: Array = []
+	for raw in farm.sim.actors:
+		if tile in Movement.occupied_tiles(farm.sim, String(raw)):
+			standing.append(String(raw))
+	print("  [diag] on %s: object=%s actors=%s tick=%d" % [
+		tile, farm.get_object(tile.x, tile.y), standing, farm.sim.clock.tick])
 
 
 func _reach_of(tile: Vector2i) -> int:

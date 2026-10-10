@@ -53,6 +53,12 @@ python3 tools/run_godot_test.py -- godot --headless --path . res://tools/robot_s
 # `-- --seed=N` plays one again; `-- --verbose` prints what each game did
 python3 tools/run_godot_test.py -- godot --headless --path . --script res://tools/replay_many_games.gd
 
+# The integration suite and the robot session each boot one fixed farm, and the wrapper
+# gives every frame 1/60 s of game time however slow the machine, so a run repeats
+# exactly; add `-- --seed=N` to play another farm. To find checks that only hold on some
+# farms, sweep many (`--fps 20` imitates a slow, loaded runner; `--cores 0-1` squeezes CPU)
+python3 tools/sweep_suite_seeds.py --seeds 1-40 --jobs 6
+
 # Visual comparison (also available as Engineering's Run button)
 tools/check_visuals.sh
 
@@ -144,6 +150,12 @@ godot --path . res://tools/capture_workbench.tscn
 # The Industrial Barn on the shipped farm ground and its room from inside, entered through
 # the barn's panel, under docs/design/mockups/industrial_barn/review_*.png — needs a display
 godot --path . res://tools/capture_industrial_barn_review.tscn
+
+# Cows in the creamery and on the grass: a barn with four cows on a fixed farm, captured on
+# the grass, walking in and at their stalls, under docs/design/mockups/industrial_barn/cows_*.png;
+# `-- --variants=<dir> --out=<dir>` also shoots candidate cow_*.png / kit_*.png at the same
+# moment — needs a display
+godot --path . --fixed-fps 60 res://tools/capture_cow_readability.tscn
 
 # The boot's four moments (Q-103) as PNGs under tools/boot_bloom_shots/ (gitignored),
 # and the watering inset (Q-104) as tools/shot_watering_inset.png — both need a display
@@ -307,6 +319,8 @@ Working agreements (from README):
 - Commit straight to main while the team is small (Q-4 ruling); commit immediately.
   The exception (S-44): a feature handed to its own sub-session comes back as a pull
   request for the orchestrator to review and merge — see the `orchestrator` skill.
+  Features and fixes Daniel asks for are built that way, not filed through HQ's request
+  front door or the queue's workers (S-46); HQ keeps its dashboard, checks and records.
 - Current art/audio are placeholders (`CREDITS.md`). **Updated 2026-08-28:** modest
   investment in new placeholder art is fine — the Retro Diffusion pipeline (the
   `retro-diffusion-pixel-art` skill; output rights verified) makes a sprite cheap, so
