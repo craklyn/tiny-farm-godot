@@ -88,6 +88,30 @@ class ProcessIntegrityTests(unittest.TestCase):
         self.assertNotEqual(result.returncode, 0, result.stdout + result.stderr)
         self.assertLess(time.monotonic() - started, 3)
 
+    def test_every_frame_is_the_same_length_of_game_time(self) -> None:
+        result = subprocess.run(
+            command("frame_step"), cwd=ROOT, capture_output=True, text=True, timeout=10
+        )
+        self.assertEqual(result.returncode, 0, result.stdout + result.stderr)
+
+    def test_a_command_keeps_its_own_frame_step(self) -> None:
+        sys.path.insert(0, str(RUNNER.parent))
+        import run_godot_test
+
+        mine = ["godot", "--fixed-fps", "20", "--path", "."]
+        self.assertEqual(run_godot_test.with_fixed_frame_step(mine), mine)
+        self.assertEqual(
+            run_godot_test.with_fixed_frame_step(["godot", "--path", ".", "--", "--seed=3"]),
+            ["godot", "--fixed-fps", "60", "--path", ".", "--", "--seed=3"],
+        )
+        self.assertEqual(
+            run_godot_test.with_fixed_frame_step(
+                ["/opt/godot/Godot_v4.7.2-stable_linux.x86_64", "--path", "."]),
+            ["/opt/godot/Godot_v4.7.2-stable_linux.x86_64", "--fixed-fps", "60", "--path", "."],
+        )
+        python = [sys.executable, "-c", "print('Results: PASSED')"]
+        self.assertEqual(run_godot_test.with_fixed_frame_step(python), python)
+
     def test_script_error_overrules_green_partial_count(self) -> None:
         result = subprocess.run(
             command("script_error_green"), cwd=ROOT, capture_output=True, text=True, timeout=5

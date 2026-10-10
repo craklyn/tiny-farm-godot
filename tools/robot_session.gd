@@ -69,6 +69,10 @@ const BOT_ROW := [Vector2i(14, 5), Vector2i(15, 5)]
 # days this run does not have.
 const OPENING_PURSE := 2000
 
+# The farm this session plays unless `-- --seed=N` asks for another
+# (tools/suite_seed.gd).
+const SESSION_SEED := 20261010
+
 # A walk of a dozen tiles at 3 tiles/sec is seconds of game time, and a headless
 # frame is short, so the legs below need a budget in the thousands rather than the
 # 300 frames a tap-and-act needs. Generous on purpose: it is a timeout, not a
@@ -109,6 +113,9 @@ func _ready() -> void:
 	# The purse, before the game boots: `main.gd` never resets GameState, so this
 	# is the balance the session opens with and the balance its base save records.
 	GameState.gold = OPENING_PURSE
+
+	# The same farm on every run, so a check that fails fails again (SuiteSeed).
+	SuiteSeed.apply(SESSION_SEED)
 
 	main_scene = preload("res://main.tscn").instantiate()
 	add_child(main_scene)

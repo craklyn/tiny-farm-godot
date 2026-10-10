@@ -15,6 +15,9 @@ const TEACH_GLIDE_WAIT := 0.4
 # real player's (S-14).
 const SUITE_SLOTS_ROOT := "user://itest_farm/"
 
+# The farm this suite plays unless `-- --seed=N` asks for another (tools/suite_seed.gd).
+const SUITE_SEED := 20261010
+
 
 func _ready() -> void:
 	print("=".repeat(60))
@@ -35,6 +38,9 @@ func _ready() -> void:
 	_assert(not FileAccess.file_exists(SUITE_SLOTS_ROOT.path_join("slot1/autosave.json")),
 		"the integration suite starts without another session's autosave")
 	GameState.use_slot(1, SUITE_SLOTS_ROOT)
+
+	# The same farm on every run, so a check that fails fails again (SuiteSeed).
+	SuiteSeed.apply(SUITE_SEED)
 
 	# Instantiate Main scene
 	main_scene = preload("res://main.tscn").instantiate()

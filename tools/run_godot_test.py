@@ -18,6 +18,15 @@ import tempfile
 import time
 
 
+# Every frame of a check is this long in game time, however long it took the
+# machine to draw. Without it a frame's delta is the wall clock's, so a loaded CI
+# runner let more of the farm's time pass between two simulated taps than a quiet
+# desk did: a hen had time to wander onto the square a test was about to tap, and
+# the same commit passed on one run and failed on the next (CI, 2026-10-09 and
+# 10). Godot also stops pacing frames to the wall clock, so a check runs as fast
+# as the machine allows. A command that names its own `--fixed-fps` keeps it.
+FIXED_FPS = "60"
+
 COUNT_RESULT = re.compile(r"Results:\s*(\d+) PASSED,\s*(\d+) FAILED")
 STATUS_RESULT = re.compile(r"Results:\s*(PASSED|FAILED)\b")
 
@@ -46,6 +55,20 @@ def _stop(proc: subprocess.Popen[str]) -> None:
     except subprocess.TimeoutExpired:
         proc.kill()
         proc.wait()
+
+
+def with_fixed_frame_step(command: list[str]) -> list[str]:
+    """Insert ``--fixed-fps`` after the Godot executable unless one is given.
+
+    Only a Godot command is touched: the runner also wraps other programs (HQ's
+    tests drive it with Python), which would not know the flag.
+    """
+    if not command or "--fixed-fps" in command:
+        return list(command)
+    if "godot" not in os.path.basename(command[0]).lower():
+        return list(command)
+    # Engine options go before a `--`, after which arguments belong to the script.
+    return [command[0], "--fixed-fps", FIXED_FPS] + list(command[1:])
 
 
 def run(command: list[str], timeout: float, result_grace: float) -> int:
@@ -134,7 +157,7 @@ def main() -> int:
         command = command[1:]
     if not command:
         parser.error("a command is required after --")
-    return run(command, args.timeout, args.result_grace)
+    return run(with_fixed_frame_step(command), args.timeout, args.result_grace)
 
 
 if __name__ == "__main__":
