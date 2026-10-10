@@ -85,6 +85,11 @@ godot --path . res://tools/capture_starter_brain.tscn
 # marks afterwards, as PNGs under docs/design/mockups/q124_assign/ — needs a display
 godot --path . res://tools/capture_assign_tiles.tscn
 
+# A building that will not fit where she taps: the buzz and the outline of its block, for
+# the tower (staged weeds and a sprinkler, then the field's own weeds) and the coop, as PNGs
+# under docs/design/mockups/footprint_refusal/ — needs a display
+godot --path . res://tools/capture_footprint_refusal.tscn
+
 # What a night of worm practice costs and buys (S-35): the measurement week on the eight
 # gate farms with no practice and with 2, 4 and 8 runs a night — prints the table the
 # practice card's energy shares were chosen from (design/14, "The practice cards")

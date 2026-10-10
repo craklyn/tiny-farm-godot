@@ -571,6 +571,9 @@
   "0e747bbbdac5bc93e6c6": {
    "verdict": "ok"
   },
+  "0e8b7e17b77776216906": {
+   "verdict": "ok"
+  },
   "0ec2962c85ffaa3e3743": {
    "verdict": "ok"
   },
@@ -2617,6 +2620,12 @@
    "quote": "background-keying step in the art pipeline",
    "verdict": "decode",
    "why": "The internal name for the pipeline step does not tell a cold reader what it does."
+  },
+  "4884f23273cf255ee075": {
+   "instead": "A building that will not fit where the player taps now buzzes and shows its whole outline, instead of tilling the ground",
+   "quote": "she",
+   "verdict": "decode",
+   "why": "The sentence does not say who “she” is, so the reader has to infer that she is the player."
   },
   "4885e317790452dbbe1b": {
    "verdict": "ok"

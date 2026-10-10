@@ -73,6 +73,22 @@ The loop, end to end, and it is four taps:
    configuring are errands, but carrying a thing out to the far corner and setting it down
    is work. The placed machine is an ordinary registry actor from that moment on, which is
    what makes it save, replay and draw itself with no new machinery.
+
+   **A tap where it will not fit is a "no" she can see** (2026-10-09, from play: *"I am
+   having trouble placing the tower. When I try, it just tills the ground… Oh the tower
+   is 4x4, I thought it was 3x3."*). A building covers a block of squares — the tapped
+   square is its front-left corner and the block runs right and up the screen, its size
+   read from its row's `footprint` — and until this date a tap that block would not fit
+   fell through to the ground's own job, so the hoe took the square and hid that the
+   placing had failed. Now, while she holds a machine, a tap on any ground she could
+   stand on is an attempt to put it down, answered at once from wherever she is: the
+   `place` goes to the gateway, the gateway refuses it (nothing changes, and nothing
+   reaches the replay), and she gets the refusal buzz — the tile's shudder and the nope
+   sound — with the building's **whole block drawn at the spot**, every square that stops
+   it outlined in red (`SimWorld.footprint_blockers`). The block shudders with the
+   buzz, holds, and fades after about a second and a half. What is not ground keeps its
+   own job: a weed, rock or tree is still cleared by a tap on it, and a drag never
+   places. Captures from the real game: `mockups/footprint_refusal/`.
 4. **Instruct** (machines that have a choice — §1's roster will mostly not). See
    `design/06`'s "the machine menu".
 

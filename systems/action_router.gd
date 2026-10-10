@@ -346,9 +346,32 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 				"action": "place", "tool_idx": 0, "target_t": tap_t,
 				"walk_to": true, "seed_type": "", "item": gs.selected_seed_type,
 			})
-		# She is holding a machine and this square cannot take one. Fall through
-		# to the ordinary tile handling below, so tapping a weed while carrying a
-		# robot still pulls the weed — the machine in her hands is not a mode.
+		# **She is holding a machine and it does not fit here** (2026-10-09, from
+		# play: "I am having trouble placing the tower. When I try, it just tills
+		# the ground."). This used to fall through to the ground's own states, so a
+		# tap meant to set a four-by-four tower down on cleared ground tilled the
+		# square instead, and the till hid that the placing had failed.
+		#
+		# Ground she could stand on is where a building goes, so a tap there is an
+		# attempt to put it down, at any distance, and it goes to the gateway as the
+		# `place` it was meant to be. The gateway refuses it — nothing changes, and
+		# a refused Action is not a replay entry — and the refusal is the answer she
+		# sees: the buzz, and the building's whole block drawn at the spot with the
+		# squares in the way marked (`farm.gd`, `show_footprint_refusal`). No walk:
+		# walking over to a spot it cannot go would only delay the "no".
+		#
+		# What is *not* ground keeps its own job, as before: a weed, a rock or a
+		# tree is not walkable and still answers below, so the machine in her
+		# hands is still not a mode. A boundary stays the wordless "not yet" (T-8).
+		# A drag never places, so a stroke across the farm is not a row of buzzes.
+		if world != null and world.is_walkable(tx, ty):
+			if is_drag:
+				return {}
+			return check_result.call({
+				"action": "place", "tool_idx": 0, "target_t": tap_t,
+				"walk_to": false, "seed_type": "", "item": gs.selected_seed_type,
+				"fits": false,
+			})
 
 	# 2. Get tile state
 	var tile: Dictionary = farm.get_tile(tx, ty)

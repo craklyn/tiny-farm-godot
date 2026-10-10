@@ -149,6 +149,7 @@ func _init() -> void:
 	interior.test_room_fittings()
 	interior.test_spiral_tower_interior()
 	interior.test_spiral_tower_pick_up()
+	interior.test_building_that_will_not_fit()
 	interior.test_senses_stop_at_space_boundary()
 	interior.test_robot_usefulness()
 	interior.test_one_pouch()
