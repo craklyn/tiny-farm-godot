@@ -1066,7 +1066,7 @@ func test_stateless_schedule_revision() -> void:
 		"v6 saves restore the current derivation")
 	var replay := ReplayLog.new()
 	replay.start(1)
-	_assert(ReplayLog.from_json(replay.to_json()).version == 4,
+	_assert(ReplayLog.from_json(replay.to_json()).version == 5,
 		"new replay headers carry the new derivation version")
 	replay.start_from_save(old, 1)
 	_assert(replay.apply_to(SimWorld.new(), GameState)
