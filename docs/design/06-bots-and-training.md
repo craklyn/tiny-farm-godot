@@ -371,7 +371,10 @@ Clause by clause, with the reason each is in the floor rather than assumed:
    buying anything.
 5. **"Wait here" stops it**, without picking it up. Three always-active settings and no
    off switch is a machine you can only silence by putting it in your pocket.
-6. **Pick up works while it is running**, and returns it to the crate.
+6. **Pick up works while it is running**, and returns it to the crate. She walks over to
+   it first and lifts it from beside it, following it if it moves (2026-10-09,
+   `design/03`, "She picks it up from beside it"); the panel opening from anywhere is
+   clause 4's business, the lifting is her hands'.
 7. **Save, load and replay hold in every config**, because a config is data on the actor
    and that is what makes it savable, replayable and comparable.
 8. **Two on the farm do not interfere** — the brain is per-actor, and a second machine

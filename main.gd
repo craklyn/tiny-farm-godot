@@ -1196,6 +1196,13 @@ func enter_structure(at: Vector2i) -> void:
 	player._execute_resolved_action({ "action": "use_door", "target_t": at })
 
 
+## Walk her up to a machine and pick it up, chosen from its panel (2026-10-09).
+## Through the player node for `enter_structure`'s reason: she has to walk there
+## first, and walking is the player's.
+func pick_up_machine(id: String) -> void:
+	player.pick_up_machine(id)
+
+
 ## Open the training workbench standing at `at` (Q-101, 2026-09-10).
 ##
 ## The same shape as the machine panel above it and as `open_shop`: the player

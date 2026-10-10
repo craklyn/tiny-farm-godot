@@ -98,6 +98,21 @@ square first is pick up what is on it. It returns to the crate, and the id it ha
 back to the next machine placed, because ids are a pure function of the registry rather
 than a counter in a save.
 
+**She picks it up from beside it** (from play, 2026-10-09: *"If I select a sprinkler,
+it'll pick up even if I'm standing far away"*). The machine's panel still opens from
+anywhere (`design/06`, P0 clause 4), but its "Pick up" walks her over first, following a
+robot that moves, and the machine comes up only once she is next to it — the same
+walk-then-act every other thing she reaches for gets. Beside it already, it comes up at
+once; a robot that steps on as she arrives can be lifted from its corner. A building's
+panel (coop, Spiral Tower, barn) already waited for her to walk up before it opened, so
+its "Pick up" needed nothing.
+
+The gateway does not yet refuse a far `collect`, and that is deliberate for now: the
+recorded session of 2026-10-09 23:26 holds three machines lifted from three to five
+squares away — this very bug — and a refusal would stop that recording replaying to its
+own save. Enforcing reach in the sim needs the replay to know which rule a recording was
+made under. No bot picks anything up today, so nothing can use the gap yet.
+
 What this deliberately does **not** settle: overlap and coverage rules (§3 — two sprinklers
 may sit side by side today and nothing complains), upkeep (§4), and whether the shop is the
 right long-term door. It also puts a `static` machine on walkable ground, which means a
