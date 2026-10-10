@@ -8,6 +8,7 @@ before the first public build ships.*
 - **Godot Engine** — MIT License. https://godotengine.org
 
 ## Art
+- **Industrial Barn cheese-sale feedback** (`assets/sprites/generated/industrial_barn_sale_feedback.png`, 2026-10-09) — a 4×4 sheet of original local pixel art for the empty and growing cheese shelf, four-frame brass coin pulse, empty and loaded handcart, and four-frame coin flight. The shelf states, cart, and flight are intentionally wordless and use only the Industrial Barn palette with hard transparent edges. One Retro Diffusion Plus reference generation, $0.06, was made from the prompt “a low open wooden cheese shelf beside a tiny handcart, holding one large round golden cheese wheel and a small brass coin disc,” and is retained with the service metadata at `assets/raw/2026-10-09-w74ed6630029-industrial-barn-cheese-sale-feedback/`. No generated pixels ship: the exact grid layout and every shipped pixel are original local work in `tools/build_industrial_barn_sale_art.py`, which checks the dimensions, binary alpha, palette membership, and growing shelf silhouette. Output rights for the reference follow the Retro Diffusion terms verified below.
 - **Happy dairy cow** (`assets/sprites/generated/cow.png`, 2026-10-08) — four calm
   16px walking frames drawn locally in `tools/build_cow_art.py`, using the Industrial
   Barn palette and hard transparent edges. A Retro Diffusion Plus draft was generated

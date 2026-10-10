@@ -1,0 +1,20 @@
+{
+  "image": "industrial_barn_sale_feedback.png",
+  "cell_size": [16, 16],
+  "grid_size": [4, 4],
+  "cells": [
+    "shelf_empty", "shelf_one_wheel", "shelf_two_wheels", "shelf_three_wheel_stack",
+    "coin_pulse_0", "coin_pulse_1", "coin_pulse_2", "coin_pulse_3",
+    "handcart_empty", "handcart_loaded", "coin_flight_0", "coin_flight_1",
+    "coin_flight_0", "coin_flight_1", "coin_flight_2", "coin_flight_3"
+  ],
+  "animations": {
+    "coin_pulse": { "frames": [4, 5, 6, 7], "fps": 4 },
+    "coin_flight": { "frames": [12, 13, 14, 15], "fps": 12 }
+  },
+  "states": {
+    "empty": "cell 0; bare wood and open space",
+    "filled": "cells 1 through 3; the visible cheese stack grows with storage, using cells 1, 2, and 3 for 1 to 2, 3 to 5, and 6 to 8 finished batches",
+    "selling": "cell 9 is the loaded cart; cells 12 through 15 are the coin flight"
+  }
+}

@@ -60,7 +60,8 @@ class FakeRD:
         self.calls = getattr(self, "calls", []) + [{"tries": tries, "timeout": timeout}]
         self.generated.append((name, params))
         os.makedirs(out_dir, exist_ok=True)
-        meta = {"balance_cost": self.price * params.get("num_images", 1),
+        meta = {"credit_cost": 1,
+                "balance_cost": self.price * params.get("num_images", 1),
                 "remaining_balance": 2.5, "model": params["prompt_style"]}
         with open(os.path.join(out_dir, f"{name}_meta.json"), "w") as f:
             json.dump(meta, f)
@@ -244,6 +245,8 @@ class ArtTool(unittest.TestCase):
         self.assertEqual(ledger["note"], "kept")
         self.assertEqual((ledger["entries"][0]["work_item"], ledger["entries"][0]["recorded_by"],
                           ledger["entries"][0]["balance_after"]), ("wart00000001", "drain", 2.5))
+        self.assertEqual(ledger["entries"][0]["credits"], 1,
+                         "the ledger keeps the vendor's credit cost, not a dollar conversion")
 
         # The worker looks, does not like it, and asks again in the same session.
         text, _ = call(server, "generate_art", request(num_images=1, prompt="a greener tomato"))
