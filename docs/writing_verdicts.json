@@ -7120,6 +7120,12 @@
    "verdict": "decode",
    "why": "“Stateless rolls” and “visible schedule cycle” are internal descriptions, so the reader must work out what changes and what repetition is being prevented."
   },
+  "c07412dc10b698f1d113": {
+   "instead": "Four tablet play recordings from a version that is no longer available are now linked to GitHub versions of the game that reproduce them exactly",
+   "quote": "a build that is gone",
+   "verdict": "second-look",
+   "why": "This makes the reader translate a figurative phrase to learn that the original version is no longer available."
+  },
   "c085b7ce1d42754c7386": {
    "verdict": "ok"
   },

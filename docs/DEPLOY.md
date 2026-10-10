@@ -50,6 +50,26 @@ there. For a build from before 2026-09-24, copy the two-line argument handling f
 today's `tools/verify_replay.gd` into it first. A `MATCH` is the triage; write the
 receipt as the script computes it (build id, then `sha256sum` of the replay and autosave).
 
+**Every installed build is kept on GitHub (2026-10-09).** After a successful install the
+deploy runs `tools/save_build_marker.sh`, which pushes the installed commit as
+`refs/builds/<full commit id>`. The commit then survives on GitHub even when it was on a
+branch that is never merged, or that is rebased later and changes its id. The deploy does
+not refuse unpushed commits: tablet tries are often made from unmerged branches, and
+blocking them was judged a real cost. The marker is never a `v*` tag, because a pushed
+`v*` tag publishes a release (section 3). No workflow runs on it and a normal fetch does not
+bring it down; `git fetch origin 'refs/builds/*:refs/builds/*'` does. Without a network
+the push fails, the deploy prints a warning and installs anyway, and the commit is listed
+in `build/unsaved_build_markers.txt`. Every later deploy retries that list first, and
+`tools/save_build_marker.sh` on its own does the same once the network is back.
+
+This exists because three sessions from 2026-09-25 were recorded on `894089c`, a local
+commit that was rebased before it was pushed, so its id was never on GitHub. When a
+session's build is lost like that, replay it on pushed commits from the same time. If one
+matches, add `"build_matched"` to the session's `session.json` (the commit, the lost label,
+the other commits that also match, the date checked, and in plain words why), and HQ ties
+the session to that commit. See `playtests/2026-09-25_104447/session.json`. If none
+matches, write it off with `"build_lost"` instead, as the August sessions are.
+
 ### Without a terminal: the button in HQ
 
 **HQ → Engineering & QA → "The tablet"** (http://localhost:8642/#/pillar/engineering).
