@@ -205,7 +205,8 @@ func _unhandled_input(event: InputEvent) -> void:
 		# touching the glass; emulated events always do. The window self-corrects,
 		# so a desktop with a touchscreen still gets its hover back a moment after
 		# the user picks the mouse up again.
-		if Time.get_ticks_msec() - _last_touch_ms > TOUCH_EMULATION_WINDOW_MS:
+		if not _is_touch_copy(event) \
+				and Time.get_ticks_msec() - _last_touch_ms > TOUCH_EMULATION_WINDOW_MS:
 			_set_mode(Mode.MOUSE)
 	elif event is InputEventScreenTouch:
 		_last_touch_ms = Time.get_ticks_msec()
@@ -258,12 +259,24 @@ func _unhandled_input(event: InputEvent) -> void:
 			swipe_moved  = true
 
 	# Track mouse clicks
-	# Godot also emits a mouse-button down for a screen touch.  It arrives after
-	# the touch branch above, so accepting it here would put the very click we
-	# deferred back into the buffer before the first drag event can suppress it.
+	# Godot also emits a mouse-button down for every screen touch, and it arrives
+	# *before* the touch, not after (4.7.2, checked through `Input` itself). So the
+	# window alone never caught the first touch after a pause: nothing had touched
+	# the glass for 1.2 s, the copy went into the buffer as a tap on finger-down,
+	# and the same finger lifting was a second tap through the touch branch above.
+	# That was "I try to plant, but it both plants and waters it" (2026-10-09
+	# tablet): 84 of the trace's 88 doubled taps were the first after a pause.
+	# Godot marks its copies with their own device id, so they are refused by what
+	# they are; the window stays for any platform that copies without marking.
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT \
+			and not _is_touch_copy(event) \
 			and Time.get_ticks_msec() - _last_touch_ms > TOUCH_EMULATION_WINDOW_MS:
 		_record_click(screen_to_tile(event.position))
+
+
+## Godot's own mouse copy of a touch (`emulate_mouse_from_touch`), never a mouse.
+func _is_touch_copy(event: InputEvent) -> bool:
+	return event.device == InputEvent.DEVICE_ID_EMULATION
 
 
 ## Where the two fingers have got to, relative to where they started. Nothing is

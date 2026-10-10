@@ -189,6 +189,7 @@ func _run_scenarios() -> void:
 	await _scenario_bl_the_shelf_sells_a_pace()
 	await _scenario_bo_the_barn_by_finger_alone()
 	await _scenario_bn_the_barn_is_entered_and_drawn_from_its_saved_state()
+	await _scenario_bp_one_touch_is_one_tap()
 	await _scenario_bq_a_tower_that_will_not_fit_buzzes()
 
 
@@ -10010,3 +10011,123 @@ func _scenario_bl_the_shelf_sells_a_pace() -> void:
 	farm.apply_action({ "verb": "collect", "target": farm.sim.actor_pos(mk3),
 		"actor": "player" }, GameState)
 	await get_tree().process_frame
+
+
+# --- Scenario BP: one touch on the glass is one tap (2026-10-09 tablet) ----------
+#
+# Daniel, on the tablet: "I try to plant, but it both plants and waters it; or I
+# place a tower and it both places and treats like I'm clicking on the placed
+# tower." His trace had 88 taps answered twice on the same square within a quarter
+# of a second, 84 of them the first touch after more than 1.2 s without one.
+#
+# Godot copies every touch as a mouse button, and delivers the copy *before* the
+# touch itself (checked on 4.7.2). `InputManager` threw the copy away only within
+# 1.2 s of a touch it had already seen — so after a pause the finger going down was
+# a tap through the mouse path, and the same finger lifting was a second one
+# through the touch path. Planting starts her 0.35 s animation and a tap waits out
+# the animation, so the second answer arrives as "water" a moment later.
+#
+# The other scenarios hand events to `InputManager._unhandled_input` one at a time,
+# in whatever order they choose. This one puts the touch into `Input` itself, so
+# Godot makes its own mouse copy, in its own order, exactly as on the tablet.
+func _scenario_bp_one_touch_is_one_tap() -> void:
+	print("\n--- Scenario BP: one touch on the glass is one tap (2026-10-09 tablet) ---")
+	var menus = main_scene.menus
+	menus.close_menu()
+	main_scene.end_teaching()
+	_assert(bool(ProjectSettings.get_setting("input_devices/pointing/emulate_mouse_from_touch")),
+		"the project lets Godot copy touches as mouse buttons, as the tablet build does")
+
+	var t := Vector2i(6, 12)
+	_stage_tile(t.x, t.y, "tilled")
+	farm.sim.set_actor_pos(SimWorld.ACTOR_CHICKEN, Vector2i(5, 5))
+	farm.sim.set_actor_pos(SimWorld.ACTOR_PLAYER, t + Vector2i(-1, 0))
+	player.init_position(t.x - 1, t.y)
+	player.facing = "right"
+	player.path.clear()
+	player.pending_action = {}
+	player.is_acting = false
+	GameState.selected_tool = 5  # Seeds
+	GameState.selected_seed_type = "wheat"
+	GameState.pouch["wheat"] = 5
+	InputManager.has_click = false
+	await _camera_settled()
+
+	# The pause before the touch: nothing has touched the glass for a while.
+	InputManager._last_touch_ms = -100000
+	var since: int = farm.trace.entries.size()
+	var touch := InputEventScreenTouch.new()
+	touch.index = 0
+	touch.pressed = true
+	touch.position = _window_point(InputManager.tile_to_screen(t))
+	Input.parse_input_event(touch)
+	# A quick tap holds the glass for a few frames (40–110 ms in his trace).
+	for i in 4:
+		await get_tree().process_frame
+	var up := InputEventScreenTouch.new()
+	up.index = 0
+	up.pressed = false
+	up.position = touch.position
+	Input.parse_input_event(up)
+	# Past the planting animation, so a tap waiting behind it has had its turn.
+	await get_tree().create_timer(player.ACTION_DURATION * 2.0 + 0.2).timeout
+	await get_tree().process_frame
+
+	var taps: Array[String] = []
+	for i in range(since, farm.trace.entries.size()):
+		var entry: Dictionary = farm.trace.entries[i]
+		if String(entry.get("kind", "")) == "tap":
+			taps.append("%s %s" % [entry.get("out"), entry.get("verb")])
+	print("  one touch on (%d,%d) -> %s" % [t.x, t.y, taps])
+	_assert(taps.size() == 1, "one touch is answered once, not twice (%s)" % [taps])
+	_assert(farm.get_tile(t.x, t.y).state == "seeded", "and that one answer plants the square")
+	_assert(not bool(farm.get_tile(t.x, t.y).watered_today),
+		"and does not water the seed it has just planted")
+
+	# A real mouse click after the same pause is still one tap, not none: the
+	# copies are told apart by what they are, not by when they arrive.
+	var t2 := Vector2i(6, 13)
+	_stage_tile(t2.x, t2.y, "tilled")
+	farm.sim.set_actor_pos(SimWorld.ACTOR_PLAYER, t2 + Vector2i(-1, 0))
+	player.init_position(t2.x - 1, t2.y)
+	player.path.clear()
+	player.pending_action = {}
+	await _camera_settled()
+	InputManager._last_touch_ms = -100000
+	since = farm.trace.entries.size()
+	var press := InputEventMouseButton.new()
+	press.button_index = MOUSE_BUTTON_LEFT
+	press.pressed = true
+	press.position = _window_point(InputManager.tile_to_screen(t2))
+	Input.parse_input_event(press)
+	await get_tree().process_frame
+	var release := InputEventMouseButton.new()
+	release.button_index = MOUSE_BUTTON_LEFT
+	release.pressed = false
+	release.position = press.position
+	Input.parse_input_event(release)
+	await get_tree().create_timer(player.ACTION_DURATION * 2.0 + 0.2).timeout
+	await get_tree().process_frame
+	var mouse_taps := 0
+	for i in range(since, farm.trace.entries.size()):
+		if String(farm.trace.entries[i].get("kind", "")) == "tap":
+			mouse_taps += 1
+	_assert(mouse_taps == 1, "a real mouse click is still exactly one tap (%d)" % mouse_taps)
+	_assert(farm.get_tile(t2.x, t2.y).state == "seeded", "and it plants the square it clicked")
+
+
+# The camera eases after her when she is moved, and a point computed while it is
+# still moving names a different square by the time the event lands.
+func _camera_settled() -> void:
+	var was: Vector2 = InputManager._camera_offset + Vector2.ONE
+	for i in 300:
+		if InputManager._camera_offset.distance_to(was) < 0.01:
+			return
+		was = InputManager._camera_offset
+		await get_tree().process_frame
+
+
+# Events put into `Input` arrive in window pixels and are scaled down to the 800×600
+# canvas (`window/stretch/mode`) on their way in, so a canvas point is scaled up first.
+func _window_point(canvas_point: Vector2) -> Vector2:
+	return get_tree().root.get_final_transform() * canvas_point
