@@ -3922,7 +3922,14 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			if charged and verb == "water" and gs.watering_can_charges <= 0: return _fail("no_water")
 			# Only a crop is sown. A machine she is holding counts as held too, and
 			# without this a sowing of one reached the seed pouch and stopped the game.
-			if verb == "plant" and not CropDefs.TYPES.has(seed_type):
+			# So does an egg (2026-10-09): it is in the crop table and in her hands,
+			# so it got past both questions, went into the ground and then stopped
+			# the gateway at the seed pouch, which holds no eggs — a square changed
+			# and no Action recorded, found by `tools/replay_many_games.gd`. A
+			# scarecrow is the one thing sown that is not a crop; it stands as an
+			# object.
+			if verb == "plant" and not (CropDefs.is_plantable(seed_type)
+					or bool(CropDefs.TYPES.get(seed_type, {}).get("is_object", false))):
 				return _fail("no_seeds")
 			if (charged or is_machine) and verb == "plant" and gs.held_count(seed_type) <= 0:
 				return _fail("no_seeds")

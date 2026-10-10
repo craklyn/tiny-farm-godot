@@ -41,6 +41,10 @@ godot --headless --path . res://tools/test_runner.tscn
 # Robot session: plays the real game end-to-end and verifies its own replay
 godot --headless --path . res://tools/robot_session.tscn
 
+# Many generated games, each checked against its own replay at every save
+# (add `-- --random=200` to hunt on fresh seeds, `-- --seed=N` to replay one)
+godot --headless --path . --script res://tools/replay_many_games.gd
+
 # Visual regression (renders a frame, compares against tools/baseline.png)
 godot --path . res://tools/test_visuals.tscn
 

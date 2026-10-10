@@ -1942,15 +1942,33 @@ func _beside(world: SimWorld, actor_id: String, at: Vector2i) -> Vector2i:
 
 
 # Which seed comes out of her box: the one she has most of, ties going to the
-# order the box itself is written in. **Not a thing the robot learns** — the
+# shop's own order (`CropDefs.ORDER`). **Not a thing the robot learns** — the
 # design gives it one number for the box ("is there anything to sow"), and which
 # kind is the brain's business, exactly as which square is.
+#
+# Ties used to go to the order the box's dictionary happened to hold its keys in,
+# and that is not a fact about the farm: a new farm holds wheat, tomato, then pea
+# as she came by them, and a farm loaded from its save holds them alphabetically.
+# So a Mark III with three of each sowed tomato on the farm she never left and pea
+# on the same farm continued — and on its replay (found by
+# `tools/replay_many_games.gd`, 2026-10-09). The shop's order is the order a new
+# farm's box already had, so every session recorded on one picks as it did.
 static func _best_seed(gs) -> String:
 	if gs == null or not ("pouch" in gs):
 		return ""
 	var best := ""
 	var most := 0
+	var keys: Array = []
+	for key in CropDefs.ORDER:
+		if gs.pouch.has(key):
+			keys.append(key)
+	var rest: Array = []
 	for key in gs.pouch.keys():
+		if not keys.has(key):
+			rest.append(key)
+	rest.sort()
+	keys.append_array(rest)
+	for key in keys:
 		# Only what goes in the ground: noncrop inventory holds her eggs, and a
 		# robot that picked an egg would walk to a square and be refused.
 		if not CropDefs.is_plantable(String(key)):

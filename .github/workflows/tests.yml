@@ -160,6 +160,14 @@ jobs:
       - name: Robot session (end-to-end)
         run: 'python3 tools/run_godot_test.py -- "$GODOT" --headless --path . res://tools/robot_session.tscn'
 
+      # Generated farms on a fixed list of seeds, played by a random but legal
+      # player with saves and Continues part-way through; at every save the
+      # recording must replay to that save exactly (tests/generated_games.gd).
+      # Fixed seeds, so a push never goes red from luck; `-- --random=200` hunts
+      # locally.
+      - name: Many generated games replay exactly
+        run: 'python3 tools/run_godot_test.py -- "$GODOT" --headless --path . --script res://tools/replay_many_games.gd'
+
       - name: Sim benchmark (smoke)
         run: 'python3 tools/run_godot_test.py -- "$GODOT" --headless --path . --script res://tools/benchmark_sim.gd'
 
