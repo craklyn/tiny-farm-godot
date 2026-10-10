@@ -292,7 +292,8 @@ func _apply_v2(world: SimWorld, gs) -> void:
 					_note_divergence(i, _entry_signature(decoded, tick), "(nothing recomputed)")
 					continue
 				var got: Dictionary = recomputed.pop_at(found)
-				_note_divergence(i, _entry_signature(decoded, tick), _decision_signature(got))
+				_note_divergence(i, _entry_signature(decoded, tick),
+					_decision_signature(got, String(decoded.get("kind", "")) == "brain_decision"))
 				continue
 			if version >= 4:
 				var found := -1
@@ -369,9 +370,15 @@ func _entry_signature(entry: Dictionary, tick: int) -> String:
 	return _signature(entry, tick)
 
 
-func _decision_signature(decision: Dictionary) -> String:
+# `as_record`: the recorded side is a decision record, which carries no Action of
+# its own — only the fingerprint, which already hashes the Action. So the
+# recomputed side is written the same way, Action left out, or a hen whose
+# `use_door` the gateway refused in play, and refused again on replay, reads as a
+# hen that changed her mind (found by `tools/replay_many_games.gd`, 2026-10-09).
+func _decision_signature(decision: Dictionary, as_record := false) -> String:
 	return "%s decision=%s" % [
-		_signature(decision.get("action", {}), int(decision.get("tick", -1))),
+		_signature({} if as_record else decision.get("action", {}),
+			int(decision.get("tick", -1))),
 		_decision_fingerprint(decision),
 	]
 

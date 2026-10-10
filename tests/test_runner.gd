@@ -45,6 +45,7 @@ func _init() -> void:
 	persistence.test_save_slot_migration()
 	persistence.test_replay_from_save()
 	persistence.test_replay_flush()
+	persistence.test_generated_games()
 	homestead.test_crow_scared_verb()
 	homestead.test_vignette_multiday()
 	homestead.test_gate_lesson_latch_regression()

@@ -2820,6 +2820,9 @@
   "4cc38281e5b79e3c333d": {
    "verdict": "ok"
   },
+  "4cdc667d5a05fa37b432": {
+   "verdict": "ok"
+  },
   "4cdec643af006f430b3b": {
    "instead": "The machine walks the list",
    "quote": "It walks the list",
@@ -4271,6 +4274,12 @@
    "quote": "wobesound",
    "verdict": "decode",
    "why": "The reader cannot tell what “wobesound” means or which sound it refers to."
+  },
+  "73e98f8d96c3f2073c6c": {
+   "instead": "Generated games in progress",
+   "quote": "WIP",
+   "verdict": "decode",
+   "why": "“WIP” is an unexplained abbreviation that a cold reader may not know means “work in progress.”"
   },
   "740585f57b159e1a7e69": {
    "verdict": "ok"
@@ -6549,6 +6558,9 @@
    "verdict": "ok"
   },
   "ae12c50a5843cc3bac3e": {
+   "verdict": "ok"
+  },
+  "ae15be8441839c658a98": {
    "verdict": "ok"
   },
   "ae17a2b077b318aadb5e": {
@@ -8860,6 +8872,9 @@
   "efa301e261de4262fb26": {
    "verdict": "ok"
   },
+  "efbd7b05bbdfbba2abb3": {
+   "verdict": "ok"
+  },
   "efbd83015d0ec8e96187": {
    "verdict": "ok"
   },
@@ -8962,6 +8977,12 @@
   },
   "f27580c9447f3618068b": {
    "verdict": "ok"
+  },
+  "f2ae3522051f373a76c5": {
+   "instead": "The many-games test now resets each farm's randomness after every replay check and fails if the replay produces a different result",
+   "quote": "puts the farm's dice back",
+   "verdict": "decode",
+   "why": "“Farm's dice” is a metaphor for the farm's random state, so the reader must infer what is being restored."
   },
   "f2bece054cd7c31b8865": {
    "verdict": "ok"
@@ -9123,6 +9144,12 @@
   },
   "f7c76357c91567406455": {
    "verdict": "ok"
+  },
+  "f7caab7fb785f2431bd9": {
+   "instead": "checks that each saved game produces the same result when replayed",
+   "quote": "checks each save replays exactly",
+   "verdict": "decode",
+   "why": "The reader cannot tell what the save replays exactly or what is being compared."
   },
   "f7ee312c8e9ffb02e9bd": {
    "instead": "Keep the checks that review human-facing writing in the commit that records Daniel's rulings",

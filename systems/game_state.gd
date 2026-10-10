@@ -427,7 +427,9 @@ func holding_terrain() -> bool:
 
 func buy_seed(seed_type: String) -> bool:
 	var def: Dictionary = CropDefs.TYPES.get(seed_type, {})
-	if def.is_empty():
+	# An egg is in the crop table and has no packet; asking for one used to stop
+	# the gateway here rather than be refused (2026-10-09).
+	if def.is_empty() or not def.has("seed_price"):
 		return false
 	if gold < def.seed_price:
 		return false

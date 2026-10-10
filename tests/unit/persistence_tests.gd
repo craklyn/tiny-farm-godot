@@ -348,3 +348,72 @@ func test_replay_flush() -> void:
 	_assert(verbs == ["till", "sleep", "water", "sleep"], "loaded entries keep order and verbs")
 	DirAccess.remove_absolute(path)
 
+
+
+# --- Many generated games replay exactly (2026-10-09) --------------------------
+#
+# `tools/replay_many_games.gd` is a CI step of its own and plays the full list of
+# seeds there. What belongs here is that the check can fail at all: with a break
+# put back on purpose it has to say so, naming the seed and the first difference,
+# or a green run of it proves nothing. Plus the two replay breaks it found on its
+# first day, each pinned on its own.
+const GeneratedGames := preload("res://tests/generated_games.gd")
+
+func test_generated_games() -> void:
+	print("\n--- Many generated games replay exactly Tests ---")
+
+	# An honest game matches at every save, and the same seed is the same game.
+	var honest: Dictionary = GeneratedGames.play(1111)
+	_assert(honest["ok"], "a generated game replays exactly at every save (%s %s)"
+		% [honest["where"], honest["failure"]])
+	_assert(int(honest.get("checks", 0)) >= 2,
+		"and it was checked more than once (%d saves)" % int(honest.get("checks", 0)))
+	var again: Dictionary = GeneratedGames.play(1111)
+	_assert(str(again["counts"]) == str(honest["counts"]),
+		"and the same seed plays the same game twice — her choices come from her own dice")
+
+	# One of her actions left out of the recording: the replayed farm is not the save.
+	var unrecorded: Dictionary = GeneratedGames.play(1111, "unrecorded_action")
+	_assert(not unrecorded["ok"], "a recording missing one of her actions fails the check")
+	_assert(String(unrecorded["failure"]).contains("first difference")
+			or String(unrecorded["failure"]).contains("decided differently"),
+		"and says where the replay first went its own way (%s)" % unrecorded["failure"])
+
+	# The 2026-10-08 break put back: a farm continued from the start of its seed's
+	# stream rather than where the save left it (c09dfb16).
+	var dice: Dictionary = GeneratedGames.play(101, "dice_not_saved")
+	_assert(not dice["ok"] and String(dice["failure"]).contains("dice"),
+		"a Continue that loses the farm's place in its dice fails the check (%s)" % dice["failure"])
+
+	# A replay that rebuilds the farm but draws one more number from its dice than
+	# the game did (review of the first version, 2026-10-09): nothing in the save
+	# compares the dice, so the check has to, or the live game would carry on from
+	# the replay's position and every later check would agree with it.
+	var extra_draw: Dictionary = GeneratedGames.play(1111, "replay_draws_extra")
+	_assert(not extra_draw["ok"] and String(extra_draw["failure"]).contains("different amount"),
+		"a replay that draws one number more than the game did fails the check (%s)"
+			% extra_draw["failure"])
+
+	# Found by this check on its first run: a hen whose `use_door` the gateway
+	# refuses, in play and again on replay, used to read as a hen that changed her
+	# mind. On seed 1192673136 she is refused a nest square that was already taken.
+	var hen: Dictionary = GeneratedGames.play(1192673136)
+	var refused := 0
+	for k in hen["counts"]:
+		if String(k).begins_with("brain refused chicken"):
+			refused += int(hen["counts"][k])
+	_assert(refused > 0 and hen["ok"],
+		"a hen refused by the gateway replays as the same hen (%d refusals; %s)"
+			% [refused, hen["failure"]])
+
+	# ...and a Mark III with two kinds of seed tied in her box sows the same one on a
+	# farm loaded from its save as on the farm she never left.
+	var gs = load("res://systems/game_state.gd").new()
+	gs.reset()
+	gs.pouch = { "wheat": 0, "tomato": 3, "pea": 3 }
+	var as_played := BotBrain._best_seed(gs)
+	gs.pouch = JSON.parse_string(JSON.stringify(gs.pouch))
+	_assert(as_played == "tomato" and BotBrain._best_seed(gs) == as_played,
+		"a tie in the seed box goes the shop's way whatever order the box was read in (%s, %s)"
+			% [as_played, BotBrain._best_seed(gs)])
+	gs.free()

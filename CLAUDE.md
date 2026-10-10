@@ -47,6 +47,12 @@ python3 tools/run_godot_test.py -- godot --headless --path . res://tools/test_ru
 # Robot session: plays the real game end-to-end, then verifies its own replay
 python3 tools/run_godot_test.py -- godot --headless --path . res://tools/robot_session.tscn
 
+# Many generated games replay exactly (a CI step): generated farms on fixed seeds,
+# played by a random but legal player with saves and Continues part-way through,
+# each save checked against its replay. `-- --random=200` plays 200 fresh seeds;
+# `-- --seed=N` plays one again; `-- --verbose` prints what each game did
+python3 tools/run_godot_test.py -- godot --headless --path . --script res://tools/replay_many_games.gd
+
 # Visual comparison (also available as Engineering's Run button)
 tools/check_visuals.sh
 
