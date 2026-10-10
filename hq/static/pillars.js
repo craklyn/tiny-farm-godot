@@ -1048,7 +1048,7 @@ function webPlayRow(play) {
     ? `<button class="gbtn web-play-record">Record that you played this build</button>` : "";
   return `<div class="gate-row web-play-row gs-${play.state === "holds" ? "attested" : "red"}">
     <i class="dot ${play.state === "holds" ? "d-attested" : "d-attn"}"></i>
-    <span>Play the exported web build end to end before the tag</span>
+    <span>Daniel plays the release build end to end on the tablet before it is released</span>
     <span class="small muted web-play-state">${esc(play.message || "Record unavailable")}${play.dirty_game ? " Commit or discard game changes before recording a new play." : ""}${button}</span>
   </div>`;
 }
@@ -1060,7 +1060,7 @@ function wireWebPlayRecord(root, play) {
   recordButton.addEventListener("click", async () => {
     if (!armed) {
       armed = true;
-      recordButton.textContent = `I played the exported ${play.tag} web build in a browser; record it`;
+      recordButton.textContent = `I played the ${play.tag} build end to end on the tablet; record that play`;
       return;
     }
     recordButton.disabled = true;

@@ -38,6 +38,8 @@ all landed). Suites at close: unit 1799 / integration 453 / robot MATCH / benchm
   standing-bar scoring moves to v0.2.1, once a tester is found. The deployment north
   star is the reason: a release chained to recruiting a human is the defect, and the
   gate rides the *next* update rather than blocking this one.
+  **Amended 2026-10-09 (S-45):** it no longer rides any release; it is scored only
+  if a new player's session happens.
 - Replay v2 Phase B prerequisites are recorded in `M2_5_PLAN.md` §9 — a fresh-farm
   tablet session on a current build is the missing human artifact (the 08-31
   sessions all predate the final worldgen).
@@ -1786,11 +1788,12 @@ testable for free).
 ## Standing rules
 - Every vertical-slice milestone (M1, M3, M4, M5, M6) ends in a public, free,
   unrestricted release — release early and as often as possible (Q-6 ruling; D-5 note).
-- **Playtesting cadence (designer ruling 2026-09-02):** frequent fresh-player
-  playtests are not expected at this phase of development. The designer is the
-  primary playtester day to day; one genuinely fresh ("green") playtester is
-  sought before each public release of new features. Gate bars that require an
-  uncoached player (like M1.5's cot bar) score from that pre-release session.
+- **Playtesting before a release (S-45, Daniel, 2026-10-09):** no release waits on a
+  new player's first session; there is no pool of new players. Daniel plays the
+  release build end to end on the tablet after the chief of staff deploys it there.
+  Bars that need an uncoached player (like M1.5's cot bar) are scored only if such a
+  session happens, and hold no release. (Replaces the 2026-09-02 cadence rule, which
+  sought one fresh playtester before each public feature release.)
 - Desktop and Android builds stay green at every milestone (P-1).
 - Every milestone lands with sim-level tests (S-8).
 - Docs in `docs/` are updated in the same PR as the design change they reflect.

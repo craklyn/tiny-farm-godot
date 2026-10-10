@@ -817,6 +817,17 @@ made directly in a session still go straight to main, as Q-4 ruled. The playbook
 `orchestrator` skill in Daniel's own Claude settings; `.claude/skills/orchestrated-build/`
 covers the planning half and points at it.
 
+### S-45. A release no longer waits on a new player's first session
+**Ruled by Daniel on 2026-10-09.** There is no pool of new players to recruit, so no release
+waits on an unprompted session by someone who has never played, nor on scoring bars from such
+a session (the cot bar, the standing dead-tap and stall bars). Before a tag goes out, the chief
+of staff deploys the release build to the tablet and Daniel plays it end to end there; that is
+the release's one human play-through, and it replaces playing the exported web build in a
+browser. The browser-only behaviours that play used to catch (sound arriving after the first
+tap, a farm surviving a reload) are no longer checked by a person. Bars that need an uncoached
+player are scored only if such a session happens; they hold no release. Supersedes the
+playtesting-cadence rule of 2026-09-02 in `ROADMAP.md`'s standing rules.
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported

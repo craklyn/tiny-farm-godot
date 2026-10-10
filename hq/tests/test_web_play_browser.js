@@ -19,7 +19,7 @@ try {
   const html = `<!doctype html><meta charset="utf-8"><div id="root"></div><div id="below"></div>
 <script>
 const GOAL_META = {};
-let state = {state:'none', tag:'v9', release:'Scratch', can_attest:true, message:'Nobody has recorded playing the web build for v9.'};
+let state = {state:'none', tag:'v9', release:'Scratch', can_attest:true, message:'Nobody has recorded playing the v9 build on the tablet.'};
 let posts = 0;
 function esc(v) { return String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function h(v) { const t = document.createElement('template'); t.innerHTML = v.trim(); return t.content; }
@@ -27,7 +27,7 @@ function foldSection() { return ''; }
 async function api(url) { return url === '/api/web-play' ? state : null; }
 async function fetch(url, options) {
   posts++;
-  state = {state:'holds', tag:'v9', release:'Scratch', can_attest:true, message:'You recorded playing the web build for v9 on 2026-09-24.'};
+  state = {state:'holds', tag:'v9', release:'Scratch', can_attest:true, message:'You recorded playing the v9 build on the tablet on 2026-09-24.'};
   return {ok:true, json:async()=>({status:state})};
 }
 ${sales}
@@ -61,12 +61,12 @@ ${sales}
   {encoding:'utf8', timeout:30000});
   assert.equal(run.status, 0, run.stderr);
   assert.doesNotMatch(run.stdout, /data-error=/);
-  assert.match(run.stdout, /data-parked-row="[^\"]*Nobody has recorded playing the web build for v9/);
-  assert.match(run.stdout, /data-none="Nobody has recorded playing the web build for v9/);
-  assert.match(run.stdout, /data-armed="I played the exported v9 web build in a browser; record it"/);
+  assert.match(run.stdout, /data-parked-row="[^\"]*Nobody has recorded playing the v9 build on the tablet/);
+  assert.match(run.stdout, /data-none="Nobody has recorded playing the v9 build on the tablet/);
+  assert.match(run.stdout, /data-armed="I played the v9 build end to end on the tablet; record that play"/);
   assert.match(run.stdout, /data-posts-after-first="0"/);
   assert.match(run.stdout, /data-posts-after-second="1"/);
-  assert.match(run.stdout, /data-holds="You recorded playing the web build for v9/);
+  assert.match(run.stdout, /data-holds="You recorded playing the v9 build on the tablet/);
   assert.match(run.stdout, /data-lapsed="The v9 play record lapsed: uncommitted game content/);
   assert.match(run.stdout, /data-lapsed-button="false"/);
   console.log('Chrome rendered no-record, armed, holds, and dirty-game-lapsed Sales states.');

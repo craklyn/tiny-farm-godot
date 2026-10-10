@@ -167,6 +167,9 @@
    "verdict": "decode",
    "why": "The reader has to infer what is being closed and when."
   },
+  "052ce1dc581b8c548671": {
+   "verdict": "ok"
+  },
   "054b12be715df9885b39": {
    "instead": "Leave the machine as it is",
    "quote": "Leave it as it is",
@@ -782,6 +785,9 @@
    "verdict": "ok"
   },
   "13f25afd53a45a973a95": {
+   "verdict": "ok"
+  },
+  "144fe091611a402b8c79": {
    "verdict": "ok"
   },
   "1475b40723aa5b3e79f3": {
@@ -3413,6 +3419,12 @@
    "quote": "This preview reads values from … and shows the crop",
    "verdict": "second-look",
    "why": "It describes the preview's internal data source instead of plainly saying what the preview shows."
+  },
+  "5c5f6b4bc1d4a559b5a9": {
+   "instead": "Daniel plays the release build end to end on the tablet before marking the version for release",
+   "quote": "before the tag",
+   "verdict": "decode",
+   "why": "“Tag” is internal release shorthand, so the reader has to work out that this means marking the version for release."
   },
   "5c62436c4d8c17d8b5b8": {
    "verdict": "ok"
@@ -6930,6 +6942,12 @@
   },
   "bbd4dc3c89d664359f88": {
    "verdict": "ok"
+  },
+  "bbe823de77967d432062": {
+   "instead": "I played the … build end to end on the tablet; record the playthrough",
+   "quote": "record that play",
+   "verdict": "second-look",
+   "why": "“Play” is understandable, but the reader has to pause to tell whether this means recording the session or its result."
   },
   "bbeec6017c8baeaeed13": {
    "instead": "Every line added and removed, with the names of the documents changed at the top.",

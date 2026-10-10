@@ -3967,7 +3967,7 @@ def web_play_status():
     base = {"tag": tag, "release": name, "can_attest": not dirty,
             "dirty_game": dirty}
     if not record:
-        return {**base, "state": "none", "message": f"Nobody has recorded playing the web build for {tag}."}
+        return {**base, "state": "none", "message": f"Nobody has recorded playing the {tag} build on the tablet."}
     commit = record.get("commit", "")
     try:
         if not re.fullmatch(r"[0-9a-f]{40}", commit):
@@ -3983,12 +3983,12 @@ def web_play_status():
         return {**base, "state": "lapsed", "on": record.get("on"),
                 "message": f"The {tag} play record lapsed: {why}."}
     return {**base, "state": "holds", "on": record.get("on"),
-            "message": f"You recorded playing the web build for {tag} on {record.get('on')}."}
+            "message": f"You recorded playing the {tag} build on the tablet on {record.get('on')}."}
 
 
 def record_web_play(payload):
     if not isinstance(payload, dict) or payload.get("of") != "web_play" or payload.get("played") is not True:
-        raise ValueError("Confirm that you personally played the exported web build")
+        raise ValueError("Confirm that you personally played the release build on the tablet")
     with _WEB_PLAY_LOCK:
         status = web_play_status()
         if status["state"] == "no_release":

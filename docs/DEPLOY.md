@@ -241,19 +241,19 @@ trace mislabelled its own categories and where the crow schedule desynced replay
       (A save naming the build that wrote it is filed as work; until it lands, the answer
       comes from reading the diff since the last tag.)
 
-- [ ] Play the web build through in a real browser. Sound must arrive after the first tap
-      (browsers suspend audio until a user gesture), and a farm must survive a reload.
-      The tag is what builds and publishes the web export, so at this point there is
-      nothing public to play: export one from the commit you are about to tag with the
-      pre-tag export command above, and serve it over HTTP.
+- [ ] **Daniel plays the release build end to end on the tablet (S-45).** The chief of
+      staff first deploys the commit about to be tagged to the tablet (section 2). This
+      replaces playing the web export in a browser, so the browser-only checks that play
+      used to make (sound after the first tap, a farm surviving a reload) are no longer
+      made by a person. No release waits on a new player's session.
       **Then record that you did.** Tiny Farm HQ — the dashboard at
       http://localhost:8642 — shows the play record in the launch check on its Sales &
-      Platforms page (`#/pillar/sales`). After you actually play the exported build,
+      Platforms page (`#/pillar/sales`). After you actually play the build on the tablet,
       press the two-step record button. It records the intended tag, current commit and
       date. HQ refuses the record while game content is uncommitted; an existing record
       lapses if game content changes, including uncommitted changes. Docs and HQ edits
       do not lapse it. Cutting the tag spends it; the next tag needs its own play.
-      The record is your claim that you played; the button cannot observe a browser.
+      The record is your claim that you played; the button cannot observe the tablet.
       Nothing yet stops a tag that has no record; the two boxes below are enforced by the
       release workflow and this one is not.
 - [ ] **Check the Credits screen opens, and that the CC BY line is on it.** This is a
