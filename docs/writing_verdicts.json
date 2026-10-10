@@ -1969,6 +1969,12 @@
   "33414a2133384eb679bf": {
    "verdict": "ok"
   },
+  "3365de8031b0dcf4f4ce": {
+   "instead": "One tap on the tablet now plants and waters the same square",
+   "quote": "One touch on the tablet is one tap again",
+   "verdict": "decode",
+   "why": "It does not plainly say what one tap now does or what changed."
+  },
   "3414360e09075908fbc9": {
    "verdict": "ok"
   },
@@ -6056,6 +6062,9 @@
    "verdict": "ok"
   },
   "a25b69150ecd73a09402": {
+   "verdict": "ok"
+  },
+  "a2a3b7fc0e2f5149f514": {
    "verdict": "ok"
   },
   "a2d2dbd229a848f54788": {
