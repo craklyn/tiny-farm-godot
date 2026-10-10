@@ -1,0 +1,14 @@
+{"continued":true,"gen_seed":0,"version":1}
+{"at":[17,29],"in":"tap","kind":"tap","out":"queued","t":858,"tile":[15,33],"tool":3,"verb":"use_door"}
+{"actor":"player","kind":"act","ok":true,"t":4240,"tile":[15,33],"verb":"use_door"}
+{"at":[2,3],"in":"tap","kind":"tap","out":"acted","t":6832,"tile":[2,2],"tool":3,"verb":"use_door"}
+{"actor":"player","kind":"act","ok":true,"t":6832,"tile":[2,2],"verb":"use_door"}
+{"at":[15,32],"in":"tap","kind":"tap","out":"queued","t":7600,"tile":[12,27],"tool":3,"verb":"sleep"}
+{"actor":"world","kind":"act","ok":true,"t":12400,"tile":[-1,-1],"verb":"sleep"}
+{"actor":"chicken","kind":"act","ok":true,"t":12472,"tile":[2,16],"verb":"lay_egg"}
+{"at":[12,28],"in":"tap","kind":"tap","out":"queued","t":14585,"tile":[15,33],"tool":3,"verb":"use_door"}
+{"actor":"player","kind":"act","ok":true,"t":17044,"tile":[15,33],"verb":"use_door"}
+{"at":[2,3],"in":"tap","kind":"tap","out":"walk","t":20867,"tile":[14,3],"tool":3,"verb":""}
+{"at":[4,3],"in":"tap","kind":"tap","out":"walk","t":21641,"tile":[13,4],"tool":3,"verb":""}
+{"at":[8,4],"in":"tap","kind":"tap","out":"walk","t":23443,"tile":[14,4],"tool":3,"verb":""}
+{"at":[11,4],"in":"tap","kind":"tap","out":"walk","t":24643,"tile":[17,4],"tool":3,"verb":""}
