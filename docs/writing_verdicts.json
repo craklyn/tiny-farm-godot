@@ -5366,6 +5366,9 @@
    "verdict": "decode",
    "why": "“Held” and “on main” are internal shorthand, so a cold reader must work out that the card is waiting for its code to be added to the main version."
   },
+  "913237c56a71316a5fb4": {
+   "verdict": "ok"
+  },
   "913c5c5e69d22ef0bba7": {
    "verdict": "ok"
   },

@@ -278,7 +278,10 @@ func _scenario_bb_inventory_picker_selects_and_plants() -> void:
 	_assert(GameState.selected_seed_type == "tomato",
 		"tapping tomato's picture makes it the active item")
 	_assert(menus.active_menu == "", "and the picker closes itself on the tap")
-	_assert(farm.replay.entries.size() == replay_mark,
+	# Only what she did counts: the clock runs through these frames, and a hen or
+	# crow deciding something is recorded too (CI, 2026-10-09, d54a07f).
+	var hers: Array = farm.replay.entries.slice(replay_mark).filter(func(e): return not bool(e.get("brain", false)))
+	_assert(hers.is_empty(),
 		"choosing an item recorded nothing in the replay log — it is navigation, not an Action (P-9)")
 
 	# --- The tap actually reaches the farm: button, item, tile, planted -------
