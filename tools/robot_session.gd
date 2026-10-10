@@ -744,17 +744,21 @@ func _tap_and_wait(tile: Vector2i) -> void:
 func _tap_until(tile: Vector2i, done: Callable) -> bool:
 	await _walk_beside(tile)
 	# A tap can land while a hen is parked on the tile and be refused. A player
-	# just taps again once she has wandered off, so the robot does too — the
+	# waits for her to wander off and taps again, so the robot does too — the
 	# 2026-09-06 CI run where the stall would not build was one seed's loiterer
-	# (nothing can scatter there; the parcel's density is zero).
+	# (nothing can scatter there; the parcel's density is zero). It waits for the
+	# square to be free for what she is holding rather than for a count of frames,
+	# which was a guess at how long whatever stood there would take to move on
+	# (CI, 2026-10-09: five taps, no stall). An egg on the square never leaves by
+	# itself, so that wait gives up and the tap picks the egg up instead.
+	var item := String(GameState.selected_seed_type)
 	var since: int = main_scene.farm.trace.entries.size()
 	for _attempt in 5:
+		await _wait_until(func(): return main_scene.farm.sim.placeable_at(tile, item), ACT_FRAMES)
 		InputManager.click_tile = tile
 		InputManager.has_click = true
 		if await _wait_until(done, ACT_FRAMES):
 			return true
-		for _i in 40:
-			await get_tree().process_frame
 	_print_what_happened(tile, since)
 	return false
 

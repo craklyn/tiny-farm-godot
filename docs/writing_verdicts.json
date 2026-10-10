@@ -4689,6 +4689,12 @@
   "7d711e56025757f4eed4": {
    "verdict": "ok"
   },
+  "7dcfe82f09d73905791d": {
+   "instead": "The robot session waits for a square to be free before it taps to put something down, instead of pausing for a fixed amount of time",
+   "quote": "pausing a fixed number of frames",
+   "verdict": "second-look",
+   "why": "Frames describe the game's internal timing rather than the time a reader would notice."
+  },
   "7dd4b95583cd93131934": {
    "instead": "Every new script and image now reaches the main version of the game with the supporting files needed for a fresh copy to open it",
    "quote": "Every new script and image now arrives on main with the small Godot files a new copy of the game needs to open it",
@@ -5653,6 +5659,9 @@
    "quote": "Cards no longer wait on Daniel's page for approval they stopped needing, or to repair a build that already passes again",
    "verdict": "decode",
    "why": "The reader must untangle what the cards no longer wait for, and “already passes again” is difficult to interpret on a first read."
+  },
+  "95cf6f66f9b0e06a8668": {
+   "verdict": "ok"
   },
   "9600a020bbd582ae4022": {
    "verdict": "ok"
