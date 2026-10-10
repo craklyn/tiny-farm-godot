@@ -2400,10 +2400,9 @@ func _scenario_u_under_and_over() -> void:
 	# The last two renderers, and the two of them are the awkward cases the rest of
 	# the actor system never had to answer (M2.5 WI-8d/8e).
 	#
-	# Scenarios S and T's treatment, for their reason: nothing in the live game
-	# spawns a mole or a worm — both `per_day` values are 0 and the debut is a
-	# designer's content-sequencing call — so this is a **detached** farm with
-	# actors put into the registry by hand. What is new here is not the binding (a
+	# Scenarios S and T's treatment: nothing in the live game spawns a mole, and a
+	# worm comes on only one eligible day in ten — too rare to wait for — so this
+	# is a **detached** farm with actors put into the registry by hand. What is new here is not the binding (a
 	# species row and a line of `ACTOR_RENDERERS`, as ever) but what the binding
 	# has to carry: **one actor drawn as no sprite at all**, and **one actor drawn
 	# as several**.
@@ -2496,21 +2495,74 @@ func _scenario_u_under_and_over() -> void:
 	var tail_draw: Dictionary = worm.segment_draws()[worm.segment_draws().size() - 1]
 	_assert(tail_draw.cell == worm.CELL_TAIL and tail_draw.rot == 0.0 and not tail_draw.flip,
 		"the tail on the horizontal run stays unrotated and unmirrored")
-	for i in 60:
-		worm._process(1.0 / 60.0)
-	_assert(worm.seg_px.size() == worm.segment_tiles().size(),
-		"every segment has a sprite position of its own, and they follow the head")
-	_assert(worm.position == worm.seg_px[0],
-		"the node itself is the head, which is what the farm's y-sort draws a worm by")
-	# It is the slowest thing in the game (6 px/s), so catching up with five tiles
-	# of crawl takes it a while — and it does catch up, without ever teleporting.
-	var crawled := 0
-	while crawled < 1200 and worm.position != Vector2(
-			worm.segment_tiles()[0].x * 16, worm.segment_tiles()[0].y * 16):
-		worm._process(1.0 / 60.0)
-		crawled += 1
-	_assert(crawled < 1200,
-		"and the sprite crawls the whole way to the tile the sim has it on (%d frames)" % crawled)
+	# Several steps between two frames are a jump, not a crawl: it is drawn at
+	# once where the sim says, head first.
+	worm._process(1.0 / 60.0)
+	_assert(worm.position == Vector2(worm.segment_tiles()[0].x * 16, worm.segment_tiles()[0].y * 16),
+		"the node itself is the head, which is what the farm's page cull reads a worm by")
+
+	# --- the worm, crawling: one animal on every frame (2026-10-09) ----------
+	# On Daniel's tablet the worm spent its whole visit in loose pieces: each
+	# segment slid toward its next tile already wearing that tile's shape, so
+	# every bend opened gaps and turned corners the wrong way while it crawled.
+	# This rebuilds what is drawn, pixel by pixel from worm.png, every few frames
+	# of a crawl through bends and a meal, and asks two things of it: it is one
+	# connected shape, and none of it lies outside the tiles the worm is in or
+	# just leaving (a piece poking past a bend would).
+	var sheet := Image.load_from_file(ProjectSettings.globalize_path(
+		"res://assets/sprites/generated/worm.png"))
+	var crawl: Array[Vector2i] = [Vector2i(14, 11), Vector2i(13, 11), Vector2i(13, 10),
+		Vector2i(12, 10), Vector2i(12, 11), Vector2i(11, 11), Vector2i(10, 11),
+		Vector2i(10, 10), Vector2i(10, 9), Vector2i(9, 9), Vector2i(8, 9)]
+	var frames_per_tile := int(ceil(60.0 / worm.tiles_per_sec)) + 2
+	var checked := 0
+	var broken := ""
+	var tick := 10
+	for k in crawl.size():
+		if k == 5:
+			# A meal: one tile longer, grown at the head while the tail stays.
+			yard.sim.actor(SpeciesDefs.WORM)["extra"]["body_len"] = 5
+		var before: Array[Vector2i] = worm.segment_tiles()
+		Movement.plan(yard.sim, SpeciesDefs.WORM, crawl[k])
+		Movement.step(yard.sim, SpeciesDefs.WORM, tick)
+		tick += 1
+		var allowed := {}
+		for t in worm.segment_tiles():
+			allowed[t] = true
+		allowed[before[before.size() - 1]] = true
+		for f in frames_per_tile:
+			worm._process(1.0 / 60.0)
+			if f % 4 != 0 and f != frames_per_tile - 1:
+				continue
+			checked += 1
+			var px := _worm_pixels(worm, sheet)
+			var outside := 0
+			for q in px:
+				if not allowed.has(Vector2i(floori(q.x / 16.0), floori(q.y / 16.0))):
+					outside += 1
+			var parts := _pixel_islands(px)
+			if broken == "" and (parts != 1 or outside > 0):
+				broken = "step %d frame %d: %d pieces, %d pixels off its tiles, tiles %s" \
+					% [k, f, parts, outside, str(worm.segment_tiles())]
+	_assert(checked > 100 and broken == "",
+		"a crawling worm is drawn as one connected animal on its own tiles on every frame checked (%d; %s)"
+			% [checked, broken if broken != "" else "none broken"])
+	_assert(worm.segment_tiles().size() == 5, "and the meal made it a tile longer")
+	# Each piece takes its depth from its own row (the second half of the same
+	# report: the whole worm used to sort at its head's row, so a body lying
+	# south of its head went behind the crops and bed edges of the rows below).
+	var queue: Array = []
+	worm.queue_render(yard, queue)
+	var rows_ok: bool = queue.size() == worm.pieces().size()
+	for i in queue.size():
+		rows_ok = rows_ok and is_equal_approx(queue[i].y,
+			worm.pieces()[i].centre.y - 8.0)
+	var rows := {}
+	for e in queue:
+		rows[int(e.y) / 16] = true
+	_assert(rows_ok and rows.size() >= 2,
+		"and the farm's depth order gets one entry per piece, each at its own row (%s)"
+			% str(rows.keys()))
 
 	# Stomped, full, or curled up in itself — the sim dropping the actor is the
 	# only way either of these ends, and the sprites go with them.
@@ -2522,6 +2574,42 @@ func _scenario_u_under_and_over() -> void:
 
 	yard.queue_free()
 	await get_tree().process_frame
+
+
+# What a worm draws, as the set of world pixels its opaque sprite pixels land on:
+# its own `pieces()`, each cell trimmed and placed exactly as the draw call does.
+func _worm_pixels(worm, sheet: Image) -> Dictionary:
+	var out := {}
+	for p in worm.pieces():
+		var local: Rect2 = p.local
+		var xf: Transform2D = p.xf
+		for ly in range(int(local.position.y), int(local.end.y)):
+			for lx in range(int(local.position.x), int(local.end.x)):
+				if sheet.get_pixel(p.cell * 16 + 8 + lx, 8 + ly).a < 0.5:
+					continue
+				var w: Vector2 = xf * Vector2(lx + 0.5, ly + 0.5)
+				out[Vector2i(floori(w.x), floori(w.y))] = true
+	return out
+
+
+# How many separate shapes a set of pixels makes (edge-touching counts as joined).
+func _pixel_islands(px: Dictionary) -> int:
+	var seen := {}
+	var islands := 0
+	for start in px:
+		if seen.has(start):
+			continue
+		islands += 1
+		var stack: Array = [start]
+		seen[start] = true
+		while not stack.is_empty():
+			var q: Vector2i = stack.pop_back()
+			for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var r: Vector2i = q + d
+				if px.has(r) and not seen.has(r):
+					seen[r] = true
+					stack.append(r)
+	return islands
 
 
 func _scenario_v_the_bot_is_drawn() -> void:

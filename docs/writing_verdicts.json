@@ -9021,6 +9021,9 @@
    "verdict": "decode",
    "why": "The reader has to work out that this means the demonstration used to estimate the Mark I's cost."
   },
+  "f6568681fc40e4d67a6b": {
+   "verdict": "ok"
+  },
   "f656f679c1edcb214665": {
    "verdict": "ok"
   },
