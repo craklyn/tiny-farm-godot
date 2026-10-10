@@ -136,6 +136,26 @@ def main():
             finally:
                 server.read_history = old_read
                 server._GOAL_JOURNAL = {"at": 0.0, "by_id": {}}
+
+            print("a repair still open when main passes again is dropped, naming the green run")
+            fresh = Path(td) / "fresh"
+            (fresh / "work").mkdir(parents=True)
+            work.WORK = str(fresh / "work")
+            server.CI_HISTORY_PATH = str(fresh / "ci_history.json")
+            red = [{**runs[0], "url": "https://github.example/runs/50", "updatedAt": "2026-10-09T22:46:00Z"}]
+            log = "tests\tUNKNOWN STEP\t2026-10-09T22:49:45Z   \u2717 FAIL: choosing an item recorded nothing\n"
+            with patch.object(server, "run_cmd", side_effect=[json.dumps(red), log]):
+                server._refresh_ci_history()
+            filed = [c for c in work.items() if (c.get("incident") or {}).get("kind") == "ci_failure"]
+            check(len(filed) == 1 and "choosing an item recorded nothing" in filed[0]["ask"],
+                  "the repair card names the failing check, not only a link workers cannot open")
+            green = [{**runs[0], "conclusion": "success", "url": "https://github.example/runs/51",
+                      "updatedAt": "2026-10-09T22:56:00Z", "displayTitle": "The next push"}] + red
+            with patch.object(server, "run_cmd", return_value=json.dumps(green)):
+                server._refresh_ci_history()
+            after = work.load_item(filed[0]["id"])
+            check(after["state"] == "dropped" and "/runs/51" in after["drop_reason"]["reason"],
+                  "a later green run on main drops the open repair and says which run passed")
         finally:
             server.DATA, server.CI_HISTORY_PATH = old_data, old_history
             work.HOST, work.WORK = old_host, old_work

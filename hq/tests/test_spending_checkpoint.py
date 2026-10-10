@@ -277,9 +277,9 @@ class SpendingCheckpoint(unittest.TestCase):
 
     def test_approval_held_and_closed_cards_are_never_reviewed(self):
         held = self.card(state="for_review",
-                         diff={"applied": False, "why_not_landed": work.approval_hold_reason("project.godot")},
+                         diff={"applied": False, "why_not_landed": work.approval_hold_reason("docs/design/06-bots-and-training.md")},
                          attempt_outcome={"status": "complete", "id": "a1", "patch_id": "p1",
-                                          "candidate": {"files": {"project.godot": "blob"}}},
+                                          "candidate": {"files": {"docs/design/06-bots-and-training.md": "blob"}}},
                          check={"read": True, "verdict": "pass", "complete": True,
                                 "findings": [], "attempt_id": "a1"})
         self.assertTrue(work.landing_awaits_approval(held))

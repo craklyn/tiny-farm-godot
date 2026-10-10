@@ -3200,18 +3200,42 @@ def _refresh_ci_history():
     # Detection is not ownership. The newest failed run becomes concrete
     # Engineering work in the background poll, never while rendering a page.
     # The run URL is the event identity, so repeated polls produce one card.
+    if done and done[0].get("conclusion") == "success" and done[0].get("url"):
+        # Main is green again: a repair card still open for an older failure has
+        # nothing left to repair (2026-10-09: one failed integration run was
+        # followed by green runs ten minutes later, and its repair card sat open
+        # for hours, its worker unable to read the log it was sent to).
+        work.settle_ci_incidents(done[0]["url"], done[0].get("displayTitle") or "")
     if done and done[0].get("conclusion") != "success" and done[0].get("url"):
         failed = done[0]
+        # The queue's workers cannot reach GitHub, so the card carries the
+        # failing checks itself rather than only a link to them.
+        lines = _failed_checks(failed["url"])
         work.file_automatic({
             "title": "Restore the failed build on main",
             "owner": "elena",
             "level": "task",
             "ask": ("The newest finished tests workflow on main failed. Diagnose and repair "
                     "the first failed check without weakening it. Failing run: "
-                    + failed["url"]),
-            "first_action": ("Open " + failed["url"]
-                             + " and reproduce the first failed job from a clean checkout."),
+                    + failed["url"] + (". Failing checks: " + " / ".join(lines) if lines else "")),
+            "first_action": ("Reproduce the first failing check above from a clean checkout."
+                             if lines else
+                             "Open " + failed["url"] + " and reproduce the first failed job from a clean checkout."),
         }, "ci:" + failed["url"])
+
+
+def _failed_checks(run_url):
+    """The failing test lines of one run, read with the host's gh, at most four."""
+    run_id = run_url.rstrip("/").rsplit("/", 1)[-1]
+    if not run_id.isdigit():
+        return []
+    out = run_cmd(["gh", "run", "view", run_id, "--log-failed"], timeout=60) or ""
+    found = []
+    for line in out.splitlines():
+        m = re.search(r"(?:✗ )?FAIL: (.+)$", line)
+        if m and m.group(1).strip() not in found:
+            found.append(m.group(1).strip()[:160])
+    return found[:4]
 
 
 def ci_history():

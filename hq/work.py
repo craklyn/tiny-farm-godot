@@ -985,6 +985,25 @@ def approval_brief(item, org=None):
     }
 
 
+# Work that cannot be undone by reverting a commit, wherever it appears in a
+# diff: a release, the deploy runbook, the store page, the build pipeline, and
+# the design documents that hold the studio's direction. A patch touching any
+# of these goes to Daniel however green everything else is.
+NEVER_LANDS = ("docs/design/", "docs/DEPLOY.md", "ITCH_PAGE.md", ".github/",
+               "hq/data/releases.json")
+# Pictures and recordings under the design mockups are evidence a design is judged
+# on, not the design: refreshing a capture decides nothing (2026-10-09: a re-capture
+# of the barn after its doorway was widened waited for Daniel). The text that says
+# what the studio will do stays his.
+EVIDENCE_MEDIA = (".png", ".jpg", ".jpeg", ".gif", ".webp", ".mp4", ".webm", ".wav", ".ogg")
+
+
+def needs_daniels_ok(path):
+    if path.startswith("docs/design/mockups/") and path.lower().endswith(EVIDENCE_MEDIA):
+        return False
+    return any(path == n or path.startswith(n) for n in NEVER_LANDS)
+
+
 def landing_awaits_approval(item):
     """A finished, cleanly reviewed change whose only landing gate is Daniel's
     yes. Pure. Its next step is his decision, whatever older actions, blockers,
@@ -997,6 +1016,11 @@ def landing_awaits_approval(item):
         return False
     attempt = item.get("attempt_outcome") or {}
     check = item.get("check") or {}
+    # A hold recorded under an older, wider rule is not his question once none
+    # of the files needs him (2026-10-09: a held re-capture sat on his page for
+    # four hours after screenshots stopped needing his OK).
+    if not any(needs_daniels_ok(f) for f in ((attempt.get("candidate") or {}).get("files") or {})):
+        return False
     return (attempt.get("status") == "complete" and bool((attempt.get("candidate") or {}).get("files"))
             and check.get("read") is True and check.get("verdict") == "pass"
             and check.get("complete") is True and not check.get("findings")
@@ -2037,6 +2061,29 @@ def _file_item(fields, cap, org):
         "created_ts": time.time(),
         **({"after": list(fields["after"])} if fields.get("after") else {}),
     })
+
+
+def settle_ci_incidents(green_url, green_title=""):
+    """Drop every repair card still open for a failed run once a newer run on
+    main has passed. A card whose worker has already started is left alone: its
+    result says what it found. Returns the ids dropped."""
+    dropped = []
+    for item in items():
+        incident = item.get("incident") or {}
+        if incident.get("kind") != "ci_failure" or item.get("state") not in OPEN_STATES:
+            continue
+        if incident.get("identity") == "ci:" + green_url or item.get("state") == "doing":
+            continue
+        forget_owner_memory(item)
+        item["state"] = "dropped"
+        item["closed"] = _now_iso()
+        item["drop_reason"] = {"by": "hq", "at": _now_iso(),
+                               "reason": ("Main passed its tests again (" + green_url
+                                          + (", " + green_title if green_title else "")
+                                          + "), so there was nothing left to restore.")}
+        save_item(item)
+        dropped.append(item["id"])
+    return dropped
 
 
 def file_automatic(fields, source_ref):

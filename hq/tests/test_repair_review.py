@@ -422,9 +422,9 @@ class RepairReview(unittest.TestCase):
 
     def test_cards_that_are_someone_elses_are_never_reviewed(self):
         held = self.card("wdef000000011", repair_hold="",
-                         diff={"applied": False, "why_not_landed": work.approval_hold_reason("project.godot")},
+                         diff={"applied": False, "why_not_landed": work.approval_hold_reason("docs/design/06-bots-and-training.md")},
                          attempt_outcome={"status": "complete", "id": "att3", "patch_id": "p1",
-                                          "candidate": {"files": {"project.godot": "blob"}}},
+                                          "candidate": {"files": {"docs/design/06-bots-and-training.md": "blob"}}},
                          check={"read": True, "verdict": "pass", "complete": True,
                                 "findings": [], "attempt_id": "att3"})
         self.assertTrue(work.landing_awaits_approval(held))
