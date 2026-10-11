@@ -4969,8 +4969,14 @@ func _scenario_room_wall_tap_answers() -> void:
 	var rng_revision := SimRng.stateless_revision
 
 	var rlog := _tablet_room_moment()
-	_assert(rlog != null and rlog.apply_to(farm.sim, GameState) and rlog.divergence == "",
-		"the tablet session replays to tick 64579 without diverging (%s)"
+	# Diverges at the hen's egg after the night since robots stopped walking through
+	# buildings (2026-10-11): this farm's Mark Is and Mark II used to walk along a row
+	# of stall bays, and going round shifts the farm's shared dice. Her own walk is
+	# recorded, so the room she stands in is untouched (tests/unit/core_tests.gd).
+	_assert(rlog != null and rlog.apply_to(farm.sim, GameState) and (rlog.divergence == ""
+			or rlog.divergence.begins_with(
+				"entry 186: recorded @63648 {actor=chicken,target=30,16,verb=lay_egg}")),
+		"the tablet session replays to tick 64579, diverging only at the hen's egg after robots stopped crossing stall bays (%s)"
 			% ("no replay" if rlog == null else rlog.divergence))
 	var room: Dictionary = farm.sim.rooms.get("spiral_tower_room_2", {})
 	_assert(room.get("origin", Vector2i(-1, -1)) == Vector2i(7, 40) and room.get("size", Vector2i(-1, -1)) == Vector2i(2, 2),

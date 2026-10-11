@@ -27,6 +27,10 @@
 #                    is standing on (the giant-ant flag, shipped unused-ready).
 #   spares_beds      a walker whose route goes around the farm's soil beds and
 #                    through no building's block (the cow, 2026-10-11).
+#   spares_buildings a walker whose route goes through no building's block, but
+#                    over beds as freely as ever: they are its work. It may still
+#                    stop in a robot stall's bay, which is where it lives (the
+#                    robots, 2026-10-11).
 #
 # **Cost is per decision, never per tick** (plan §1 rule 8). Nothing in here runs
 # on a timer: a brain plans a route when it decides to go somewhere, and asks for
@@ -61,6 +65,8 @@ const MOVED := "moved"
 # species mode — no row says it — but the mode its routes are searched and its
 # steps checked in, so the A* below treats it like any other (see `route_mode_of`).
 const GROUND_SPARING_BEDS := "ground_sparing_beds"
+# The same for a row that sets `spares_buildings`: the robots' route mode.
+const GROUND_SPARING_BUILDINGS := "ground_sparing_buildings"
 const ARRIVED := "arrived"
 const BLOCKED := "blocked"
 
@@ -90,6 +96,7 @@ static func define_test_species(species: String, capability: Dictionary, speed: 
 			"body_len": maxi(1, int(capability.get("body_len", 1))),
 			"tile_exclusive": bool(capability.get("tile_exclusive", false)),
 			"spares_beds": bool(capability.get("spares_beds", false)),
+			"spares_buildings": bool(capability.get("spares_buildings", false)),
 		},
 		"speed": speed,
 	}
@@ -123,10 +130,20 @@ static func mode_of(species: String) -> String:
 # (`CowBrain._grazeable`); this keeps her whole walk off them. A species flag
 # rather than a cow check here, like `tile_exclusive`, and only the walk changes:
 # the hen, the player and the robots still cross soil, as they always have.
+#
+# **A robot keeps out of buildings the same way** (2026-10-11, Daniel: robots
+# "should not walk through a building's footprint"). Its route went through the
+# coop, the tower, the barn and other robots' stalls for the cow's reason — all
+# open ground to `is_walkable` — and it read as a machine walking through a wall.
+# It still crosses beds, which are where its work is.
 static func route_mode_of(species: String) -> String:
 	var mode := mode_of(species)
-	if mode == SpeciesDefs.GROUND and bool(capability_of(species).get("spares_beds", false)):
-		return GROUND_SPARING_BEDS
+	if mode == SpeciesDefs.GROUND:
+		var capability := capability_of(species)
+		if bool(capability.get("spares_beds", false)):
+			return GROUND_SPARING_BEDS
+		if bool(capability.get("spares_buildings", false)):
+			return GROUND_SPARING_BUILDINGS
 	return mode
 
 
@@ -201,6 +218,8 @@ static func passable(world: SimWorld, mode: String, t: Vector2i) -> bool:
 			return world.is_walkable(t.x, t.y) or is_barrier(world, t)
 		GROUND_SPARING_BEDS:
 			return world.is_walkable_sparing_beds(t.x, t.y)
+		GROUND_SPARING_BUILDINGS:
+			return world.is_walkable_sparing_buildings(t.x, t.y)
 		SpeciesDefs.STATIC:
 			# A machine travels through nothing (M2.5 WI-10). Every search and
 			# every step follows from this one answer: `path` and `reachable`
@@ -223,10 +242,22 @@ static func passable(world: SimWorld, mode: String, t: Vector2i) -> bool:
 # doorstep may have been tilled). Starting anywhere is what walks a cow off a
 # square she should not be on — the ground tilled under her, or a save from before
 # this rule caught her halfway across a barn's block.
+#
+# A robot is stricter about where it stops: outside every building, or in a robot
+# stall's bay, because a bay is its home and the one building it is meant to walk
+# into. It may *start* anywhere walkable, though (`_startable`), so one parked in
+# its bay sets out, and one a save left inside a coop walks out.
+static func _is_sparing(mode: String) -> bool:
+	return mode == GROUND_SPARING_BEDS or mode == GROUND_SPARING_BUILDINGS
+
+
 static func can_stop(world: SimWorld, mode: String, t: Vector2i) -> bool:
 	match mode:
 		SpeciesDefs.HOP, SpeciesDefs.BURROW, GROUND_SPARING_BEDS:
 			return world.is_walkable(t.x, t.y)
+		GROUND_SPARING_BUILDINGS:
+			return world.is_walkable_sparing_buildings(t.x, t.y) \
+					or (world.is_stall_tile(t) and world.is_walkable(t.x, t.y))
 		_:
 			return passable(world, mode, t)
 
@@ -284,12 +315,13 @@ static func blocked_by_kin(world: SimWorld, actor_id: String, t: Vector2i) -> bo
 # scarecrow, and another ant walks into the tile this one was heading for.
 #
 # `last` says this step ends the journey, where `can_stop` is the question rather
-# than `passable` — the two differ only for a walker that spares the beds.
+# than `passable` — the two differ only for the walkers that spare the beds or the
+# buildings.
 static func can_enter(world: SimWorld, actor_id: String, t: Vector2i, last: bool = false) -> bool:
 	var mode := route_mode_of(world.species_of(actor_id))
-	if mode == GROUND_SPARING_BEDS and bool(world.actor(actor_id).get("extra", {}).get("over_beds", false)):
-		mode = SpeciesDefs.GROUND  # this one route had no way round (see `plan`)
-	if not (can_stop(world, mode, t) if last and mode == GROUND_SPARING_BEDS else passable(world, mode, t)):
+	if _is_sparing(mode) and bool(world.actor(actor_id).get("extra", {}).get("over_beds", false)):
+		mode = SpeciesDefs.GROUND  # this one route is an ordinary walker's (see `plan`)
+	if not (can_stop(world, mode, t) if last and _is_sparing(mode) else passable(world, mode, t)):
 		return false
 	if blocked_by_self(world, actor_id, t):
 		return false
@@ -435,6 +467,7 @@ const _M_BURROW := 2
 const _M_HOP := 3
 const _M_STATIC := 4
 const _M_SPARING_BEDS := 5
+const _M_SPARING_BUILDINGS := 6
 
 
 static func _mode_id(mode: String) -> int:
@@ -444,6 +477,7 @@ static func _mode_id(mode: String) -> int:
 		SpeciesDefs.HOP: return _M_HOP
 		SpeciesDefs.STATIC: return _M_STATIC
 		GROUND_SPARING_BEDS: return _M_SPARING_BEDS
+		GROUND_SPARING_BUILDINGS: return _M_SPARING_BUILDINGS
 		_: return _M_GROUND
 
 
@@ -469,6 +503,8 @@ static func _crossable(world: SimWorld, mode_id: int, x: int, y: int) -> bool:
 			return not world.get_tile(x, y).is_empty()
 		_M_SPARING_BEDS:
 			return world.is_walkable_sparing_beds(x, y)
+		_M_SPARING_BUILDINGS:
+			return world.is_walkable_sparing_buildings(x, y)
 		_:
 			return false
 
@@ -482,14 +518,16 @@ static func _stoppable(world: SimWorld, mode_id: int, x: int, y: int) -> bool:
 	match mode_id:
 		_M_HOP, _M_BURROW, _M_SPARING_BEDS:
 			return world.is_walkable(x, y)
+		_M_SPARING_BUILDINGS:
+			return can_stop(world, GROUND_SPARING_BUILDINGS, Vector2i(x, y))
 		_:
 			return _crossable(world, mode_id, x, y)
 
 
 # Where a journey may begin: anywhere it could pass through, and for a walker
-# that spares the beds, any walkable ground (see `can_stop`).
+# that spares the beds or the buildings, any walkable ground (see `can_stop`).
 static func _startable(world: SimWorld, mode_id: int, x: int, y: int) -> bool:
-	if mode_id == _M_SPARING_BEDS:
+	if mode_id == _M_SPARING_BEDS or mode_id == _M_SPARING_BUILDINGS:
 		return world.is_walkable(x, y)
 	return _crossable(world, mode_id, x, y)
 
@@ -524,7 +562,16 @@ static func _next_gen() -> int:
 # `fly` rarely wants this: a flyer has no route to find, it goes in a straight
 # line through everything, and that is `fly_toward()` below. Asking anyway is
 # answered honestly — the shortest tile staircase, over the map.
-static func path(world: SimWorld, mode: String, start: Vector2i, goal: Vector2i) -> Array[Vector2i]:
+#
+# **A robot goes in and out of a stall's bay by its open front** (2026-10-11). The
+# picture is the two open bays on the stall's squares with the shed rising behind
+# them, so a bay left by its back or its side is a robot walking out through a
+# wall. In the robots' mode, then, a route that starts or ends in a bay steps
+# between it and the square directly below it (south, the open side) and nowhere
+# else. `front_doors` false lifts that, for `plan`'s second try when a bay's front
+# is fenced or built over.
+static func path(world: SimWorld, mode: String, start: Vector2i, goal: Vector2i,
+		front_doors: bool = true) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
 	if start == goal:
 		return out
@@ -546,6 +593,11 @@ static func path(world: SimWorld, mode: String, start: Vector2i, goal: Vector2i)
 	var gy := goal.y
 	var goal_i := gy * w + gx
 	var start_i := start.y * w + start.x
+	# The bay's front square, or -1: the only tile a route may leave the start by,
+	# and the only one it may reach the goal from.
+	var doors := front_doors and mode_id == _M_SPARING_BUILDINGS
+	var start_door := start_i + w if doors and world.is_stall_tile(start) else -1
+	var goal_door := goal_i + w if doors and world.is_stall_tile(goal) else -1
 
 	_stamp[start_i] = gen
 	_g[start_i] = 0
@@ -603,6 +655,9 @@ static func path(world: SimWorld, mode: String, start: Vector2i, goal: Vector2i)
 			if nx < 0 or nx >= w or ny < 0 or ny >= mh:
 				continue
 			var ni := ny * w + nx
+			if (cur == start_i and start_door >= 0 and ni != start_door) \
+					or (ni == goal_i and goal_door >= 0 and cur != goal_door):
+				continue  # in or out of a stall's bay by any side but its front
 			var seen: int = _stamp[ni]
 			if seen == gen:
 				# Already reached this search, so already known crossable: the only
@@ -672,17 +727,35 @@ static func path(world: SimWorld, mode: String, start: Vector2i, goal: Vector2i)
 # onto a planted field: kept to the way round, its cow could never reach a stall
 # again. A cow's walk harms no crop; it is only the look of it the rule is for,
 # so a cow going to give milk crosses where she must and a grazing cow never does.
+#
+# **A robot never crosses a building to reach somewhere** (2026-10-11): no way
+# round is no route, and its brain gives that square up as it gives up one behind
+# a fence. The one exception is getting *out*. A robot a save left inside a
+# block (a save from before this rule, or one standing in the middle of a tower's
+# sixteen squares, every neighbour of which is the tower too) has no route that
+# keeps out of buildings, so it takes the ordinary walker's way only as far as the
+# first square outside, and plans again from there. One search for nearly every
+# journey; a second only for a robot starting inside a building, or going to or
+# from a stall bay whose front is shut (see `path`).
 static func plan(world: SimWorld, actor_id: String, goal: Vector2i, over_beds_if_needed: bool = false) -> bool:
 	var e: Dictionary = world.actor(actor_id)
 	if e.is_empty():
 		return false
 	var mode := route_mode_of(String(e.get("species", "")))
-	var route := path(world, mode, world.actor_pos(actor_id), goal)
+	var here := world.actor_pos(actor_id)
+	var route := path(world, mode, here, goal)
+	if route.is_empty() and mode == GROUND_SPARING_BUILDINGS \
+			and (world.is_stall_tile(here) or world.is_stall_tile(goal)):
+		route = path(world, mode, here, goal, false)  # the bay's front is shut
 	e["extra"].erase("over_beds")
 	if route.is_empty() and over_beds_if_needed and mode == GROUND_SPARING_BEDS:
-		route = path(world, SpeciesDefs.GROUND, world.actor_pos(actor_id), goal)
+		route = path(world, SpeciesDefs.GROUND, here, goal)
 		if not route.is_empty():
 			e["extra"]["over_beds"] = true
+	elif route.is_empty() and mode == GROUND_SPARING_BUILDINGS and not passable(world, mode, here):
+		route = _way_out(world, path(world, SpeciesDefs.GROUND, here, goal))
+		if not route.is_empty():
+			e["extra"]["over_beds"] = true  # the flag's name is the cow's; it means "this route is an ordinary walker's"
 	e["extra"]["path"] = flatten(route)
 	e["extra"]["step"] = 0
 	if mode == SpeciesDefs.BURROW:
@@ -691,6 +764,15 @@ static func plan(world: SimWorld, actor_id: String, goal: Vector2i, over_beds_if
 		# rather than a story about what the mole is doing.
 		e["extra"]["under"] = not route.is_empty()
 	return not route.is_empty()
+
+
+# An ordinary walker's route, cut at the first square that is outside every
+# building: the way out of one, and no further.
+static func _way_out(world: SimWorld, route: Array[Vector2i]) -> Array[Vector2i]:
+	for i in route.size():
+		if world.is_walkable_sparing_buildings(route[i].x, route[i].y):
+			return route.slice(0, i + 1)
+	return route
 
 
 # One step along the planned route, at `tick`. MOVED sets the next wake from the

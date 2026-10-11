@@ -1427,10 +1427,14 @@ func _patrol(world: SimWorld, actor_id: String, extra: Dictionary, tick: int) ->
 # grazer's `_random_reachable` narrowed to the radius: `Movement.reachable`
 # answers in the engine's fixed breadth-first order, so the same seed picks the
 # same tile in a replay as it did live.
+#
+# In its *route* mode (2026-10-11), so the patch is what it can reach going round
+# buildings, and no beat is inside one: a beat in the coop is a beat it would
+# have to walk through a wall to keep.
 func _patrol_tile(world: SimWorld, actor_id: String, extra: Dictionary) -> Vector2i:
 	var home := _home(extra)
 	var radius := float(extra.get("radius", SHOO_RADIUS))
-	var mode := Movement.mode_of(world.species_of(actor_id))
+	var mode := Movement.route_mode_of(world.species_of(actor_id))
 	var key := var_to_bytes([mode, world.actor_pos(actor_id), home, radius])
 	var inside: Array[Vector2i]
 	if world.patrol_tiles_cache.has(key):

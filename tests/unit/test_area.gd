@@ -96,8 +96,18 @@ const SHELF := {
 	# Pulled off the tablet 2026-10-11 by the creamery deploy. It replayed exactly until
 	# the same day's change that sends cows around the farmer's beds and the barn's walls:
 	# the first difference is the route cow_1 is walking at the end (`extra.path`), because
-	# she now goes round beds she used to walk across.
+	# she now goes round beds she used to walk across. Later the same day robots stopped
+	# walking through buildings too, and this farm's Mark II used to walk through the
+	# barn (from tick 78282), so it now parts from the recording earlier (entry 71, a
+	# Mark III's decision) for that second reason as well.
 	"2026-10-11_004912_slot1": { "format": 4, "verdict": "cross" },
+	# Pulled off the tablet 2026-10-10 (634 entries). It replayed exactly until robots
+	# stopped walking through buildings, 2026-10-11 (Daniel's call): two Mark Is going
+	# home stepped through the neighbouring bay of their stall (from tick 76336), and the
+	# Mark II walked through the coop and a stall. Going round changes their timing and
+	# the farm's shared dice, and the first decision that differs is a Mark III's at
+	# entry 208. The world moving under a recording by his own ruling.
+	"2026-10-10_193407": { "format": 4, "verdict": "cross" },
 }
 
 # The robot-value measurement, shared with the tool that prints it as a table for

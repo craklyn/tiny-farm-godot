@@ -915,7 +915,8 @@ const OPEN_STRUCTURE_OBJECTS := {
 # Every object that is a square of a building's block on the farm: the open
 # structures above and the Industrial Barn, whose block is open ground too (the
 # player taps any square of it) but whose way in is its doors, not its walls.
-# What a walker that spares the beds keeps out of (`is_walkable_sparing_beds`).
+# What a walker that spares the beds keeps out of (`is_walkable_sparing_beds`),
+# and what a robot's route goes around (`is_walkable_sparing_buildings`).
 const BUILDING_BLOCK_OBJECTS := {
 	WorldLayout.ROBOT_STALL: true, WorldLayout.ROBOT_STALL_SLOT: true,
 	WorldLayout.CHICKEN_COOP: true, WorldLayout.CHICKEN_COOP_PART: true,
@@ -1568,11 +1569,22 @@ func is_walkable(tx: int, ty: int) -> bool:
 # own block, and a save made mid-walk loaded them standing inside the barn. The
 # route mode of every species whose row sets `spares_beds` (`Movement.route_mode_of`).
 func is_walkable_sparing_beds(tx: int, ty: int) -> bool:
-	if not is_walkable(tx, ty):
-		return false
-	if BUILDING_BLOCK_OBJECTS.has(objects[ty][tx]):
+	if not is_walkable_sparing_buildings(tx, ty):
 		return false
 	return not _wettable_state_set.has(tiles[ty][tx].state)
+
+
+# **Walkable ground a robot's route may cross** (2026-10-11): walkable, and not a
+# square of any building's block. The coop, the tower, the stall and the barn are
+# all open ground to `is_walkable` (the hen walks into her coop, the farmer taps
+# any square of the barn), so a robot's route ran straight through them and it
+# looked like a machine walking through a wall. The route mode of every species
+# whose row sets `spares_buildings` (`Movement.route_mode_of`); the cow's test
+# above is this one plus the beds.
+func is_walkable_sparing_buildings(tx: int, ty: int) -> bool:
+	if not is_walkable(tx, ty):
+		return false
+	return not BUILDING_BLOCK_OBJECTS.has(objects[ty][tx])
 
 
 # Parcels are open when their gate is (or they never had one). Derived from the
