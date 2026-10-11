@@ -2277,12 +2277,13 @@ func _block_fits(t: Vector2i, item: String) -> bool:
 	# each cell of its block, so a cell that already holds one would lose it: an
 	# egg or an acorn on the ground, or the open floor of another building — the
 	# tower's, the barn's — which `is_walkable` lets a foot onto and so let a
-	# second building be set down half on top of the first. A machine that is an
-	# actor stands over what is there and writes nothing, so it is not asked.
+	# second building be set down half on top of the first — or a crop, which it
+	# would bury (`_crop_under_structure`). A machine that is an actor stands over
+	# what is there and writes nothing, so it is not asked.
 	if item != "" and MachineDefs.has(item) and not MachineDefs.spawns_actor(item) \
 			and MachineDefs.terrain_of(item) == "":
 		for cell in MachineDefs.footprint_cells(item, t):
-			if get_object(cell.x, cell.y) != "" or _crop_under_barn(item, cell):
+			if get_object(cell.x, cell.y) != "" or _crop_under_structure(cell):
 				return false
 	for raw in actors:
 		var id := String(raw)
@@ -2293,16 +2294,22 @@ func _block_fits(t: Vector2i, item: String) -> bool:
 	return true
 
 
-# **A barn goes down on no crop** (2026-10-11, found staging the creamery video: a
-# barn set down by tap on the edge of a planted field, three of its six squares
-# sown or growing, and the crops left under it where nothing could reach them for
-# as long as it stood). Bare tilled soil is still taken, as it is for every
-# building: nothing is lost under one but the tilling. The barn only, for now: the
-# coop and the spiral tower still go down over crops, as they always have, and
-# Daniel has done exactly that with a tower in play (2026-10-09, picking it up
-# again to find the crops still growing), so whether they should follow is his.
-func _crop_under_barn(item: String, cell: Vector2i) -> bool:
-	return item == BARN_ITEM and has_crop(cell.x, cell.y)
+# **No building goes down on a crop** (2026-10-11). Every square of a structure's
+# block becomes the structure's own object, so a crop under it — sown, growing or
+# ripe — is left where nothing can reach it for as long as the building stands.
+# Found with the barn first (staging the creamery video: a barn set down by tap on
+# the edge of a planted field, three of its six squares sown or growing), and then
+# Daniel's call for the rest: "Yes please. Also the building for robots" — the
+# coop, the spiral tower, the robot stall and the workbench all refuse the same way,
+# and the refusal shows the crop squares marked like any other square in the way.
+#
+# Bare tilled soil is still taken: nothing is lost under a building but the
+# tilling. A machine that is an actor — the sprinkler, every robot — writes nothing
+# and is not asked, because standing among the crops is what it is for; a fence
+# goes through `buildable_at`, which already wants cleared ground. Placement only:
+# a save with a building already over crops loads as it is.
+func _crop_under_structure(cell: Vector2i) -> bool:
+	return has_crop(cell.x, cell.y)
 
 
 # **Which squares of the block are in the way** (2026-10-09, from play: "I am having
@@ -2338,7 +2345,7 @@ func footprint_blockers(t: Vector2i, item: String) -> Array[Vector2i]:
 				and objects[cell.y][cell.x] == ""
 		else:
 			free = placeable_at(cell)
-		if free and writes_objects and (get_object(cell.x, cell.y) != "" or _crop_under_barn(item, cell)):
+		if free and writes_objects and (get_object(cell.x, cell.y) != "" or _crop_under_structure(cell)):
 			free = false
 		if not free:
 			out.append(cell)

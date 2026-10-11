@@ -85,6 +85,19 @@ const SHELF := {
 	# so the log is the 66 entries since that restart rather than the whole play. It
 	# replays to its autosave exactly under this build.
 	"2026-09-15_234314": { "format": 2, "verdict": "match" },
+	# Daniel's tower session, 2026-10-09: he set the spiral tower down at (16,4) with two
+	# squares of it growing (entry 1944), walked in and out, picked it up, and later set
+	# it down again at (13,4) over four ripe crops (entry 2220). It replayed exactly until
+	# 2026-10-11, when no building may go down over a crop any more (Daniel's call, after
+	# the barn): the first of those two placings is refused, the tower is never built, and
+	# the farm goes its own way from there. The world moving under a recording by his own
+	# ruling, as with the crow night above.
+	"2026-10-09_232659": { "format": 4, "verdict": "cross" },
+	# Pulled off the tablet 2026-10-11 by the creamery deploy. It replayed exactly until
+	# the same day's change that sends cows around the farmer's beds and the barn's walls:
+	# the first difference is the route cow_1 is walking at the end (`extra.path`), because
+	# she now goes round beds she used to walk across.
+	"2026-10-11_004912_slot1": { "format": 4, "verdict": "cross" },
 }
 
 # The robot-value measurement, shared with the tool that prints it as a table for

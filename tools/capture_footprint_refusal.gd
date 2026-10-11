@@ -7,7 +7,9 @@
 # ordinary input path, and the shipping refusal is captured as it plays — the
 # shudder, the block held, and the fade — then the same for a chicken coop, and
 # for an Industrial Barn fenced in to its doorstep (2026-10-10), before and after
-# one post is taken out. PNGs under docs/design/mockups/footprint_refusal/.
+# one post is taken out, and then the tower, the coop and the robot stall each
+# held over a little bed with crops in it (2026-10-11): a seed, a sprout and a
+# ripe tomato, each marked. PNGs under docs/design/mockups/footprint_refusal/.
 extends Node2D
 
 const OUT := "res://docs/design/mockups/footprint_refusal/"
@@ -32,6 +34,9 @@ func _ready() -> void:
 	var farm = main.farm
 	# The world holds still so nothing walks into the shot.
 	main._tick_debt = -1.0e9
+	# ...and the neighbour's opening days, which run on a timer of their own, wait
+	# too: one of her nights mid-capture swallowed a tap and dimmed the shot.
+	main._cold_open_timer = 1.0e9
 
 	var spot := _spot(farm, "spiral_tower")
 	if spot.x < 0:
@@ -118,8 +123,73 @@ func _ready() -> void:
 		for i in 10:
 			await get_tree().process_frame
 		_shot("barn_one_post_out.png")
+		for i in 20:
+			await get_tree().process_frame
+
+	# No building goes down over a crop (2026-10-11): the tower, the coop and the
+	# robot stall, each held beside a little bed, the crop squares marked. Largest
+	# first, so the tower's four-by-four still finds open ground.
+	await _crops_shot(main, farm, "spiral_tower", "tower_over_crops.png")
+	await _crops_shot(main, farm, "coop", "coop_over_crops.png")
+	await _crops_shot(main, farm, "stall", "stall_over_crops.png")
 	print("captured footprint refusal at %s, barn at %s -> %s" % [spot, barn_spot, OUT])
 	get_tree().quit(0)
+
+
+# The building held beside a block of tilled soil with crops in some of its
+# squares: a ripe tomato in the far corner, a sprout on the near or back edge, a
+# seed beside her — as many as the block has room for. The tap buzzes and marks
+# exactly those squares.
+func _crops_shot(main, farm, item: String, file: String) -> void:
+	var at := _crop_spot(farm, item)
+	if at.x < 0:
+		print("no open ground for a %s over crops; %s not captured" % [item, file])
+		return
+	var size := MachineDefs.footprint_of(item)
+	for c in MachineDefs.footprint_cells(item, at):
+		farm.set_tile_state(c.x, c.y, "tilled")
+	var far := at + Vector2i(size.x - 1, -(size.y - 1))
+	var back := at + Vector2i(0, -(size.y - 1)) if size.y > 1 else at
+	var near := at + Vector2i(size.x - 1, 0)
+	farm.set_tile_state(far.x, far.y, "ready", "tomato")
+	farm.set_tile_state(back.x, back.y, "growing", "wheat")
+	if near != far and near != back:
+		farm.set_tile_state(near.x, near.y, "seeded", "pea")
+	GameState.machines = { item: 1 }
+	GameState.selected_seed_type = item
+	GameState.set_energy(GameState.max_energy)
+	_stand(main, at - Vector2i(1, 0))
+	farm.sync_actors()
+	for i in 30:
+		await get_tree().process_frame
+	var day_before: int = GameState.day
+	await _tap(at)
+	await get_tree().create_timer(0.5).timeout
+	_shot(file)
+	var marked: Array = Dictionary(farm.footprint_refusal().get("blocked", {})).keys()
+	print("%s over crops at %s: %d squares marked, day %d -> %d" % [item, at, marked.size(), day_before, GameState.day])
+	await get_tree().create_timer(1.6).timeout
+
+
+# Open ground the building fits on, nobody on it, a square beside it to stand on.
+func _crop_spot(farm, item: String) -> Vector2i:
+	for ty in range(5, WorldLayout.PAGE_ROWS - 2):
+		for tx in range(3, SimWorld.MAP_WIDTH - 5):
+			var at := Vector2i(tx, ty)
+			var stand := at - Vector2i(1, 0)
+			if not farm.sim.placeable_at(at, item) or not farm.sim.is_walkable(stand.x, stand.y):
+				continue
+			var open := true
+			for c in MachineDefs.footprint_cells(item, at) + [stand]:
+				if farm.get_object(c.x, c.y) != "" or farm.sim.space_of(c) != "farm" \
+						or String(farm.get_tile(c.x, c.y).get("state", "")) in SimWorld.WETTABLE_STATES:
+					open = false
+				for raw in farm.sim.actors:
+					if String(raw) != SimWorld.ACTOR_PLAYER and c in Movement.occupied_tiles(farm.sim, String(raw)):
+						open = false
+			if open:
+				return at
+	return Vector2i(-1, -1)
 
 
 # Open, empty ground for a barn and the fence all round it and its doorstep.
