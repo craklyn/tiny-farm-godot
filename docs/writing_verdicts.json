@@ -8157,6 +8157,9 @@
    "verdict": "decode",
    "why": "{unassured} and {total} are unfilled template placeholders; a reader cannot know what numbers are meant to appear here."
   },
+  "d8b118ff6f5ef037ec89": {
+   "verdict": "ok"
+  },
   "d8b4e9aa0f25d36b80a0": {
    "verdict": "ok"
   },

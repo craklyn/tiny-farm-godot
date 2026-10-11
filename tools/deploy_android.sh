@@ -132,94 +132,101 @@ printf '%s' "$SERIAL" > "$LAST_TARGET_FILE"
 # that session overwrites the previous trace within seconds. A playtest is not
 # repeatable, so the one irreplaceable thing here must not depend on remembering
 # to pull first.
-# The three farms each have a directory of their own (S-14); `files` itself is
-# where a build from before slots kept its session, and is still checked so this
-# keeps working on a tablet that has not been updated yet.
-session_on_device=0
-for d in files/slot1 files/slot2 files/slot3 files; do
-	if adb -s "$SERIAL" shell "run-as $PKG test -s $d/session_trace.jsonl" >/dev/null 2>&1; then
-		session_on_device=1
-		break
-	fi
-done
-if [[ "$session_on_device" -eq 1 ]]; then
-	step "Rescuing the play session already on the tablet"
-	echo "Existing session on device — pulling it before install."
-	rescue_result=$(mktemp)
-	trap 'rm -f "$rescue_result"; cleanup_generated_sidecars' EXIT
-	if ! PULL_SESSION_RESULT_FILE="$rescue_result" "$(dirname "$0")/pull_session.sh"; then
-		echo "Session rescue failed; leaving the tablet untouched." >&2
+# The three farms each have a directory of their own (S-14), and every farm played
+# since the last install is rescued, each into a folder named for its slot. Which
+# farms count, and why it is not the longest trace any more, is in
+# tools/pull_session.sh ("Which farms get pulled").
+step "Rescuing the play sessions already on the tablet"
+rescue_result=$(mktemp)
+trap 'rm -f "$rescue_result"; cleanup_generated_sidecars' EXIT
+if ! PULL_SESSION_SERIAL="$SERIAL" PULL_SESSION_RESULT_FILE="$rescue_result" \
+		"$(dirname "$0")/pull_session.sh"; then
+	echo "Session rescue failed; leaving the tablet untouched." >&2
+	exit 1
+fi
+
+# Each rescued session is checked against the build that recorded it. Two farms
+# can have been played on different builds, so this is per folder, never once.
+verify_rescued() {
+	local rescue_dir="$1" recorded_build verification_receipt verification_fingerprint
+	local recorded_ref recorded_commit verify_out
+	# `recording_tree` stays global: the EXIT trap below removes it, and that trap
+	# can run after this function has returned.
+	if [[ ! -s "$rescue_dir/session_replay.json" || ! -s "$rescue_dir/autosave.json" ]]; then
+		echo "Rescued $rescue_dir lacks a replay or autosave; leaving the tablet untouched." >&2
 		exit 1
 	fi
-	if [[ -s "$rescue_result" ]]; then
-		rescue_dir=$(cat "$rescue_result")
-		if [[ ! -s "$rescue_dir/session_replay.json" || ! -s "$rescue_dir/autosave.json" ]]; then
-			echo "Rescued session lacks a replay or autosave; leaving the tablet untouched." >&2
-			exit 1
-		fi
-		recorded_build=$(python3 - "$rescue_dir/session_replay.json" <<'PY'
+	recorded_build=$(python3 - "$rescue_dir/session_replay.json" <<'PY'
 import json, sys
 with open(sys.argv[1], encoding="utf-8") as stream:
     replay, _ = json.JSONDecoder().raw_decode(stream.read())
 print(replay.get("build_id", ""))
 PY
-		)
-		verification_receipt="$rescue_dir/verification.sha256"
-		verification_fingerprint="$(printf '%s\n' "$recorded_build"; sha256sum "$rescue_dir/session_replay.json" "$rescue_dir/autosave.json")"
-		if [[ -f "$verification_receipt" ]] \
-				&& [[ "$(cat "$verification_receipt")" == "$verification_fingerprint" ]]; then
-			echo "Already verified: $rescue_dir ($recorded_build)."
-		else
-			step "Verifying the rescued play session"
-			if [[ "$recorded_build" == "$BUILD_ID" ]]; then
-				godot --headless --path . --script res://tools/verify_replay.gd -- "$rescue_dir"
-			else
-				# A session from another build is checked against the build that
-				# recorded it, in a throwaway worktree, so the deploy never stops to
-				# ask a person to do this by hand. Only what a machine cannot settle
-				# still stops it: an uncommitted recording build, a commit this
-				# checkout does not have, or a replay that does not match.
-				recorded_ref="$recorded_build"
-				[[ "$recorded_ref" =~ -g([0-9a-f]{7,})$ ]] && recorded_ref="${BASH_REMATCH[1]}"
-				recorded_commit=""
-				if [[ -n "$recorded_ref" && "$recorded_build" != *-dirty ]]; then
-					recorded_commit=$(git rev-parse --verify --quiet "$recorded_ref^{commit}" || true)
-				fi
-				if [[ -z "$recorded_commit" ]]; then
-					echo "Rescued $rescue_dir from '$recorded_build', which is not a commit this" >&2
-					echo "checkout has, so it cannot be verified automatically. docs/DEPLOY.md" >&2
-					echo "section 2 has the manual triage. The tablet is untouched." >&2
-					exit 1
-				fi
-				echo "Recorded by $recorded_build; checking it against that build."
-				recording_tree=$(mktemp -d)
-				trap 'git worktree remove --force "$recording_tree" >/dev/null 2>&1 || true; rm -rf "$recording_tree"; rm -f "$rescue_result"; cleanup_generated_sidecars' EXIT
-				git worktree add --detach --quiet "$recording_tree" "$recorded_commit"
-				if ! grep -q "get_cmdline_user_args" "$recording_tree/tools/verify_replay.gd"; then
-					echo "$recorded_build's verify_replay.gd cannot be pointed at a session folder" >&2
-					echo "(builds before 2026-09-24). docs/DEPLOY.md section 2 has the manual triage." >&2
-					exit 1
-				fi
-				godot --headless --path "$recording_tree" --import >/dev/null 2>&1 || true
-				verify_out=$(godot --headless --path "$recording_tree" --script res://tools/verify_replay.gd -- "$PWD/$rescue_dir" 2>&1) || {
-					echo "$verify_out"
-					echo "The rescued session does not replay on the build that recorded it. Kept in" >&2
-					echo "$rescue_dir; the tablet is untouched." >&2
-					exit 1
-				}
-				echo "$verify_out"
-				if ! grep -q "^MATCH:" <<<"$verify_out"; then
-					echo "The recording build's check did not report a match. The tablet is untouched." >&2
-					exit 1
-				fi
-				git worktree remove --force "$recording_tree" >/dev/null 2>&1 || true
-				rm -rf "$recording_tree"
-				trap 'rm -f "$rescue_result"; cleanup_generated_sidecars' EXIT
-			fi
-			printf '%s\n' "$verification_fingerprint" > "$verification_receipt"
-		fi
+	)
+	verification_receipt="$rescue_dir/verification.sha256"
+	verification_fingerprint="$(printf '%s\n' "$recorded_build"; sha256sum "$rescue_dir/session_replay.json" "$rescue_dir/autosave.json")"
+	if [[ -f "$verification_receipt" ]] \
+			&& [[ "$(cat "$verification_receipt")" == "$verification_fingerprint" ]]; then
+		echo "Already verified: $rescue_dir ($recorded_build)."
+		return 0
 	fi
-fi
+	step "Verifying the rescued play session in $rescue_dir"
+	if [[ "$recorded_build" == "$BUILD_ID" ]]; then
+		godot --headless --path . --script res://tools/verify_replay.gd -- "$rescue_dir"
+	else
+		# A session from another build is checked against the build that
+		# recorded it, in a throwaway worktree, so the deploy never stops to
+		# ask a person to do this by hand. Only what a machine cannot settle
+		# still stops it: an uncommitted recording build, a commit this
+		# checkout does not have, or a replay that does not match.
+		recorded_ref="$recorded_build"
+		[[ "$recorded_ref" =~ -g([0-9a-f]{7,})$ ]] && recorded_ref="${BASH_REMATCH[1]}"
+		recorded_commit=""
+		if [[ -n "$recorded_ref" && "$recorded_build" != *-dirty ]]; then
+			recorded_commit=$(git rev-parse --verify --quiet "$recorded_ref^{commit}" || true)
+		fi
+		if [[ -z "$recorded_commit" ]]; then
+			echo "Rescued $rescue_dir from '$recorded_build', which is not a commit this" >&2
+			echo "checkout has, so it cannot be verified automatically. docs/DEPLOY.md" >&2
+			echo "section 2 has the manual triage. The tablet is untouched." >&2
+			exit 1
+		fi
+		echo "Recorded by $recorded_build; checking it against that build."
+		recording_tree=$(mktemp -d)
+		trap 'git worktree remove --force "$recording_tree" >/dev/null 2>&1 || true; rm -rf "$recording_tree"; rm -f "$rescue_result"; cleanup_generated_sidecars' EXIT
+		git worktree add --detach --quiet "$recording_tree" "$recorded_commit"
+		if ! grep -q "get_cmdline_user_args" "$recording_tree/tools/verify_replay.gd"; then
+			echo "$recorded_build's verify_replay.gd cannot be pointed at a session folder" >&2
+			echo "(builds before 2026-09-24). docs/DEPLOY.md section 2 has the manual triage." >&2
+			exit 1
+		fi
+		godot --headless --path "$recording_tree" --import >/dev/null 2>&1 || true
+		verify_out=$(godot --headless --path "$recording_tree" --script res://tools/verify_replay.gd -- "$PWD/$rescue_dir" 2>&1) || {
+			echo "$verify_out"
+			echo "The rescued session does not replay on the build that recorded it. Kept in" >&2
+			echo "$rescue_dir; the tablet is untouched." >&2
+			exit 1
+		}
+		echo "$verify_out"
+		if ! grep -q "^MATCH:" <<<"$verify_out"; then
+			echo "The recording build's check did not report a match. The tablet is untouched." >&2
+			exit 1
+		fi
+		git worktree remove --force "$recording_tree" >/dev/null 2>&1 || true
+		rm -rf "$recording_tree"
+		trap 'rm -f "$rescue_result"; cleanup_generated_sidecars' EXIT
+	fi
+	printf '%s\n' "$verification_fingerprint" > "$verification_receipt"
+}
+
+# Read whole before any check runs: Godot inherits stdin, and a loop reading the
+# list line by line would hand it the rest. Called on a line of its own, never in
+# an `&&` list, so a failing check still stops the deploy under `set -e`.
+mapfile -t rescued_dirs < "$rescue_result"
+for rescue_dir in "${rescued_dirs[@]}"; do
+	[[ -n "$rescue_dir" ]] || continue
+	verify_rescued "$rescue_dir"
+done
 
 # Stamp only after rescue and verification. Restore generated tracked files on
 # exit so the next deploy starts from a clean checkout again.

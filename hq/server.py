@@ -1789,7 +1789,8 @@ def playtest_events(name):
 _PT_CACHE = {}
 
 
-SHELF_RE = re.compile(r'^\s*"(\d{4}-\d{2}-\d{2}_\d+)"\s*:', re.M)
+# A rescue since 2026-10-10 names the farm it came from: `<date>_<time>_slot2`.
+SHELF_RE = re.compile(r'^\s*"(\d{4}-\d{2}-\d{2}_\d+(?:_[a-z0-9-]+)?)"\s*:', re.M)
 
 
 def shelf_names():
@@ -3877,7 +3878,7 @@ def gate_scorecard():
     if not m:
         return {"error": "No release checklist result is recorded in the roadmap."}
     when, body = m.group(1), m.group(2)
-    sess = re.search(r"playtests/([0-9_-]+)", body)
+    sess = re.search(r"playtests/(\d{4}-\d{2}-\d{2}_\d+(?:_[a-z0-9-]+)?)", body)
     rows = []
     for line in body.splitlines():
         cells = [c.strip() for c in line.strip().strip("|").split("|")] if line.strip().startswith("|") else []
