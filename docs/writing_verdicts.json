@@ -5696,6 +5696,9 @@
   "9590f12450dc27ee0536": {
    "verdict": "ok"
   },
+  "9591acc89dc9581b3f91": {
+   "verdict": "ok"
+  },
   "95bb18dbd185ca87e3ca": {
    "instead": "Cards on Daniel's page no longer wait for Daniel's approval or for repairs to a build that already passes.",
    "quote": "Cards no longer wait on Daniel's page for approval they stopped needing, or to repair a build that already passes again",

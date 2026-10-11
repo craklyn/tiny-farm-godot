@@ -1,0 +1,10 @@
+{"continued":true,"gen_seed":0,"version":1}
+{"at":[2,43],"in":"tap","kind":"tap","out":"walk","t":2500,"tile":[3,45],"tool":4,"verb":""}
+{"at":[3,45],"in":"tap","kind":"tap","out":"none","t":4192,"tile":[3,46],"tool":4,"verb":""}
+{"at":[3,45],"in":"tap","kind":"tap","out":"none","t":4459,"tile":[3,45],"tool":4,"verb":""}
+{"at":[3,45],"in":"tap","kind":"tap","out":"none","t":4642,"tile":[3,45],"tool":4,"verb":""}
+{"at":[3,45],"in":"tap","kind":"tap","out":"walk","t":5726,"tile":[1,44],"tool":4,"verb":""}
+{"at":[2,44],"in":"tap","kind":"tap","out":"walk","t":6353,"tile":[3,45],"tool":4,"verb":""}
+{"at":[3,45],"in":"tap","kind":"tap","out":"none","t":7170,"tile":[3,45],"tool":4,"verb":""}
+{"at":[3,45],"in":"tap","kind":"tap","out":"unreachable","t":7557,"tile":[3,47],"tool":4,"verb":""}
+{"at":[3,45],"in":"tap","kind":"tap","out":"walk","t":8109,"tile":[1,43],"tool":4,"verb":""}
