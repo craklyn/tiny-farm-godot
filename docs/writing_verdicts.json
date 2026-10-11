@@ -4192,6 +4192,9 @@
   "6faeee08a2456120dcc1": {
    "verdict": "ok"
   },
+  "6fd5fe3fbacb5a6aea19": {
+   "verdict": "ok"
+  },
   "6ffea7bc6532a9d78a92": {
    "baselined": "2026-09-19",
    "instead": "Why the simulation's speed benchmark failed, and what it should measure instead",
