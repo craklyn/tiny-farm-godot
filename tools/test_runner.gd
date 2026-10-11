@@ -9293,6 +9293,14 @@ func _scenario_bn_the_barn_is_entered_and_drawn_from_its_saved_state() -> void:
 			break
 	_assert(cow_row >= 0 and bool(menus.shop_items[cow_row].get("affordable", false)),
 		"the placed barn adds an affordable 250-gold cow card to the shop")
+	# Design/17, "How big a cow is": her card shows one whole 24x20 standing frame with
+	# a pixel of rim all round, so her ink head and legs show on the dark card.
+	if cow_row >= 0:
+		var card: Texture2D = menus.shop_items[cow_row].get("icon")
+		var card_image: Image = card.get_image() if card != null else null
+		_assert(card != null and card.get_size() == Vector2(26, 22)
+			and card_image.get_pixel(0, 0).a == 0.0 and card_image.get_used_rect().size.x == 26,
+			"the cow card shows her whole standing frame, rimmed along her outline")
 	if cow_row >= 0:
 		_press_row(menus.options_container, cow_row)
 		await get_tree().create_timer(0.3).timeout
