@@ -5317,6 +5317,12 @@
    "verdict": "decode",
    "why": "Undefined what 'the card' is or what 'move him on' means."
   },
+  "8d8ca6d907f851553d0c": {
+   "instead": "The tablet recovery stops when loading fails and keeps the previous unsaved game.",
+   "quote": "The tablet rescue stops instead of guessing when a pull fails, and keeps older unsaved play",
+   "verdict": "decode",
+   "why": "“Tablet rescue,” “pull,” and “older unsaved play” leave the reader to work out what failed and what data is kept."
+  },
   "8d9b158a61616491f6db": {
    "verdict": "ok"
   },
@@ -8206,6 +8212,9 @@
    "verdict": "ok"
   },
   "d9c8b9714ca59e6abd53": {
+   "verdict": "ok"
+  },
+  "d9ccd6463e5adc0e028a": {
    "verdict": "ok"
   },
   "d9cef8f6009c249a3089": {

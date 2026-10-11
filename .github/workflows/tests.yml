@@ -178,7 +178,7 @@ jobs:
         run: python3 tools/test_capture_workbench_shelf.py
 
       # Which farms a deploy takes off the tablet before installing, against a
-      # stand-in tablet: every farm played since the last install, never an old
-      # one in its place (2026-10-09).
-      - name: The tablet rescue takes every played farm and no stale one
+      # stand-in tablet: every farm with unsaved play, older play labelled as such,
+      # and a stop rather than a guess when the tablet does not answer (2026-10-09).
+      - name: The tablet rescue takes every farm with unsaved play
         run: python3 tools/test_pull_session.py

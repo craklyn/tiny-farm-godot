@@ -31,9 +31,10 @@ tools/deploy_android.sh <IP:PORT>    # after wireless debugging is toggled
 tools/deploy_android.sh pair <IP:PAIRPORT> <6-digit-code>   # once per machine+device
 ```
 
-Builds a **debug** APK, connects over wireless debugging, rescues every farm played on the
-device since the last install (a folder per farm, "Which farms get pulled" below), verifies
-each rescued session against the build that recorded it, installs, and launches.
+Builds a **debug** APK, connects over wireless debugging, rescues every farm on the device
+with play that is not already in `playtests/` (a folder per farm, "Which farms get pulled"
+below), verifies each rescued session against the build that recorded it, rescues once more
+just before installing, installs, and launches.
 The checkout must be clean before the deploy starts: a dirty build cannot be recreated
 from the build id recorded in a play session. If the tablet contains a session from a
 different build, the script checks the recording commit out into a throwaway worktree and
@@ -139,11 +140,12 @@ laptop's.
 
 ```bash
 tools/pull_session.sh
-tools/pull_session.sh --slot 3     # one farm, even if not played since the install
+tools/pull_session.sh --slot 3     # one farm, even if it is already on the shelf
 ```
 
 Fetches each played farm's trace, replay and autosave into `playtests/<timestamp>_slot<N>/`
-(`_before-slots` for a tablet on a build from before slots) and prints the report.
+(`_before-slots` for a tablet on a build from before slots, and `_slot<N>_from-<date>` for
+older play, below) and prints the report.
 Committed on purpose — a playtest is not repeatable. Folders from before 2026-10-10 are
 named by the time alone and do not say which farm they came from.
 
@@ -171,17 +173,33 @@ paperwork, not breakage, and red has to mean broken or it stops meaning anything
 suite skips it and prints a note; HQ's Playtests page shows the backlog with a banner.
 Everything `SHELF` *does* claim is still pinned exactly as before.
 
-**Which farms get pulled: every farm played since the game was last installed, and no
-other.** The three farms are `files/slot1`, `files/slot2` and `files/slot3` on the device
-(S-14). The script asks the tablet when the game was installed (`dumpsys package`,
-`lastUpdateTime`) and when each farm's trace was last written, both on the tablet's own
-clock, and takes every farm written after the install. Each goes into its own folder,
-and the deploy verifies each folder against the build that recorded it. A farm nobody has
-played since the install is left alone and says so: what it holds was taken by the
-deploy that did that install, or is older still and often from a build that no longer
-exists, which would stop the deploy for nothing. If the tablet will not say when the
-game was installed, every farm with a trace is taken, since a spare folder is cheaper
-than lost play. `--slot N` pulls one farm by hand whatever its age.
+**Which farms get pulled: every farm with play on it that is not already in
+`playtests/`.** The three farms are `files/slot1`, `files/slot2` and `files/slot3` on the
+device (S-14). The tablet reports each trace's size, when it was last written, and its md5;
+a farm whose md5 matches a shelved trace is already safe and is not pulled again. The time
+the game was installed (`dumpsys package`, `lastUpdateTime`, on the tablet's own clock)
+then sorts what is pulled:
+
+- **New play**, written since the install, is this build's. It goes into
+  `<timestamp>_slot<N>`, and the deploy stops with the tablet untouched if it does not
+  replay on the build that recorded it.
+- **Older play**, written before the install and never rescued, goes into
+  `<timestamp>_slot<N>_from-<date written>`, so nobody mistakes it for the latest
+  session. Its build is often gone, so if it cannot be checked the deploy warns loudly
+  and carries on: the play is already safe on the shelf.
+- If the tablet gives no install time, or one later than its own clock, everything is
+  treated as new, the stricter of the two.
+
+**The deploy rescues twice**: before it builds, and again just before `adb install`,
+because the export takes minutes and the tablet may be played meanwhile. The second pass
+costs nothing for farms already shelved. Play in the few seconds after that is written
+before the new install and on no shelf, so the next deploy takes it as older play rather
+than losing it.
+
+**It fails closed.** An adb answer without its fence, a trace the probe saw that then does
+not arrive, or a played farm whose replay or autosave does not arrive stops the pull, and
+the deploy with it, before anything is installed. None of them is ever read as "nobody
+played this farm".
 
 **Trap, and why it is not "the longest trace" any more (2026-10-09).** The script used
 to pull one farm, whichever had the longest tap trace, on the theory that it was the one
@@ -195,7 +213,15 @@ September play as `playtests/2026-10-09_221538`, labelled with the September bui
 correct for what was rescued; the wrong farm was rescued. It was first put down to an old
 install still on the tablet, which was wrong. The next deploy, at 23:26, took slot 1 because
 by then it had the longer trace (`playtests/2026-10-09_232659`, 1,020 taps).
-`tools/test_pull_session.py` replays that night against a stand-in tablet.
+`tools/test_pull_session.py` replays that night against a stand-in tablet, along with
+the failure cases above.
+
+**A farm put back by hand verifies like any other.** `tools/push_session.sh` (below) stops
+the game before it writes, and opening a farm restarts its recording from the save it
+loads (`main.gd`, `start_replay_log_from_save`). So after a hand-edited save is pushed,
+such as the egg count raised on slot 1 on 2026-10-10, the next sitting records from the
+edited save and replays to its autosave. Until that farm is played again its trace is the
+pushed one, which matches the shelved session it came from, so nothing new is pulled.
 
 **Trap:** Godot's `user://` on Android is the app's **internal** storage, reached with
 `run-as`, *not* `/sdcard/Android/data/<pkg>/files`. That external path exists and is

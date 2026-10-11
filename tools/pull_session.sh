@@ -3,8 +3,8 @@
 #
 #   tools/pull_session.sh                 # whatever device adb already has
 #   tools/pull_session.sh <IP:PORT>       # connect first
-#   tools/pull_session.sh --slot 3        # take farm 3 even if it has not been
-#                                         # played since the game was installed
+#   tools/pull_session.sh --slot 3        # take farm 3 even if it is already
+#                                         # on the shelf
 #
 # Three files, and all three are needed for different questions:
 #   session_trace.jsonl  - every tap and what became of it, INCLUDING the ones
@@ -16,13 +16,12 @@
 #
 # The game keeps three farms (S-14), one directory each, so the three files live
 # in `files/slot1`, `files/slot2` or `files/slot3` on the device. **Every farm
-# played since the game was last installed is pulled, each into a folder of its
-# own** named for its slot (`playtests/<time>_slot2`). A farm nobody has played
-# since that install is left alone: whatever it holds was taken off the tablet by
-# the deploy that did the install, or is older still. See "Which farms get
-# pulled" below for why, and for the night that rule was learned. A tablet on a
-# build from before slots keeps its one farm in `files` itself, and that is
-# pulled too, as `playtests/<time>_before-slots`.
+# with play on it that is not already in playtests/ is pulled, each into a folder
+# of its own** named for its slot (`playtests/<time>_slot2`). Play older than the
+# game's install that no rescue ever took is pulled too, and its folder says so
+# (`_slot3_from-2026-09-25`). See "Which farms get pulled" below for why, and for
+# the night that rule was learned. A tablet on a build from before slots keeps its
+# one farm in `files` itself, and that is pulled too, as `<time>_before-slots`.
 #
 # Pulled together and kept together: a replay without its autosave cannot be
 # verified, and a trace without its replay cannot be watched.
@@ -175,7 +174,10 @@ echo "Device: $SERIAL"
 
 # --- Which farms get pulled ---------------------------------------------------
 #
-# **Every farm played since the game was last installed, and no other.**
+# **Every farm with play on it that is not already in playtests/.** A farm's
+# trace is the identity of its play (see "Two pulls are NOT kept" below), so the
+# tablet works out each trace's fingerprint and only farms whose fingerprint is
+# not on the shelf are pulled. Nothing with taps in it is ever left behind.
 #
 # This used to pull one farm: whichever had the longest tap trace, on the theory
 # that the longest trace was the farm that had been played. It is not, because a
@@ -188,86 +190,124 @@ echo "Device: $SERIAL"
 # playtests/2026-10-09_221538, labelled with a September build, and slot 1's
 # session was overwritten by the install.
 #
-# The install time is the line that matters. Every install goes through
-# tools/deploy_android.sh, which runs this first, so anything written before the
-# current install was either taken then or predates this rule — and an old farm
-# like that is often from a build that no longer exists, which would stop the
-# deploy for nothing. Anything written after it is play nobody has saved yet.
-# Both times come from the tablet's own clock, so they compare. `--slot N` takes
-# one farm whatever its age, for the rare hand pull of an old one.
+# **The install time sorts what is pulled into two kinds**, both on the tablet's
+# own clock:
+#   new    written since the game was installed: this build's play. Shelved as
+#          `<time>_slotN`, and the deploy stops if it does not replay.
+#   older  written before it, and somehow never rescued: play from an older build,
+#          often one that no longer exists. Shelved as `<time>_slotN_from-<date it
+#          was written>` so nobody mistakes it for tonight's, and the deploy warns
+#          rather than stops if it cannot be checked. The play is safe either way.
+# A tablet that will not say when the game was installed, or says a time later
+# than its own clock, gets everything counted as new: the stricter of the two.
 #
-# If the tablet will not say when the game was installed, every farm with a trace
-# is taken: shelving an old play by mistake costs a folder, losing a new one costs
-# the play.
+# `--slot N` pulls one farm even when it is already on the shelf, for a hand pull.
+#
+# Every question to the tablet is fenced and fails closed: an answer without its
+# fence is an adb failure and stops this script, which stops the deploy before it
+# installs anything. Treating it as "no farm here" once let a hiccup skip a farm.
 
 # Asks the tablet one question and keeps only the fenced answer. The fence is the
 # point: an earlier probe kept every digit the remote shell printed, and harvested
 # the `1` out of `slot1` in an error message about a directory that was not there
 # (2026-09-16: slots 1, 2 and 3 "were" one, two and three bytes on a tablet that
-# had no slots). So the remote says `<FENCE>:<answer>` and nothing else counts.
+# had no slots). So the remote says `<FENCE>:<answer>` and nothing else counts;
+# no fence at all prints nothing.
 fenced() {
 	local fence="$1" out
 	shift
 	out=$(adb -s "$SERIAL" "$@" 2>/dev/null | tr -d '\r') || true
-	printf '%s\n' "$out" | sed -n "s/.*$fence:\([0-9:]*\).*/\1/p" | head -1 || true
+	printf '%s\n' "$out" | sed -n "s/.*$fence:\([0-9a-f:]*\).*/\1/p" | head -1 || true
 }
 
-# When the game was last installed, in seconds, on the tablet's clock; empty if
-# the tablet will not say.
+# When the game was last installed, in seconds on the tablet's clock; empty if the
+# tablet will not say, or names a time after its own clock's now.
 install_time() {
-	local stamp
+	local stamp answer
 	stamp=$(adb -s "$SERIAL" shell "dumpsys package $PKG" 2>/dev/null | tr -d '\r' \
 		| sed -n 's/^ *lastUpdateTime=//p' | head -1) || true
 	[[ -n "$stamp" ]] || return 0
-	fenced EPOCH shell "echo EPOCH:\$(date -d '$stamp' +%s)"
+	answer=$(fenced EPOCH shell "echo EPOCH:\$(date -d '$stamp' +%s):\$(date +%s)")
+	if [[ "$answer" =~ ^([0-9]+):([0-9]+)$ ]] \
+			&& [[ "${BASH_REMATCH[1]}" -le "${BASH_REMATCH[2]}" ]]; then
+		echo "${BASH_REMATCH[1]}"
+	fi
+	return 0
 }
 
-# A trace's size and when it was last written, as `<bytes> <seconds>`; `0 0` if
-# it is not there.
+# A trace's size, when it was last written and its md5, as `<bytes>:<seconds>:<md5>`;
+# `0:0:` if it is not there; empty if the tablet did not answer.
 remote_trace() {
-	local f="$1/session_trace.jsonl" out
-	out=$(fenced TRACE exec-out \
-		"run-as $PKG sh -c 'if [ -f \"$f\" ]; then echo TRACE:\$(wc -c < \"$f\"):\$(stat -c %Y \"$f\"); else echo TRACE:0:0; fi'")
-	if [[ "$out" =~ ^([0-9]+):([0-9]+)$ ]]; then
-		echo "${BASH_REMATCH[1]} ${BASH_REMATCH[2]}"
-	else
-		echo "0 0"
-	fi
+	local f="$1/session_trace.jsonl"
+	fenced TRACE exec-out \
+		"run-as $PKG sh -c 'if [ -f \"$f\" ]; then echo TRACE:\$(wc -c < \"$f\"):\$(stat -c %Y \"$f\"):\$(md5sum < \"$f\" | cut -c1-32); else echo TRACE:0:0:; fi'"
 }
 
 when() { date -d "@$1" "+%Y-%m-%d %H:%M" 2>/dev/null || echo "$1"; }
+
+# The shelved folder whose trace has this md5, if any.
+on_shelf() {
+	local prior
+	for prior in "$PLAYTESTS"/*/session_trace.jsonl; do
+		[[ -e "$prior" ]] || continue
+		if [[ "$(md5sum < "$prior" | cut -d" " -f1)" == "$1" ]]; then
+			dirname "$prior"
+			return 0
+		fi
+	done
+	return 0
+}
+
+# Each farm's outcome is one line in PULL_SESSION_RESULT_FILE when it is set:
+# `new` or `older`, a tab, then the folder that holds its play, new or already on
+# the shelf. The deploy checks each one. Nothing to pull leaves it empty.
+[[ -n "${PULL_SESSION_RESULT_FILE:-}" ]] && : > "$PULL_SESSION_RESULT_FILE"
+note_result() {
+	[[ -n "${PULL_SESSION_RESULT_FILE:-}" ]] && printf '%s\t%s\n' "$1" "$2" >> "$PULL_SESSION_RESULT_FILE"
+	return 0
+}
 
 INSTALLED=$(install_time)
 if [[ -n "$INSTALLED" ]]; then
 	echo "The game was installed on the tablet at $(when "$INSTALLED")."
 else
-	echo "The tablet did not say when the game was installed, so every farm with a"
-	echo "tap trace on it is taken."
+	echo "The tablet did not give a usable install time, so all play on it is treated"
+	echo "as new and has to replay."
 fi
 
-# Each farm's outcome is one line in PULL_SESSION_RESULT_FILE when it is set: the
-# folder that holds its play, new or already on the shelf. The deploy verifies
-# each one against the build that recorded it. Nothing to pull leaves it empty.
-[[ -n "${PULL_SESSION_RESULT_FILE:-}" ]] && : > "$PULL_SESSION_RESULT_FILE"
-
 PULL_DIRS=()
+PULL_KINDS=()
+PULL_WRITTEN=()
 for d in "${SLOT_DIRS[@]}"; do
-	read -r size written < <(remote_trace "$d")
-	[[ "$size" -gt 0 ]] || continue
 	label=$(folder_label "$d")
-	if [[ -n "$FORCE_SLOT" ]]; then
-		if [[ "$label" == "slot$FORCE_SLOT" ]]; then
-			echo "  $d: asked for by --slot (trace $size bytes, last written $(when "$written"))"
-			PULL_DIRS+=("$d")
-		fi
+	[[ -z "$FORCE_SLOT" || "$label" == "slot$FORCE_SLOT" ]] || continue
+	probe=$(remote_trace "$d")
+	if [[ ! "$probe" =~ ^([0-9]+):([0-9]+):([0-9a-f]*)$ ]]; then
+		echo "" >&2
+		echo "The tablet did not answer about $d (adb said nothing usable). Stopping" >&2
+		echo "rather than guessing that farm is empty; nothing has been changed." >&2
+		exit 1
+	fi
+	size="${BASH_REMATCH[1]}"; written="${BASH_REMATCH[2]}"; md5="${BASH_REMATCH[3]}"
+	[[ "$size" -gt 0 ]] || continue
+	if [[ ${#md5} -ne 32 ]]; then
+		echo "The tablet gave no fingerprint for $d's trace; stopping, nothing changed." >&2
+		exit 1
+	fi
+	kind="new"
+	[[ -n "$INSTALLED" && "$written" -le "$INSTALLED" ]] && kind="older"
+	prior=$(on_shelf "$md5")
+	if [[ -n "$prior" && -z "$FORCE_SLOT" ]]; then
+		echo "  $d: already on the shelf as $prior"
+		[[ "$kind" == "new" ]] && note_result new "$prior"
 		continue
 	fi
-	if [[ -z "$INSTALLED" || "$written" -gt "$INSTALLED" ]]; then
-		echo "  $d: played since then (trace $size bytes, last written $(when "$written"))"
-		PULL_DIRS+=("$d")
+	if [[ "$kind" == "new" ]]; then
+		echo "  $d: play to rescue (trace $size bytes, last written $(when "$written"))"
 	else
-		echo "  $d: not played since then (last written $(when "$written")), left alone"
+		echo "  $d: older play no rescue has taken (last written $(when "$written")); taking it"
 	fi
+	PULL_DIRS+=("$d"); PULL_KINDS+=("$kind"); PULL_WRITTEN+=("$written")
 done
 
 if [[ "${#PULL_DIRS[@]}" -eq 0 ]]; then
@@ -276,8 +316,7 @@ if [[ "${#PULL_DIRS[@]}" -eq 0 ]]; then
 		echo "Farm $FORCE_SLOT has no trace on the tablet; nothing to pull." >&2
 		exit 1
 	fi
-	echo "Nothing to pull: no farm has been played since the game was installed."
-	echo "To take an older farm anyway: tools/pull_session.sh --slot <1, 2 or 3>"
+	echo "Nothing to pull: every farm with play on it is already in $PLAYTESTS/."
 	exit 0
 fi
 
@@ -295,20 +334,18 @@ fi
 # it is an app that launched and idled, which is what a dev deploy leaves behind.
 #
 # Nothing is silently binned: both cases say so on the way out, and a real play
-# session is never the thing being dropped. What survives this is exactly what
-# the original rule meant to protect — a playtest is not repeatable, the child is
-# four once, and the second run is a different experiment.
-note_result() {
-	[[ -n "${PULL_SESSION_RESULT_FILE:-}" ]] && printf '%s\n' "$1" >> "$PULL_SESSION_RESULT_FILE"
-	return 0
-}
+# session is never the thing being dropped. A file the tablet said was there but
+# that does not arrive is a failed pull, never an empty farm: it stops the script.
 
 SHELVED=()
-for REMOTE_DIR in "${PULL_DIRS[@]}"; do
-	OUT="$PLAYTESTS/${STAMP}_$(folder_label "$REMOTE_DIR")"
+for i in "${!PULL_DIRS[@]}"; do
+	REMOTE_DIR="${PULL_DIRS[$i]}"; kind="${PULL_KINDS[$i]}"
+	base="$PLAYTESTS/${STAMP}_$(folder_label "$REMOTE_DIR")"
+	[[ "$kind" == "older" ]] && base="${base}_from-$(date -d "@${PULL_WRITTEN[$i]}" +%Y-%m-%d)"
+	OUT="$base"
 	n=2
 	while [[ -e "$OUT" ]]; do  # two pulls in the same second never share a folder
-		OUT="$PLAYTESTS/${STAMP}_$(folder_label "$REMOTE_DIR")-$n"
+		OUT="$base-$n"
 		n=$((n + 1))
 	done
 	echo ""
@@ -321,54 +358,49 @@ for REMOTE_DIR in "${PULL_DIRS[@]}"; do
 
 	mkdir -p "$OUT"
 	# `adb pull` cannot reach internal storage; stream each file out through run-as.
-	got_any=0
 	for f in session_trace.jsonl session_replay.json autosave.json; do
 		if adb -s "$SERIAL" exec-out "run-as $PKG cat $REMOTE_DIR/$f" > "$OUT/$f" 2>/dev/null \
 				&& [[ -s "$OUT/$f" ]]; then
 			echo "pulled $f ($(wc -c < "$OUT/$f") bytes)"
-			got_any=1
 		else
-			rm -f "$OUT/$f"
+			rm -f "${OUT:?}/${f:?}"
 			echo "MISSING  $f"
 		fi
 	done
 
-	if [[ "$got_any" -eq 0 ]]; then
-		rm -rf "$OUT"
+	TRACE="$OUT/session_trace.jsonl"
+	if [[ ! -s "$TRACE" ]]; then
+		rm -rf "${OUT:?}"
 		echo "" >&2
-		echo "Nothing pulled from $REMOTE_DIR. Either the session never reached disk, or" >&2
-		echo "run-as failed (it only works on a debug build) — check the listing above." >&2
+		echo "The tablet said $REMOTE_DIR has a trace, but it did not come across. That is a" >&2
+		echo "failed pull, not an empty farm; stopping with the tablet untouched. run-as only" >&2
+		echo "works on a debug build — check the listing above." >&2
 		exit 1
 	fi
-
-	TRACE="$OUT/session_trace.jsonl"
 	TAPS=$(grep -c '"kind":"tap"' "$TRACE" || true)
 	if [[ "${TAPS:-0}" -eq 0 ]]; then
-		rm -rf "$OUT"
+		rm -rf "${OUT:?}"
 		echo "Not shelved: nobody touched this one (no taps in the trace)."
 		echo "That is a dev launch, not a playtest. The device still has it."
 		continue
 	fi
-	MINE=$(md5sum < "$TRACE" | cut -d" " -f1)
-	prior_dir=""
-	for prior in "$PLAYTESTS"/*/session_trace.jsonl; do
-		[[ -e "$prior" ]] || continue
-		[[ "$prior" == "$TRACE" ]] && continue
-		if [[ "$(md5sum < "$prior" | cut -d" " -f1)" == "$MINE" ]]; then
-			prior_dir=$(dirname "$prior")
-			break
-		fi
-	done
-	if [[ -n "$prior_dir" ]]; then
-		rm -rf "$OUT"
-		note_result "$prior_dir"
-		echo "Not shelved: this is the same play as $prior_dir"
+	if [[ ! -s "$OUT/session_replay.json" || ! -s "$OUT/autosave.json" ]]; then
+		echo "" >&2
+		echo "$REMOTE_DIR has play in it but its replay or autosave did not come across." >&2
+		echo "What did arrive is kept in $OUT; stopping with the tablet untouched." >&2
+		exit 1
+	fi
+	prior=$(on_shelf "$(md5sum < "$TRACE" | cut -d" " -f1)")
+	if [[ -n "$prior" && "$prior" != "$OUT" && -z "$FORCE_SLOT" ]]; then
+		rm -rf "${OUT:?}"
+		note_result "$kind" "$prior"
+		echo "Not shelved: this is the same play as $prior"
 		echo "(identical tap trace). Already on the shelf; not filing it twice."
 		continue
 	fi
 
 	echo "Saved to $OUT/"
-	note_result "$OUT"
+	note_result "$kind" "$OUT"
 	SHELVED+=("$OUT")
 done
 
