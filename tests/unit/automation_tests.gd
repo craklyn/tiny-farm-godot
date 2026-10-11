@@ -3877,6 +3877,13 @@ func test_robots_go_round_buildings() -> void:
 	BotBrain.deploy(walled, "bot_1", BotBrain.CONFIG_ORDERS, Vector2i(6, 10))
 	_assert(not Movement.plan(walled, "bot_1", Vector2i(22, 10)),
 		"with a building filling the only gap, a robot has no route: it does not walk through")
+	# The same from inside its stall's bay: it is home, not stuck, so it gives the
+	# square up rather than walking out through the bay beside it (found in review).
+	_stage_building(walled, "stall", Vector2i(6, 12))
+	BotBrain.deploy(walled, "bot_2", BotBrain.CONFIG_ORDERS, Vector2i(6, 12))
+	_assert(not Movement.plan(walled, "bot_2", Vector2i(22, 10))
+			and not Movement.has_route(walled, "bot_2"),
+		"and a robot in its stall's bay with the same unreachable square stays in its bay, not walking out through the other one")
 
 	# A save from before this rule left a robot inside a coop, with a tower beyond
 	# it: it walks out of the coop by the nearest way, then round the tower.

@@ -7030,6 +7030,9 @@
   "ba7320a958907f89e8c0": {
    "verdict": "ok"
   },
+  "ba77d732b285c4723064": {
+   "verdict": "ok"
+  },
   "ba869e4528bb143ee2bd": {
    "instead": "The speed test shows that redrawing the whole farm instead of only ripe crops makes the tablet stutter",
    "quote": "The ripe-field benchmark has its tablet numbers: redrawing the whole farm every frame, not the ripe crops, costs the tablet its frame rate",

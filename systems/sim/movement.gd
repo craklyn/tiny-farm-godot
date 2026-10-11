@@ -731,7 +731,7 @@ static func path(world: SimWorld, mode: String, start: Vector2i, goal: Vector2i,
 # **A robot never crosses a building to reach somewhere** (2026-10-11): no way
 # round is no route, and its brain gives that square up as it gives up one behind
 # a fence. The one exception is getting *out*. A robot a save left inside a
-# block (a save from before this rule, or one standing in the middle of a tower's
+# block other than a stall bay (a save from before this rule, or one standing in the middle of a tower's
 # sixteen squares, every neighbour of which is the tower too) has no route that
 # keeps out of buildings, so it takes the ordinary walker's way only as far as the
 # first square outside, and plans again from there. One search for nearly every
@@ -752,7 +752,10 @@ static func plan(world: SimWorld, actor_id: String, goal: Vector2i, over_beds_if
 		route = path(world, SpeciesDefs.GROUND, here, goal)
 		if not route.is_empty():
 			e["extra"]["over_beds"] = true
-	elif route.is_empty() and mode == GROUND_SPARING_BUILDINGS and not passable(world, mode, here):
+	elif route.is_empty() and mode == GROUND_SPARING_BUILDINGS and not can_stop(world, mode, here):
+		# Not from a stall bay: a robot there is home, not stuck, and the way out
+		# would take it through the bay beside it or the shed's back wall to a
+		# square it cannot reach anyway (found in review, 2026-10-11).
 		route = _way_out(world, path(world, SpeciesDefs.GROUND, here, goal))
 		if not route.is_empty():
 			e["extra"]["over_beds"] = true  # the flag's name is the cow's; it means "this route is an ordinary walker's"

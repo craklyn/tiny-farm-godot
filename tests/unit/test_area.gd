@@ -532,8 +532,13 @@ func _ref_path(world: SimWorld, mode: String, start: Vector2i, goal: Vector2i) -
 	var out: Array[Vector2i] = []
 	if start == goal or not Movement.in_bounds(world, start) or not Movement.in_bounds(world, goal):
 		return out
-	if not Movement.passable(world, mode, start) or not Movement.can_stop(world, mode, goal):
+	if not _ref_startable(world, mode, start) or not Movement.can_stop(world, mode, goal):
 		return out
+	# A robot goes in and out of a stall's bay by its open front, the square below
+	# it (2026-10-11): the only way out of a start bay, the only way into a goal bay.
+	var doors := mode == Movement.GROUND_SPARING_BUILDINGS
+	var start_door := start + Vector2i(0, 1) if doors and world.is_stall_tile(start) else Vector2i(-99, -99)
+	var goal_door := goal + Vector2i(0, 1) if doors and world.is_stall_tile(goal) else Vector2i(-99, -99)
 	var came: Dictionary = {}
 	var cost: Dictionary = { start: 0 }
 	var open: Array[Dictionary] = [{ "t": start, "f": float(_ref_h(start, goal)) }]
@@ -553,7 +558,10 @@ func _ref_path(world: SimWorld, mode: String, start: Vector2i, goal: Vector2i) -
 		var here: int = int(cost[cur])
 		for d in Movement.DIRS:
 			var n: Vector2i = cur + d
-			if not Movement.in_bounds(world, n) or not Movement.passable(world, mode, n):
+			if not Movement.in_bounds(world, n) or not (Movement.passable(world, mode, n) or n == goal):
+				continue
+			if (cur == start and start_door.x != -99 and n != start_door) \
+					or (n == goal and goal_door.x != -99 and cur != goal_door):
 				continue
 			var step_cost := here + 1
 			if step_cost < int(cost.get(n, 0x7FFFFFFF)):
@@ -563,6 +571,14 @@ func _ref_path(world: SimWorld, mode: String, start: Vector2i, goal: Vector2i) -
 	return out
 
 
+# Where a journey may begin: anywhere it could pass through, and for the walkers
+# that spare the beds or the buildings, any walkable ground.
+func _ref_startable(world: SimWorld, mode: String, t: Vector2i) -> bool:
+	if mode == Movement.GROUND_SPARING_BEDS or mode == Movement.GROUND_SPARING_BUILDINGS:
+		return world.is_walkable(t.x, t.y)
+	return Movement.passable(world, mode, t)
+
+
 func _ref_h(a: Vector2i, b: Vector2i) -> int:
 	return absi(a.x - b.x) + absi(a.y - b.y)
 
@@ -570,7 +586,7 @@ func _ref_h(a: Vector2i, b: Vector2i) -> int:
 # The old flood fill: a `seen` Dictionary keyed on Vector2i and a separate queue.
 func _ref_reachable(world: SimWorld, mode: String, start: Vector2i) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
-	if not Movement.in_bounds(world, start) or not Movement.passable(world, mode, start):
+	if not Movement.in_bounds(world, start) or not _ref_startable(world, mode, start):
 		return out
 	var seen := { start: true }
 	var queue: Array[Vector2i] = [start]
@@ -597,6 +613,7 @@ func _pathfinder_worlds() -> Array:
 		["the arena (two walls to go round)", _movement_arena()],
 		["an open field (every route a diamond of ties)", _open_field()],
 		["a sealed room and a rock maze", _sealed_room()],
+		["a yard of buildings and beds", _building_yard()],
 	]
 
 
@@ -634,6 +651,25 @@ func _sealed_room() -> SimWorld:
 	for tx in range(2, 12):
 		if tx % 3 != 0:
 			w.set_tile_state(tx, 9, "obstacle_rock")
+	return w
+
+
+# The open field with every kind of building block and a few soil beds on it, for
+# the two route modes that go round them (the cow's and the robots'). One stall's
+# front is fenced, so a bay is reached by its side only when it must be.
+func _building_yard() -> SimWorld:
+	var w := _open_field()
+	var blocks := [["stall", Vector2i(4, 4)], ["coop", Vector2i(10, 8)], ["spiral_tower", Vector2i(15, 14)],
+		["industrial_barn", Vector2i(22, 16)], ["stall", Vector2i(25, 5)], ["workbench", Vector2i(8, 14)]]
+	for b in blocks:
+		var key: String = b[0]
+		for c in MachineDefs.footprint_cells(key, b[1]):
+			w.set_object(c.x, c.y, MachineDefs.object_of(key) if c == b[1] else MachineDefs.part_of(key))
+	w.set_tile_state(25, 6, WorldLayout.FENCE)
+	for tx in range(6, 21):
+		w.set_tile_state(tx, 3, "tilled" if tx % 2 == 0 else "growing")
+	for ty in range(9, 13):
+		w.set_tile_state(6, ty, "seeded")
 	return w
 
 
