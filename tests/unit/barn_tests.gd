@@ -21,11 +21,17 @@ func test_barn_simulation() -> void:
 			line_verbs.append(verb); line_ticks.append(int(taken.tick))
 	_assert(verbs.slice(0, 6) == ["reserve_milk_stall", "use_door", "enter_milk_stall", "give_milk", "leave_milk_stall", "use_door"],
 		"a ready cow reserves the first stall, crosses the barn door, gives one unit and leaves again (%s)" % str(verbs))
-	_assert(world.actor_pos("cow_1") == Vector2i(11, 11)
-		and world.actor_pos("cow_1") == world.room_exit_for(world.rooms["barn_1"])
-		and String(barn.stalls[0].cow_id) == ""
-		and String(world.actor("cow_1").extra.state) == "idle",
-		"the cow walks back out through the door onto the doorstep under the barn's doors, idle, and the stall is free for another cow (%s)" % world.actor_pos("cow_1"))
+	var out_at := -1
+	for taken in trip:
+		if String(taken.action.get("actor", "")) == "cow_1" and String(taken.action.get("verb", "")) == "use_door" \
+				and bool(taken.result.get("ok", false)):
+			out_at = int(taken.tick)
+	var doorstep := world.room_exit_for(world.rooms["barn_1"])
+	var here := world.actor_pos("cow_1")
+	_assert(out_at > 0 and doorstep == Vector2i(11, 11)
+		and world.room_of_cell(here) == "" and absi(here.x - doorstep.x) + absi(here.y - doorstep.y) > 1
+		and String(barn.stalls[0].cow_id) == "",
+		"the cow walks back out through the barn's doors and on into the field, and the stall is free for another cow (%s)" % here)
 	_assert(int(world.actor("cow_1").extra.milk_milliunits) == 0
 		and world.energy_of("cow_1") == SpeciesDefs.max_energy_of(SpeciesDefs.COW) - SimWorld.COW_GIVE_MILK_ENERGY,
 		"one visit transfers one unit and spends cow energy")
@@ -112,6 +118,8 @@ func test_barn_simulation() -> void:
 	test_cheese_shelf_sale()
 	test_barn_gateway_refusals()
 	test_barn_cow_gives_a_stall_back()
+	test_barn_cows_graze_after_milking()
+	test_barn_cows_spread_out_with_little_grass()
 	test_barn_milk_gain_at_sleep()
 	test_barn_save_v6_migration()
 	test_barn_room_layout()
@@ -646,6 +654,157 @@ func test_barn_cow_gives_a_stall_back() -> void:
 	_assert(not source.contains("[\"cow_id\"] =") and not source.contains("[\"barn_id\"] =")
 		and not source.contains("[\"stall_index\"] ="),
 		"the cow's brain writes no stall record and no reservation field of its own")
+
+
+# Found staging the creamery video (2026-10-10): every visit ended on the barn's
+# doorstep, idle, so after four cows had each given milk all four stood on that one
+# square until morning. Now each leaves the doorway, grazes the field near the barn
+# on her own square, and walks back in when she has milk again.
+func test_barn_cows_graze_after_milking() -> void:
+	print("\n--- Industrial barn: cows graze the field after giving milk ---")
+	GameState.reset()
+	SimRng.reseed(1713)
+	var world := _barn_world()
+	var barn: Dictionary = world.barns["barn_1"]
+	var doorstep := world.room_exit_for(world.rooms["barn_1"])
+	# A small crop bed in the field, and an empty tilled one: a cow walks past
+	# them, never stops in them.
+	for x in range(13, 16):
+		for y in range(13, 15):
+			world.set_object(x, y, ""); world.set_tile_state(x, y, "growing")
+	for x in range(8, 11):
+		for y in range(14, 16):
+			world.set_object(x, y, ""); world.set_tile_state(x, y, "tilled")
+	var cows: Array[String] = ["cow_1", "cow_2", "cow_3", "cow_4"]
+	for i in cows.size():
+		world.spawn_actor(cows[i], SpeciesDefs.COW, Vector2i(10 + i, 12), {"milk_milliunits": 1000})
+	var base := SaveGame.capture(world, GameState)
+	var log := ReplayLog.new(); log.start_from_save(base, world.gen_seed)
+	var given := {}
+	var walks := {}
+	var heading := {}
+	var stacked := 0
+	var on_doorway := 0
+	var in_crops := 0
+	var last_give := -1
+	for i in 4000:
+		for taken in world.advance_ticks(1, GameState):
+			_record_brain_step(log, taken)
+			if String(taken.action.get("verb", "")) == "give_milk" and bool(taken.result.get("ok", false)):
+				given[String(taken.action.actor)] = true; last_give = int(taken.tick)
+		var standing := {}
+		for cow_id in cows:
+			var extra: Dictionary = world.actor(cow_id).extra
+			var at := world.actor_pos(cow_id)
+			var route: Array = extra.get("path", [])
+			if String(extra.get("route_stage", "")) == "pasture" and route.size() >= 2:
+				var goal := Vector2i(int(route[-2]), int(route[-1]))
+				if heading.get(cow_id, Vector2i(-1, -1)) != goal:
+					heading[cow_id] = goal
+					walks[cow_id] = int(walks.get(cow_id, 0)) + 1
+			# A cow standing still outdoors after her visit: where the bug left her.
+			if not given.has(cow_id) or String(extra.get("state", "")) != "idle" or world.room_of_cell(at) != "":
+				continue
+			if world.clock.tick - last_give < 300:
+				continue
+			if standing.has(at): stacked += 1
+			standing[at] = true
+			if absi(at.x - doorstep.x) + absi(at.y - doorstep.y) <= 1: on_doorway += 1
+			if String(world.get_tile(at.x, at.y).state) in SimWorld.WETTABLE_STATES: in_crops += 1
+	_assert(given.size() == 4, "all four cows give milk (%s)" % str(given.keys()))
+	_assert(stacked == 0, "no two resting cows ever share a square once they are out (%d tick-cows stacked)" % stacked)
+	_assert(on_doorway == 0, "none settles on the barn's doorstep or beside it (%d)" % on_doorway)
+	_assert(in_crops == 0, "and none settles in a bed of soil, planted or bare (%d)" % in_crops)
+	var all_walk := true
+	var spots := {}
+	for cow_id in cows:
+		var at := world.actor_pos(cow_id)
+		all_walk = all_walk and int(walks.get(cow_id, 0)) >= 3
+		spots[at] = true
+		_assert(world.space_of(at) == "farm", "%s ends on the farm's own ground (%s)" % [cow_id, at])
+	_assert(all_walk, "each cow wanders from spot to spot rather than standing in one place (%s)" % str(walks))
+	_assert(spots.size() == 4, "the four end the run on four different squares (%s)" % str(spots.keys()))
+	var near := true
+	for cow_id in cows:
+		var at := world.actor_pos(cow_id)
+		near = near and absi(at.x - doorstep.x) <= CowBrain.PASTURE_RADIUS and absi(at.y - doorstep.y) <= CowBrain.PASTURE_RADIUS
+	_assert(near, "and stay in the field near the barn")
+	# Milk again — as a morning would bring — and each one walks back in to give it.
+	for cow_id in cows:
+		var gain := {"actor": cow_id, "verb": "gain_milk", "amount_milliunits": 1000}
+		var at_tick := world.clock.tick
+		var r := world.apply_action(gain, GameState)
+		log.record(gain, r, at_tick)
+		_assert(bool(r.get("ok", false)), "%s has milk again" % cow_id)
+	var again := {}
+	for i in 4000:
+		for taken in world.advance_ticks(1, GameState):
+			_record_brain_step(log, taken)
+			if String(taken.action.get("verb", "")) == "give_milk" and bool(taken.result.get("ok", false)):
+				again[String(taken.action.actor)] = true
+		if again.size() == 4:
+			break
+	_assert(again.size() == 4, "with milk again, every cow comes back to a stall and gives it (%s)" % str(again.keys()))
+	_assert(int(barn.next_batch_id) == 9, "eight visits, eight batches")
+	# Where each cow grazed is her brain's decision: a replay recomputes every walk.
+	log.mark_tick(world.clock.tick)
+	var replayed := SimWorld.new()
+	_assert(log.apply_to(replayed, GameState) and log.divergence == "",
+		"the herd's day replays from its log (%s)" % log.divergence)
+	var same := true
+	for cow_id in cows:
+		same = same and replayed.actor_pos(cow_id) == world.actor_pos(cow_id)
+	_assert(same and replayed.barns == world.barns, "and every cow ends on the same square, with the same barn")
+
+
+# A barn hemmed in by rocks, with two squares of grass and three of ground beside
+# the doors: four cows that have given milk still end on four squares of their own,
+# none on the doorstep, rather than all standing in the doorway.
+func test_barn_cows_spread_out_with_little_grass() -> void:
+	print("\n--- Industrial barn: cows spread out when grass is scarce ---")
+	GameState.reset()
+	SimRng.reseed(1714)
+	var world := _barn_world()
+	var doorstep := world.room_exit_for(world.rooms["barn_1"])
+	var open := [doorstep, doorstep + Vector2i(-1, 0), doorstep + Vector2i(1, 0),
+		doorstep + Vector2i(0, 1), doorstep + Vector2i(0, 2), doorstep + Vector2i(-1, 1)]
+	# Rock on every square within seven of the doorstep but the open ones and the
+	# barn's own footprint.
+	for y in range(doorstep.y - 7, doorstep.y + 8):
+		for x in range(doorstep.x - 7, doorstep.x + 8):
+			if not (Vector2i(x, y) in open) and world.get_object(x, y) == "" and world.space_of(Vector2i(x, y)) == "farm":
+				world.set_tile_state(x, y, "obstacle_rock")
+	for cell in open:
+		world.set_object(cell.x, cell.y, ""); world.set_tile_state(cell.x, cell.y, "cleared")
+	world.schedule_all_brains()
+	var cows: Array[String] = ["cow_1", "cow_2", "cow_3", "cow_4"]
+	for i in cows.size():
+		world.spawn_actor(cows[i], SpeciesDefs.COW, doorstep, {"milk_milliunits": 1000})
+	var given := {}
+	var last_give := -1
+	var stacked := 0
+	var on_doorstep := 0
+	for i in 3000:
+		for taken in world.advance_ticks(1, GameState):
+			if String(taken.action.get("verb", "")) == "give_milk" and bool(taken.result.get("ok", false)):
+				given[String(taken.action.actor)] = true; last_give = int(taken.tick)
+		if given.size() < 4 or world.clock.tick - last_give < 300:
+			continue
+		var standing := {}
+		for cow_id in cows:
+			var at := world.actor_pos(cow_id)
+			if String(world.actor(cow_id).extra.get("state", "")) != "idle" or world.room_of_cell(at) != "":
+				continue
+			if standing.has(at): stacked += 1
+			standing[at] = true
+			if at == doorstep: on_doorstep += 1
+	_assert(given.size() == 4, "all four cows give milk through the one open doorway (%s)" % str(given.keys()))
+	var spots := {}
+	for cow_id in cows:
+		spots[world.actor_pos(cow_id)] = true
+	_assert(stacked == 0 and spots.size() == 4,
+		"they settle on four different squares (%d stacked; ending on %s)" % [stacked, str(spots.keys())])
+	_assert(on_doorstep == 0 and not spots.has(doorstep), "and none stays on the doorstep (%d)" % on_doorstep)
 
 
 # Morning milk: one gain per cow inside `sleep`, in range, capped, and once on replay.
