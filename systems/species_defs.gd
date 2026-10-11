@@ -570,7 +570,9 @@ static var ROWS: Dictionary = {
 		# debuted; if the shoo comes and cannot close on a crow, its speed is a
 		# per-config question to reopen then, not a species fact to pre-spend.
 		"speed": 0.2,
-		"movement": { "mode": GROUND, "body_len": 1, "tile_exclusive": false },
+		# It walks around buildings, never through one, and into nothing but its
+		# stall's bay (2026-10-11, `Movement.route_mode_of`).
+		"movement": { "mode": GROUND, "body_len": 1, "tile_exclusive": false, "spares_buildings": true },
 		# **It notices nothing, and the omission is the design.** What a shoo-bot
 		# watches for is a *configuration* (`extra.quarry`, a class), not a
 		# species fact — two bots off the same line differ by their settings and

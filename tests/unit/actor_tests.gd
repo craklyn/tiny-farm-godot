@@ -383,6 +383,10 @@ func test_pathfinder_identity() -> void:
 	# route in the game is built out of its answers, so it is swept whole.
 	for entry in worlds:
 		var w: SimWorld = entry[1]
+		if w.is_walkable(4, 4) and w.is_stall_tile(Vector2i(4, 4)):
+			# The yard of buildings: this copy of the read predates open building
+			# floors and the newer tall objects, so it has nothing to say there.
+			continue
 		for ty in SimWorld.MAP_HEIGHT:
 			for tx in SimWorld.MAP_WIDTH:
 				_assert_quiet(w.get_object(tx, ty) == _ref_object(w, tx, ty),
@@ -392,7 +396,8 @@ func test_pathfinder_identity() -> void:
 	_flush_quiet("every tile of every test world reads the same as it always did")
 
 	# --- the sweep -------------------------------------------------------------
-	var modes := [SpeciesDefs.GROUND, SpeciesDefs.HOP, SpeciesDefs.BURROW, SpeciesDefs.FLY]
+	var modes := [SpeciesDefs.GROUND, SpeciesDefs.HOP, SpeciesDefs.BURROW, SpeciesDefs.FLY,
+		Movement.GROUND_SPARING_BEDS, Movement.GROUND_SPARING_BUILDINGS]
 	var pairs := 0
 	var routed := 0
 	var refused := 0
@@ -433,7 +438,8 @@ func test_pathfinder_identity() -> void:
 	var fill_mismatch := ""
 	for entry in worlds:
 		var w: SimWorld = entry[1]
-		for mode in [SpeciesDefs.GROUND, SpeciesDefs.HOP, SpeciesDefs.BURROW]:
+		for mode in [SpeciesDefs.GROUND, SpeciesDefs.HOP, SpeciesDefs.BURROW,
+				Movement.GROUND_SPARING_BEDS, Movement.GROUND_SPARING_BUILDINGS]:
 			for sy in range(0, SimWorld.MAP_HEIGHT, 5):
 				for sx in range(0, SimWorld.MAP_WIDTH, 5):
 					var s := Vector2i(sx, sy)

@@ -140,6 +140,7 @@ func _init() -> void:
 	automation.test_worm_practice_measurement()
 	automation.test_wider_view()
 	automation.test_starter_brain()
+	automation.test_robots_go_round_buildings()
 	interior.test_world_pages()
 	interior.test_the_door()
 	interior.test_the_window()

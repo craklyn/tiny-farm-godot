@@ -256,6 +256,20 @@ bot line:
   shoo config's old keep-up-with-her argument reopens as a per-config question
   if that config ever debuts and cannot close on a crow.
 
+And one from play, 2026-10-11 (Daniel): **a robot walks around buildings, never through
+them.** The coop, the spiral tower, the robot stalls and the barn all stand on open ground
+the farmer can tap, so until then a robot's route ran straight across them, and on the
+tablet a row of parked Mark Is walked home through each other's bays. Now every robot, of
+every mark, goes round the block of any building. The one building it walks into is a
+robot stall: it parks in its own bay, and goes in and out by the bay's open front, never
+through the shed's back wall or the bay beside it (only if the front is fenced or built over
+does it use another side). The workbench was already solid. Before and after, in the real
+game: `mockups/robots_round_buildings/robot_round_coop_before.png` and `…_after.png`. It still crosses soil freely, because the
+beds are where its work is (the cow is the one who keeps off them, design/17). Where the
+only way to a square is through a building, it has no way there: a Mark I skips that
+square, a Mark III drops that errand, just as for a square behind a fence. A robot that a
+save left standing inside a building walks out by the nearest way, then keeps out.
+
 Four properties are the design, and each is a deliberate *limit*:
 
 - **Eight tiles, and no more.** `BotBrain.ORDER_LIMIT` [Playtest]. Eight squares is about a
