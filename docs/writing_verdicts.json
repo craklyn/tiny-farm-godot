@@ -520,6 +520,9 @@
   "0d1ced1edf1b3b300bea": {
    "verdict": "ok"
   },
+  "0d24b4f418779efdb76b": {
+   "verdict": "ok"
+  },
   "0d29f3bc7971745f32a8": {
    "verdict": "ok"
   },
@@ -3312,6 +3315,12 @@
    "verdict": "second-look",
    "why": "The possessive construction makes the reader pause to understand that the cleanup is erasing the figures' edges."
   },
+  "58b90d2693ab283771f8": {
+   "instead": "A hen loaded from a save now makes the same choice it made before you saved the game",
+   "quote": "gets the same decision check as the same hen in memory",
+   "verdict": "decode",
+   "why": "The reader has to work out that the saved hen should make the same choice after being loaded as it did before saving."
+  },
   "58b9e84387db3fe71724": {
    "verdict": "ok"
   },
@@ -5332,6 +5341,12 @@
    "quote": "the event that wakes it",
    "verdict": "second-look",
    "why": "The metaphor makes the reader translate “wakes it” into making the waiting work start again."
+  },
+  "8dd50422bcc084e9d75c": {
+   "instead": "Stored results from checking this change's commit subjects",
+   "quote": "Writing-check cache for this change's commit subjects",
+   "verdict": "decode",
+   "why": "“Cache” is internal engineering shorthand for stored results, so a cold reader may not know what this is."
   },
   "8dd6a1f7de2dd71b9776": {
    "instead": "the player's crops",
@@ -8642,6 +8657,12 @@
    "quote": "up to … steps at a time",
    "verdict": "second-look",
    "why": "“Steps” sounds like an internal unit of work rather than something the reader can identify plainly."
+  },
+  "e512cce032001a97c5ad": {
+   "instead": "The title screen's demo recording was rebuilt in the new format",
+   "quote": "recording format 5",
+   "verdict": "decode",
+   "why": "This unexplained internal name does not tell the reader what changed or what the format means."
   },
   "e51823e913f6f3eb87a6": {
    "instead": "Save the player's longer tablet session after the game rejects an attempt to collect an eleventh crop because the pouch already holds ten",
