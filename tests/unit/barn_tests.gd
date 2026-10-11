@@ -540,6 +540,16 @@ func test_barn_cow_arrival() -> void:
 	_assert(laid.get("ok", false) and world.actor_pos("cow_1") == anchor + Vector2i(2, 1),
 		"with the square below the doors fenced, the first cow arrives beside the doorstep (%s, %s)"
 			% [laid, world.actor_pos("cow_1")])
+	# A grazing cow (2026-10-10, cows graze near the barn after giving milk) may
+	# stand anywhere outside it, the square a new cow would arrive on included. That
+	# square is not free while she is on it, so the next cow comes out further on.
+	var first_free := world.barn_cow_arrival_cell(anchor)
+	world.set_actor_pos("cow_1", first_free)
+	var next_free := world.barn_cow_arrival_cell(anchor)
+	_assert(first_free.x >= 0 and next_free.x >= 0 and next_free != first_free,
+		"a cow grazing on the square the next cow would arrive on sends her to the next free one (%s, then %s)"
+			% [first_free, next_free])
+	world.set_actor_pos("cow_1", anchor + Vector2i(2, 1))
 	var bought_all := true
 	for i in SimWorld.HERD_LIMIT - 1:
 		bought_all = bought_all and bool(_replay_do(world, rlog, {"verb": "buy_cow", "actor": "player"}).get("ok", false))

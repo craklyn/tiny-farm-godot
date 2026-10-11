@@ -3297,6 +3297,12 @@
   "587f2cecc2af88673d9b": {
    "verdict": "ok"
   },
+  "589718c0b2ddab38eed2": {
+   "instead": "A test shows that when a cow is grazing in the square where the next cow would arrive, the newcomer goes to the next free square",
+   "quote": "A test shows a cow grazing where the next cow would arrive sends the newcomer to the next free square",
+   "verdict": "decode",
+   "why": "The sentence makes the reader work out whether the cow or the test sends the newcomer, and how the clauses fit together."
+  },
   "58a3aeee4282d39d34a2": {
    "verdict": "ok"
   },
@@ -5835,6 +5841,9 @@
   "9a9bd5358e89d587d46e": {
    "verdict": "ok"
   },
+  "9aabb7716ac47dbd81d2": {
+   "verdict": "ok"
+  },
   "9ac05324c35b0905cbfb": {
    "instead": "Fix the failing build: the automatic-publishing tests no longer need the secret scanner on GitHub's test machine",
    "quote": "red build",
@@ -8119,6 +8128,9 @@
    "verdict": "ok"
   },
   "d845cf7cf8920c9d4e25": {
+   "verdict": "ok"
+  },
+  "d858d2beb5dc37017f78": {
    "verdict": "ok"
   },
   "d869ac25d5cff900cd77": {
