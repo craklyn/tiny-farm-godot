@@ -9918,6 +9918,42 @@ func _scenario_br_a_walled_in_barn_buzzes() -> void:
 			% [", its cow on that square" if bundled else "", str(placed_answer)])
 	_assert(farm.footprint_refusal().is_empty(), "and no refusal is shown for it")
 
+	# --- the shop's cow card: four cows for each barn, not four in all ------------
+	# Found reviewing this fix, 2026-10-10: the card went dark at four cows however
+	# many barns she had, while the gateway sells four for each.
+	if stood:
+		var menus = main_scene.menus
+		while farm.sim.cow_count() < SimWorld.HERD_LIMIT:
+			farm.sim.spawn_actor(farm.sim.next_cow_id(), SpeciesDefs.COW, gap)
+		var second := Vector2i(-1, -1)
+		if farm.sim.barns.size() < 2:
+			for ty in range(3, WorldLayout.PAGE_ROWS - 2):
+				for tx in range(1, SimWorld.MAP_WIDTH - 3):
+					if second.x < 0 and farm.sim.placeable_at(Vector2i(tx, ty), "industrial_barn"):
+						second = Vector2i(tx, ty)
+			GameState.machines = { "industrial_barn": 1 }
+			var second_laid: Dictionary = farm.apply_action({ "verb": "place", "target": second,
+				"item": "industrial_barn", "actor": "player" }, GameState)
+			_assert(second_laid.get("ok", false), "a second barn goes down at %s (%s)" % [second, second_laid])
+		GameState.gold = SimWorld.COW_PRICE
+		var cows_on_two: int = farm.sim.cow_count()
+		menus._build_shop_items()
+		var card := {}
+		for item in menus.shop_items:
+			if String(item.get("kind", "")) == "cow":
+				card = item
+		_assert(farm.sim.barns.size() == 2 and cows_on_two >= SimWorld.HERD_LIMIT
+				and cows_on_two < SimWorld.HERD_LIMIT * 2 and bool(card.get("affordable", false)),
+			"with two barns and %d cows, the shop's cow card is lit for another (%s)" % [cows_on_two, str(card)])
+		while farm.sim.cow_count() < SimWorld.HERD_LIMIT * 2:
+			farm.sim.spawn_actor(farm.sim.next_cow_id(), SpeciesDefs.COW, gap)
+		menus._build_shop_items()
+		for item in menus.shop_items:
+			if String(item.get("kind", "")) == "cow":
+				card = item
+		_assert(not bool(card.get("affordable", true)),
+			"and with eight, it goes dark: four for each barn (%s)" % str(card))
+
 	_release_sim_clock()
 	await _bq_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
 

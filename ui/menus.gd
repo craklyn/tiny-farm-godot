@@ -1738,6 +1738,7 @@ func _build_shop_items() -> void:
 		shop_items.append({
 			"kind": "cow", "seed_type": "cow", "item_name": "Cow",
 			"price": SimWorld.COW_PRICE, "unlocked": true,
-			"affordable": GameState.gold >= SimWorld.COW_PRICE and cows < SimWorld.HERD_LIMIT,
+			# Four for each barn, not four in all (S-41): the gateway's own limit.
+			"affordable": GameState.gold >= SimWorld.COW_PRICE and cows < farm.sim.herd_limit(),
 			"icon": cow_icon, "owned": cows
 		})
