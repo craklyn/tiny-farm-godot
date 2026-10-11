@@ -119,6 +119,7 @@ func test_barn_simulation() -> void:
 	test_barn_gateway_refusals()
 	test_barn_cow_gives_a_stall_back()
 	test_barn_cows_graze_after_milking()
+	test_barn_cows_spread_out_with_little_grass()
 	test_barn_milk_gain_at_sleep()
 	test_barn_save_v6_migration()
 	test_barn_room_layout()
@@ -666,10 +667,14 @@ func test_barn_cows_graze_after_milking() -> void:
 	var world := _barn_world()
 	var barn: Dictionary = world.barns["barn_1"]
 	var doorstep := world.room_exit_for(world.rooms["barn_1"])
-	# A small crop bed in the field: a cow walks past it, never stops in it.
+	# A small crop bed in the field, and an empty tilled one: a cow walks past
+	# them, never stops in them.
 	for x in range(13, 16):
 		for y in range(13, 15):
 			world.set_object(x, y, ""); world.set_tile_state(x, y, "growing")
+	for x in range(8, 11):
+		for y in range(14, 16):
+			world.set_object(x, y, ""); world.set_tile_state(x, y, "tilled")
 	var cows: Array[String] = ["cow_1", "cow_2", "cow_3", "cow_4"]
 	for i in cows.size():
 		world.spawn_actor(cows[i], SpeciesDefs.COW, Vector2i(10 + i, 12), {"milk_milliunits": 1000})
@@ -705,11 +710,11 @@ func test_barn_cows_graze_after_milking() -> void:
 			if standing.has(at): stacked += 1
 			standing[at] = true
 			if absi(at.x - doorstep.x) + absi(at.y - doorstep.y) <= 1: on_doorway += 1
-			if world.has_crop(at.x, at.y): in_crops += 1
+			if String(world.get_tile(at.x, at.y).state) in SimWorld.WETTABLE_STATES: in_crops += 1
 	_assert(given.size() == 4, "all four cows give milk (%s)" % str(given.keys()))
 	_assert(stacked == 0, "no two resting cows ever share a square once they are out (%d tick-cows stacked)" % stacked)
 	_assert(on_doorway == 0, "none settles on the barn's doorstep or beside it (%d)" % on_doorway)
-	_assert(in_crops == 0, "and none settles in the crop bed (%d)" % in_crops)
+	_assert(in_crops == 0, "and none settles in a bed of soil, planted or bare (%d)" % in_crops)
 	var all_walk := true
 	var spots := {}
 	for cow_id in cows:
@@ -750,6 +755,56 @@ func test_barn_cows_graze_after_milking() -> void:
 	for cow_id in cows:
 		same = same and replayed.actor_pos(cow_id) == world.actor_pos(cow_id)
 	_assert(same and replayed.barns == world.barns, "and every cow ends on the same square, with the same barn")
+
+
+# A barn hemmed in by rocks, with two squares of grass and three of ground beside
+# the doors: four cows that have given milk still end on four squares of their own,
+# none on the doorstep, rather than all standing in the doorway.
+func test_barn_cows_spread_out_with_little_grass() -> void:
+	print("\n--- Industrial barn: cows spread out when grass is scarce ---")
+	GameState.reset()
+	SimRng.reseed(1714)
+	var world := _barn_world()
+	var doorstep := world.room_exit_for(world.rooms["barn_1"])
+	var open := [doorstep, doorstep + Vector2i(-1, 0), doorstep + Vector2i(1, 0),
+		doorstep + Vector2i(0, 1), doorstep + Vector2i(0, 2), doorstep + Vector2i(-1, 1)]
+	# Rock on every square within seven of the doorstep but the open ones and the
+	# barn's own footprint.
+	for y in range(doorstep.y - 7, doorstep.y + 8):
+		for x in range(doorstep.x - 7, doorstep.x + 8):
+			if not (Vector2i(x, y) in open) and world.get_object(x, y) == "" and world.space_of(Vector2i(x, y)) == "farm":
+				world.set_tile_state(x, y, "obstacle_rock")
+	for cell in open:
+		world.set_object(cell.x, cell.y, ""); world.set_tile_state(cell.x, cell.y, "cleared")
+	world.schedule_all_brains()
+	var cows: Array[String] = ["cow_1", "cow_2", "cow_3", "cow_4"]
+	for i in cows.size():
+		world.spawn_actor(cows[i], SpeciesDefs.COW, doorstep, {"milk_milliunits": 1000})
+	var given := {}
+	var last_give := -1
+	var stacked := 0
+	var on_doorstep := 0
+	for i in 3000:
+		for taken in world.advance_ticks(1, GameState):
+			if String(taken.action.get("verb", "")) == "give_milk" and bool(taken.result.get("ok", false)):
+				given[String(taken.action.actor)] = true; last_give = int(taken.tick)
+		if given.size() < 4 or world.clock.tick - last_give < 300:
+			continue
+		var standing := {}
+		for cow_id in cows:
+			var at := world.actor_pos(cow_id)
+			if String(world.actor(cow_id).extra.get("state", "")) != "idle" or world.room_of_cell(at) != "":
+				continue
+			if standing.has(at): stacked += 1
+			standing[at] = true
+			if at == doorstep: on_doorstep += 1
+	_assert(given.size() == 4, "all four cows give milk through the one open doorway (%s)" % str(given.keys()))
+	var spots := {}
+	for cow_id in cows:
+		spots[world.actor_pos(cow_id)] = true
+	_assert(stacked == 0 and spots.size() == 4,
+		"they settle on four different squares (%d stacked; ending on %s)" % [stacked, str(spots.keys())])
+	_assert(on_doorstep == 0 and not spots.has(doorstep), "and none stays on the doorstep (%d)" % on_doorstep)
 
 
 # Morning milk: one gain per cow inside `sleep`, in range, capped, and once on replay.

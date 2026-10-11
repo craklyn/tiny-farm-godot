@@ -12,7 +12,8 @@
 # since every visit ends on the barn's doorstep, four cows that had each given
 # milk once stood stacked on that one square until morning. Now she leaves the
 # doorstep at once, picks a square no other cow is standing on or walking to, and
-# keeps off crops and off every building's doorstep. The draws are
+# keeps off soil and off every building's doorstep; where grass is too scarce
+# for that, she takes the nearest bare square no other cow has. The draws are
 # `SimRng.stateless` from her id and the tick, so a cow's wander never moves
 # another animal's dice and a replay recomputes it exactly.
 #
@@ -245,24 +246,65 @@ func _graze(world: SimWorld, actor_id: String, extra: Dictionary, tick: int) -> 
 		routes += 1
 		if routes >= GRAZE_ROUTES:
 			break
+	# Nothing drawn would do — grass is scarce, or the field is fenced tight. If she
+	# is not already somewhere good, she looks outward from where she stands for
+	# the nearest square that is.
+	if not _grazeable(world, here, doorsteps, others):
+		for cell in _nearest_spots(world, here, doorsteps, others):
+			if Movement.plan(world, actor_id, cell):
+				extra["route_stage"] = "pasture"; extra["state"] = "moving"
+				extra["wake"] = tick + Movement.ticks_per_tile(world.species_of(actor_id))
+				return
 	Movement.clear_route(world, actor_id)
 	extra["state"] = "idle"
-	# Still in a doorway, she tries again in a second rather than settling there.
-	extra["wake"] = tick + (SimClock.RATE if _by_a_doorstep(here, doorsteps)
+	# On a doorstep itself, or on another cow's square, she tries again in a
+	# second rather than settling there.
+	extra["wake"] = tick + (SimClock.RATE if here in doorsteps or others.has(here)
 		else _graze_ticks(world, actor_id, tick))
 
 
-# Open ground she may stand on: the farm's own page, walkable, nothing built or
-# lying on it, no crop in it, clear of every doorway, and not a square another cow
-# already stands on or is walking to — so the herd spreads out instead of piling up.
+# Where to go when no drawn square would do, nearest first, at most
+# `GRAZE_ROUTES` of them. Rings out from where she stands, to `PASTURE_RADIUS`
+# squares away (sixty squares at most, and only on a decision that found nothing
+# else): the nearest square of open grass if there is one; otherwise, so the herd
+# at least spreads out, the nearest bare ground that is off every doorstep itself
+# and clear of the other cows — unless she is standing on such a square already.
+func _nearest_spots(world: SimWorld, here: Vector2i, doorsteps: Array[Vector2i], others: Dictionary) -> Array[Vector2i]:
+	var grass: Array[Vector2i] = []
+	var bare: Array[Vector2i] = []
+	var settled := _spreadable(world, here, doorsteps, others)
+	for d in range(1, PASTURE_RADIUS + 1):
+		for dx in range(-d, d + 1):
+			var dy := d - absi(dx)
+			for cell in ([here + Vector2i(dx, -dy), here + Vector2i(dx, dy)] if dy != 0 else [here + Vector2i(dx, 0)]):
+				if grass.size() < GRAZE_ROUTES and _grazeable(world, cell, doorsteps, others):
+					grass.append(cell)
+				elif not settled and bare.size() < GRAZE_ROUTES and _spreadable(world, cell, doorsteps, others):
+					bare.append(cell)
+		if grass.size() >= GRAZE_ROUTES:
+			break
+	return grass if not grass.is_empty() else bare
+
+
+# Open grass she may stand on: the farm's own page, walkable, nothing built or
+# lying on it, not a bed of soil (tilled, watered or planted), clear of every
+# doorway, and not a square another cow already stands on or is walking to — so
+# the herd spreads out instead of piling up.
 func _grazeable(world: SimWorld, cell: Vector2i, doorsteps: Array[Vector2i], others: Dictionary) -> bool:
+	if not _spreadable(world, cell, doorsteps, others) or _by_a_doorstep(cell, doorsteps):
+		return false
+	return not (String(world.get_tile(cell.x, cell.y).get("state", "")) in SimWorld.WETTABLE_STATES)
+
+
+# The last resort, when there is no grass: any walkable ground on the farm's page
+# with nothing on it and no crop in it, not a doorstep itself, and not another
+# cow's square. Bare soil and the squares beside a door are allowed here.
+func _spreadable(world: SimWorld, cell: Vector2i, doorsteps: Array[Vector2i], others: Dictionary) -> bool:
 	if not world.is_walkable(cell.x, cell.y) or world.space_of(cell) != "farm":
 		return false
 	if world.get_object(cell.x, cell.y) != "" or world.has_crop(cell.x, cell.y):
 		return false
-	if others.has(cell) or _by_a_doorstep(cell, doorsteps):
-		return false
-	return true
+	return not others.has(cell) and not (cell in doorsteps)
 
 
 # On a room's doorstep or a square beside one: where the farmer and the hen step
