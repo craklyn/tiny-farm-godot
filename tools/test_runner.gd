@@ -9978,8 +9978,21 @@ func _scenario_br_a_walled_in_barn_buzzes() -> void:
 # stands on open ground where one square of its block is sown, taps, and the game
 # buzzes, draws the block with that square marked, and changes nothing — the crop
 # is still in the ground. It used to put the barn down over the crop.
+#
+# Then every other building the same way (2026-10-11, Daniel: "Yes please. Also
+# the building for robots"): the coop, the spiral tower, the robot stall and the
+# workbench, each over a crop at a different stage — a seed, a sprout, a ripe one.
 func _scenario_bs_a_barn_over_a_bed_buzzes() -> void:
-	print("\n--- Scenario BS: a barn over a sown square buzzes and marks the crop ---")
+	await _bs_building_over_a_bed_buzzes("industrial_barn", "seeded", "wheat")
+	await _bs_building_over_a_bed_buzzes("coop", "growing", "wheat")
+	await _bs_building_over_a_bed_buzzes("spiral_tower", "ready", "wheat")
+	await _bs_building_over_a_bed_buzzes("stall", "growing", "wheat")
+	await _bs_building_over_a_bed_buzzes("workbench", "seeded", "wheat")
+
+
+func _bs_building_over_a_bed_buzzes(item: String, crop_state: String, crop: String) -> void:
+	var label := MachineDefs.name_of(item)
+	print("\n--- Scenario BS: %s over a %s square buzzes and marks the crop ---" % [label, crop_state])
 	var real_paths := [GameState.save_path, GameState.replay_path, GameState.trace_path]
 	GameState.save_path = "user://barn_bed_autosave.json"
 	GameState.replay_path = "user://barn_bed_replay.json"
@@ -9992,21 +10005,22 @@ func _scenario_bs_a_barn_over_a_bed_buzzes() -> void:
 	var rng_state := SimRng.rng.state
 	var rng_revision := SimRng.stateless_revision
 	_hold_sim_clock()
-	GameState.machines = { "industrial_barn": 1 }
-	GameState.selected_seed_type = "industrial_barn"
+	GameState.machines = { item: 1 }
+	GameState.selected_seed_type = item
 	GameState.set_energy(GameState.max_energy)
 
-	# A spot the barn fits on bare ground, nobody but her on its block.
+	# A spot it fits on bare ground, nobody but her on its block.
+	var size := MachineDefs.footprint_of(item)
 	var spot := Vector2i(-1, -1)
 	for ty in range(4, WorldLayout.PAGE_ROWS - 3):
 		for tx in range(2, SimWorld.MAP_WIDTH - 4):
 			if spot.x >= 0:
 				break
 			var at := Vector2i(tx, ty)
-			if not farm.sim.placeable_at(at, "industrial_barn"):
+			if not farm.sim.placeable_at(at, item):
 				continue
 			var clear := true
-			for c in MachineDefs.footprint_cells("industrial_barn", at):
+			for c in MachineDefs.footprint_cells(item, at):
 				if farm.sim.has_crop(c.x, c.y):
 					clear = false
 				for raw in farm.sim.actors:
@@ -10014,13 +10028,14 @@ func _scenario_bs_a_barn_over_a_bed_buzzes() -> void:
 						clear = false
 			if clear:
 				spot = at
-	_assert(spot.x >= 0, "the farm has open ground for a barn (%s)" % spot)
+	_assert(spot.x >= 0, "the farm has open ground for the %s (%s)" % [label, spot])
 	if spot.x < 0:
 		await _bq_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
 		return
-	# One square of its block sown: the corner furthest from where she stands.
-	var bed := spot + Vector2i(2, -1)
-	_stage_tile(bed.x, bed.y, "seeded", "wheat")
+	# One square of its block holds a crop: the corner furthest from where she
+	# stands (her own square, for a one-square workbench).
+	var bed := spot + Vector2i(size.x - 1, -(size.y - 1))
+	_stage_tile(bed.x, bed.y, crop_state, crop)
 	player.init_position(spot.x, spot.y)
 	farm.sim.set_actor_pos(SimWorld.ACTOR_PLAYER, spot)
 	player.path.clear()
@@ -10029,8 +10044,8 @@ func _scenario_bs_a_barn_over_a_bed_buzzes() -> void:
 	InputManager.has_click = false
 	farm.sync_actors()
 	await get_tree().process_frame
-	_assert(not farm.sim.placeable_at(spot, "industrial_barn"),
-		"with a seed in one square of its block, the barn does not fit at %s" % spot)
+	_assert(not farm.sim.placeable_at(spot, item),
+		"with a crop in one square of its block, the %s does not fit at %s" % [label, spot])
 
 	var world_before := JSON.stringify(SaveGame.capture(farm.sim, GameState))
 	var replay_before: int = farm.replay.entries.size()
@@ -10044,16 +10059,16 @@ func _scenario_bs_a_barn_over_a_bed_buzzes() -> void:
 		"she hears the buzz (%s)" % AudioManager.last_sfx)
 	var shown: Dictionary = farm.footprint_refusal()
 	var marked: Array = Dictionary(shown.get("blocked", {})).keys()
-	_assert(shown.get("anchor", Vector2i(-1, -1)) == spot and Array(shown.get("cells", [])).size() == 6
+	_assert(shown.get("anchor", Vector2i(-1, -1)) == spot and Array(shown.get("cells", [])).size() == size.x * size.y
 			and marked == [bed],
-		"the barn's block is drawn where she tapped with the sown square, and only it, marked (%s)" % str(marked))
+		"the %s's block is drawn where she tapped with the crop's square, and only it, marked (%s)" % [label, str(marked)])
 	var acted := 0
 	for i in range(replay_before, farm.replay.entries.size()):
 		if String(farm.replay.entries[i].get("kind", "")) != "walk":
 			acted += 1
 	_assert(JSON.stringify(SaveGame.capture(farm.sim, GameState)) == world_before and acted == 0
-			and int(GameState.machines.get("industrial_barn", 0)) == 1 and farm.sim.has_crop(bed.x, bed.y),
-		"and nothing changed: no barn, the seed still in the ground, the barn still in her hands")
+			and int(GameState.machines.get(item, 0)) == 1 and farm.sim.has_crop(bed.x, bed.y),
+		"and nothing changed: no %s, the crop still in the ground, the %s still in her hands" % [label, label])
 	await _bq_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
 
 

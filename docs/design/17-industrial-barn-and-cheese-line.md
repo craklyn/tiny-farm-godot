@@ -49,9 +49,8 @@ stood. Now a barn's block must have no crop in it. Bare tilled soil is still all
 building, since nothing is lost under a building but the tilling. A tap over a crop gets the usual
 answer: the buzz, and the block outlined with the crop's square marked red. A save from before
 this change that already has a barn over crops loads as it is: the barn stays, and so do the crops
-under it. The coop and the spiral tower are unchanged and still go down over crops; Daniel did
-exactly that with a tower while playing on 2026-10-09, and found the crops still growing when he
-picked it up, so whether they should follow the barn is his call.
+under it. The same day Daniel extended the rule to every building (the coop, the spiral tower,
+the robot stall and the workbench); see [design/03](03-automation-system.md), "Place".
 
 **A barn fits where its block of ground is free and its cows have somewhere to arrive.** Every
 barn needs this, not only the first, because a barn whose doors open onto nowhere is one no cow

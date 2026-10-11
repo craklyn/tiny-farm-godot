@@ -1317,33 +1317,110 @@ func _test_cow_loaded_inside_the_barn_walks_out() -> void:
 		"and a cow loaded standing on it steps off within a few seconds and never goes back (off at tick %d)" % cow2_out_at)
 
 
-# A barn's block over a crop is refused, by the tap's question and the gateway's
-# alike, with the crop marked; bare tilled soil is still taken. The coop and the
-# tower are not changed: they still go down over a crop, as they always have.
+# No building's block may hold a crop (2026-10-11): the barn first, then, on
+# Daniel's word, the coop, the spiral tower, the robot stall and the workbench. A
+# seed, a sprout and a ripe crop are each refused, by the tap's question and the
+# gateway's alike, that square marked and the crop left in the ground; bare tilled
+# soil still takes a building. A sprinkler and a robot stand among crops, which is
+# what they are for, and are not asked.
 func _test_no_building_over_crops() -> void:
 	var anchor := Vector2i(12, 10)
-	var cells := MachineDefs.footprint_cells("industrial_barn", anchor)
-	var under: Vector2i = cells[cells.size() - 1]
-	var world := _arrival_yard(1725, anchor)
-	world.set_tile_state(under.x, under.y, "seeded", "wheat")
+	var structures: Array[String] = []
+	for raw in MachineDefs.ORDER:
+		var item := String(raw)
+		if MachineDefs.goes_outdoors(item) and not MachineDefs.spawns_actor(item) \
+				and MachineDefs.terrain_of(item) == "":
+			structures.append(item)
+	var named := true
+	for item in ["coop", "spiral_tower", "industrial_barn", "stall", "workbench"]:
+		named = named and item in structures
+	_assert(named, "every building on the shelf is asked, the robot stall included: %s" % str(structures))
+	for item in structures:
+		var size := MachineDefs.footprint_of(item)
+		# The corner of the block furthest from the anchor: the anchor itself for a
+		# one-square workbench.
+		var under := anchor + Vector2i(size.x - 1, -(size.y - 1))
+		for stage in ["seeded", "growing", "ready"]:
+			var world := _arrival_yard(1725, anchor)
+			world.set_tile_state(under.x, under.y, stage, "wheat")
+			GameState.reset()
+			GameState.gold = 2000
+			GameState.harvest_counts["egg"] = 10
+			GameState.machines = { item: 1 }
+			var asked := world.placeable_at(anchor, item)
+			var blockers := world.footprint_blockers(anchor, item)
+			var laid := world.apply_action({ "verb": "place", "target": anchor, "item": item, "actor": "player" }, GameState)
+			_assert(not asked and blockers == [under] and not bool(laid.get("ok", false))
+					and String(laid.get("reason", "")) == "occupied"
+					and world.get_object(anchor.x, anchor.y) == "" and world.has_crop(under.x, under.y)
+					and int(GameState.machines.get(item, 0)) == 1,
+				"%s over a %s square is refused, that square marked, the crop left in the ground (%s, %s)"
+					% [item, stage, str(blockers), str(laid)])
+		var tilled := _arrival_yard(1725, anchor)
+		tilled.set_tile_state(under.x, under.y, "tilled")
+		_assert(tilled.placeable_at(anchor, item) and tilled.footprint_blockers(anchor, item).is_empty(),
+			"%s over bare tilled soil still fits, as it always has" % item)
+	# A farm saved before this change, with a tower already standing over a crop
+	# (Daniel's of 2026-10-09 had one): it loads as it is, tower and crop both.
+	var old := _arrival_yard(1725, anchor)
 	GameState.reset()
-	GameState.gold = 2000
-	GameState.harvest_counts["egg"] = 10
-	GameState.machines = { "industrial_barn": 1 }
-	var asked := world.placeable_at(anchor, "industrial_barn")
-	var blockers := world.footprint_blockers(anchor, "industrial_barn")
-	var laid := world.apply_action({ "verb": "place", "target": anchor, "item": "industrial_barn", "actor": "player" }, GameState)
-	_assert(not asked and blockers == [under] and not bool(laid.get("ok", false))
-			and world.get_object(anchor.x, anchor.y) == "" and world.has_crop(under.x, under.y),
-		"a barn over a sown square is refused, that square marked, the crop left growing (%s, %s)"
-			% [str(blockers), str(laid)])
-	world.set_tile_state(under.x, under.y, "tilled")
-	_assert(world.placeable_at(anchor, "industrial_barn"),
-		"and over bare tilled soil it still fits, as it always has")
-	var coop_world := _arrival_yard(1725, anchor)
-	coop_world.set_tile_state(anchor.x + 1, anchor.y - 1, "seeded", "wheat")
-	_assert(coop_world.placeable_at(anchor, "coop") and coop_world.placeable_at(anchor, "spiral_tower"),
-		"the coop and the tower still fit over a crop, unchanged")
+	GameState.machines = { "spiral_tower": 1 }
+	var put := old.apply_action({ "verb": "place", "target": anchor, "item": "spiral_tower", "actor": "player" }, GameState)
+	var sown := anchor + Vector2i(1, -1)
+	old.set_tile_state(sown.x, sown.y, "growing", "wheat")
+	var loaded := SimWorld.new()
+	var restored := SaveGame.restore(SaveGame.capture(old, GameState), loaded, GameState)
+	_assert(bool(put.get("ok", false)) and restored and loaded.has_crop(sown.x, sown.y)
+			and loaded.get_object(sown.x, sown.y) == old.get_object(sown.x, sown.y)
+			and loaded.get_object(anchor.x, anchor.y) == WorldLayout.SPIRAL_TOWER,
+		"a save with a tower already over a growing crop loads as it is, tower and crop both")
+	for item in ["sprinkler", "bot_mk1", "bot_mk2", "bot_mk3"]:
+		var among := _arrival_yard(1725, anchor)
+		among.set_tile_state(anchor.x, anchor.y, "growing", "wheat")
+		_assert(among.placeable_at(anchor, item),
+			"a %s still goes down on a growing crop: it stands among them and buries nothing" % item)
+
+	# --- the property, with crops in the field: the tap's answer is the gateway's ---
+	# A planted field across the middle of the farm, a seed, a sprout and a ripe
+	# crop in turn, and every square asked for every building. With the crate empty
+	# the gateway's "it would fit here" is `no_machine` and changes nothing.
+	for seed_value in [1725, 20261011]:
+		GameState.reset()
+		SimRng.reseed(seed_value)
+		var field := SimWorld.new(); field.generate()
+		var stages := ["seeded", "growing", "ready"]
+		for y in range(6, 13):
+			for x in range(6, 22):
+				if (x + y) % 3 == 0:
+					field.set_object(x, y, "")
+					field.set_tile_state(x, y, stages[(x * 7 + y) % 3], "wheat")
+		GameState.machines = {}
+		for item in structures:
+			var agreed := true
+			var refused_for_crops := 0
+			var mismatches: Array = []
+			for y in WorldLayout.PAGE_ROWS:
+				for x in SimWorld.MAP_WIDTH:
+					var t := Vector2i(x, y)
+					var said := field.placeable_at(t, item)
+					var answer := field.apply_action(
+						{ "verb": "place", "target": t, "item": item, "actor": "player" }, GameState)
+					if said != (String(answer.get("reason", "")) == "no_machine"):
+						agreed = false
+						mismatches.append([t, said, answer.get("reason", "")])
+					var crop_in_block := false
+					for c in MachineDefs.footprint_cells(item, t):
+						if field.has_crop(c.x, c.y):
+							crop_in_block = true
+							# A crop in the block is always refused, and always marked.
+							if said or not c in field.footprint_blockers(t, item):
+								agreed = false
+								mismatches.append([t, "crop at", c])
+					if crop_in_block:
+						refused_for_crops += 1
+			_assert(agreed and refused_for_crops > 0,
+				"farm %d, %s: the tap offers it exactly where the gateway takes it, never over a crop (%d anchors over crops; %s)"
+					% [seed_value, item, refused_for_crops, str(mismatches.slice(0, 5))])
 
 
 # A new cow arrives on ground she could stand on and graze from, never on a bed:
