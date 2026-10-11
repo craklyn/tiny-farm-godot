@@ -1928,10 +1928,10 @@ func test_coop_interior() -> void:
 	var seen_rects: Array[Rect2i] = []
 	for i in WorldLayout.room_slot_count():
 		var o := WorldLayout.room_slot_origin(i)
-		var rect := Rect2i(o, WorldLayout.ROOM_SLOT)
+		var rect := Rect2i(o, WorldLayout.room_slot_size(i))
 		_assert_quiet(o.x >= 0 and o.y >= 0
-				and o.x + WorldLayout.ROOM_SLOT.x <= SimWorld.MAP_WIDTH
-				and o.y + WorldLayout.ROOM_SLOT.y <= SimWorld.MAP_HEIGHT,
+				and o.x + rect.size.x <= SimWorld.MAP_WIDTH
+				and o.y + rect.size.y <= SimWorld.MAP_HEIGHT,
 			"slot %d runs off the page at %s" % [i, o])
 		for other in seen_rects:
 			_assert_quiet(not rect.grow(1).intersects(other),

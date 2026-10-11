@@ -1343,7 +1343,7 @@ func _barn_world() -> SimWorld:
 		for x in range(10, 14):
 			world.set_tile_state(x, y, "cleared"); world.set_object(x, y, "")
 	var room_id := world.open_room("industrial_barn", Vector2i(10, 10))
-	_assert(room_id != "", "the barn fixture opens its six-by-four room")
+	_assert(room_id != "", "the barn fixture opens its twelve-by-eight room")
 	world.rooms["barn_1"] = world.rooms[room_id]
 	world.rooms.erase(room_id)
 	world.make_barn("barn_1", Vector2i(10, 10))

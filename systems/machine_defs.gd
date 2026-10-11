@@ -165,22 +165,58 @@ static var TYPES: Dictionary = {
 		"configs": [], "default_config": "", "unlock_requirement": { "crop": "egg", "count": 10 },
 		"object": WorldLayout.INDUSTRIAL_BARN, "part": WorldLayout.INDUSTRIAL_BARN_PART,
 		"footprint": Vector2i(3, 2),
-		# The interior kit names the room: supplies are at the north-west, stalls
-		# fill the centre columns, and the cheese line bends down the east edge.
-		# The doorway and route are explicit so a cow never stands on supplies or
-		# machinery after a redraw. The outside doors remain under the middle tile.
-		"room": { "cells": Vector2i(6, 4), "pitch": 2, "edge_walls": true,
-			"exit_offset": Vector2i(1, 1), "door": Vector2i(0, 3),
+		# **The room is 12 by 8 cells** (2026-10-11; it was 6 by 4), the same width as the
+		# farmhouse's at the same pitch of four, which fills the barn's 3x2 footprint
+		# exactly. The kit (`industrial_barn_interior_kit.png`, 192x128, built by
+		# `tools/build_barn_room_art.py`) divides it in two: the cow side to the west
+		# (columns 0 to 6) and the cheese line to the east (columns 7 to 11).
+		#
+		# The cow side is four pens, each three cells wide and two deep, two to a side
+		# of a central aisle (column 3). A cow's picture is 24x20 pixels and stands on
+		# one cell, so the middle cell of a three-cell pen leaves her 12 pixels each
+		# side. A pen opens on the aisle; its feed trough is on the far wall, so a cow
+		# walking in faces it. The stall cell is the middle one, in the pen's lower row.
+		# Stalls are listed deepest first, as before: cows do not block one another, so
+		# one standing in a near pen never shuts another in.
+		#
+		# The cheese line runs down the east edge in the order the milk goes: receiver
+		# (7..8, 0..1), vat (9..11, 0..1), table (9..11, 2..3), presses (9..11, 4..5),
+		# belt (9..11, 6..7) and, at its end by the lobby, the shelf (7..8, 6..7). Every
+		# one of those cells is blocked, and so are the hay (0..1, 5..6), the feed bin
+		# (4..6, 5), the pitchfork (0, 4), the milk cans (0..1, 7) and the bucket (8, 4).
+		# The walkway between machines (7..8, 2..5), the lobby and the aisle are open. The
+		# doorway is at the foot of the aisle, so a cow comes in, walks straight up it and
+		# turns into her pen; the farmer sells cheese from (6, 6), beside the shelf.
+		"room": { "cells": Vector2i(12, 8), "pitch": 4, "edge_walls": true,
+			"exit_offset": Vector2i(1, 1), "door": Vector2i(3, 7),
+			# The room is smaller than the screen at the game's zoom, so the camera rests
+			# on its centre instead of following the farmer (`main.gd`, `_camera_limits_for`).
+			"fixed_view": true,
 			# The shelf itself is fixed machinery at the end of the outfeed. This
 			# is its open-floor interaction cell, where the farmer stands to sell.
-			"cheese_shelf": Vector2i(3, 3),
-			"stalls": [Vector2i(2, 0), Vector2i(3, 0), Vector2i(2, 1), Vector2i(3, 1)],
-			"cow_route": [Vector2i(0, 3), Vector2i(0, 2), Vector2i(0, 1),
-				Vector2i(1, 1), Vector2i(1, 2), Vector2i(2, 2), Vector2i(3, 2),
-				Vector2i(1, 3), Vector2i(2, 3), Vector2i(3, 3)],
-			"blocked_cells": [Vector2i(0, 0), Vector2i(1, 0),
-				Vector2i(4, 0), Vector2i(5, 0), Vector2i(4, 1), Vector2i(5, 1),
-				Vector2i(4, 2), Vector2i(5, 2), Vector2i(4, 3), Vector2i(5, 3)] },
+			"cheese_shelf": Vector2i(6, 6),
+			"stalls": [Vector2i(1, 1), Vector2i(5, 1), Vector2i(1, 3), Vector2i(5, 3)],
+			"cow_route": [Vector2i(3, 7), Vector2i(3, 6), Vector2i(3, 5), Vector2i(3, 4),
+				Vector2i(3, 3), Vector2i(3, 2), Vector2i(3, 1),
+				Vector2i(2, 1), Vector2i(1, 1), Vector2i(4, 1), Vector2i(5, 1),
+				Vector2i(2, 3), Vector2i(1, 3), Vector2i(4, 3), Vector2i(5, 3)],
+			"blocked_cells": [
+				# the cheese line, and the shelf at its end
+				Vector2i(7, 0), Vector2i(8, 0), Vector2i(7, 1), Vector2i(8, 1),
+				Vector2i(9, 0), Vector2i(10, 0), Vector2i(11, 0),
+				Vector2i(9, 1), Vector2i(10, 1), Vector2i(11, 1),
+				Vector2i(9, 2), Vector2i(10, 2), Vector2i(11, 2),
+				Vector2i(9, 3), Vector2i(10, 3), Vector2i(11, 3),
+				Vector2i(9, 4), Vector2i(10, 4), Vector2i(11, 4),
+				Vector2i(9, 5), Vector2i(10, 5), Vector2i(11, 5),
+				Vector2i(9, 6), Vector2i(10, 6), Vector2i(11, 6),
+				Vector2i(9, 7), Vector2i(10, 7), Vector2i(11, 7),
+				Vector2i(7, 6), Vector2i(8, 6), Vector2i(7, 7), Vector2i(8, 7),
+				Vector2i(8, 4),
+				# the cow side's supplies
+				Vector2i(0, 5), Vector2i(1, 5), Vector2i(0, 6), Vector2i(1, 6),
+				Vector2i(4, 5), Vector2i(5, 5), Vector2i(6, 5),
+				Vector2i(0, 4), Vector2i(0, 7), Vector2i(1, 7)] },
 		"icon": { "sheet": "res://assets/sprites/generated/industrial_barn.png", "region": Rect2(0, 0, 48, 32) },
 	},
 	# The first automation the player meets — `design/03`'s "watch your old job
