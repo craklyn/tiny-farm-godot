@@ -9,7 +9,7 @@
 #   grass    the herd on the grass below the barn, from outside
 #   walking  the first moment two cows are walking across the room's floor, clear of
 #            the doorway
-#   stalls   the moment three cows are in their stalls
+#   stalls   the moment two cows are in their stalls
 #
 # With no arguments it captures the shipped art into docs/design/mockups/industrial_barn/
 # as cows_<moment>.png. With `-- --variants=<dir> --out=<dir>` it also swaps in every
@@ -77,6 +77,7 @@ func _ready() -> void:
 			_fail("cow %d not bought: %s" % [i + 2, bought])
 			return
 	farm.sync_actors()
+	_plant_ripe_beside(anchor)
 	_place_player(anchor + Vector2i(1, 3))
 	await _frames(30)
 	shipped_cow = _cow_sprites()[0].sprites
@@ -96,9 +97,10 @@ func _ready() -> void:
 			and main.player.path.is_empty(), 900):
 		_fail("the farmer did not get inside the barn")
 		return
-	# Up by the hay rack, out of the cows' way.
+	# At the cheese shelf, the far end of the cows' route: every open square in
+	# the room is on it, and a farmer at the hay rack stood where they turn in.
 	var origin: Vector2i = room["origin"]
-	_place_player(origin + Vector2i(1, 1))
+	_place_player(origin + Vector2i(3, 3))
 	await _frames(30)
 
 	for id in _cow_ids():
@@ -107,10 +109,12 @@ func _ready() -> void:
 		await _capture("walking")
 	else:
 		print("never two cows walking inside at once; no walking capture")
-	if await _until(func(): return _cows_inside(barn_id, "giving") >= 3, 60 * 90):
+	# Two, not three: since the cows go back out to graze once milked, three are
+	# seldom in their stalls at the same moment.
+	if await _until(func(): return _cows_inside(barn_id, "giving") >= 2, 60 * 90):
 		await _capture("stalls")
 	else:
-		print("never three cows in their stalls at once; no stalls capture")
+		print("never two cows in their stalls at once; no stalls capture")
 	print("captured cow readability -> %s" % out_dir)
 	get_tree().quit(0)
 
@@ -206,6 +210,19 @@ func _free_anchor() -> Vector2i:
 			if free >= 4:
 				return a
 	return Vector2i(-1, -1)
+
+
+# Two squares of ripe wheat on free grass beside the herd, so the grass shot holds a
+# crop at the cows' scale as well as the farmer and the hens.
+func _plant_ripe_beside(anchor: Vector2i) -> void:
+	var planted := 0
+	for d in [Vector2i(4, 2), Vector2i(4, 3), Vector2i(5, 2), Vector2i(5, 3), Vector2i(-2, 3), Vector2i(-1, 3)]:
+		var t: Vector2i = anchor + d
+		if planted >= 2 or not farm.sim.placeable_at(t):
+			continue
+		farm.set_tile_state(t.x, t.y, "ready", "wheat")
+		farm.sim.get_tile(t.x, t.y).growth_stage = CropDefs.TYPES["wheat"]["days_to_grow"]
+		planted += 1
 
 
 func _place_player(t: Vector2i) -> void:

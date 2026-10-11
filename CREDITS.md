@@ -19,7 +19,10 @@ before the first public build ships.*
   2026-10-10 she was redrawn black and white (cream `#f8f4e6` with two dark `#2f2b3d`
   patches) in the same builder, Daniel's pick from three treatments, because her tan
   hide was the creamery's straw floor colour and she vanished inside the barn. No new
-  art was generated.
+  art was generated. On 2026-10-11 she was redrawn by hand at 24×20 pixels a frame in the
+  same builder (Daniel's pick from three sizes; she had been shorter than the hen), with a
+  belly shade from the hen's sheet and pink and horn colours from the farmer's. No new art
+  was generated.
 - **Industrial Barn** (`assets/sprites/generated/industrial_barn.png`,
   `assets/sprites/generated/industrial_barn_interior_kit.png`, 2026-10-08) — the
   red timber exterior began as two Retro Diffusion Plus 192×128 pixel-art

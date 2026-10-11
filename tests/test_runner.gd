@@ -115,6 +115,7 @@ func _init() -> void:
 	presentation.test_world_tint_presentation()
 	presentation.test_crop_presentation()
 	presentation.test_zoo()
+	presentation.test_cow_drawn_bigger_than_her_square()
 	presentation.test_rain_on_ripe_soil()
 	presentation.test_ground_holds_until_black()
 	presentation.test_wetness_soaks_in()

@@ -339,7 +339,49 @@ approved room, and left the soil problem.
 
 To capture again, run `godot --path . --fixed-fps 60 res://tools/capture_cow_readability.tscn`
 (it needs a display). It stages a barn with four cows on a fixed farm, then captures the herd
-on the grass, two cows walking in, and three at their stalls.
+on the grass beside a hen and ripe wheat, two cows walking in, and two at their stalls
+(three are seldom in at once now that milked cows go back out to graze).
+
+### How big a cow is — 2026-10-11
+
+**Too small, now fixed.** On 2026-10-10 Daniel asked why the cows looked too small. They
+were: the cow was drawn 15×10 pixels inside one 16-pixel square, the same box as the rabbit.
+The hen stands 15 pixels tall and the farmer 24, so the cow was shorter than the hen and
+well under half the farmer's height. The room draws at the farm's own scale, so she was just
+as small in her stall, sitting low in a stall about 16×14 pixels clear.
+
+Three sizes were captured in the game at the same moment, with the same cows in the same
+places, on the grass beside the farmer, a hen and ripe wheat, and in the stalls
+([comparison](mockups/industrial_barn/cow_size_options.png)):
+
+- **Fills her square, 16×15:** as tall as the hen and much bulkier, but still well under the
+  farmer. Fits her stall exactly.
+- **Half again a square, 24×19 (picked):** about shoulder height to the farmer and clearly the
+  biggest animal on the farm.
+- **Full size, 32×22, two squares long:** closest to a real cow, but wider than the barn's
+  door. Four cows became a wall, and in the stalls they piled on top of one another. Doing it
+  properly would mean stalls two squares long and cows that take two squares.
+
+Daniel picked **half again a square** on 2026-10-11. What it changes:
+
+- **Only her picture.** She still stands on one square for walking, arriving, grazing and
+  her stall; no footprint, path or save changes. Her 24×20 frames
+  (`tools/build_cow_art.py`) stand on the middle of her square's bottom edge and overhang it
+  4 pixels each side and 4 above, the way the farmer's own 48×48 picture overhangs her
+  square. `entities/grazer.gd` sizes the picture from the sheet, so the rabbit's and the
+  kangaroo's 16-pixel sheets draw exactly as before.
+- **Her look.** A black head with a white blaze and one cream eye, two broad body patches, a
+  pink muzzle and udder, and four legs. Ink and cream are from the brief's palette; the belly
+  shade is the hen's `#e0d9c4` and the pink and horn tips are the farmer's `#ef91b6` and
+  `#f6ddc4`, so every colour is one the game already ships. The builder still refuses the
+  straw colour.
+- **The cost, accepted:** in the stalls, cows side by side overlap by about half a square and
+  cover the post between them
+  ([stalls](mockups/industrial_barn/cows_stalls.png)). If it reads badly in play, the cheap
+  next step is to draw the two stall columns' cows tail to tail.
+- The shop's cow card shows her whole standing frame with a one-pixel rim in the barn's steel
+  grey `#8d8e92`: her ink head, legs and outline are nearly the card's own colour, and without
+  the rim only her white body showed.
 
 ## What remains before implementation
 

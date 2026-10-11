@@ -128,11 +128,26 @@ func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
 	render_queue.append({
 		"y": position.y,
 		"draw": func():
-			# A negative width flips the cell, which is how a right-facing sheet
-			# draws an animal moving left.
-			var dest := Rect2(position.x, position.y, TILE_SIZE, TILE_SIZE)
-			if facing_left:
-				dest = Rect2(position.x + TILE_SIZE, position.y, -TILE_SIZE, TILE_SIZE)
-			canvas.draw_texture_rect_region(
-				sprites, dest, Rect2(hop_frame * 16, 0, 16, 16))
+			var cell := cell_size(sprites)
+			canvas.draw_texture_rect_region(sprites, cell_dest(sprites, position, facing_left),
+				Rect2(hop_frame * cell.x, 0, cell.x, cell.y))
 	})
+
+
+# A sheet is its four frames in one row, so a cell is a quarter of its width and
+# all of its height.
+static func cell_size(sheet: Texture2D) -> Vector2:
+	return Vector2(sheet.get_width() / HOP_FRAMES, sheet.get_height())
+
+
+# Where one frame lands for an animal whose square's corner is `at`. A cell larger
+# than a square (the cow's, design/17 "How big a cow is") stands on the middle of the
+# square's bottom edge and overhangs it sideways and upward, as the farmer's own
+# picture does; a 16px cell lands exactly on the square. A negative width flips the
+# cell, which is how a right-facing sheet draws an animal moving left.
+static func cell_dest(sheet: Texture2D, at: Vector2, flip: bool) -> Rect2:
+	var cell := cell_size(sheet)
+	var corner := Vector2(at.x + (TILE_SIZE - cell.x) / 2.0, at.y + TILE_SIZE - cell.y)
+	if flip:
+		return Rect2(corner.x + cell.x, corner.y, -cell.x, cell.y)
+	return Rect2(corner, cell)
