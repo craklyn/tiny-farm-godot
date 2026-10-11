@@ -31,8 +31,10 @@ tools/deploy_android.sh <IP:PORT>    # after wireless debugging is toggled
 tools/deploy_android.sh pair <IP:PAIRPORT> <6-digit-code>   # once per machine+device
 ```
 
-Builds a **debug** APK, connects over wireless debugging, rescues any session already on
-the device, verifies a played session against the recording build, installs, and launches.
+Builds a **debug** APK, connects over wireless debugging, rescues every farm on the device
+with play that is not already in `playtests/` (a folder per farm, "Which farms get pulled"
+below), verifies each rescued session against the build that recorded it, rescues once more
+just before installing, installs, and launches.
 The checkout must be clean before the deploy starts: a dirty build cannot be recreated
 from the build id recorded in a play session. If the tablet contains a session from a
 different build, the script checks the recording commit out into a throwaway worktree and
@@ -138,10 +140,14 @@ laptop's.
 
 ```bash
 tools/pull_session.sh
+tools/pull_session.sh --slot 3     # one farm, even if it is already on the shelf
 ```
 
-Fetches the trace, replay and autosave into `playtests/<timestamp>/` and prints the
-report. Committed on purpose — a playtest is not repeatable.
+Fetches each played farm's trace, replay and autosave into `playtests/<timestamp>_slot<N>/`
+(`_before-slots` for a tablet on a build from before slots, and `_slot<N>_from-<date>` for
+older play, below) and prints the report.
+Committed on purpose — a playtest is not repeatable. Folders from before 2026-10-10 are
+named by the time alone and do not say which farm they came from.
 
 **Two pulls are not shelved, and both say so on the way out.** The rescue takes whatever
 is on the device, and the device does not forget between deploys — so deploying twice in
@@ -167,10 +173,55 @@ paperwork, not breakage, and red has to mean broken or it stops meaning anything
 suite skips it and prints a note; HQ's Playtests page shows the backlog with a banner.
 Everything `SHELF` *does* claim is still pinned exactly as before.
 
-**Which farm gets pulled.** The three farms are `files/slot1`, `files/slot2` and
-`files/slot3` on the device (S-14); the script pulls whichever has the longest tap trace on
-it, which is the one that was played, and falls back to `files` itself for a tablet still
-running a build from before slots.
+**Which farms get pulled: every farm with play on it that is not already in
+`playtests/`.** The three farms are `files/slot1`, `files/slot2` and `files/slot3` on the
+device (S-14). The tablet reports each trace's size, when it was last written, and its md5;
+a farm whose md5 matches a shelved trace is already safe and is not pulled again. The time
+the game was installed (`dumpsys package`, `lastUpdateTime`, on the tablet's own clock)
+then sorts what is pulled:
+
+- **New play**, written since the install, is this build's. It goes into
+  `<timestamp>_slot<N>`, and the deploy stops with the tablet untouched if it does not
+  replay on the build that recorded it.
+- **Older play**, written before the install and never rescued, goes into
+  `<timestamp>_slot<N>_from-<date written>`, so nobody mistakes it for the latest
+  session. Its build is often gone, so if it cannot be checked the deploy warns loudly
+  and carries on: the play is already safe on the shelf.
+- If the tablet gives no install time, or one later than its own clock, everything is
+  treated as new, the stricter of the two.
+
+**The deploy rescues twice**: before it builds, and again just before `adb install`,
+because the export takes minutes and the tablet may be played meanwhile. The second pass
+costs nothing for farms already shelved. Play in the few seconds after that is written
+before the new install and on no shelf, so the next deploy takes it as older play rather
+than losing it.
+
+**It fails closed.** An adb answer without its fence, a trace the probe saw that then does
+not arrive, or a played farm whose replay or autosave does not arrive stops the pull, and
+the deploy with it, before anything is installed. None of them is ever read as "nobody
+played this farm".
+
+**Trap, and why it is not "the longest trace" any more (2026-10-09).** The script used
+to pull one farm, whichever had the longest tap trace, on the theory that it was the one
+being played. But a trace starts over every time a farm is opened
+(`systems/session_trace.gd`, `flush`), so its length says how much the last sitting was
+played, not when. At the 22:15 deploy on 2026-10-09 Daniel's farm in slot 1 had only a
+few taps since it was last opened. Slot 3 still held an 8-tap trace, 1,245 bytes, from
+2026-09-25 that no rescue had ever taken, and it won. The deploy shelved slot 3's
+September play as `playtests/2026-10-09_221538`, labelled with the September build
+`v0.2.0.1-591-g894089c`, and the install overwrote slot 1's short session. The label was
+correct for what was rescued; the wrong farm was rescued. It was first put down to an old
+install still on the tablet, which was wrong. The next deploy, at 23:26, took slot 1 because
+by then it had the longer trace (`playtests/2026-10-09_232659`, 1,020 taps).
+`tools/test_pull_session.py` replays that night against a stand-in tablet, along with
+the failure cases above.
+
+**A farm put back by hand verifies like any other.** `tools/push_session.sh` (below) stops
+the game before it writes, and opening a farm restarts its recording from the save it
+loads (`main.gd`, `start_replay_log_from_save`). So after a hand-edited save is pushed,
+such as the egg count raised on slot 1 on 2026-10-10, the next sitting records from the
+edited save and replays to its autosave. Until that farm is played again its trace is the
+pushed one, which matches the shelved session it came from, so nothing new is pulled.
 
 **Trap:** Godot's `user://` on Android is the app's **internal** storage, reached with
 `run-as`, *not* `/sdcard/Android/data/<pkg>/files`. That external path exists and is
@@ -178,12 +229,12 @@ readable, which is what makes the mistake quiet: it is simply always empty. The 
 version of this script pointed there and would have silently returned nothing from the
 playtest it was written for.
 
-**Trap:** the probe that picks the slot asks the device for a file size, and the answer
-has to be fenced. It used to strip everything that was not a digit from whatever the
+**Trap:** the probe that picks the farms asks the device for a file size and time, and
+the answer has to be fenced. It used to strip everything that was not a digit from whatever the
 remote shell said — which harvested the `1` out of the word `slot1` in an error message
 about a directory that did not exist. On 2026-09-16 a tablet with no slots at all
-reported slots 1, 2 and 3 as one, two and three bytes. The device now answers `SIZE:<n>`
-and nothing else is counted.
+reported slots 1, 2 and 3 as one, two and three bytes. The device now answers
+`TRACE:<bytes>:<time>` and nothing else is counted.
 
 ### Putting a farm back on the tablet
 
