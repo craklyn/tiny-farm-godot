@@ -198,6 +198,7 @@ func _run_scenarios() -> void:
 	await _scenario_bn_the_barn_is_entered_and_drawn_from_its_saved_state()
 	await _scenario_bp_one_touch_is_one_tap()
 	await _scenario_bq_a_tower_that_will_not_fit_buzzes()
+	await _scenario_br_a_walled_in_barn_buzzes()
 
 
 func _scenario_ba_crow_spook_stops_at_room_wall() -> void:
@@ -9785,6 +9786,191 @@ func _scenario_bq_a_tower_that_will_not_fit_buzzes() -> void:
 	await _bq_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
 
 
+# Found staging the creamery video, 2026-10-10: a barn tapped where its cow had no
+# ground to come out onto was offered as a placement, then refused by the gateway
+# out of sight. Driven by finger on the real main scene: she holds a barn on a spot
+# fenced in to its doorstep, taps it, and the game buzzes, draws the barn's block
+# with the fence that walls it in marked red, and changes nothing. With one post
+# taken out beside the doorstep, the same tap puts the barn down and its cow comes
+# out onto that square.
+func _scenario_br_a_walled_in_barn_buzzes() -> void:
+	print("\n--- Scenario BR: a barn walled in by a fence buzzes and shows what walls it in ---")
+	var real_paths := [GameState.save_path, GameState.replay_path, GameState.trace_path]
+	GameState.save_path = "user://barn_fit_autosave.json"
+	GameState.replay_path = "user://barn_fit_replay.json"
+	GameState.trace_path = "user://barn_fit_trace.jsonl"
+	main_scene.menus.close_menu()
+	main_scene.end_teaching()
+	await get_tree().process_frame
+	var before := SaveGame.capture(farm.sim, GameState)
+	var rng_seed := SimRng.current_seed()
+	var rng_state := SimRng.rng.state
+	var rng_revision := SimRng.stateless_revision
+	_hold_sim_clock()
+	GameState.machines = { "industrial_barn": 1 }
+	GameState.selected_seed_type = "industrial_barn"
+	GameState.set_energy(GameState.max_energy)
+
+	# A spot the barn fits, with ordinary empty ground all round its block and
+	# doorstep for the fence to go on, and nobody but her anywhere on it.
+	var spot := Vector2i(-1, -1)
+	var pen: Array[Vector2i] = []
+	for ty in range(5, WorldLayout.PAGE_ROWS - 3):
+		for tx in range(3, SimWorld.MAP_WIDTH - 5):
+			if spot.x >= 0:
+				break
+			var at := Vector2i(tx, ty)
+			if not farm.sim.placeable_at(at, "industrial_barn"):
+				continue
+			var ring := _br_pen(at)
+			var open := true
+			for c in ring + MachineDefs.footprint_cells("industrial_barn", at) + [at + Vector2i(1, 1)]:
+				if farm.get_object(c.x, c.y) != "" or not farm.sim.is_walkable(c.x, c.y) \
+						or farm.sim.space_of(c) != "farm":
+					open = false
+				for raw in farm.sim.actors:
+					if String(raw) != SimWorld.ACTOR_PLAYER and c in Movement.occupied_tiles(farm.sim, String(raw)):
+						open = false
+			if open:
+				spot = at
+				pen = ring
+	_assert(spot.x >= 0, "the farm has open ground to fence a barn in on (%s)" % spot)
+	if spot.x < 0:
+		await _bq_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
+		return
+	for c in pen:
+		_stage_tile(c.x, c.y, WorldLayout.FENCE_BUILT)
+	# She stands on the spot itself, inside the fence with it.
+	player.init_position(spot.x, spot.y)
+	farm.sim.set_actor_pos(SimWorld.ACTOR_PLAYER, spot)
+	player.path.clear()
+	player.pending_action = {}
+	player.tap_indicator = {}
+	InputManager.has_click = false
+	farm.sync_actors()
+	await get_tree().process_frame
+	_assert(not farm.sim.placeable_at(spot, "industrial_barn"),
+		"fenced in to its doorstep, the barn does not fit at %s" % spot)
+
+	var world_before := JSON.stringify(SaveGame.capture(farm.sim, GameState))
+	var replay_before: int = farm.replay.entries.size()
+	var sounds_before: int = AudioManager.sfx_count
+	var trace_before: int = farm.trace.entries.size()
+	var answer := await _finger_tap(spot)
+	for i in 3:
+		await get_tree().process_frame
+	var gateway_why := ""
+	for i in range(trace_before, farm.trace.entries.size()):
+		var e: Dictionary = farm.trace.entries[i]
+		if String(e.get("kind", "")) == "act" and String(e.get("verb", "")) == "place":
+			gateway_why = String(e.get("why", ""))
+	_assert(String(answer.get("verb", "")) == "place" and String(answer.get("out", "")) == "refused"
+			and gateway_why == "no_cow_arrival_space",
+		"the tap goes to the gateway as a placing, which refuses it because a cow would have nowhere to come out (%s, %s)"
+			% [str(answer), gateway_why])
+	_assert(AudioManager.sfx_count > sounds_before and AudioManager.last_sfx == "nope",
+		"she hears the buzz (%s)" % AudioManager.last_sfx)
+	var shown: Dictionary = farm.footprint_refusal()
+	var block := MachineDefs.footprint_cells("industrial_barn", spot)
+	var shown_cells: Array = shown.get("cells", [])
+	var same_block := shown_cells.size() == block.size()
+	for cell in block:
+		if not cell in shown_cells:
+			same_block = false
+	_assert(shown.get("anchor", Vector2i(-1, -1)) == spot and same_block,
+		"the barn's whole three-by-two block is drawn at the spot she tapped (%s)" % str(shown_cells))
+	var marked: Array = Dictionary(shown.get("blocked", {})).keys()
+	var around: Array = shown.get("around", [])
+	var marks_the_fence := marked.size() == pen.size() and around.size() == pen.size()
+	for c in pen:
+		if not c in marked or not c in around:
+			marks_the_fence = false
+	_assert(marks_the_fence,
+		"with the fence around it marked as what is in the way, and none of its own free squares (%s)" % str(marked))
+	var acted := 0
+	for i in range(replay_before, farm.replay.entries.size()):
+		if String(farm.replay.entries[i].get("kind", "")) != "walk":
+			acted += 1
+	_assert(JSON.stringify(SaveGame.capture(farm.sim, GameState)) == world_before and acted == 0
+			and int(GameState.machines.get("industrial_barn", 0)) == 1,
+		"and nothing changed: no barn, no cow, no action in the replay, the barn still in her hands")
+	var faded := await _wait_until_wall_ms(func(): return farm.footprint_refusal().is_empty(),
+		int(farm.FOOTPRINT_REFUSE_MS) + 2000)
+	_assert(faded, "the marks fade after a moment")
+
+	# One post out beside the doorstep, and there is somewhere for her cow.
+	var gap := spot + Vector2i(2, 1)
+	_stage_tile(gap.x, gap.y, "cleared")
+	_assert(farm.sim.barn_cow_arrival_cell(spot) == gap,
+		"with one post gone beside the doorstep, that square is where a cow would come out (%s)"
+			% farm.sim.barn_cow_arrival_cell(spot))
+	var cows_before: int = farm.sim.cow_count()
+	var placed_answer := await _finger_tap(spot)
+	var stood := await _wait_until(
+		func(): return farm.get_object(spot.x, spot.y) == WorldLayout.INDUSTRIAL_BARN, 300)
+	# The barn brings a cow only when the farm has none (an earlier scenario may
+	# have left her one); when it does, she is on that square.
+	var bundled := cows_before == 0
+	var cow_at: Vector2i = farm.sim.actor_pos("cow_1") if bundled else gap
+	_assert(stood and int(GameState.machines.get("industrial_barn", 0)) == 0
+			and farm.sim.cow_count() == cows_before + (1 if bundled else 0) and cow_at == gap,
+		"and the same tap puts the barn down%s (%s)"
+			% [", its cow on that square" if bundled else "", str(placed_answer)])
+	_assert(farm.footprint_refusal().is_empty(), "and no refusal is shown for it")
+
+	# --- the shop's cow card: four cows for each barn, not four in all ------------
+	# Found reviewing this fix, 2026-10-10: the card went dark at four cows however
+	# many barns she had, while the gateway sells four for each.
+	if stood:
+		var menus = main_scene.menus
+		while farm.sim.cow_count() < SimWorld.HERD_LIMIT:
+			farm.sim.spawn_actor(farm.sim.next_cow_id(), SpeciesDefs.COW, gap)
+		var second := Vector2i(-1, -1)
+		if farm.sim.barns.size() < 2:
+			for ty in range(3, WorldLayout.PAGE_ROWS - 2):
+				for tx in range(1, SimWorld.MAP_WIDTH - 3):
+					if second.x < 0 and farm.sim.placeable_at(Vector2i(tx, ty), "industrial_barn"):
+						second = Vector2i(tx, ty)
+			GameState.machines = { "industrial_barn": 1 }
+			var second_laid: Dictionary = farm.apply_action({ "verb": "place", "target": second,
+				"item": "industrial_barn", "actor": "player" }, GameState)
+			_assert(second_laid.get("ok", false), "a second barn goes down at %s (%s)" % [second, second_laid])
+		GameState.gold = SimWorld.COW_PRICE
+		var cows_on_two: int = farm.sim.cow_count()
+		menus._build_shop_items()
+		var card := {}
+		for item in menus.shop_items:
+			if String(item.get("kind", "")) == "cow":
+				card = item
+		_assert(farm.sim.barns.size() == 2 and cows_on_two >= SimWorld.HERD_LIMIT
+				and cows_on_two < SimWorld.HERD_LIMIT * 2 and bool(card.get("affordable", false)),
+			"with two barns and %d cows, the shop's cow card is lit for another (%s)" % [cows_on_two, str(card)])
+		while farm.sim.cow_count() < SimWorld.HERD_LIMIT * 2:
+			farm.sim.spawn_actor(farm.sim.next_cow_id(), SpeciesDefs.COW, gap)
+		menus._build_shop_items()
+		for item in menus.shop_items:
+			if String(item.get("kind", "")) == "cow":
+				card = item
+		_assert(not bool(card.get("affordable", true)),
+			"and with eight, it goes dark: four for each barn (%s)" % str(card))
+
+	_release_sim_clock()
+	await _bq_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
+
+
+# The squares around a barn's block and its doorstep: the fence that walls it in.
+func _br_pen(anchor: Vector2i) -> Array[Vector2i]:
+	var inside: Array[Vector2i] = MachineDefs.footprint_cells("industrial_barn", anchor)
+	inside.append(anchor + Vector2i(1, 1))
+	var out: Array[Vector2i] = []
+	for c in inside:
+		for step in [Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, -1)]:
+			var n: Vector2i = c + step
+			if not n in inside and not n in out:
+				out.append(n)
+	return out
+
+
 func _bq_put_farm_back(before: Dictionary, rng_seed: int, rng_state: int, rng_revision: int,
 		real_paths: Array) -> void:
 	_release_sim_clock()
@@ -9869,12 +10055,12 @@ func _bo_free_barn_spot() -> Vector2i:
 			if near:
 				_bo_refuse_spot("beside her")
 				continue
-			# Everything the barn and its cow need: the block, the square beside it,
-			# and every square the cow may arrive on.
+			# Everything the barn needs: the block, the square beside it and its
+			# doorstep. Its cow arrives on the nearest free ground beyond the doors
+			# (`SimWorld.barn_cow_arrival_cell`), which `placeable_at` asks below.
 			var needed: Array[Vector2i] = MachineDefs.footprint_cells("industrial_barn", at)
 			needed.append(at + Vector2i(-1, 0))
-			for offset in [Vector2i(0, 2), Vector2i(1, 2), Vector2i(-1, 2), Vector2i(2, 2), Vector2i(-2, 2)]:
-				needed.append(at + offset)
+			needed.append(at + Vector2i(1, 1))
 			var moved := _bo_move_off(needed)
 			if moved.has("cannot"):
 				_bo_refuse_spot(String(moved["cannot"]))
@@ -9883,8 +10069,6 @@ func _bo_free_barn_spot() -> Vector2i:
 			var why := ""
 			if not farm.sim.placeable_at(at, "industrial_barn"):
 				why = "barn not placeable: %s" % _placement_blocker(at, "industrial_barn").get_slice(" at ", 0)
-			elif farm.sim.barn_cow_arrival_cell(at).x < 0:
-				why = "no square for the cow"
 			elif not farm.sim.placeable_at(at + Vector2i(-1, 0)):
 				why = "no square beside it"
 			if why == "":

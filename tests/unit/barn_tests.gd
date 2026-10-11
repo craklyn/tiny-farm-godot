@@ -422,9 +422,9 @@ func test_barn_acquisition() -> void:
 		and laid.get("ok", false) and cow_id == "cow_1" and world.has_actor(cow_id)
 		and world.species_of(cow_id) == SpeciesDefs.COW,
 		"buying the unlocked 500-gold barn and placing it supplies its first cow (%s)" % laid)
-	_assert(world.actor_pos(cow_id) == spot + Vector2i(0, 2)
+	_assert(world.actor_pos(cow_id) == spot + Vector2i(1, 2)
 		and world.is_walkable(spot.x, spot.y) and world.is_walkable(spot.x + 1, spot.y - 1),
-		"the cow arrives outside the open livestock doors, and her route through the barn is walkable")
+		"the cow arrives on the square straight out of the open livestock doors, and her route through the barn is walkable")
 	var live := SaveGame.capture_canonical(world, GameState)
 	var replayed := SimWorld.new()
 	var replay_state = load("res://systems/game_state.gd").new()
@@ -504,6 +504,170 @@ func test_barn_acquisition() -> void:
 		and GameState.gold == gold_at_two_barns and world.cow_count() == SimWorld.HERD_LIMIT * 2,
 		"two placed barns admit eight cows and refuse the ninth purchase without spending or spawning (%s)"
 			% two_barns_full)
+
+
+# **A cow arrives on the nearest free ground beyond the barn's doors** (2026-10-10,
+# found staging the creamery video on the day-62 playtest farm): a barn whose row
+# below was half fenced took two cows, and a barn tapped at the bottom of the farm
+# was offered as a placement and then refused without a word. Now the cows find
+# free ground by walking out of the doors, and the tap and the gateway ask one
+# question about where a barn fits.
+func test_barn_cow_arrival() -> void:
+	print("\n--- Industrial barn: cows arrive on free ground beyond the doors ---")
+	var anchor := Vector2i(12, 10)
+	var door := anchor + Vector2i(1, 1)
+	var block := MachineDefs.footprint_cells("industrial_barn", anchor)
+
+	# --- the row below the barn mostly fenced: still four cows ---------------------
+	var world := _arrival_yard(1711, anchor)
+	# Four of the five squares the cows used to arrive on, two rows below the anchor.
+	for dx in range(-1, 3):
+		world.set_tile_state(anchor.x + dx, anchor.y + 2, WorldLayout.FENCE_BUILT)
+	GameState.gold = 500 + SimWorld.COW_PRICE * (SimWorld.HERD_LIMIT - 1)
+	GameState.harvest_counts["egg"] = 10
+	var rlog := ReplayLog.new(); rlog.start_from_save(SaveGame.capture(world, GameState), world.gen_seed)
+	_replay_do(world, rlog, { "verb": "buy_machine", "item": "industrial_barn", "actor": "player" })
+	var laid := _replay_do(world, rlog,
+		{ "verb": "place", "target": anchor, "item": "industrial_barn", "actor": "player" })
+	_assert(laid.get("ok", false) and world.actor_pos("cow_1") == anchor + Vector2i(2, 1),
+		"with the square below the doors fenced, the first cow arrives beside the doorstep (%s, %s)"
+			% [laid, world.actor_pos("cow_1")])
+	var bought_all := true
+	for i in SimWorld.HERD_LIMIT - 1:
+		bought_all = bought_all and bool(_replay_do(world, rlog, {"verb": "buy_cow", "actor": "player"}).get("ok", false))
+	var squares := {}
+	var all_fine := true
+	for i in range(1, SimWorld.HERD_LIMIT + 1):
+		var at := world.actor_pos("cow_%d" % i)
+		squares[at] = true
+		all_fine = all_fine and world.space_of(at) == "farm" and world.is_walkable(at.x, at.y) \
+			and not at in block and at != door \
+			and not Movement.path(world, SpeciesDefs.GROUND, at, door).is_empty()
+	_assert(bought_all and world.cow_count() == SimWorld.HERD_LIMIT and squares.size() == SimWorld.HERD_LIMIT
+			and all_fine,
+		"the barn still takes four cows, each on her own square of ground she can walk to the doors from (%s)"
+			% str(squares.keys()))
+	var herd_live := SaveGame.capture_canonical(world, GameState)
+	var replayed := SimWorld.new()
+	var replay_state = load("res://systems/game_state.gd").new()
+	_assert(rlog.apply_to(replayed, replay_state) and rlog.divergence == ""
+			and SaveGame.capture_canonical(replayed, replay_state) == herd_live,
+		"and the replay puts every cow on the same square (%s)" % rlog.divergence)
+	replay_state.free()
+
+	# --- a barn walled in: the tap and the gateway both refuse, and say what walls it in
+	GameState.reset()
+	world = _arrival_yard(1712, anchor)
+	var pen := {}
+	for c in block + [door]:
+		for step in [Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, -1)]:
+			var n: Vector2i = c + step
+			if not n in block and n != door:
+				pen[n] = true
+	for c in pen:
+		world.set_tile_state(c.x, c.y, WorldLayout.FENCE_BUILT)
+	GameState.gold = 500
+	GameState.harvest_counts["egg"] = 10
+	world.apply_action({ "verb": "buy_machine", "item": "industrial_barn", "actor": "player" }, GameState)
+	var before := SaveGame.capture_canonical(world, GameState)
+	var refused := world.apply_action(
+		{ "verb": "place", "target": anchor, "item": "industrial_barn", "actor": "player" }, GameState)
+	_assert(not world.placeable_at(anchor, "industrial_barn") and not refused.get("ok", true)
+			and String(refused.get("reason", "")) == "no_cow_arrival_space"
+			and SaveGame.capture_canonical(world, GameState) == before,
+		"a barn fenced in to its doorstep is refused by the tap's question and the gateway alike, and nothing changes (%s)"
+			% refused)
+	var walls := world.footprint_blockers(anchor, "industrial_barn")
+	var walls_are_the_fence := walls.size() == pen.size()
+	for c in walls:
+		walls_are_the_fence = walls_are_the_fence and pen.has(c)
+	_assert(walls_are_the_fence,
+		"what the refusal marks is the fence around it, not the barn's own free squares (%s)" % str(walls))
+	# One post taken out beside the doorstep, and there is room for her.
+	var gap := anchor + Vector2i(2, 1)
+	world.set_tile_state(gap.x, gap.y, "cleared")
+	var placed := world.apply_action(
+		{ "verb": "place", "target": anchor, "item": "industrial_barn", "actor": "player" }, GameState)
+	_assert(placed.get("ok", false) and world.actor_pos("cow_1") == gap,
+		"with one post gone, the barn goes down and its cow comes out onto that square (%s)" % placed)
+
+	# --- at the bottom of the farm: allowed by both, the cow beside the doors ------
+	for row in [WorldLayout.PAGE_ROWS - 3, WorldLayout.PAGE_ROWS - 2]:
+		GameState.reset()
+		var low := Vector2i(5, row)
+		world = _arrival_yard(1713, low)
+		GameState.gold = 500
+		GameState.harvest_counts["egg"] = 10
+		world.apply_action({ "verb": "buy_machine", "item": "industrial_barn", "actor": "player" }, GameState)
+		var asked := world.placeable_at(low, "industrial_barn")
+		var low_laid := world.apply_action(
+			{ "verb": "place", "target": low, "item": "industrial_barn", "actor": "player" }, GameState)
+		var cow_at := world.actor_pos("cow_1")
+		_assert(asked and low_laid.get("ok", false) and world.space_of(cow_at) == "farm"
+				and world.is_walkable(cow_at.x, cow_at.y)
+				and not Movement.path(world, SpeciesDefs.GROUND, cow_at,
+					world.room_exit_for(world.rooms[String(world.barns.keys()[0])])).is_empty(),
+			"a barn anchored at %s, with no ground two rows below it, is offered and placed, its cow at %s (%s)"
+				% [low, cow_at, low_laid])
+
+	# --- the property: the tap's answer is the gateway's, everywhere ---------------
+	# With the crate empty, the gateway asks where the barn fits before it asks
+	# whether she has one, so `no_machine` is its "it would fit here" and changes
+	# nothing — every square of the farm can be asked on one world.
+	for seed_value in [1707, 20261010, 4242]:
+		GameState.reset()
+		SimRng.reseed(seed_value)
+		var farm_world := SimWorld.new(); farm_world.generate()
+		# A fenced pen exactly a barn's size, so one anchor at least is walled in.
+		for x in range(8, 13):
+			for y in range(5, 9):
+				var edge := x == 8 or x == 12 or y == 5 or y == 8
+				farm_world.set_tile_state(x, y, WorldLayout.FENCE_BUILT if edge else "cleared")
+				farm_world.set_object(x, y, "")
+		for with_cow in [false, true]:
+			if with_cow:
+				farm_world.spawn_actor("cow_1", SpeciesDefs.COW, Vector2i(20, 3))
+			GameState.machines = {}
+			var agreed := true
+			var fits := 0
+			var walled := 0
+			var mismatches: Array = []
+			for y in WorldLayout.PAGE_ROWS:
+				for x in SimWorld.MAP_WIDTH:
+					var t := Vector2i(x, y)
+					var said := farm_world.placeable_at(t, "industrial_barn")
+					var answer := farm_world.apply_action(
+						{ "verb": "place", "target": t, "item": "industrial_barn", "actor": "player" }, GameState)
+					var why := String(answer.get("reason", ""))
+					if said != (why == "no_machine"):
+						agreed = false
+						mismatches.append([t, said, why])
+					if said: fits += 1
+					if why == "no_cow_arrival_space": walled += 1
+			_assert(agreed and fits > 0 and walled > 0,
+				"farm %d%s: the tap offers a barn exactly where the gateway takes one (%d fit, %d walled in; %s)"
+					% [seed_value, " with a cow" if with_cow else "", fits, walled, str(mismatches.slice(0, 5))])
+
+
+# A generated farm with cleared, empty ground around a barn anchored at `anchor`
+# and nobody standing on it: three rows above, five below, four columns each side,
+# kept off the farm's border.
+func _arrival_yard(seed_value: int, anchor: Vector2i) -> SimWorld:
+	SimRng.reseed(seed_value)
+	var world := SimWorld.new(); world.generate()
+	for y in range(anchor.y - 3, anchor.y + 6):
+		for x in range(anchor.x - 4, anchor.x + 7):
+			if x < 1 or x > SimWorld.MAP_WIDTH - 2 or y < 1 or y > WorldLayout.PAGE_ROWS - 2:
+				continue
+			world.set_tile_state(x, y, "cleared"); world.set_object(x, y, "")
+	var away := Vector2i(anchor.x + 12 if anchor.x < 16 else anchor.x - 12, 3)
+	for raw in world.actors.keys():
+		var id := String(raw)
+		for c in Movement.occupied_tiles(world, id):
+			if absi(c.x - anchor.x - 1) <= 5 and absi(c.y - anchor.y) <= 6:
+				world.set_actor_pos(id, away)
+				break
+	return world
 
 
 # A small cleared yard with one barn and its real six-by-four interior.

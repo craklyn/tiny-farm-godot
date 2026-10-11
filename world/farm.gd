@@ -1272,20 +1272,31 @@ func show_footprint_refusal(anchor: Vector2i, item: String) -> void:
 	var blocked := {}
 	for cell in sim.footprint_blockers(anchor, item):
 		blocked[cell] = true
+	var block := MachineDefs.footprint_cells(item, anchor)
 	var cells: Array[Vector2i] = []
-	for cell in MachineDefs.footprint_cells(item, anchor):
+	for cell in block:
 		# Off the edge of the map there is nothing to draw on; the squares that
 		# are there still show the block's size and what stops it.
 		if cell.x >= 0 and cell.x < MAP_WIDTH and cell.y >= 0 and cell.y < MAP_HEIGHT:
 			cells.append(cell)
+	# ...and a barn whose block is all free ground but whose doors open onto
+	# nowhere a cow could arrive (2026-10-10) is stopped by squares *around* it:
+	# the fence, the rocks, the edge of the farm that wall it in. Drawn red on
+	# their own, outside the block's outline, so the block still reads as free.
+	var around: Array[Vector2i] = []
+	for raw in blocked:
+		var cell: Vector2i = raw
+		if not cell in block and cell.x >= 0 and cell.x < MAP_WIDTH and cell.y >= 0 and cell.y < MAP_HEIGHT:
+			around.append(cell)
 	_footprint_refusal = { "t": Time.get_ticks_msec(), "item": item, "anchor": anchor,
-		"cells": cells, "blocked": blocked }
+		"cells": cells, "blocked": blocked, "around": around }
 	set_process(true)
 	queue_redraw()
 
 
 ## The block a refused placement is showing right now, or {} — for tests and
-## captures: `item`, `anchor`, `cells` (on the map) and `blocked` (a set).
+## captures: `item`, `anchor`, `cells` (on the map), `blocked` (a set) and
+## `around` (blocked squares outside the block: what walls a barn in).
 func footprint_refusal() -> Dictionary:
 	return _footprint_refusal
 
@@ -1331,6 +1342,13 @@ func _queue_footprint_refusal(render_queue: Array[Dictionary], canvas: CanvasIte
 			edges.append([r.position, r.position + Vector2(0, TILE_SIZE)])
 		if not inside.has(cell + Vector2i(1, 0)):
 			edges.append([r.position + Vector2(TILE_SIZE, 0), r.end])
+	# The squares walling a barn in: red, with only their own red edge, so they
+	# read as what is in the way and not as part of the building.
+	for raw in _footprint_refusal.get("around", []):
+		var cell: Vector2i = raw
+		if cell.y < y0 or cell.y >= y1:
+			continue
+		fills.append([Rect2(cell.x * TILE_SIZE + dx, cell.y * TILE_SIZE, TILE_SIZE, TILE_SIZE), true])
 	if fills.is_empty():
 		return
 	render_queue.append({

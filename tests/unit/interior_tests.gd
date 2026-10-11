@@ -1805,7 +1805,9 @@ func test_building_that_will_not_fit() -> void:
 		"a tower whose block runs off the top of the map names the squares past the edge")
 
 	# Every building on the shelf, read from its own row: the blockers are empty
-	# exactly when it fits, and are always squares of its own block.
+	# exactly when it fits, and are always squares of its own block — except for a
+	# barn whose block fits and whose doors open onto no ground for a cow, which
+	# names the squares walling it in (2026-10-10, `barn_tests.gd`).
 	for raw in MachineDefs.ORDER:
 		var item := String(raw)
 		if MachineDefs.terrain_of(item) != "":
@@ -1818,8 +1820,9 @@ func test_building_that_will_not_fit() -> void:
 				var cells := MachineDefs.footprint_cells(item, t)
 				if b.is_empty() != world.placeable_at(t, item):
 					agreed = false
+				var walled_barn := item == SimWorld.BARN_ITEM and world._block_fits(t, item)
 				for c in b:
-					if not c in cells:
+					if not c in cells and not walled_barn:
 						agreed = false
 		_assert(agreed, "%s: blockers are empty exactly where it fits, and lie in its own %s block"
 			% [item, str(MachineDefs.footprint_of(item))])

@@ -98,7 +98,8 @@ godot --path . res://tools/capture_starter_brain.tscn
 godot --path . res://tools/capture_assign_tiles.tscn
 
 # A building that will not fit where she taps: the buzz and the outline of its block, for
-# the tower (staged weeds and a sprinkler, then the field's own weeds) and the coop, as PNGs
+# the tower (staged weeds and a sprinkler, then the field's own weeds), the coop, and a barn
+# fenced in to its doorstep (the fence marked, then placed with one post out), as PNGs
 # under docs/design/mockups/footprint_refusal/ — needs a display
 godot --path . res://tools/capture_footprint_refusal.tscn
 
