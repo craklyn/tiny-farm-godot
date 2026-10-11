@@ -65,3 +65,10 @@ re-recorded once it is on main.
 All five shots re-recorded on main at a75b0c69 or later, after the black-and-white cow (PR 11, Daniel's pick)
 made cows readable on the straw. Same staged farms and the same scripted moments; the outside shots start
 before any cow has given milk, so the doorstep stacking does not appear in them.
+
+## Shots v3 (contact sheet sent 2026-10-11)
+
+Re-staged and re-recorded on main at 742196cf or later: the bigger cow (PR 15, 24×20 pixels, Daniel's pick),
+cows grazing after milking (PR 12), and every barn taking four cows (PR 13). The barn is at the same spot.
+Cows now wander the grass, some onto the field beside the barn, so in `stalls` they reach their stalls later:
+cows come in at about 14–26 s, and the line runs every machine from about 25 s to 70 s.
