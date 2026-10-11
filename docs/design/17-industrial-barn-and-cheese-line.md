@@ -20,6 +20,36 @@ Four voluntary milk stalls sit along one long wall. The opposite side holds a sm
 
 The barn is a place cows choose to use, not a place that confines them. Each cow may remain outside, walk through the large doors, visit an empty stall when ready to give milk, and leave again. No picture, animation, or game rule shows a cow being forced, distressed, restrained, or treated as a machine.
 
+## Where the barn goes, and where its cows arrive
+
+Every cow arrives on the farm just outside the barn's livestock doors: the first cow comes with
+the barn when it is put down, and each cow bought afterwards walks out of the doors of a barn
+already standing. She arrives on the nearest free square of outdoor ground that she could walk
+to from the doors. "Nearest" is counted in steps from the doorstep: straight out of the doors
+first, then the squares beside the doorstep, then further out. When two squares are the same
+distance away, the order is fixed (south, east, west, north), so a saved game and its replay
+always put a cow on the same square. A square is free if it is walkable farm ground and no
+other animal or machine is standing on it. She never arrives on the barn's own floor or on the
+doorstep itself, so the way in stays clear.
+
+This replaced a first version (changed 2026-10-10) in which each cow arrived on one of five
+fixed squares two rows below the barn. A barn whose row below was partly fenced could take only
+as many cows as that row had free squares, though Daniel's ruling is four cows for each barn
+([Q-139](../DESIGNER_QUEUE.md)). A barn near the bottom edge of the farm was worse: the tap
+offered to put it down, and the game then refused without any sign, because the first cow's
+square was off the farm.
+
+**A barn fits where its block of ground is free and its cows have somewhere to arrive.** Every
+barn needs this, not only the first, because a barn whose doors open onto nowhere is one no cow
+could ever walk into. In practice the second condition fails only when the barn is walled in,
+for example fenced in right up to its doorstep. The tap and the game ask the same question, so a
+tap never offers a barn placement that the game then refuses. When a barn tap does not fit, the
+player gets the same answer as for any building that does not fit: the buzz, and the barn's
+block outlined where she tapped. If the block itself is free and the barn is walled in, the
+squares around it that wall it in are marked red instead, so she can see which fence posts to
+move. Captures: `docs/design/mockups/footprint_refusal/barn_*.png`, made by
+`godot --path . res://tools/capture_footprint_refusal.tscn`.
+
 ## The cow milk cycle
 
 Each cow has a hidden milk amount measured in units.

@@ -912,7 +912,7 @@ const OPEN_STRUCTURE_OBJECTS := {
 	WorldLayout.SPIRAL_TOWER: true, WorldLayout.SPIRAL_TOWER_PART: true,
 }
 
-# The two catalogue rows the sim refers to by name. A constant rather than a bare
+# The catalogue rows the sim refers to by name. A constant rather than a bare
 # string because a typo in one of those would be silent — a rule that quietly
 # stopped applying to anything.
 #
@@ -922,6 +922,7 @@ const OPEN_STRUCTURE_OBJECTS := {
 # cells are the same fact asked the same way (`MachineDefs.footprint_cells`).
 const STALL_ITEM := "stall"
 const COOP_ITEM := "coop"
+const BARN_ITEM := "industrial_barn"
 
 # The home's entry in the rooms registry. It is a room like any other to everything
 # that looks *at* it — the renderer, the camera — and a room like no other in that
@@ -1022,15 +1023,71 @@ func _barn_in_use(barn_id: String) -> bool:
 	return false
 
 
-# The first Industrial Barn is sold with one cow. Find her an ordinary outdoor
-# square just beyond the livestock doors before the placement commits, so the
-# bundle never puts her inside a wall or on another actor.
+# **Where a cow comes out onto the farm** (2026-10-10, found staging the creamery
+# video). The first Industrial Barn is sold with one cow and each later cow is
+# bought for a barn; either way she arrives outside its livestock doors. She used
+# to arrive on one of five fixed squares two rows below the anchor and stay there,
+# so a barn with that row half fenced took only as many cows as the row had room,
+# and Daniel's ruling is four a barn (S-41).
+#
+# Now she arrives on the nearest free square of outdoor ground she could walk to
+# from the doors: a breadth-first walk out of the doorstep, south first, then east,
+# west and north (the order `room_exit_for` leaves by), so a save, a replay and two
+# machines agree on the square. She may cross the barn's own floor, as she does on
+# her way to a stall, but never arrives on it, nor on the doorstep itself. "Free"
+# is `placeable_at`'s answer for bare ground: walkable farm ground nobody else is
+# standing on. Only a barn whose ground is truly walled in finds no square.
+#
+# Asked before the barn is set down as well as after, which is why it takes an
+# anchor rather than a barn: the doors and the block are the same squares either way.
 func barn_cow_arrival_cell(anchor: Vector2i) -> Vector2i:
-	for offset in [Vector2i(0, 2), Vector2i(1, 2), Vector2i(-1, 2), Vector2i(2, 2), Vector2i(-2, 2)]:
-		var cell: Vector2i = anchor + offset
-		if placeable_at(cell):
-			return cell
-	return Vector2i(-1, -1)
+	return _barn_cow_search(anchor)["cell"]
+
+
+# ...and when there is no such square, what walls the barn in: every square at the
+# edge of the ground she could walk to from the doors that stops her going further,
+# and every square inside it with someone standing on it. Empty when a cow fits.
+# What a refused barn placement marks red (`footprint_blockers`).
+func barn_cow_arrival_blockers(anchor: Vector2i) -> Array[Vector2i]:
+	return _barn_cow_search(anchor)["walls"]
+
+
+func _barn_cow_search(anchor: Vector2i) -> Dictionary:
+	var block := MachineDefs.footprint_cells(BARN_ITEM, anchor)
+	var spec: Dictionary = MachineDefs.room_of(BARN_ITEM)
+	var door := room_exit_for({ "item": BARN_ITEM, "anchor": anchor,
+		"exit": anchor + Vector2i(spec.get("exit_offset", Vector2i(0, 1))) })
+	# No walkable doorstep at all: the walk starts from the barn's own floor, so
+	# the squares around the block are what is reported as walling it in.
+	var queue: Array[Vector2i] = []
+	if door.x >= 0:
+		queue.append(door)
+	else:
+		queue.append_array(block)
+	var seen := {}
+	for c in queue:
+		seen[c] = true
+	var walls: Array[Vector2i] = []
+	var i := 0
+	while i < queue.size():
+		var c: Vector2i = queue[i]
+		i += 1
+		if c != door and not c in block:
+			if placeable_at(c):
+				return { "cell": c, "walls": [] as Array[Vector2i] }
+			walls.append(c)
+		for step in [Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, -1)]:
+			var n: Vector2i = c + step
+			if seen.has(n):
+				continue
+			seen[n] = true
+			if space_of(n) != "farm":
+				continue
+			if is_walkable(n.x, n.y):
+				queue.append(n)
+			else:
+				walls.append(n)
+	return { "cell": Vector2i(-1, -1), "walls": walls }
 
 
 func has_cow() -> bool:
@@ -1048,9 +1105,9 @@ func cow_count() -> int:
 	return count
 
 
-# An added cow arrives at an existing barn's livestock doors. Barn ids and the
-# offsets within each doorway are both ordered so the accepted Action resolves
-# to the same square during replay.
+# An added cow arrives at an existing barn's livestock doors. Barn ids are sorted
+# and the walk out of each doorway is in a fixed order, so the accepted Action
+# resolves to the same square during replay.
 func added_cow_arrival_cell() -> Vector2i:
 	var ids: Array = barns.keys().map(func(k): return String(k))
 	ids.sort()
@@ -2126,6 +2183,24 @@ func buildable_at(t: Vector2i) -> bool:
 
 
 func placeable_at(t: Vector2i, item: String = "") -> bool:
+	if not _block_fits(t, item):
+		return false
+	# **A barn needs ground for its cows to come out onto** (2026-10-10). Every cow
+	# arrives outside the livestock doors (`barn_cow_arrival_cell`), the first one in
+	# the same Action that sets the barn down. This was the gateway's own refusal,
+	# which the tap never asked, so a barn tapped where its cow had no square was
+	# offered as a placement and then refused without a word. Asked here, the tap and
+	# the gateway ask the same question, and the refusal shows what walls it in.
+	# Asked of every barn, not only the first: a barn whose doors open onto nowhere
+	# is one no cow could ever walk into.
+	if item == BARN_ITEM and barn_cow_arrival_cell(t).x < 0:
+		return false
+	return true
+
+
+# Whether the thing itself fits on its block: `placeable_at` without a barn's
+# question about the ground beyond its doors.
+func _block_fits(t: Vector2i, item: String) -> bool:
 	if not is_walkable(t.x, t.y):
 		return false
 	# A bay is for robots. A second stall, a sprinkler or a bare `placeable_at`
@@ -2187,6 +2262,7 @@ func placeable_at(t: Vector2i, item: String = "") -> bool:
 # trouble placing the tower. When I try, it just tills the ground."). The answer a
 # refused placement shows her: the building's whole block drawn where she tapped,
 # with the squares that stop it marked. Empty exactly when `placeable_at` says yes.
+# Always squares of the block, except for a barn walled in (below).
 #
 # Asked square by square with the same questions `placeable_at` asks of the block —
 # open ground nobody else is standing on outdoors, bare floor of the same room
@@ -2198,6 +2274,11 @@ func footprint_blockers(t: Vector2i, item: String) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
 	if placeable_at(t, item):
 		return out
+	# The block itself fits and the barn still does not: its doors open onto no
+	# ground a cow could arrive on, and the answer is the squares around it that
+	# wall it in — outside the block, unlike every other answer here.
+	if item == BARN_ITEM and _block_fits(t, item):
+		return barn_cow_arrival_blockers(t)
 	var cells := MachineDefs.footprint_cells(item, t)
 	var indoors := space_of(t) != "farm"
 	var writes_objects := MachineDefs.has(item) and not MachineDefs.spawns_actor(item) \
@@ -3298,14 +3379,17 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			# **What she is holding is part of the question** (2026-09-06): a stall
 			# needs the square beside it as well, and a robot is the one thing that
 			# may be set down *in* a stall.
-			if not placeable_at(target, item): return _fail("occupied")
-			# The approved 500-gold barn includes the farm's first cow. This is
-			# checked before energy or crate stock changes, then spawned below in
-			# this same accepted Action, so saves and replays acquire the same cow.
+			# A barn whose cows would have nowhere to come out onto is refused by
+			# this same question (`placeable_at`); the reason only names it.
+			if not placeable_at(target, item):
+				return _fail("no_cow_arrival_space" if _block_fits(target, item) else "occupied")
+			# The approved 500-gold barn includes the farm's first cow. Where she
+			# arrives is found before energy or crate stock changes, then she is
+			# spawned below in this same accepted Action, so saves and replays
+			# acquire the same cow. `placeable_at` has already said there is a square.
 			var bundled_cow_at := Vector2i(-1, -1)
-			if item == "industrial_barn" and not has_cow():
+			if item == BARN_ITEM and not has_cow():
 				bundled_cow_at = barn_cow_arrival_cell(target)
-				if bundled_cow_at.x < 0: return _fail("no_cow_arrival_space")
 			var placer := String(action.get("actor", ""))
 			var placer_charged: bool = _is_player(placer)
 			if placer_charged and int(gs.machines.get(item, 0)) <= 0: return _fail("no_machine")
