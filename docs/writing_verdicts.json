@@ -5832,6 +5832,9 @@
   "9a9bd5358e89d587d46e": {
    "verdict": "ok"
   },
+  "9aabb7716ac47dbd81d2": {
+   "verdict": "ok"
+  },
   "9ac05324c35b0905cbfb": {
    "instead": "Fix the failing build: the automatic-publishing tests no longer need the secret scanner on GitHub's test machine",
    "quote": "red build",

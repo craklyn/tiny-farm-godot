@@ -1097,6 +1097,13 @@ func has_cow() -> bool:
 	return false
 
 
+# How many cows the farm's barns have room for: four for each barn (S-41). The
+# till and the shop's cow card both ask this, so the card is never lit for a cow
+# the gateway would refuse, nor dark for one it would sell.
+func herd_limit() -> int:
+	return barns.size() * HERD_LIMIT
+
+
 func cow_count() -> int:
 	var count := 0
 	for actor_id in actors:
@@ -3084,7 +3091,7 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 		"buy_cow":
 			if gs == null: return _fail("no_state")
 			if barns.is_empty(): return _fail("no_barn")
-			if cow_count() >= barns.size() * HERD_LIMIT: return _fail("herd_full")
+			if cow_count() >= herd_limit(): return _fail("herd_full")
 			if int(gs.gold) < COW_PRICE: return _fail("not_enough_gold")
 			var arrival := added_cow_arrival_cell()
 			if arrival.x < 0: return _fail("no_cow_arrival_space")
