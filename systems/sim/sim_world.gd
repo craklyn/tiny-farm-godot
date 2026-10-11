@@ -201,6 +201,15 @@ func offers(key: String, gs) -> bool:
 	var counts: Dictionary = gs.harvest_counts if gs != null else {}
 	if not MachineDefs.is_unlocked(key, counts):
 		return false
+	# **A barn is offered only while there is a room for it to open into** (2026-10-11):
+	# the rooms page has two big slots, and a barn bought with none free would stand
+	# with no inside. Counts the barns already waiting in the crate as well as those
+	# standing, the way the cow card counts `herd_limit()`.
+	if key == BARN_ITEM:
+		var waiting: int = int(gs.machines.get(BARN_ITEM, 0)) if gs != null else 0
+		var cells := Vector2i(MachineDefs.room_of(BARN_ITEM).get("cells", Vector2i.ZERO))
+		if free_room_slots(cells).size() <= waiting:
+			return false
 	var needs := MachineDefs.earned_by(key)
 	return needs == "" or rungs.has(needs)
 
@@ -1054,12 +1063,23 @@ func renovate_legacy_barns() -> int:
 					or room_of_cell(actor_pos(String(actor_id))) == old_id:
 				herd.append(String(actor_id))
 		herd.sort()
+		# Anyone else standing in the old room (the farmer, a robot) is put on the doorstep:
+		# her square is about to become void or somebody else's machinery.
+		var strays: Array = []
+		for actor_id in actors:
+			if species_of(String(actor_id)) != SpeciesDefs.COW \
+					and room_of_cell(actor_pos(String(actor_id))) == old_id:
+				strays.append(String(actor_id))
+		strays.sort()
 		if _barn_events.has(old_id):
 			clock.cancel(int(_barn_events[old_id]))
 			_barn_events.erase(old_id)
 		close_room(anchor)
 		barns.erase(old_id)
 		var outside := Vector2i(room.get("exit", anchor))
+		for actor_id in strays:
+			Movement.clear_route(self, actor_id)
+			set_actor_pos(actor_id, outside)
 		for cow_id in herd:
 			Movement.clear_route(self, cow_id)
 			var at := barn_cow_arrival_cell(anchor)
@@ -1385,6 +1405,13 @@ func room_door_at(t: Vector2i) -> Dictionary:
 # the slot number of the old arrangement, which names a different square now. So the
 # rectangle is checked too, a tile wider each way as the slots' own gap is.
 func _free_room_slot(size: Vector2i = WorldLayout.ROOM_SLOT) -> int:
+	var free := free_room_slots(size)
+	return -1 if free.is_empty() else int(free[0])
+
+
+# Every free slot of a room's own size, lowest first. The shop asks how many, so it
+# never sells a barn that has no room to open into.
+func free_room_slots(size: Vector2i) -> Array[int]:
 	var taken := {}
 	var standing: Array[Rect2i] = []
 	for id in rooms:
@@ -1393,6 +1420,7 @@ func _free_room_slot(size: Vector2i = WorldLayout.ROOM_SLOT) -> int:
 		taken[number] = true
 		if page_of(Vector2i(room.get("origin", Vector2i.ZERO))) == WorldLayout.ROOMS_PAGE:
 			standing.append(Rect2i(Vector2i(room["origin"]), Vector2i(room.get("size", Vector2i.ZERO))))
+	var out: Array[int] = []
 	for i in WorldLayout.room_slot_count():
 		if taken.has(i) or not WorldLayout.room_slot_fits(i, size):
 			continue
@@ -1403,8 +1431,8 @@ func _free_room_slot(size: Vector2i = WorldLayout.ROOM_SLOT) -> int:
 				clear = false
 				break
 		if clear:
-			return i
-	return -1
+			out.append(i)
+	return out
 
 
 # Put a room down: claim a slot, write its walls and floor into the grid, and

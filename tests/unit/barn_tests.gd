@@ -126,6 +126,8 @@ func test_barn_simulation() -> void:
 	test_barn_pens_fit_the_cows()
 	test_barn_rooms_have_their_own_slots()
 	test_barn_legacy_room_is_renovated()
+	test_barn_legacy_room_moves_people_out()
+	test_barn_card_counts_the_crate()
 	test_barn_pick_up()
 	test_barn_animation_follows_sim_ticks()
 
@@ -278,13 +280,22 @@ func test_barn_rooms_have_their_own_slots() -> void:
 	var rooms_taken: Array[String] = []
 	var anchors := [Vector2i(5, 9), Vector2i(12, 9), Vector2i(19, 9)]
 	var results: Array[Dictionary] = []
+	var offered: Array[bool] = []
+	var refused_buy := {}
 	for anchor in anchors:
-		world.apply_action({ "verb": "buy_machine", "item": "industrial_barn", "actor": "player" }, GameState)
+		offered.append(world.offers("industrial_barn", GameState))
+		var bought := world.apply_action({ "verb": "buy_machine", "item": "industrial_barn", "actor": "player" }, GameState)
+		if not bool(bought.get("ok", false)):
+			refused_buy = bought
+			# The shop would not sell it; hand one over so the tap's own refusal is tested too.
+			GameState.machines["industrial_barn"] = 1
 		var laid := world.apply_action({ "verb": "place", "target": anchor, "item": "industrial_barn",
 			"actor": "player" }, GameState)
 		results.append(laid)
 		if bool(laid.get("ok", false)):
 			rooms_taken.append(String(laid.get("room", "")))
+	_assert(offered == [true, true, false] and String(refused_buy.get("reason", "")) == "not_offered",
+		"the shop offers a barn while a room is free and sells no third (%s, %s)" % [str(offered), str(refused_buy)])
 	_assert(rooms_taken.size() == 2 and results[2].get("reason", "") == "no_room_inside",
 		"two barns are built and the third is refused for want of an inside (%s)" % str(results[2]))
 	var origins: Array[Vector2i] = []
@@ -307,6 +318,48 @@ func test_barn_rooms_have_their_own_slots() -> void:
 	var picked := world.apply_action({ "verb": "collect", "target": anchors[0], "actor": "player" }, GameState)
 	_assert(bool(picked.get("ok", false)) and world.barn_room_free(),
 		"picking a barn up gives its room back (%s)" % str(picked))
+
+
+# The shop counts the barns already in the crate: with one standing and one bought but
+# not yet put down, the second slot is spoken for and no third card is offered.
+func test_barn_card_counts_the_crate() -> void:
+	print("\n--- Industrial barn: the shop never sells a barn with no room to open into ---")
+	GameState.reset()
+	var world := SimWorld.new(); world.generate()
+	GameState.harvest_counts["egg"] = 10
+	GameState.gold = 5000
+	_assert(world.offers("industrial_barn", GameState), "with no barn standing, one is offered")
+	world.apply_action({ "verb": "buy_machine", "item": "industrial_barn", "actor": "player" }, GameState)
+	_assert(world.offers("industrial_barn", GameState), "and with one in the crate, a second still is")
+	world.apply_action({ "verb": "buy_machine", "item": "industrial_barn", "actor": "player" }, GameState)
+	var third := world.apply_action({ "verb": "buy_machine", "item": "industrial_barn", "actor": "player" }, GameState)
+	_assert(not world.offers("industrial_barn", GameState) and String(third.get("reason", "")) == "not_offered"
+			and int(GameState.machines.get("industrial_barn", 0)) == 2,
+		"with two in the crate and two rooms free, no third is sold (%s)" % str(third))
+
+
+# A farmer or a robot saved inside a barn's old room is put on the doorstep when the new room
+# replaces it: her square is about to become void, or somebody's machinery.
+func test_barn_legacy_room_moves_people_out() -> void:
+	print("\n--- Industrial barn: anyone inside the old room is put outside ---")
+	var data := SaveGame.load_dict("res://playtests/2026-10-11_004912_slot1/autosave.json")
+	if data.is_empty():
+		_assert(false, "the tablet farm loads")
+		return
+	var actors: Dictionary = data["world"]["actors"]
+	actors["player"]["x"] = 16
+	actors["player"]["y"] = 42
+	actors["bot_mk1"]["x"] = 17
+	actors["bot_mk1"]["y"] = 41
+	GameState.reset()
+	var world := SimWorld.new()
+	_assert(SaveGame.restore(data, world, GameState), "a farm saved with the farmer and a robot inside the old room restores")
+	var anchor := Vector2i(6, 5)
+	var doorstep := anchor + Vector2i(1, 1)
+	for id in ["player", "bot_mk1"]:
+		var at := world.actor_pos(id)
+		_assert(at == doorstep and world.room_of_cell(at) == "" and world.is_walkable(at.x, at.y),
+			"%s is on the barn's doorstep, outside, on ground she can stand on (%s)" % [id, str(at)])
 
 
 # A barn saved with its first, 6x4 room is given the 12x8 one on load: its line comes

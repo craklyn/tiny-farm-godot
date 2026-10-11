@@ -464,8 +464,11 @@ picture and its numbers in `tools/build_barn_room_art.py`):
 every other slot) and six small ones for coops and the tower (they were eight in two rows
 of four; the room page now makes space for the big slots on its east side). A barn takes
 only a big slot, a coop only a small one. A farm can therefore have **two barns with an
-inside**; a third is refused when the player taps it, with the same buzz and outline a
-building that does not fit gets, because a barn with no inside is one no cow could use. It
+inside**. The shop stops offering a barn once the rooms free are all spoken for (it counts
+the barns waiting in the crate as well as those standing, the way the cow card counts
+`herd_limit()`), and the verb refuses a third too (`not_offered`); a tap that still reaches
+a placement with no room left is refused with the same buzz and outline a building that does
+not fit gets (`no_room_inside`), because a barn with no inside is one no cow could use. It
 needs only a new page of rooms to lift; nothing in the sim assumes two.
 
 **A barn saved before this change.** No released game had a barn, so no player's farm is
@@ -476,14 +479,17 @@ the finished cheese), because none of it is kept in a square. The cows do not, s
 standing on a square of the old room or walking to one: every cow goes out to the nearest
 free ground beyond the doors, keeps her milk, drops her errand, and chooses a stall again
 as any cow does. A save with several old rooms standing where the big slots are can leave a
-barn with no new inside, like a barn bought when the page is full.
+barn with no new inside, like a barn bought when the page is full. The farmer, or a robot,
+saved inside the old room is put on the barn's doorstep, because her square is about to
+become void or somebody's machinery.
 
 **Found on the way: left-facing animals were drawn a picture-width to the right.** Putting
 a cow in each pen showed her two squares from her stall whenever she faced left. Godot draws
 a negative-width rectangle from its position rightwards and flips the picture, and
 `Grazer.cell_dest` built its flipped rectangle from the right edge, so every hen, rabbit
 and cow facing left was drawn one picture-width to the right of her square, a full tile for
-a hen. It is fixed in `entities/grazer.gd`; a unit test pins that the flipped rectangle starts
+a hen. The ant, mole and songbird had the same line. It is fixed in `entities/grazer.gd`,
+`ant.gd`, `mole.gd` and `songbird.gd`; a unit test pins that the flipped rectangle starts
 where the unflipped one does.
 
 **Art status.** The room is original local pixel art, drawn by hand in code from colours
