@@ -156,6 +156,7 @@ func _init() -> void:
 	interior.test_robot_usefulness()
 	interior.test_one_pouch()
 	barn.test_barn_simulation()
+	barn.test_barn_cow_arrival()
 	interior.test_carry_cap()
 	interior.test_save_v5_migration()
 	interior.test_mark_three_assigned_tiles()
