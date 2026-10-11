@@ -138,6 +138,14 @@ or a cow already assigned elsewhere. After `give_milk` succeeds, the brain emits
 `leave_milk_stall`, walks to the open livestock door, and may continue wandering outside.
 An occupied cow may always leave; factory congestion never locks a stall or door.
 
+Outside, an idle cow grazes (2026-10-10): each decision draws up to eight squares within
+`CowBrain.PASTURE_RADIUS` of the nearest barn's doorstep with `SimRng.stateless` (her id and
+the tick, so no other actor's draws move), keeps the first that is open farm ground with no
+object or crop, clear of every room's doorstep and its neighbours, and not where another cow
+stands or is heading, and plans to it — at most two route searches per decision. She rests
+`GRAZE_SECONDS` there before the next decision. Her walks are brain decisions with no Action;
+a replay recomputes them, as it does every brain but the hen's.
+
 ### Milk and cheese actions
 
 Every accepted Action names `actor`, `verb`, and `barn_id`. Stall Actions also name

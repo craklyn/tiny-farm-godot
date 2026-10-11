@@ -6,6 +6,16 @@
 # stall. After giving one unit, she crosses the doorway back before she is free
 # outside.
 #
+# **Outside, she grazes** (2026-10-10). A cow with no milk to give, or no stall
+# free for it, walks to a square of open ground near the barn, stands there a
+# while, and walks to another. She used to stand wherever she last stopped — and
+# since every visit ends on the barn's doorstep, four cows that had each given
+# milk once stood stacked on that one square until morning. Now she leaves the
+# doorstep at once, picks a square no other cow is standing on or walking to, and
+# keeps off crops and off every building's doorstep. The draws are
+# `SimRng.stateless` from her id and the tick, so a cow's wander never moves
+# another animal's dice and a replay recomputes it exactly.
+#
 # Like every brain (brain.gd), it keeps its own route and step state in the cow's
 # `extra` and changes nothing else. A stall reservation, a stall being freed, the
 # milk leaving the cow and the batch entering the line are all gateway verbs —
@@ -20,6 +30,18 @@ const STATES: Array[String] = ["idle", "going_to_stall", "moving", "at_exterior_
 	"crossing_in", "at_interior_door", "entering", "giving", "leaving_stall",
 	"releasing", "leaving_barn", "crossing_out"]
 
+# [Playtest] How far from her barn's doorstep she wanders, in squares each way,
+# and how long she stands at a spot, in seconds, before walking on. A cow is a
+# slow, calm animal: longer pauses than the hen's, and a field near the barn
+# rather than the whole farm, so she is close by when she is ready again.
+const PASTURE_RADIUS := 5
+const GRAZE_SECONDS := [6.0, 15.0]
+# Squares drawn per decision, and routes tried among them. A route to a square
+# behind a fence searches everything she can reach before it fails, so at most
+# two are tried; a cow who finds nowhere thinks again after a short rest.
+const GRAZE_DRAWS := 8
+const GRAZE_ROUTES := 2
+
 
 func step(world: SimWorld, actor_id: String, tick: int, _gs = null) -> Dictionary:
 	var extra: Dictionary = world.actor(actor_id).get("extra", {})
@@ -29,9 +51,12 @@ func step(world: SimWorld, actor_id: String, tick: int, _gs = null) -> Dictionar
 		"moving":
 			var moved := Movement.step(world, actor_id, tick)
 			if moved == Movement.ARRIVED:
-				extra["state"] = _arrived_state(String(extra.get("route_stage", "")))
+				var stage := String(extra.get("route_stage", ""))
+				extra["state"] = _arrived_state(stage)
 				extra.erase("route_stage")
 				extra["wake"] = tick + 1
+				if stage == "pasture":
+					extra["wake"] = tick + _graze_ticks(world, actor_id, tick)
 			elif moved == Movement.BLOCKED:
 				_give_up(world, actor_id, extra, tick)
 		"going_to_stall":
@@ -56,14 +81,19 @@ func step(world: SimWorld, actor_id: String, tick: int, _gs = null) -> Dictionar
 		"crossing_out":
 			return _door_action(actor_id, _door_cell(world, String(extra.get("leaving_barn_id", ""))))
 		_:
-			if int(extra.get("milk_milliunits", 0)) < 1000 or world.energy_of(actor_id) < SimWorld.COW_GIVE_MILK_ENERGY:
-				extra["wake"] = tick + SimClock.RATE
+			# Idle indoors (a route out failed, or a save caught her there): the
+			# barn is somewhere she visits, so she makes for its door first.
+			var room_id := world.room_of_cell(world.actor_pos(actor_id))
+			if world.barns.has(room_id):
+				extra["leaving_barn_id"] = room_id
+				extra["state"] = "leaving_barn"
+				extra["wake"] = tick + 1
 				return {}
-			var choice := _first_open_stall(world)
-			if choice.is_empty():
-				extra["wake"] = tick + SimClock.RATE
-				return {}
-			return { "actor": actor_id, "verb": "reserve_milk_stall", "barn_id": choice[0], "stall_index": choice[1] }
+			if int(extra.get("milk_milliunits", 0)) >= 1000 and world.energy_of(actor_id) >= SimWorld.COW_GIVE_MILK_ENERGY:
+				var choice := _first_open_stall(world)
+				if not choice.is_empty():
+					return { "actor": actor_id, "verb": "reserve_milk_stall", "barn_id": choice[0], "stall_index": choice[1] }
+			_graze(world, actor_id, extra, tick)
 	return {}
 
 
@@ -123,7 +153,7 @@ static func _arrived_state(stage: String) -> String:
 		"exterior_door": return "crossing_in"
 		"interior_door": return "crossing_out"
 		"stall": return "entering"
-	return "idle"  # "exit", or a route with no stage: she is outside and free
+	return "idle"  # "pasture", or a route with no stage: she is outside and free
 
 
 # Her route failed on the way in. Holding a reservation, she gives it back with
@@ -187,3 +217,106 @@ func _stall_cell(world: SimWorld, barn_id: String, index: int) -> Vector2i:
 	if not world.barns.has(barn_id) or index < 0 or index >= 4: return Vector2i(-1, -1)
 	var cell: Array = world.barns[barn_id]["stalls"][index].get("cell", [])
 	return Vector2i(int(cell[0]), int(cell[1])) if cell.size() == 2 else Vector2i(-1, -1)
+
+
+# --- grazing ------------------------------------------------------------------
+
+# Walk to a fresh square of open ground near the barn, or rest and think again.
+# Each draw is one square in the field around the nearest barn's doorstep; the
+# first that passes `_grazeable` and has a route is where she goes. No map scan:
+# eight squares are looked at, and at most two routes are searched.
+func _graze(world: SimWorld, actor_id: String, extra: Dictionary, tick: int) -> void:
+	var here := world.actor_pos(actor_id)
+	var doorsteps := _doorsteps(world)
+	var centre := _pasture_centre(world, here)
+	var others := _other_cows_squares(world, actor_id)
+	var span := PASTURE_RADIUS * 2 + 1
+	var salt := _graze_salt(world, actor_id)
+	var routes := 0
+	for i in GRAZE_DRAWS:
+		var draw := SimRng.stateless(salt, tick * GRAZE_DRAWS + i)
+		var cell := centre + Vector2i(draw % span - PASTURE_RADIUS, (draw / span) % span - PASTURE_RADIUS)
+		if cell == here or not _grazeable(world, cell, doorsteps, others):
+			continue
+		if Movement.plan(world, actor_id, cell):
+			extra["route_stage"] = "pasture"; extra["state"] = "moving"
+			extra["wake"] = tick + Movement.ticks_per_tile(world.species_of(actor_id))
+			return
+		routes += 1
+		if routes >= GRAZE_ROUTES:
+			break
+	Movement.clear_route(world, actor_id)
+	extra["state"] = "idle"
+	# Still in a doorway, she tries again in a second rather than settling there.
+	extra["wake"] = tick + (SimClock.RATE if _by_a_doorstep(here, doorsteps)
+		else _graze_ticks(world, actor_id, tick))
+
+
+# Open ground she may stand on: the farm's own page, walkable, nothing built or
+# lying on it, no crop in it, clear of every doorway, and not a square another cow
+# already stands on or is walking to — so the herd spreads out instead of piling up.
+func _grazeable(world: SimWorld, cell: Vector2i, doorsteps: Array[Vector2i], others: Dictionary) -> bool:
+	if not world.is_walkable(cell.x, cell.y) or world.space_of(cell) != "farm":
+		return false
+	if world.get_object(cell.x, cell.y) != "" or world.has_crop(cell.x, cell.y):
+		return false
+	if others.has(cell) or _by_a_doorstep(cell, doorsteps):
+		return false
+	return true
+
+
+# On a room's doorstep or a square beside one: where the farmer and the hen step
+# in and out, and the barn's wide livestock doors.
+static func _by_a_doorstep(cell: Vector2i, doorsteps: Array[Vector2i]) -> bool:
+	for step in doorsteps:
+		if absi(cell.x - step.x) + absi(cell.y - step.y) <= 1:
+			return true
+	return false
+
+
+func _doorsteps(world: SimWorld) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	for id in world.room_ids():
+		var step := world.room_exit_for(world.rooms[id])
+		if step.x >= 0:
+			out.append(step)
+	return out
+
+
+# The doorstep of the nearest barn, in sorted-id order on a tie; where she stands
+# when there is no barn at all.
+func _pasture_centre(world: SimWorld, here: Vector2i) -> Vector2i:
+	var ids: Array = world.barns.keys(); ids.sort()
+	var best := here
+	var best_d := 1 << 30
+	for barn_id in ids:
+		var step := _exterior_door_cell(world, String(barn_id))
+		if step.x < 0:
+			continue
+		var d := absi(step.x - here.x) + absi(step.y - here.y)
+		if d < best_d:
+			best = step; best_d = d
+	return best
+
+
+# Where every other cow is, and where each one walking is headed.
+func _other_cows_squares(world: SimWorld, actor_id: String) -> Dictionary:
+	var out := {}
+	for cow_id in world.actors_of_species(SpeciesDefs.COW):
+		if cow_id == actor_id:
+			continue
+		out[world.actor_pos(cow_id)] = true
+		var route: Array = world.actor(cow_id).get("extra", {}).get("path", [])
+		if route.size() >= 2:
+			out[Vector2i(int(route[-2]), int(route[-1]))] = true
+	return out
+
+
+func _graze_ticks(world: SimWorld, actor_id: String, tick: int) -> int:
+	var low := ticks(float(GRAZE_SECONDS[0]))
+	var high := ticks(float(GRAZE_SECONDS[1]))
+	return low + SimRng.stateless(_graze_salt(world, actor_id) ^ 0x5eed, tick) % (high - low + 1)
+
+
+static func _graze_salt(world: SimWorld, actor_id: String) -> int:
+	return world.gen_seed ^ int(hash("cow_graze:%s" % actor_id))

@@ -2645,6 +2645,9 @@
   "4885e317790452dbbe1b": {
    "verdict": "ok"
   },
+  "488982853c71ae599c74": {
+   "verdict": "ok"
+  },
   "48a1ad7755020d35b857": {
    "baselined": "2026-09-19",
    "instead": "Label animation frames in the entity system so preview animations show real variations, not the same frame repeatedly",
