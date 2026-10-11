@@ -143,6 +143,11 @@ godot --path . res://tools/profile_farm_page.tscn
 # docs/design/mockups/worm_crawl/staged_crawl.png — needs a display
 godot --path . res://tools/capture_worm_crawl.tscn
 
+# The herd outside the creamery: any saved farm with a barn, framed below the barn, as
+# <prefix>_start.png when it opens and <prefix>_end.png after 40 s of play (where the cows
+# went after milking) — needs a display; plays on a scratch copy of the save
+godot --path . res://tools/capture_cow_grazing.tscn -- --save=<farm.json> --out=<prefix>
+
 # The training workbench's six plates as PNGs (tools/shot_workbench_0..5.png) on a fresh
 # Mark III — needs a display; saves to scratch so it never seeds the next suite run
 godot --path . res://tools/capture_workbench.tscn
