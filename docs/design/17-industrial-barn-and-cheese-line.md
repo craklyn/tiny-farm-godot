@@ -28,9 +28,12 @@ already standing. She arrives on the nearest free square of outdoor ground that 
 to from the doors. "Nearest" is counted in steps from the doorstep: straight out of the doors
 first, then the squares beside the doorstep, then further out. When two squares are the same
 distance away, the order is fixed (south, east, west, north), so a saved game and its replay
-always put a cow on the same square. A square is free if it is walkable farm ground and no
-other animal or machine is standing on it. She never arrives on the barn's own floor or on the
-doorstep itself, so the way in stays clear.
+always put a cow on the same square. A square is free if it is walkable farm ground, not a
+bed of soil, and no other animal or machine is standing on it. She never arrives on the barn's
+own floor or on the doorstep itself, so the way in stays clear. The squares counted are the ones
+she could reach going around beds and around the barn's block, the way she walks (below), so a
+new cow never comes out onto the farmer's field or on the far side of the barn's walls (changed
+2026-10-11).
 
 This replaced a first version (changed 2026-10-10) in which each cow arrived on one of five
 fixed squares two rows below the barn. A barn whose row below was partly fenced could take only
@@ -39,6 +42,17 @@ as many cows as that row had free squares, though Daniel's ruling is four cows f
 offered to put it down, and the game then refused without any sign, because the first cow's
 square was off the farm.
 
+**A barn does not go down over a crop** (2026-10-11). Staging the creamery video, a barn was put
+down by tap at the edge of a planted field, and three squares of its block had seeds or growing
+crops in them; the crops stayed under the barn, where nothing could reach them for as long as it
+stood. Now a barn's block must have no crop in it. Bare tilled soil is still allowed, as for every
+building, since nothing is lost under a building but the tilling. A tap over a crop gets the usual
+answer: the buzz, and the block outlined with the crop's square marked red. A save from before
+this change that already has a barn over crops loads as it is: the barn stays, and so do the crops
+under it. The coop and the spiral tower are unchanged and still go down over crops; Daniel did
+exactly that with a tower while playing on 2026-10-09, and found the crops still growing when he
+picked it up, so whether they should follow the barn is his call.
+
 **A barn fits where its block of ground is free and its cows have somewhere to arrive.** Every
 barn needs this, not only the first, because a barn whose doors open onto nowhere is one no cow
 could ever walk into. In practice the second condition fails only when the barn is walled in,
@@ -46,8 +60,10 @@ for example fenced in right up to its doorstep. The tap and the game ask the sam
 tap never offers a barn placement that the game then refuses. When a barn tap does not fit, the
 player gets the same answer as for any building that does not fit: the buzz, and the barn's
 block outlined where she tapped. If the block itself is free and the barn is walled in, the
-squares around it that wall it in are marked red instead, so she can see which fence posts to
-move. Captures: `docs/design/mockups/footprint_refusal/barn_*.png`, made by
+squares that wall it in are marked red instead, so she can see which fence posts to move. Since
+cows go around the barn rather than through it (2026-10-11), those are the squares around its
+doorstep and the ground beyond, never the posts behind the barn, which would not let a cow out
+if they were gone. Captures: `docs/design/mockups/footprint_refusal/barn_*.png`, made by
 `godot --path . res://tools/capture_footprint_refusal.tscn`.
 
 ## The cow milk cycle
@@ -61,6 +77,8 @@ Each cow has a hidden milk amount measured in units.
 - Four empty stalls allow four cows to give milk at the same time. A fifth cow waits outside or returns later; she is never pushed out of a stall or made to queue in a way that reads as distress.
 
 **Between visits, a cow grazes** (added 2026-10-10). A cow with no milk to give, or no empty stall for it, spends her day in the field near her barn: she walks to a patch of open grass, stands there a while (six to fifteen seconds), and walks to another, within five squares of the barn's doors each way. She leaves the doorway as soon as she is outside, and never settles on any building's doorstep or the squares beside it, on soil (a tilled bed, watered or not, as well as a planted one), or on a square where another cow is standing or heading, so the herd spreads out across the grass. Where there is too little grass near the barn for that, she takes the nearest bare square that is off the doorstep itself and that no other cow has, so even a barn hemmed in on every side does not end with the herd stacked in its doorway. When she has milk again and a stall is free, she walks back in. Before this, a cow stood still wherever she last stopped, and since every visit ends on the barn's doorstep, four cows that had each given milk once stood on that one square, drawn on top of one another, until morning. Cows still do not block one another, the farmer or the hen; they only choose not to stop on the same square.
+
+**Her walk goes around beds and buildings, not across them** (added 2026-10-11). Measured on the staged creamery farm, grazing cows kept their resting spot off the beds but walked straight across the planted field beside the barn to reach it, and straight through the barn's own block; a save made mid-walk loaded two cows standing inside the barn. Now a cow's route never crosses a bed of soil (tilled, watered or planted) or the block of any building on the farm. If no grass can be reached without crossing a bed, she grazes the grass she can reach, or stands where she is until a way opens; she never tramples across. The one exception is her walk to the barn's doors to give milk: she goes around if any way round exists, and crosses beds only when none does. This was found on a real farm, whose barn stands in the fenced yard with its gate opening onto a field: kept strictly off the beds, its cow could never have reached a stall again. A cow's walk does not harm a crop in the game, so this costs only the look of it, and only where the farm leaves her no other way. A cow that loads standing on a bed or on a building's block (a save from before this change) walks off it by the nearest way.
 
 The amount remains invisible. The player learns readiness from the cow's choice: a cow walking calmly into an open stall starts the line. This keeps the core interaction understandable without reading and avoids turning an animal's body into a meter the player must manage.
 

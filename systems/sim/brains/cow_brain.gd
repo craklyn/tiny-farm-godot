@@ -13,7 +13,10 @@
 # milk once stood stacked on that one square until morning. Now she leaves the
 # doorstep at once, picks a square no other cow is standing on or walking to, and
 # keeps off soil and off every building's doorstep; where grass is too scarce
-# for that, she takes the nearest bare square no other cow has. The draws are
+# for that, she takes the nearest bare square no other cow has. Her walk there
+# goes around the beds and the barn's block as well (2026-10-11, the species row's
+# `spares_beds`, `Movement.route_mode_of`), so a farmer's field is never her
+# shortcut and a save never catches her inside the barn's walls. The draws are
 # `SimRng.stateless` from her id and the tick, so a cow's wander never moves
 # another animal's dice and a replay recomputes it exactly.
 #
@@ -180,7 +183,10 @@ func _plan_stage(world: SimWorld, actor_id: String, extra: Dictionary, goal: Vec
 		extra["state"] = _arrived_state(stage); extra["wake"] = tick + 1
 		extra.erase("route_stage")
 		return true
-	if not Movement.plan(world, actor_id, goal): return false
+	# To the barn's doors she goes round the beds if she can and across them if
+	# she must, or she could never give milk on a farm whose barn is fenced in
+	# behind a field (`Movement.plan`). Inside the barn there is no soil.
+	if not Movement.plan(world, actor_id, goal, stage == "exterior_door"): return false
 	extra["route_stage"] = stage; extra["state"] = "moving"
 	extra["wake"] = tick + Movement.ticks_per_tile(world.species_of(actor_id))
 	return true
@@ -291,18 +297,18 @@ func _nearest_spots(world: SimWorld, here: Vector2i, doorsteps: Array[Vector2i],
 # doorway, and not a square another cow already stands on or is walking to — so
 # the herd spreads out instead of piling up.
 func _grazeable(world: SimWorld, cell: Vector2i, doorsteps: Array[Vector2i], others: Dictionary) -> bool:
-	if not _spreadable(world, cell, doorsteps, others) or _by_a_doorstep(cell, doorsteps):
-		return false
-	return not (String(world.get_tile(cell.x, cell.y).get("state", "")) in SimWorld.WETTABLE_STATES)
+	return _spreadable(world, cell, doorsteps, others) and not _by_a_doorstep(cell, doorsteps)
 
 
-# The last resort, when there is no grass: any walkable ground on the farm's page
-# with nothing on it and no crop in it, not a doorstep itself, and not another
-# cow's square. Bare soil and the squares beside a door are allowed here.
+# The last resort, when there is no grass: any ground on the farm's page her route
+# may cross (`is_walkable_sparing_beds`: no soil bed, no building's block) with
+# nothing lying on it, not a doorstep itself, and not another cow's square. The
+# squares beside a door are allowed here. Bare tilled soil was too, until
+# 2026-10-11: a cow never stands on a bed now, as her walk never crosses one.
 func _spreadable(world: SimWorld, cell: Vector2i, doorsteps: Array[Vector2i], others: Dictionary) -> bool:
-	if not world.is_walkable(cell.x, cell.y) or world.space_of(cell) != "farm":
+	if world.space_of(cell) != "farm" or not world.is_walkable_sparing_beds(cell.x, cell.y):
 		return false
-	if world.get_object(cell.x, cell.y) != "" or world.has_crop(cell.x, cell.y):
+	if world.get_object(cell.x, cell.y) != "":
 		return false
 	return not others.has(cell) and not (cell in doorsteps)
 

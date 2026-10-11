@@ -912,6 +912,17 @@ const OPEN_STRUCTURE_OBJECTS := {
 	WorldLayout.SPIRAL_TOWER: true, WorldLayout.SPIRAL_TOWER_PART: true,
 }
 
+# Every object that is a square of a building's block on the farm: the open
+# structures above and the Industrial Barn, whose block is open ground too (the
+# player taps any square of it) but whose way in is its doors, not its walls.
+# What a walker that spares the beds keeps out of (`is_walkable_sparing_beds`).
+const BUILDING_BLOCK_OBJECTS := {
+	WorldLayout.ROBOT_STALL: true, WorldLayout.ROBOT_STALL_SLOT: true,
+	WorldLayout.CHICKEN_COOP: true, WorldLayout.CHICKEN_COOP_PART: true,
+	WorldLayout.SPIRAL_TOWER: true, WorldLayout.SPIRAL_TOWER_PART: true,
+	WorldLayout.INDUSTRIAL_BARN: true, WorldLayout.INDUSTRIAL_BARN_PART: true,
+}
+
 # The catalogue rows the sim refers to by name. A constant rather than a bare
 # string because a typo in one of those would be silent — a rule that quietly
 # stopped applying to anything.
@@ -1033,10 +1044,12 @@ func _barn_in_use(barn_id: String) -> bool:
 # Now she arrives on the nearest free square of outdoor ground she could walk to
 # from the doors: a breadth-first walk out of the doorstep, south first, then east,
 # west and north (the order `room_exit_for` leaves by), so a save, a replay and two
-# machines agree on the square. She may cross the barn's own floor, as she does on
-# her way to a stall, but never arrives on it, nor on the doorstep itself. "Free"
-# is `placeable_at`'s answer for bare ground: walkable farm ground nobody else is
-# standing on. Only a barn whose ground is truly walled in finds no square.
+# machines agree on the square. The walk goes where her own route could
+# (`is_walkable_sparing_beds`, 2026-10-11): around soil beds and around the barn's
+# block rather than through it, since she reaches her stall by the doors. "Free" is
+# `placeable_at`'s answer for bare ground — walkable farm ground nobody else is
+# standing on — on a square that is not a bed, and never the doorstep itself. Only
+# a barn whose ground is walled in, by fences, beds or anything else, finds none.
 #
 # Asked before the barn is set down as well as after, which is why it takes an
 # anchor rather than a barn: the doors and the block are the same squares either way.
@@ -1078,12 +1091,12 @@ func _barn_cow_search(anchor: Vector2i) -> Dictionary:
 			walls.append(c)
 		for step in [Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, -1)]:
 			var n: Vector2i = c + step
-			if seen.has(n):
+			if seen.has(n) or n in block:
 				continue
 			seen[n] = true
 			if space_of(n) != "farm":
 				continue
-			if is_walkable(n.x, n.y):
+			if is_walkable_sparing_beds(n.x, n.y):
 				queue.append(n)
 			else:
 				walls.append(n)
@@ -1448,6 +1461,7 @@ const CROP_STATES := ["seeded", "growing", "ready"]
 # The same list as a set, so the membership test is one hash. `OPEN_OBJECTS` is
 # this move for the same reason (Q-67).
 static var _crop_state_set: Dictionary = _states_as_set(CROP_STATES)
+static var _wettable_state_set: Dictionary = _states_as_set(WETTABLE_STATES)
 
 
 static func _states_as_set(states: Array) -> Dictionary:
@@ -1545,6 +1559,20 @@ func is_walkable(tx: int, ty: int) -> bool:
 	if obj != "" and not OPEN_OBJECTS.has(obj):
 		return false
 	return true
+
+
+# **Walkable ground a cow's route may cross** (2026-10-11): walkable, and neither
+# a soil bed (`WETTABLE_STATES`: tilled, watered or not, sown, growing or ripe) nor
+# the block of a building on the farm. Measured on the staged creamery farm: cows
+# walking to their grass crossed the planted field beside the barn and the barn's
+# own block, and a save made mid-walk loaded them standing inside the barn. The
+# route mode of every species whose row sets `spares_beds` (`Movement.route_mode_of`).
+func is_walkable_sparing_beds(tx: int, ty: int) -> bool:
+	if not is_walkable(tx, ty):
+		return false
+	if BUILDING_BLOCK_OBJECTS.has(objects[ty][tx]):
+		return false
+	return not _wettable_state_set.has(tiles[ty][tx].state)
 
 
 # Parcels are open when their gate is (or they never had one). Derived from the
@@ -2254,7 +2282,7 @@ func _block_fits(t: Vector2i, item: String) -> bool:
 	if item != "" and MachineDefs.has(item) and not MachineDefs.spawns_actor(item) \
 			and MachineDefs.terrain_of(item) == "":
 		for cell in MachineDefs.footprint_cells(item, t):
-			if get_object(cell.x, cell.y) != "":
+			if get_object(cell.x, cell.y) != "" or _crop_under_barn(item, cell):
 				return false
 	for raw in actors:
 		var id := String(raw)
@@ -2263,6 +2291,18 @@ func _block_fits(t: Vector2i, item: String) -> bool:
 		if t in Movement.occupied_tiles(self, id):
 			return false
 	return true
+
+
+# **A barn goes down on no crop** (2026-10-11, found staging the creamery video: a
+# barn set down by tap on the edge of a planted field, three of its six squares
+# sown or growing, and the crops left under it where nothing could reach them for
+# as long as it stood). Bare tilled soil is still taken, as it is for every
+# building: nothing is lost under one but the tilling. The barn only, for now: the
+# coop and the spiral tower still go down over crops, as they always have, and
+# Daniel has done exactly that with a tower in play (2026-10-09, picking it up
+# again to find the crops still growing), so whether they should follow is his.
+func _crop_under_barn(item: String, cell: Vector2i) -> bool:
+	return item == BARN_ITEM and has_crop(cell.x, cell.y)
 
 
 # **Which squares of the block are in the way** (2026-10-09, from play: "I am having
@@ -2298,7 +2338,7 @@ func footprint_blockers(t: Vector2i, item: String) -> Array[Vector2i]:
 				and objects[cell.y][cell.x] == ""
 		else:
 			free = placeable_at(cell)
-		if free and writes_objects and get_object(cell.x, cell.y) != "":
+		if free and writes_objects and (get_object(cell.x, cell.y) != "" or _crop_under_barn(item, cell)):
 			free = false
 		if not free:
 			out.append(cell)
