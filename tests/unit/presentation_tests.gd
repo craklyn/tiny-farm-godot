@@ -1346,3 +1346,27 @@ func test_parcel_introduction_pick() -> void:
 # scatter must be sparse, deterministic, confined to the parcels that ask for it,
 # and incapable of sealing anything off or standing on a beat.
 
+
+
+func test_cow_drawn_bigger_than_her_square() -> void:
+	# Design/17, "How big a cow is" (Daniel's pick, 2026-10-11): the 16px cow was
+	# shorter than the hen. She is drawn half again a square, still standing on one:
+	# her picture sits on the middle of her square's bottom edge, so her hooves are
+	# where the sim puts her and the overhang goes sideways and up, never down onto
+	# the square below. A 16px sheet (the rabbit's) must land exactly as before.
+	print("\n--- design/17: a cow is drawn bigger than her square ---")
+	var Grazer = load("res://entities/grazer.gd")
+	var cow: Texture2D = load("res://assets/sprites/generated/cow.png")
+	var rabbit: Texture2D = load("res://assets/sprites/generated/rabbit.png")
+	var at := Vector2(5 * 16, 7 * 16)
+	var cell: Vector2 = Grazer.cell_size(cow)
+	_assert(cell == Vector2(24, 20), "the cow's frames are 24 by 20 pixels (got %s)" % cell)
+	var dest: Rect2 = Grazer.cell_dest(cow, at, false)
+	_assert(dest.end.y == at.y + 16.0, "the cow's hooves are on her own square's bottom edge")
+	_assert(is_equal_approx(dest.get_center().x, at.x + 8.0), "the cow is centred on her square")
+	var standing: Rect2i = cow.get_image().get_region(Rect2i(0, 0, int(cell.x), int(cell.y))).get_used_rect()
+	_assert(standing.size.y > 15, "the cow stands taller than the hen's 15 pixels (%d)" % standing.size.y)
+	var flipped: Rect2 = Grazer.cell_dest(cow, at, true)
+	_assert(flipped.abs() == dest, "facing left covers the same pixels as facing right")
+	_assert(Grazer.cell_dest(rabbit, at, false) == Rect2(at, Vector2(16, 16)),
+		"a 16px sheet lands exactly on its square, as before")

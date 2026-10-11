@@ -910,6 +910,30 @@ static func seed_box_icon() -> AtlasTexture:
 	return atlas
 
 
+## The cow on her shop card: her standing frame (the sheet is four frames in a row,
+## whatever size she is) with a one-pixel rim in the barn's steel grey `#8d8e92`.
+## Her head, legs and outline are ink, nearly the card's own colour, so without the
+## rim only her white body showed (design/17, "How big a cow is").
+static func cow_card_icon() -> ImageTexture:
+	var sheet: Texture2D = load("res://assets/sprites/generated/cow.png")
+	var frame := sheet.get_image().get_region(
+		Rect2i(0, 0, sheet.get_width() / 4, sheet.get_height()))
+	var icon := Image.create(frame.get_width() + 2, frame.get_height() + 2, false, Image.FORMAT_RGBA8)
+	icon.blit_rect(frame, Rect2i(Vector2i.ZERO, frame.get_size()), Vector2i(1, 1))
+	var rim := Color8(141, 142, 146)
+	for y in icon.get_height():
+		for x in icon.get_width():
+			if icon.get_pixel(x, y).a > 0.0:
+				continue
+			for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+				var n: Vector2i = Vector2i(x, y) + d
+				var inside := n.x >= 1 and n.y >= 1 and n.x <= frame.get_width() and n.y <= frame.get_height()
+				if inside and frame.get_pixelv(n - Vector2i(1, 1)).a > 0.0:
+					icon.set_pixel(x, y, rim)
+					break
+	return ImageTexture.create_from_image(icon)
+
+
 static func coin_icon() -> AtlasTexture:
 	var atlas := AtlasTexture.new()
 	atlas.atlas = ICON_SHEET
@@ -1732,12 +1756,11 @@ func _build_shop_items() -> void:
 	# barn, never pass through the machine crate, and replay with their actor id.
 	if farm != null and not farm.sim.barns.is_empty():
 		var cows: int = farm.sim.cow_count()
-		var cow_icon := AtlasTexture.new()
-		cow_icon.atlas = load("res://assets/sprites/generated/cow.png")
-		cow_icon.region = Rect2(0, 0, 16, 16)
+		var cow_icon := cow_card_icon()
 		shop_items.append({
 			"kind": "cow", "seed_type": "cow", "item_name": "Cow",
 			"price": SimWorld.COW_PRICE, "unlocked": true,
-			"affordable": GameState.gold >= SimWorld.COW_PRICE and cows < SimWorld.HERD_LIMIT,
+			# Four for each barn, not four in all (S-41): the gateway's own limit.
+			"affordable": GameState.gold >= SimWorld.COW_PRICE and cows < farm.sim.herd_limit(),
 			"icon": cow_icon, "owned": cows
 		})

@@ -365,6 +365,9 @@
   "09d6f31b5bc2ffecf7d7": {
    "verdict": "ok"
   },
+  "09eaec54c2d63a13ae12": {
+   "verdict": "ok"
+  },
   "09f7a3c58ca484d407a5": {
    "verdict": "ok"
   },
@@ -515,6 +518,9 @@
    "verdict": "ok"
   },
   "0d1ced1edf1b3b300bea": {
+   "verdict": "ok"
+  },
+  "0d24b4f418779efdb76b": {
    "verdict": "ok"
   },
   "0d29f3bc7971745f32a8": {
@@ -2645,6 +2651,9 @@
   "4885e317790452dbbe1b": {
    "verdict": "ok"
   },
+  "488982853c71ae599c74": {
+   "verdict": "ok"
+  },
   "48a1ad7755020d35b857": {
    "baselined": "2026-09-19",
    "instead": "Label animation frames in the entity system so preview animations show real variations, not the same frame repeatedly",
@@ -3291,6 +3300,12 @@
   "587f2cecc2af88673d9b": {
    "verdict": "ok"
   },
+  "589718c0b2ddab38eed2": {
+   "instead": "A test shows that when a cow is grazing in the square where the next cow would arrive, the newcomer goes to the next free square",
+   "quote": "A test shows a cow grazing where the next cow would arrive sends the newcomer to the next free square",
+   "verdict": "decode",
+   "why": "The sentence makes the reader work out whether the cow or the test sends the newcomer, and how the clauses fit together."
+  },
   "58a3aeee4282d39d34a2": {
    "verdict": "ok"
   },
@@ -3299,6 +3314,12 @@
    "quote": "pale figures' own edges",
    "verdict": "second-look",
    "why": "The possessive construction makes the reader pause to understand that the cleanup is erasing the figures' edges."
+  },
+  "58b90d2693ab283771f8": {
+   "instead": "A hen loaded from a save now makes the same choice it made before you saved the game",
+   "quote": "gets the same decision check as the same hen in memory",
+   "verdict": "decode",
+   "why": "The reader has to work out that the saved hen should make the same choice after being loaded as it did before saving."
   },
   "58b9e84387db3fe71724": {
    "verdict": "ok"
@@ -4181,6 +4202,9 @@
    "why": "“Allowance” is internal shorthand for a usage limit, so the reader has to work out what was not recorded."
   },
   "6faeee08a2456120dcc1": {
+   "verdict": "ok"
+  },
+  "6fd5fe3fbacb5a6aea19": {
    "verdict": "ok"
   },
   "6ffea7bc6532a9d78a92": {
@@ -5305,6 +5329,12 @@
    "verdict": "decode",
    "why": "Undefined what 'the card' is or what 'move him on' means."
   },
+  "8d8ca6d907f851553d0c": {
+   "instead": "The tablet recovery stops when loading fails and keeps the previous unsaved game.",
+   "quote": "The tablet rescue stops instead of guessing when a pull fails, and keeps older unsaved play",
+   "verdict": "decode",
+   "why": "“Tablet rescue,” “pull,” and “older unsaved play” leave the reader to work out what failed and what data is kept."
+  },
   "8d9b158a61616491f6db": {
    "verdict": "ok"
   },
@@ -5323,6 +5353,12 @@
    "quote": "the event that wakes it",
    "verdict": "second-look",
    "why": "The metaphor makes the reader translate “wakes it” into making the waiting work start again."
+  },
+  "8dd50422bcc084e9d75c": {
+   "instead": "Stored results from checking this change's commit subjects",
+   "quote": "Writing-check cache for this change's commit subjects",
+   "verdict": "decode",
+   "why": "“Cache” is internal engineering shorthand for stored results, so a cold reader may not know what this is."
   },
   "8dd6a1f7de2dd71b9776": {
    "instead": "the player's crops",
@@ -5830,6 +5866,9 @@
    "verdict": "ok"
   },
   "9a9bd5358e89d587d46e": {
+   "verdict": "ok"
+  },
+  "9aabb7716ac47dbd81d2": {
    "verdict": "ok"
   },
   "9ac05324c35b0905cbfb": {
@@ -8124,6 +8163,9 @@
   "d845cf7cf8920c9d4e25": {
    "verdict": "ok"
   },
+  "d858d2beb5dc37017f78": {
+   "verdict": "ok"
+  },
   "d869ac25d5cff900cd77": {
    "verdict": "ok"
   },
@@ -8144,6 +8186,9 @@
    "quote": "we are still building checks for {unassured} of the {total} areas",
    "verdict": "decode",
    "why": "{unassured} and {total} are unfilled template placeholders; a reader cannot know what numbers are meant to appear here."
+  },
+  "d8b118ff6f5ef037ec89": {
+   "verdict": "ok"
   },
   "d8b4e9aa0f25d36b80a0": {
    "verdict": "ok"
@@ -8191,6 +8236,9 @@
    "verdict": "ok"
   },
   "d9c8b9714ca59e6abd53": {
+   "verdict": "ok"
+  },
+  "d9ccd6463e5adc0e028a": {
    "verdict": "ok"
   },
   "d9cef8f6009c249a3089": {
@@ -8633,6 +8681,12 @@
    "quote": "up to … steps at a time",
    "verdict": "second-look",
    "why": "“Steps” sounds like an internal unit of work rather than something the reader can identify plainly."
+  },
+  "e512cce032001a97c5ad": {
+   "instead": "The title screen's demo recording was rebuilt in the new format",
+   "quote": "recording format 5",
+   "verdict": "decode",
+   "why": "This unexplained internal name does not tell the reader what changed or what the format means."
   },
   "e51823e913f6f3eb87a6": {
    "instead": "Save the player's longer tablet session after the game rejects an attempt to collect an eleventh crop because the pouch already holds ten",

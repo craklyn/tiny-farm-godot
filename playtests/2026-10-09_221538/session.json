@@ -4,7 +4,7 @@
     "recorded_as": "v0.2.0.1-591-g894089c",
     "checked_on": "2026-10-09",
     "how": "godot --headless --path . --script res://tools/verify_replay.gd -- playtests/2026-10-09_221538",
-    "why": "The tablet was meant to be running build 03358855 (v0.2.0.1-858-g03358855) when this session was recorded, but the session is labelled 894089c, a September build that no longer exists. Either a bug carried the old label forward from the farm's save, or the tablet was still running an old install; which one is still being found out. On 2026-10-09 this short session replays exactly to its autosave both on 03358855 and on 0903cfee, which stands in for 894089c (see the 2026-09-25 sessions), so either way it is tied to a build on GitHub. It is tied to 03358855 here.",
+    "why": "This is not play from 2026-10-09. It is farm 3's play from 2026-09-25, recorded on 894089c, a September build that no longer exists. The 22:15 deploy took it off the tablet in place of farm 1, the farm Daniel was playing, because the rescue then took whichever farm had the longest tap trace, and a trace starts over each time a farm is opened (docs/DEPLOY.md, \"Which farms get pulled\"). Its label was right all along. It replays exactly to its autosave both on 03358855 and on 0903cfee, which stands in for 894089c (see the 2026-09-25 sessions), so it is tied to a build on GitHub. It is tied to 03358855 here.",
     "also_matches": [
       "0903cfee02e265141ae10629a0c622bbe3470806"
     ]

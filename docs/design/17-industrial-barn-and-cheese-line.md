@@ -20,6 +20,36 @@ Four voluntary milk stalls sit along one long wall. The opposite side holds a sm
 
 The barn is a place cows choose to use, not a place that confines them. Each cow may remain outside, walk through the large doors, visit an empty stall when ready to give milk, and leave again. No picture, animation, or game rule shows a cow being forced, distressed, restrained, or treated as a machine.
 
+## Where the barn goes, and where its cows arrive
+
+Every cow arrives on the farm just outside the barn's livestock doors: the first cow comes with
+the barn when it is put down, and each cow bought afterwards walks out of the doors of a barn
+already standing. She arrives on the nearest free square of outdoor ground that she could walk
+to from the doors. "Nearest" is counted in steps from the doorstep: straight out of the doors
+first, then the squares beside the doorstep, then further out. When two squares are the same
+distance away, the order is fixed (south, east, west, north), so a saved game and its replay
+always put a cow on the same square. A square is free if it is walkable farm ground and no
+other animal or machine is standing on it. She never arrives on the barn's own floor or on the
+doorstep itself, so the way in stays clear.
+
+This replaced a first version (changed 2026-10-10) in which each cow arrived on one of five
+fixed squares two rows below the barn. A barn whose row below was partly fenced could take only
+as many cows as that row had free squares, though Daniel's ruling is four cows for each barn
+([Q-139](../DESIGNER_QUEUE.md)). A barn near the bottom edge of the farm was worse: the tap
+offered to put it down, and the game then refused without any sign, because the first cow's
+square was off the farm.
+
+**A barn fits where its block of ground is free and its cows have somewhere to arrive.** Every
+barn needs this, not only the first, because a barn whose doors open onto nowhere is one no cow
+could ever walk into. In practice the second condition fails only when the barn is walled in,
+for example fenced in right up to its doorstep. The tap and the game ask the same question, so a
+tap never offers a barn placement that the game then refuses. When a barn tap does not fit, the
+player gets the same answer as for any building that does not fit: the buzz, and the barn's
+block outlined where she tapped. If the block itself is free and the barn is walled in, the
+squares around it that wall it in are marked red instead, so she can see which fence posts to
+move. Captures: `docs/design/mockups/footprint_refusal/barn_*.png`, made by
+`godot --path . res://tools/capture_footprint_refusal.tscn`.
+
 ## The cow milk cycle
 
 Each cow has a hidden milk amount measured in units.
@@ -29,6 +59,8 @@ Each cow has a hidden milk amount measured in units.
 - A cow is ready to give milk at 1 unit or more. When she freely enters an empty stall, she gives exactly 1 unit, leaving any amount above 1 unit in her body.
 - The stall sends that unit into the steel pipe immediately. The cow then remains free to leave through the front doors.
 - Four empty stalls allow four cows to give milk at the same time. A fifth cow waits outside or returns later; she is never pushed out of a stall or made to queue in a way that reads as distress.
+
+**Between visits, a cow grazes** (added 2026-10-10). A cow with no milk to give, or no empty stall for it, spends her day in the field near her barn: she walks to a patch of open grass, stands there a while (six to fifteen seconds), and walks to another, within five squares of the barn's doors each way. She leaves the doorway as soon as she is outside, and never settles on any building's doorstep or the squares beside it, on soil (a tilled bed, watered or not, as well as a planted one), or on a square where another cow is standing or heading, so the herd spreads out across the grass. Where there is too little grass near the barn for that, she takes the nearest bare square that is off the doorstep itself and that no other cow has, so even a barn hemmed in on every side does not end with the herd stacked in its doorway. When she has milk again and a stall is free, she walks back in. Before this, a cow stood still wherever she last stopped, and since every visit ends on the barn's doorstep, four cows that had each given milk once stood on that one square, drawn on top of one another, until morning. Cows still do not block one another, the farmer or the hen; they only choose not to stop on the same square.
 
 The amount remains invisible. The player learns readiness from the cow's choice: a cow walking calmly into an open stall starts the line. This keeps the core interaction understandable without reading and avoids turning an animal's body into a meter the player must manage.
 
@@ -307,7 +339,49 @@ approved room, and left the soil problem.
 
 To capture again, run `godot --path . --fixed-fps 60 res://tools/capture_cow_readability.tscn`
 (it needs a display). It stages a barn with four cows on a fixed farm, then captures the herd
-on the grass, two cows walking in, and three at their stalls.
+on the grass beside a hen and ripe wheat, two cows walking in, and two at their stalls
+(three are seldom in at once now that milked cows go back out to graze).
+
+### How big a cow is — 2026-10-11
+
+**Too small, now fixed.** On 2026-10-10 Daniel asked why the cows looked too small. They
+were: the cow was drawn 15×10 pixels inside one 16-pixel square, the same box as the rabbit.
+The hen stands 15 pixels tall and the farmer 24, so the cow was shorter than the hen and
+well under half the farmer's height. The room draws at the farm's own scale, so she was just
+as small in her stall, sitting low in a stall about 16×14 pixels clear.
+
+Three sizes were captured in the game at the same moment, with the same cows in the same
+places, on the grass beside the farmer, a hen and ripe wheat, and in the stalls
+([comparison](mockups/industrial_barn/cow_size_options.png)):
+
+- **Fills her square, 16×15:** as tall as the hen and much bulkier, but still well under the
+  farmer. Fits her stall exactly.
+- **Half again a square, 24×19 (picked):** about shoulder height to the farmer and clearly the
+  biggest animal on the farm.
+- **Full size, 32×22, two squares long:** closest to a real cow, but wider than the barn's
+  door. Four cows became a wall, and in the stalls they piled on top of one another. Doing it
+  properly would mean stalls two squares long and cows that take two squares.
+
+Daniel picked **half again a square** on 2026-10-11. What it changes:
+
+- **Only her picture.** She still stands on one square for walking, arriving, grazing and
+  her stall; no footprint, path or save changes. Her 24×20 frames
+  (`tools/build_cow_art.py`) stand on the middle of her square's bottom edge and overhang it
+  4 pixels each side and 4 above, the way the farmer's own 48×48 picture overhangs her
+  square. `entities/grazer.gd` sizes the picture from the sheet, so the rabbit's and the
+  kangaroo's 16-pixel sheets draw exactly as before.
+- **Her look.** A black head with a white blaze and one cream eye, two broad body patches, a
+  pink muzzle and udder, and four legs. Ink and cream are from the brief's palette; the belly
+  shade is the hen's `#e0d9c4` and the pink and horn tips are the farmer's `#ef91b6` and
+  `#f6ddc4`, so every colour is one the game already ships. The builder still refuses the
+  straw colour.
+- **The cost, accepted:** in the stalls, cows side by side overlap by about half a square and
+  cover the post between them
+  ([stalls](mockups/industrial_barn/cows_stalls.png)). If it reads badly in play, the cheap
+  next step is to draw the two stall columns' cows tail to tail.
+- The shop's cow card shows her whole standing frame with a one-pixel rim in the barn's steel
+  grey `#8d8e92`: her ink head, legs and outline are nearly the card's own colour, and without
+  the rim only her white body showed.
 
 ## What remains before implementation
 

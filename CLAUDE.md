@@ -98,7 +98,8 @@ godot --path . res://tools/capture_starter_brain.tscn
 godot --path . res://tools/capture_assign_tiles.tscn
 
 # A building that will not fit where she taps: the buzz and the outline of its block, for
-# the tower (staged weeds and a sprinkler, then the field's own weeds) and the coop, as PNGs
+# the tower (staged weeds and a sprinkler, then the field's own weeds), the coop, and a barn
+# fenced in to its doorstep (the fence marked, then placed with one post out), as PNGs
 # under docs/design/mockups/footprint_refusal/ — needs a display
 godot --path . res://tools/capture_footprint_refusal.tscn
 
@@ -142,6 +143,11 @@ godot --path . res://tools/profile_farm_page.tscn
 # A worm crawling through bends, four moments a step, as
 # docs/design/mockups/worm_crawl/staged_crawl.png — needs a display
 godot --path . res://tools/capture_worm_crawl.tscn
+
+# The herd outside the creamery: any saved farm with a barn, framed below the barn, as
+# <prefix>_start.png when it opens and <prefix>_end.png after 40 s of play (where the cows
+# went after milking) — needs a display; plays on a scratch copy of the save
+godot --path . res://tools/capture_cow_grazing.tscn -- --save=<farm.json> --out=<prefix>
 
 # The training workbench's six plates as PNGs (tools/shot_workbench_0..5.png) on a fresh
 # Mark III — needs a display; saves to scratch so it never seeds the next suite run
