@@ -25,6 +25,8 @@
 #                    head is blocked by its own body — the snake rule (WI-8e).
 #   tile_exclusive   an actor refuses to enter a tile another of its own species
 #                    is standing on (the giant-ant flag, shipped unused-ready).
+#   spares_beds      a walker whose route goes around the farm's soil beds and
+#                    through no building's block (the cow, 2026-10-11).
 #
 # **Cost is per decision, never per tick** (plan §1 rule 8). Nothing in here runs
 # on a timer: a brain plans a route when it decides to go somewhere, and asks for
@@ -54,6 +56,11 @@ const DIRS: Array[Vector2i] = [Vector2i(0, -1), Vector2i(0, 1), Vector2i(-1, 0),
 
 # What one call to step() did. The brain matches on these.
 const MOVED := "moved"
+
+# The route mode of a `ground` species whose row sets `spares_beds`. Not a
+# species mode — no row says it — but the mode its routes are searched and its
+# steps checked in, so the A* below treats it like any other (see `route_mode_of`).
+const GROUND_SPARING_BEDS := "ground_sparing_beds"
 const ARRIVED := "arrived"
 const BLOCKED := "blocked"
 
@@ -82,6 +89,7 @@ static func define_test_species(species: String, capability: Dictionary, speed: 
 			"mode": String(capability.get("mode", SpeciesDefs.GROUND)),
 			"body_len": maxi(1, int(capability.get("body_len", 1))),
 			"tile_exclusive": bool(capability.get("tile_exclusive", false)),
+			"spares_beds": bool(capability.get("spares_beds", false)),
 		},
 		"speed": speed,
 	}
@@ -105,6 +113,21 @@ static func capability_of(species: String) -> Dictionary:
 static func mode_of(species: String) -> String:
 	var mode := String(capability_of(species).get("mode", ""))
 	return mode if mode != "" else SpeciesDefs.GROUND
+
+
+# **The mode a species' routes are planned and stepped in** (2026-10-11). Its
+# own mode, except for a walker that spares the beds: a cow's way to the grass
+# went straight across the farmer's planted field and through the barn's own
+# block, because a route asked only `is_walkable`, and soil and a building's open
+# floor are both walkable. A cow's grazing spot was already kept off the beds
+# (`CowBrain._grazeable`); this keeps her whole walk off them. A species flag
+# rather than a cow check here, like `tile_exclusive`, and only the walk changes:
+# the hen, the player and the robots still cross soil, as they always have.
+static func route_mode_of(species: String) -> String:
+	var mode := mode_of(species)
+	if mode == SpeciesDefs.GROUND and bool(capability_of(species).get("spares_beds", false)):
+		return GROUND_SPARING_BEDS
+	return mode
 
 
 static func speed_of(species: String) -> float:
@@ -176,6 +199,8 @@ static func passable(world: SimWorld, mode: String, t: Vector2i) -> bool:
 			return in_bounds(world, t) and String(world.get_tile(t.x, t.y).get("state", "")) != "border"
 		SpeciesDefs.HOP:
 			return world.is_walkable(t.x, t.y) or is_barrier(world, t)
+		GROUND_SPARING_BEDS:
+			return world.is_walkable_sparing_beds(t.x, t.y)
 		SpeciesDefs.STATIC:
 			# A machine travels through nothing (M2.5 WI-10). Every search and
 			# every step follows from this one answer: `path` and `reachable`
@@ -191,9 +216,16 @@ static func passable(world: SimWorld, mode: String, t: Vector2i) -> bool:
 # the two where passing through is not the same as being there: a kangaroo clears
 # a fence rather than perching on it, and a mole travelling under a rock has to
 # come up somewhere it can stand.
+#
+# A walker that spares the beds may also *end* a journey on soil or a building's
+# floor, and may start one there: the rule is about the way across, and where she
+# stops is her brain's choice (a cow's grazing spot is never a bed, but her barn's
+# doorstep may have been tilled). Starting anywhere is what walks a cow off a
+# square she should not be on — the ground tilled under her, or a save from before
+# this rule caught her halfway across a barn's block.
 static func can_stop(world: SimWorld, mode: String, t: Vector2i) -> bool:
 	match mode:
-		SpeciesDefs.HOP, SpeciesDefs.BURROW:
+		SpeciesDefs.HOP, SpeciesDefs.BURROW, GROUND_SPARING_BEDS:
 			return world.is_walkable(t.x, t.y)
 		_:
 			return passable(world, mode, t)
@@ -250,8 +282,14 @@ static func blocked_by_kin(world: SimWorld, actor_id: String, t: Vector2i) -> bo
 # moment of the step rather than trusted from when the route was planned, because
 # the ground changes under an actor — the player tills, plants, drops a
 # scarecrow, and another ant walks into the tile this one was heading for.
-static func can_enter(world: SimWorld, actor_id: String, t: Vector2i) -> bool:
-	if not passable(world, mode_of(world.species_of(actor_id)), t):
+#
+# `last` says this step ends the journey, where `can_stop` is the question rather
+# than `passable` — the two differ only for a walker that spares the beds.
+static func can_enter(world: SimWorld, actor_id: String, t: Vector2i, last: bool = false) -> bool:
+	var mode := route_mode_of(world.species_of(actor_id))
+	if mode == GROUND_SPARING_BEDS and bool(world.actor(actor_id).get("extra", {}).get("over_beds", false)):
+		mode = SpeciesDefs.GROUND  # this one route had no way round (see `plan`)
+	if not (can_stop(world, mode, t) if last and mode == GROUND_SPARING_BEDS else passable(world, mode, t)):
 		return false
 	if blocked_by_self(world, actor_id, t):
 		return false
@@ -284,7 +322,7 @@ static func can_enter(world: SimWorld, actor_id: String, t: Vector2i) -> bool:
 static func reachable(world: SimWorld, mode: String, start: Vector2i) -> Array[Vector2i]:
 	var out: Array[Vector2i] = []
 	var mode_id := _mode_id(mode)
-	if not _crossable(world, mode_id, start.x, start.y):
+	if not _startable(world, mode_id, start.x, start.y):
 		return out
 
 	var w: int = SimWorld.MAP_WIDTH
@@ -396,6 +434,7 @@ const _M_FLY := 1
 const _M_BURROW := 2
 const _M_HOP := 3
 const _M_STATIC := 4
+const _M_SPARING_BEDS := 5
 
 
 static func _mode_id(mode: String) -> int:
@@ -404,6 +443,7 @@ static func _mode_id(mode: String) -> int:
 		SpeciesDefs.BURROW: return _M_BURROW
 		SpeciesDefs.HOP: return _M_HOP
 		SpeciesDefs.STATIC: return _M_STATIC
+		GROUND_SPARING_BEDS: return _M_SPARING_BEDS
 		_: return _M_GROUND
 
 
@@ -427,6 +467,8 @@ static func _crossable(world: SimWorld, mode_id: int, x: int, y: int) -> bool:
 			return not under.is_empty() and String(under.get("state", "")) != "border"
 		_M_FLY:
 			return not world.get_tile(x, y).is_empty()
+		_M_SPARING_BEDS:
+			return world.is_walkable_sparing_beds(x, y)
 		_:
 			return false
 
@@ -438,10 +480,18 @@ static func _crossable(world: SimWorld, mode_id: int, x: int, y: int) -> bool:
 # somewhere it can stand.
 static func _stoppable(world: SimWorld, mode_id: int, x: int, y: int) -> bool:
 	match mode_id:
-		_M_HOP, _M_BURROW:
+		_M_HOP, _M_BURROW, _M_SPARING_BEDS:
 			return world.is_walkable(x, y)
 		_:
 			return _crossable(world, mode_id, x, y)
+
+
+# Where a journey may begin: anywhere it could pass through, and for a walker
+# that spares the beds, any walkable ground (see `can_stop`).
+static func _startable(world: SimWorld, mode_id: int, x: int, y: int) -> bool:
+	if mode_id == _M_SPARING_BEDS:
+		return world.is_walkable(x, y)
+	return _crossable(world, mode_id, x, y)
 
 
 static func _ensure_pool(tiles: int) -> void:
@@ -482,7 +532,7 @@ static func path(world: SimWorld, mode: String, start: Vector2i, goal: Vector2i)
 	# The old prologue asked four questions — `in_bounds` and then `passable` for
 	# the start, `in_bounds` and then `can_stop` for the goal — and each of those
 	# fetched the tile again. Same two conditions, two fetches.
-	if not _crossable(world, mode_id, start.x, start.y):
+	if not _startable(world, mode_id, start.x, start.y):
 		return out
 	if not _stoppable(world, mode_id, goal.x, goal.y):
 		return out
@@ -561,7 +611,7 @@ static func path(world: SimWorld, mode: String, start: Vector2i, goal: Vector2i)
 					continue
 			elif seen == -gen:
 				continue  # asked about this tile already this search: impassable
-			elif not (world.is_walkable(nx, ny) if ground \
+			elif ni != goal_i and not (world.is_walkable(nx, ny) if ground \
 					else _crossable(world, mode_id, nx, ny)):
 				# The walker's answer is `is_walkable` and nothing else, and it is
 				# the mode nearly every route in the game is planned in, so it is
@@ -614,12 +664,25 @@ static func path(world: SimWorld, mode: String, start: Vector2i, goal: Vector2i)
 # Plan a journey to `goal`. False when this mover has no route there, which is an
 # ordinary answer (a hen picks a tile behind a gate, an ant's target is walled
 # off) and not an error — the brain decides what to do about it.
-static func plan(world: SimWorld, actor_id: String, goal: Vector2i) -> bool:
+#
+# `over_beds_if_needed` is for a walker that spares the beds, on a journey she
+# must make: when no way round them exists, she takes the ordinary walker's route
+# across, and `extra["over_beds"]` lets her steps follow it. Found on a tablet
+# farm (2026-10-11) whose barn stands in the fenced yard with the gate opening
+# onto a planted field: kept to the way round, its cow could never reach a stall
+# again. A cow's walk harms no crop; it is only the look of it the rule is for,
+# so a cow going to give milk crosses where she must and a grazing cow never does.
+static func plan(world: SimWorld, actor_id: String, goal: Vector2i, over_beds_if_needed: bool = false) -> bool:
 	var e: Dictionary = world.actor(actor_id)
 	if e.is_empty():
 		return false
-	var mode := mode_of(String(e.get("species", "")))
+	var mode := route_mode_of(String(e.get("species", "")))
 	var route := path(world, mode, world.actor_pos(actor_id), goal)
+	e["extra"].erase("over_beds")
+	if route.is_empty() and over_beds_if_needed and mode == GROUND_SPARING_BEDS:
+		route = path(world, SpeciesDefs.GROUND, world.actor_pos(actor_id), goal)
+		if not route.is_empty():
+			e["extra"]["over_beds"] = true
 	e["extra"]["path"] = flatten(route)
 	e["extra"]["step"] = 0
 	if mode == SpeciesDefs.BURROW:
@@ -645,7 +708,7 @@ static func step(world: SimWorld, actor_id: String, tick: int) -> String:
 		_surface(world, actor_id)
 		return ARRIVED
 	var next := Vector2i(int(route[idx * 2]), int(route[idx * 2 + 1]))
-	if not can_enter(world, actor_id, next):
+	if not can_enter(world, actor_id, next, idx * 2 + 2 >= route.size()):
 		return BLOCKED
 	place_on_tile(world, actor_id, next)
 	extra["step"] = idx + 1
@@ -708,6 +771,7 @@ static func clear_route(world: SimWorld, actor_id: String) -> void:
 		return
 	e["extra"]["path"] = []
 	e["extra"]["step"] = 0
+	e["extra"].erase("over_beds")
 
 
 static func facing_from(from: Vector2i, to: Vector2i) -> String:

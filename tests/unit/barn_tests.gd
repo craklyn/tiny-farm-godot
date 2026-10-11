@@ -595,12 +595,19 @@ func test_barn_cow_arrival() -> void:
 			and SaveGame.capture_canonical(world, GameState) == before,
 		"a barn fenced in to its doorstep is refused by the tap's question and the gateway alike, and nothing changes (%s)"
 			% refused)
+	# A cow comes out by the doors and does not walk through the barn (2026-10-11),
+	# so what walls her in is the fence around the doorstep: the posts behind the
+	# barn would not let her out if they were gone, and are not marked.
 	var walls := world.footprint_blockers(anchor, "industrial_barn")
-	var walls_are_the_fence := walls.size() == pen.size()
+	var at_the_doors: Array[Vector2i] = []
+	for c in pen:
+		if absi(c.x - door.x) + absi(c.y - door.y) == 1:
+			at_the_doors.append(c)
+	var walls_are_the_fence := walls.size() == at_the_doors.size()
 	for c in walls:
-		walls_are_the_fence = walls_are_the_fence and pen.has(c)
+		walls_are_the_fence = walls_are_the_fence and c in at_the_doors
 	_assert(walls_are_the_fence,
-		"what the refusal marks is the fence around it, not the barn's own free squares (%s)" % str(walls))
+		"what the refusal marks is the fence around its doorstep, not the barn's own squares (%s)" % str(walls))
 	# One post taken out beside the doorstep, and there is room for her.
 	var gap := anchor + Vector2i(2, 1)
 	world.set_tile_state(gap.x, gap.y, "cleared")
@@ -1135,3 +1142,223 @@ func test_room_edge_styles() -> void:
 		"the farmer's head draws over the north stone course")
 	_assert(south_depth > tower["box"].end.y - 8.0,
 		"the south stone course can still draw in front of the farmer's feet")
+
+
+# --- cows keep off the farmer's beds and out of the barn's block (2026-10-11) ---
+#
+# Measured on the staged creamery farm: grazing cows walked straight across the
+# planted field beside the barn and through the barn's own block, a save made
+# mid-walk loaded two of them standing inside the barn, and the barn itself had
+# been set down by tap over three squares of crops.
+func test_barn_cows_spare_beds() -> void:
+	print("\n--- Industrial barn: cows go around beds and buildings ---")
+	_test_cow_grass_only_across_beds()
+	_test_cow_goes_around_beds()
+	_test_cow_to_her_stall_across_beds_only_if_she_must()
+	_test_cow_loaded_inside_the_barn_walks_out()
+	_test_no_building_over_crops()
+	_test_cow_never_arrives_on_a_bed()
+
+
+# The barn fixture with its block drawn on the farm, as `place` would leave it,
+# and a field of rock around the barn but for the squares `open` names (cleared
+# ground) and `beds` (a crop growing). Returns the doorstep.
+func _bed_yard(seed_value: int, open: Array, beds: Array) -> SimWorld:
+	GameState.reset()
+	SimRng.reseed(seed_value)
+	var world := _barn_world()
+	var anchor := Vector2i(10, 10)
+	var block := MachineDefs.footprint_cells("industrial_barn", anchor)
+	for y in range(3, 18):
+		for x in range(3, 20):
+			var c := Vector2i(x, y)
+			if world.space_of(c) != "farm" or c in block:
+				continue
+			world.set_object(x, y, "")
+			world.set_tile_state(x, y, "growing" if c in beds else ("cleared" if c in open else "obstacle_rock"))
+	for cell in block:
+		world.set_tile_state(cell.x, cell.y, "cleared")
+		world.set_object(cell.x, cell.y, WorldLayout.INDUSTRIAL_BARN if cell == anchor else WorldLayout.INDUSTRIAL_BARN_PART)
+	for raw in world.actors.keys():
+		var id := String(raw)
+		if world.space_of(world.actor_pos(id)) == "farm" and absi(world.actor_pos(id).x - 11) <= 9 \
+				and world.actor_pos(id).y >= 3 and world.actor_pos(id).y < 18:
+			world.set_actor_pos(id, Vector2i(26, 3))
+	return world
+
+
+static func _rect_cells(x0: int, y0: int, x1: int, y1: int) -> Array:
+	var out := []
+	for y in range(y0, y1 + 1):
+		for x in range(x0, x1 + 1):
+			out.append(Vector2i(x, y))
+	return out
+
+
+const BLOCK_OBJECTS := [WorldLayout.INDUSTRIAL_BARN, WorldLayout.INDUSTRIAL_BARN_PART,
+	WorldLayout.CHICKEN_COOP, WorldLayout.CHICKEN_COOP_PART,
+	WorldLayout.SPIRAL_TOWER, WorldLayout.SPIRAL_TOWER_PART,
+	WorldLayout.ROBOT_STALL, WorldLayout.ROBOT_STALL_SLOT]
+
+
+# Runs `ticks` ticks and reports every square a cow stood on that is a bed or a
+# square of a building's block, and how many milk visits were made.
+func _watch_cows(world: SimWorld, ticks: int) -> Dictionary:
+	var bad := {}
+	var visited := {}
+	var given := 0
+	for i in ticks:
+		for taken in world.advance_ticks(1, GameState):
+			if String(taken.action.get("verb", "")) == "give_milk" and bool(taken.result.get("ok", false)):
+				given += 1
+		for cow_id in world.actors_of_species(SpeciesDefs.COW):
+			var at := world.actor_pos(cow_id)
+			if world.space_of(at) != "farm":
+				continue
+			visited[at] = true
+			if String(world.get_tile(at.x, at.y).get("state", "")) in SimWorld.WETTABLE_STATES \
+					or world.get_object(at.x, at.y) in BLOCK_OBJECTS:
+				bad[at] = true
+	return { "bad": bad.keys(), "visited": visited, "given": given }
+
+
+# Her own little patch beside the barn, a row of beds across the field, and the
+# rest of the grass on the far side of it: she grazes her patch and never crosses.
+func _test_cow_grass_only_across_beds() -> void:
+	var open := _rect_cells(8, 11, 14, 12) + _rect_cells(8, 14, 14, 16)
+	var beds := _rect_cells(8, 13, 14, 13)
+	var world := _bed_yard(1721, open, beds)
+	world.spawn_actor("cow_1", SpeciesDefs.COW, Vector2i(9, 12), {"milk_milliunits": 0})
+	var seen := _watch_cows(world, 3000)
+	var far := false
+	for at in seen.visited:
+		far = far or Vector2i(at).y >= 14
+	_assert(seen.bad.is_empty() and not far,
+		"with grass only on the far side of a row of beds, a grazing cow never steps on a bed (%s)" % str(seen.bad))
+
+
+# The same field with a lane of grass around the end of the beds: she reaches the
+# far grass, and goes round to get there.
+func _test_cow_goes_around_beds() -> void:
+	var open := _rect_cells(8, 11, 14, 12) + _rect_cells(8, 14, 14, 16) + _rect_cells(15, 11, 15, 16)
+	var beds := _rect_cells(8, 13, 14, 13)
+	var world := _bed_yard(1722, open, beds)
+	world.spawn_actor("cow_1", SpeciesDefs.COW, Vector2i(9, 12), {"milk_milliunits": 0})
+	world.spawn_actor("cow_2", SpeciesDefs.COW, Vector2i(13, 12), {"milk_milliunits": 0})
+	var seen := _watch_cows(world, 6000)
+	var far := false
+	for at in seen.visited:
+		far = far or Vector2i(at).y >= 14
+	_assert(far and seen.bad.is_empty(),
+		"with a lane round the end of the beds, cows graze the far grass and walk round to it (far %s, on beds %s)"
+			% [far, str(seen.bad)])
+
+
+# A cow whose only way to her stall is across the beds still goes in to give
+# milk; it is grazing that never crosses them.
+func _test_cow_to_her_stall_across_beds_only_if_she_must() -> void:
+	var open := _rect_cells(8, 11, 14, 12) + _rect_cells(8, 14, 14, 16)
+	var beds := _rect_cells(8, 13, 14, 13)
+	var world := _bed_yard(1723, open, beds)
+	world.spawn_actor("cow_1", SpeciesDefs.COW, Vector2i(11, 15), {"milk_milliunits": 1000})
+	var seen := _watch_cows(world, 2000)
+	var crossed: Array = seen.bad
+	var on_beds := true
+	for at in crossed:
+		on_beds = on_beds and Vector2i(at) in beds
+	_assert(int(seen.given) == 1 and on_beds and crossed.size() <= 2,
+		"with no way round, a cow with milk crosses the beds to her stall, by one bed square (%d visits, %s)"
+			% [int(seen.given), str(crossed)])
+	var open2 := open + _rect_cells(15, 11, 15, 16)
+	var round := _bed_yard(1723, open2, beds)
+	round.spawn_actor("cow_1", SpeciesDefs.COW, Vector2i(11, 15), {"milk_milliunits": 1000})
+	var seen2 := _watch_cows(round, 2000)
+	_assert(int(seen2.given) == 1 and seen2.bad.is_empty(),
+		"and with a way round, she takes it (%d visits, on beds %s)" % [int(seen2.given), str(seen2.bad)])
+
+
+# A save made while one cow was halfway into the barn's block on her way to the
+# grass (a route through it, as the staged creamery farm's cows had), and another
+# standing on it: loaded, neither walks on through the barn, and the one on it
+# steps off at once and never goes back.
+func _test_cow_loaded_inside_the_barn_walks_out() -> void:
+	var open := _rect_cells(6, 6, 16, 8) + _rect_cells(6, 9, 9, 15) + _rect_cells(13, 9, 16, 15) \
+		+ _rect_cells(10, 11, 12, 15)
+	var world := _bed_yard(1724, open, [])
+	var block := MachineDefs.footprint_cells("industrial_barn", Vector2i(10, 10))
+	var tick := world.clock.tick
+	world.spawn_actor("cow_1", SpeciesDefs.COW, Vector2i(11, 11), {"milk_milliunits": 0,
+		"state": "moving", "route_stage": "pasture", "path": [11, 10, 11, 9, 11, 8, 11, 7], "step": 0,
+		"wake": tick + 1})
+	world.spawn_actor("cow_2", SpeciesDefs.COW, Vector2i(12, 9), {"milk_milliunits": 0,
+		"state": "moving", "route_stage": "pasture", "path": [11, 9, 10, 9, 9, 9], "step": 0,
+		"wake": tick + 1})
+	world.schedule_all_brains()
+	var saved := SaveGame.capture(world, GameState)
+	var loaded := SimWorld.new()
+	_assert(SaveGame.restore(saved, loaded, GameState), "the farm with a cow on the barn's block loads")
+	var inside := {}
+	var cow2_out_at := -1
+	for i in 1500:
+		loaded.advance_ticks(1, GameState)
+		for cow_id in ["cow_1", "cow_2"]:
+			var at := loaded.actor_pos(cow_id)
+			if at in block:
+				inside["%s@%d" % [cow_id, i]] = at
+		if cow2_out_at < 0 and not loaded.actor_pos("cow_2") in block:
+			cow2_out_at = i
+	var cow1_in := false
+	var cow2_back := false
+	for key in inside:
+		cow1_in = cow1_in or String(key).begins_with("cow_1")
+		cow2_back = cow2_back or (String(key).begins_with("cow_2") and int(String(key).split("@")[1]) > cow2_out_at)
+	_assert(not cow1_in, "a cow loaded mid-walk into the barn's block does not walk on through it (%s)" % str(inside))
+	_assert(cow2_out_at >= 0 and cow2_out_at < 40 and not cow2_back,
+		"and a cow loaded standing on it steps off within a few seconds and never goes back (off at tick %d)" % cow2_out_at)
+
+
+# A barn's block over a crop is refused, by the tap's question and the gateway's
+# alike, with the crop marked; bare tilled soil is still taken. The coop and the
+# tower are not changed: they still go down over a crop, as they always have.
+func _test_no_building_over_crops() -> void:
+	var anchor := Vector2i(12, 10)
+	var cells := MachineDefs.footprint_cells("industrial_barn", anchor)
+	var under: Vector2i = cells[cells.size() - 1]
+	var world := _arrival_yard(1725, anchor)
+	world.set_tile_state(under.x, under.y, "seeded", "wheat")
+	GameState.reset()
+	GameState.gold = 2000
+	GameState.harvest_counts["egg"] = 10
+	GameState.machines = { "industrial_barn": 1 }
+	var asked := world.placeable_at(anchor, "industrial_barn")
+	var blockers := world.footprint_blockers(anchor, "industrial_barn")
+	var laid := world.apply_action({ "verb": "place", "target": anchor, "item": "industrial_barn", "actor": "player" }, GameState)
+	_assert(not asked and blockers == [under] and not bool(laid.get("ok", false))
+			and world.get_object(anchor.x, anchor.y) == "" and world.has_crop(under.x, under.y),
+		"a barn over a sown square is refused, that square marked, the crop left growing (%s, %s)"
+			% [str(blockers), str(laid)])
+	world.set_tile_state(under.x, under.y, "tilled")
+	_assert(world.placeable_at(anchor, "industrial_barn"),
+		"and over bare tilled soil it still fits, as it always has")
+	var coop_world := _arrival_yard(1725, anchor)
+	coop_world.set_tile_state(anchor.x + 1, anchor.y - 1, "seeded", "wheat")
+	_assert(coop_world.placeable_at(anchor, "coop") and coop_world.placeable_at(anchor, "spiral_tower"),
+		"the coop and the tower still fit over a crop, unchanged")
+
+
+# A new cow arrives on ground she could stand on and graze from, never on a bed:
+# with the square below the doors tilled, she comes out beside it instead.
+func _test_cow_never_arrives_on_a_bed() -> void:
+	var anchor := Vector2i(12, 10)
+	var world := _arrival_yard(1726, anchor)
+	var below := anchor + Vector2i(1, 2)
+	world.set_tile_state(below.x, below.y, "tilled")
+	GameState.reset()
+	GameState.gold = 500
+	GameState.harvest_counts["egg"] = 10
+	GameState.machines = { "industrial_barn": 1 }
+	var laid := world.apply_action({ "verb": "place", "target": anchor, "item": "industrial_barn", "actor": "player" }, GameState)
+	var at := world.actor_pos("cow_1")
+	_assert(bool(laid.get("ok", false)) and at != below
+			and not String(world.get_tile(at.x, at.y).get("state", "")) in SimWorld.WETTABLE_STATES,
+		"with the square below the doors tilled, the barn's cow comes out beside it, not on it (%s)" % at)

@@ -1330,6 +1330,12 @@
   "2252c250bd84ec763ae5": {
    "verdict": "ok"
   },
+  "2255f4e2574b7b4a7eb3": {
+   "instead": "Cows walk around the farmer's beds and the barn's walls, and a barn can no longer be placed on top of crops",
+   "quote": "a barn no longer goes down over crops",
+   "verdict": "decode",
+   "why": "The phrase “goes down over crops” does not plainly say what happens to the barn or crops."
+  },
   "225f1189fc1319a3dbe1": {
    "instead": "Should tiles planted by the player pay more than tiles tilled by the robot?",
    "quote": "her squares",
@@ -5634,6 +5640,9 @@
    "verdict": "ok"
   },
   "946a088ddc4bfffc5025": {
+   "verdict": "ok"
+  },
+  "9475d6fe09d89572cdd9": {
    "verdict": "ok"
   },
   "9486caee0a136431d1a2": {

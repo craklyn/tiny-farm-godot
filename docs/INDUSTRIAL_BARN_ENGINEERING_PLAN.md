@@ -146,8 +146,19 @@ neighbours, and not where another cow stands or is heading, and plans to it — 
 route searches per decision. If none does and she is not already on such a square, she
 searches rings outward from where she stands, to the same radius (sixty squares at most): the
 nearest such square, or failing that the nearest bare ground off every doorstep itself and
-clear of the herd. She rests `GRAZE_SECONDS` there before the next decision. Her walks are brain decisions with no Action;
+clear of the herd (bare ground that is not soil since 2026-10-11). She rests `GRAZE_SECONDS` there before the next decision. Her walks are brain decisions with no Action;
 a replay recomputes them, as it does every brain but the hen's.
+
+Her routes spare the beds (2026-10-11): the cow's species row sets the movement capability
+`spares_beds`, so `Movement.route_mode_of` plans and steps her in `GROUND_SPARING_BEDS`, whose
+crossable test is `SimWorld.is_walkable_sparing_beds` — walkable, not a `WETTABLE_STATES` tile,
+not a `BUILDING_BLOCK_OBJECTS` square. The start and the goal of a route only need to be
+walkable, so a cow loaded on soil or on a block walks off it, and where she stops stays her
+brain's choice. The route to the barn's exterior door passes `over_beds_if_needed` to
+`Movement.plan`: with no way round, she takes the ordinary ground route and `extra.over_beds`
+lets her steps follow it; grazing never does. `_barn_cow_search` walks the same crossable test
+and skips the block, and `placeable_at` refuses a barn whose block holds a crop (`_crop_under_barn`).
+Cost is unchanged in kind: one search per decision, a second only when the first finds no way.
 
 ### Milk and cheese actions
 
