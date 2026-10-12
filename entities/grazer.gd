@@ -149,5 +149,5 @@ static func cell_dest(sheet: Texture2D, at: Vector2, flip: bool) -> Rect2:
 	var cell := cell_size(sheet)
 	var corner := Vector2(at.x + (TILE_SIZE - cell.x) / 2.0, at.y + TILE_SIZE - cell.y)
 	if flip:
-		return Rect2(corner.x + cell.x, corner.y, -cell.x, cell.y)
+		return Rect2(corner.x, corner.y, -cell.x, cell.y)
 	return Rect2(corner, cell)

@@ -1,18 +1,21 @@
 {
   "image": "industrial_barn_interior_kit.png",
   "cell_size": [16, 16],
-  "grid_size": [6, 4],
-  "cells": [
-    "hay_rack", "feed_bin", "stall_northwest", "stall_northeast", "milk_receiver", "set_vat",
-    "cow_route_north", "cow_route_south", "stall_southwest", "stall_southeast", "stirring_rake", "curd_cutter",
-    "barn_door_threshold", "cow_route_floor", "open_crossing_floor", "open_crossing_warm", "whey_drain_table", "press_bank",
-    "barn_door_opening", "cow_route_exit", "open_crossing_to_processing", "processing_floor_a", "processing_floor_b", "outfeed_conveyor"
-  ],
-  "product_route": [
-    "milk_receiver", "set_vat", "curd_cutter", "stirring_rake", "whey_drain_table", "press_bank", "outfeed_conveyor"
-  ],
-  "states": {
-    "idle": "the receiver and vat show pale milk; cutter and rake show settled curds",
-    "active": "machine motion is a future presentation animation; the base atlas keeps the seven stations, product shapes, and clear cow route fixed"
+  "grid_size": [12, 8],
+  "note": "A 12 by 8 room: the cow side (columns 0 to 6) and the cheese line (columns 7 to 11). Every machine is drawn empty; the game draws the line's work on them. Rectangles are x, y, width, height in room pixels. Built by tools/build_barn_room_art.py.",
+  "product_route": ["receiver", "vat", "table", "presses", "belt", "shelf"],
+  "regions": {
+    "pens": [[0, 0, 48, 32], [0, 32, 48, 32], [64, 0, 48, 32], [64, 32, 48, 32]],
+    "aisle": [48, 0, 16, 64],
+    "lobby": [0, 64, 112, 64],
+    "door": [48, 112, 16, 16],
+    "hay": [0, 80, 30, 24],
+    "feed_bin": [64, 72, 42, 26],
+    "receiver": [112, 0, 32, 32],
+    "vat": [144, 0, 48, 32],
+    "table": [144, 32, 48, 32],
+    "presses": [144, 64, 48, 32],
+    "belt": [144, 96, 48, 32],
+    "shelf": [112, 96, 32, 32]
   }
 }

@@ -123,6 +123,11 @@ func test_barn_simulation() -> void:
 	test_barn_milk_gain_at_sleep()
 	test_barn_save_v6_migration()
 	test_barn_room_layout()
+	test_barn_pens_fit_the_cows()
+	test_barn_rooms_have_their_own_slots()
+	test_barn_legacy_room_is_renovated()
+	test_barn_legacy_room_moves_people_out()
+	test_barn_card_counts_the_crate()
 	test_barn_pick_up()
 	test_barn_animation_follows_sim_ticks()
 
@@ -195,11 +200,243 @@ func test_cheese_shelf_sale() -> void:
 		"an empty shelf refuses the Action without changing the world")
 
 
+# The pens are the point of the bigger room: a cow's picture is 24x20 pixels and a pen has
+# to hold her with room to spare, on the straw, clear of the next pen and of the wall
+# (2026-10-11, "the pens should be large enough to fit the now-larger cows"). Read from the
+# room's data and from the picture itself, so a redraw of either cannot quietly shrink them.
+func test_barn_pens_fit_the_cows() -> void:
+	print("\n--- Industrial barn: every pen holds a cow with room to spare ---")
+	var layout: Dictionary = MachineDefs.room_of("industrial_barn")
+	var size := Vector2i(layout["cells"])
+	var cow_sheet := Image.load_from_file("res://assets/sprites/generated/cow.png")
+	var cow := Vector2i(cow_sheet.get_width() / 4, cow_sheet.get_height())
+	var kit := Image.load_from_file("res://assets/sprites/generated/industrial_barn_interior_kit.png")
+	_assert(kit.get_width() == size.x * 16 and kit.get_height() == size.y * 16,
+		"the room's picture is its cells at sixteen pixels each (%dx%d)" % [kit.get_width(), kit.get_height()])
+	var blocked := {}
+	for cell in layout["blocked_cells"]:
+		blocked[Vector2i(cell)] = true
+	var pen_cells := {}
+	var all_fit := true
+	var straw := ["dcb98a", "c9a06b", "e8cfa6", "eddab5", "8b7c63"]
+	var floors_ok := true
+	var cow_room := true
+	for stall in layout["stalls"]:
+		var at := Vector2i(stall)
+		# A pen is the stall's cell, one cell either side of it, and the row above.
+		var pen := Rect2i(at.x - 1, at.y - 1, 3, 2)
+		for y in range(pen.position.y, pen.end.y):
+			for x in range(pen.position.x, pen.end.x):
+				var c := Vector2i(x, y)
+				all_fit = all_fit and x >= 0 and y >= 0 and x < size.x and y < size.y \
+					and not blocked.has(c) and not pen_cells.has(c)
+				pen_cells[c] = true
+				var px := kit.get_pixel(x * 16 + 8, y * 16 + 8).to_html(false)
+				floors_ok = floors_ok and px in straw
+		# Her picture stands on the middle of the cell's bottom edge and overhangs it, so
+		# what has to fit is the cell's width plus the overhang, inside the pen's.
+		cow_room = cow_room and pen.size.x * 16 - cow.x >= 16 and pen.size.y * 16 - cow.y >= 8
+	_assert(layout["stalls"].size() == 4, "there are four pens")
+	_assert(all_fit, "each is three cells by two, inside the room, clear of machinery and of every other pen")
+	_assert(cow_room, "and each leaves her at least 8 pixels each side and 8 above (cow %s px)" % str(cow))
+	_assert(floors_ok, "every cell of every pen is straw in the picture, so she stands on bedding")
+
+
+# The barn's room is too big for the coop's slots, so it has two of its own on the rooms
+# page; a third barn would stand with no inside, and is refused instead.
+func test_barn_rooms_have_their_own_slots() -> void:
+	print("\n--- Industrial barn: rooms of their own size take slots of their own size ---")
+	var big := WorldLayout.ROOM_BIG_SLOT
+	_assert(WorldLayout.room_slot_count() == WorldLayout.ROOM_SLOTS_SMALL + WorldLayout.ROOM_BIG_SLOTS,
+		"the page has %d small slots and %d big ones" % [WorldLayout.ROOM_SLOTS_SMALL, WorldLayout.ROOM_BIG_SLOTS])
+	var rects: Array[Rect2i] = []
+	var on_page := true
+	var apart := true
+	for i in WorldLayout.room_slot_count():
+		var rect := Rect2i(WorldLayout.room_slot_origin(i), WorldLayout.room_slot_size(i))
+		on_page = on_page and rect.position.x >= 0 and rect.end.x <= SimWorld.MAP_WIDTH \
+			and rect.position.y >= WorldLayout.ROOMS_PAGE * WorldLayout.PAGE_ROWS \
+			and rect.end.y <= (WorldLayout.ROOMS_PAGE + 1) * WorldLayout.PAGE_ROWS
+		for other in rects:
+			apart = apart and not rect.grow(1).intersects(other)
+		rects.append(rect)
+	_assert(on_page, "every slot, big or small, lies on the rooms page")
+	_assert(apart, "and none touches another: a tile of dark lies between every pair")
+	_assert(WorldLayout.room_slot_fits(WorldLayout.ROOM_SLOTS_SMALL, big)
+			and not WorldLayout.room_slot_fits(0, big)
+			and WorldLayout.room_slot_fits(0, WorldLayout.ROOM_SLOT)
+			and not WorldLayout.room_slot_fits(WorldLayout.ROOM_SLOTS_SMALL, WorldLayout.ROOM_SLOT),
+		"a big room fits only a big slot, and a coop's only a small one")
+
+	# Through the real verbs: two barns open two rooms, the third is refused.
+	GameState.reset()
+	SimRng.reseed(1731)
+	var world := SimWorld.new(); world.generate()
+	for y in range(6, 18):
+		for x in range(3, 28):
+			world.set_tile_state(x, y, "cleared"); world.set_object(x, y, "")
+	GameState.gold = 5000
+	GameState.harvest_counts["egg"] = 10
+	var rooms_taken: Array[String] = []
+	var anchors := [Vector2i(5, 9), Vector2i(12, 9), Vector2i(19, 9)]
+	var results: Array[Dictionary] = []
+	var offered: Array[bool] = []
+	var refused_buy := {}
+	for anchor in anchors:
+		offered.append(world.offers("industrial_barn", GameState))
+		var bought := world.apply_action({ "verb": "buy_machine", "item": "industrial_barn", "actor": "player" }, GameState)
+		if not bool(bought.get("ok", false)):
+			refused_buy = bought
+			# The shop would not sell it; hand one over so the tap's own refusal is tested too.
+			GameState.machines["industrial_barn"] = 1
+		var laid := world.apply_action({ "verb": "place", "target": anchor, "item": "industrial_barn",
+			"actor": "player" }, GameState)
+		results.append(laid)
+		if bool(laid.get("ok", false)):
+			rooms_taken.append(String(laid.get("room", "")))
+	_assert(offered == [true, true, false] and String(refused_buy.get("reason", "")) == "not_offered",
+		"the shop offers a barn while a room is free and sells no third (%s, %s)" % [str(offered), str(refused_buy)])
+	_assert(rooms_taken.size() == 2 and results[2].get("reason", "") == "no_room_inside",
+		"two barns are built and the third is refused for want of an inside (%s)" % str(results[2]))
+	var origins: Array[Vector2i] = []
+	for id in rooms_taken:
+		origins.append(Vector2i(world.rooms[id]["origin"]))
+	_assert(origins.size() == 2 and origins[0] != origins[1]
+			and Vector2i(world.rooms[rooms_taken[0]]["size"]) == big,
+		"each of the two has its own twelve-by-eight room (%s)" % str(origins))
+	_assert(not world.placeable_at(anchors[2], "industrial_barn") and not world.barn_room_free(),
+		"and the tap knows it: no spot is offered for a third")
+	# A coop still gets a small slot while both barns stand.
+	GameState.gold = 5000
+	world.apply_action({ "verb": "buy_machine", "item": "coop", "actor": "player" }, GameState)
+	var coop := world.apply_action({ "verb": "place", "target": Vector2i(19, 13), "item": "coop",
+		"actor": "player" }, GameState)
+	_assert(bool(coop.get("ok", false)) and String(coop.get("room", "")) != ""
+			and Vector2i(world.rooms[String(coop["room"])]["size"]) == WorldLayout.ROOM_SLOT,
+		"a coop still opens a small room beside them (%s)" % str(coop))
+	# Picking a barn up frees its slot for the next.
+	var picked := world.apply_action({ "verb": "collect", "target": anchors[0], "actor": "player" }, GameState)
+	_assert(bool(picked.get("ok", false)) and world.barn_room_free(),
+		"picking a barn up gives its room back (%s)" % str(picked))
+
+
+# The shop counts the barns already in the crate: with one standing and one bought but
+# not yet put down, the second slot is spoken for and no third card is offered.
+func test_barn_card_counts_the_crate() -> void:
+	print("\n--- Industrial barn: the shop never sells a barn with no room to open into ---")
+	GameState.reset()
+	var world := SimWorld.new(); world.generate()
+	GameState.harvest_counts["egg"] = 10
+	GameState.gold = 5000
+	_assert(world.offers("industrial_barn", GameState), "with no barn standing, one is offered")
+	world.apply_action({ "verb": "buy_machine", "item": "industrial_barn", "actor": "player" }, GameState)
+	_assert(world.offers("industrial_barn", GameState), "and with one in the crate, a second still is")
+	world.apply_action({ "verb": "buy_machine", "item": "industrial_barn", "actor": "player" }, GameState)
+	var third := world.apply_action({ "verb": "buy_machine", "item": "industrial_barn", "actor": "player" }, GameState)
+	_assert(not world.offers("industrial_barn", GameState) and String(third.get("reason", "")) == "not_offered"
+			and int(GameState.machines.get("industrial_barn", 0)) == 2,
+		"with two in the crate and two rooms free, no third is sold (%s)" % str(third))
+
+
+# A farmer or a robot saved inside a barn's old room is put on the doorstep when the new room
+# replaces it: her square is about to become void, or somebody's machinery.
+func test_barn_legacy_room_moves_people_out() -> void:
+	print("\n--- Industrial barn: anyone inside the old room is put outside ---")
+	var data := SaveGame.load_dict("res://playtests/2026-10-11_004912_slot1/autosave.json")
+	if data.is_empty():
+		_assert(false, "the tablet farm loads")
+		return
+	var actors: Dictionary = data["world"]["actors"]
+	actors["player"]["x"] = 16
+	actors["player"]["y"] = 42
+	actors["bot_mk1"]["x"] = 17
+	actors["bot_mk1"]["y"] = 41
+	GameState.reset()
+	var world := SimWorld.new()
+	_assert(SaveGame.restore(data, world, GameState), "a farm saved with the farmer and a robot inside the old room restores")
+	var anchor := Vector2i(6, 5)
+	var doorstep := anchor + Vector2i(1, 1)
+	for id in ["player", "bot_mk1"]:
+		var at := world.actor_pos(id)
+		_assert(at == doorstep and world.room_of_cell(at) == "" and world.is_walkable(at.x, at.y),
+			"%s is on the barn's doorstep, outside, on ground she can stand on (%s)" % [id, str(at)])
+
+
+# A barn saved with its first, 6x4 room is given the 12x8 one on load: its line comes
+# with it, its cows go out to the grass, and nothing of the old room is left behind.
+# The fixture is Daniel's tablet farm of 2026-10-11, saved before the room was redrawn.
+func test_barn_legacy_room_is_renovated() -> void:
+	print("\n--- Industrial barn: a farm saved with the old room gets the new one ---")
+	var path := "res://playtests/2026-10-11_004912_slot1/autosave.json"
+	var data := SaveGame.load_dict(path)
+	_assert(not data.is_empty(), "the tablet farm saved with the first room loads from disk")
+	if data.is_empty():
+		return
+	var saved_rooms: Dictionary = data["world"]["rooms"]
+	var old_id := ""
+	for id in saved_rooms:
+		if String(saved_rooms[id].get("item", "")) == "industrial_barn":
+			old_id = String(id)
+	_assert(old_id != "" and int(saved_rooms[old_id]["size"][0]) == 6 and int(saved_rooms[old_id]["size"][1]) == 4,
+		"and its barn does have a six-by-four room (%s)" % old_id)
+	GameState.reset()
+	var world := SimWorld.new()
+	_assert(SaveGame.restore(data, world, GameState), "the farm restores")
+	var barn_ids: Array = world.barns.keys()
+	_assert(barn_ids.size() == 1, "with its one barn")
+	if barn_ids.size() != 1:
+		return
+	var barn_id: String = barn_ids[0]
+	var room: Dictionary = world.rooms.get(barn_id, {})
+	_assert(Vector2i(room.get("size", Vector2i.ZERO)) == Vector2i(12, 8)
+			and is_equal_approx(float(room.get("pitch", 0)), 4.0),
+		"the barn's room is now twelve cells by eight at pitch four (%s)" % barn_id)
+	var anchor := Vector2i(room["anchor"])
+	_assert(anchor == Vector2i(int(saved_rooms[old_id]["anchor"][0]), int(saved_rooms[old_id]["anchor"][1])),
+		"it is still anchored to the same building")
+	_assert(world.room_of_anchor(anchor) == barn_id and (barn_id == old_id or not world.rooms.has(old_id)),
+		"and the old room is gone, not kept beside it")
+	var origin := Vector2i(room["origin"])
+	var stalls_ok: bool = world.barns[barn_id]["stalls"].size() == 4
+	for i in 4:
+		var cell := Vector2i(MachineDefs.room_of("industrial_barn")["stalls"][i]) + origin
+		var stall: Dictionary = world.barns[barn_id]["stalls"][i]
+		stalls_ok = stalls_ok and Vector2i(int(stall["cell"][0]), int(stall["cell"][1])) == cell \
+			and String(stall["cow_id"]) == ""
+	_assert(stalls_ok, "its four stalls are the new pens' cells, all empty")
+	# Every cow is out on the farm, with no errand left over from the old room.
+	var herd_out := true
+	for id in world.actors:
+		if world.species_of(String(id)) != SpeciesDefs.COW:
+			continue
+		var extra: Dictionary = world.actor(String(id))["extra"]
+		herd_out = herd_out and world.room_of_cell(world.actor_pos(String(id))) == "" \
+			and String(extra.get("barn_id", "")) == "" and int(extra.get("stall_index", 0)) == -1
+	_assert(herd_out, "every cow is outside, holding no stall")
+	var again := SimWorld.new()
+	var round_trip: Dictionary = JSON.parse_string(JSON.stringify(SaveGame.capture(world, GameState)))
+	_assert(SaveGame.restore(round_trip, again, GameState)
+			and SaveGame.capture_canonical(again, GameState) == SaveGame.capture_canonical(world, GameState),
+		"a renovated farm saves and loads back unchanged, and is no longer a legacy farm")
+	# And it works: with milk to give, a cow walks the new route to a new pen.
+	for id in world.actors:
+		if world.species_of(String(id)) == SpeciesDefs.COW:
+			world.actor(String(id))["extra"]["milk_milliunits"] = 1500
+	var gave := false
+	for i in 6000:
+		for taken in world.advance_ticks(1, GameState):
+			if String(taken.action.get("verb", "")) == "give_milk" and bool(taken.result.get("ok", false)):
+				gave = true
+		if gave:
+			break
+	_assert(gave, "and a cow does give milk in the new room")
+
+
 # The room the interior picture draws: its south-west livestock doorway, central
 # stall block, open cow route, and exact supply and machine blockers agree with
 # the kit's named cells (INDUSTRIAL_BARN_ENGINEERING_PLAN, "Building and interior").
 func test_barn_room_layout() -> void:
-	print("\n--- Industrial barn: the placed building and its six-by-four room ---")
+	print("\n--- Industrial barn: the placed building and its twelve-by-eight room ---")
 	var placed := _placed_barn_world(1721)
 	var world: SimWorld = placed[0]; var spot: Vector2i = placed[1]; var room_id: String = placed[2]
 	_assert(room_id != "" and world.barns.has(room_id) and world.room_kind(room_id) == "industrial_barn",
@@ -208,8 +445,13 @@ func test_barn_room_layout() -> void:
 		return
 	var room: Dictionary = world.rooms[room_id]
 	var origin: Vector2i = room["origin"]
-	_assert(Vector2i(room["size"]) == Vector2i(6, 4) and bool(room["edge_walls"]),
-		"the room is six cells by four, every one of them inside the walls")
+	_assert(Vector2i(room["size"]) == Vector2i(12, 8) and bool(room["edge_walls"])
+			and is_equal_approx(float(room["pitch"]), 4.0),
+		"the room is twelve cells by eight at pitch four, every one of them inside the walls")
+	_assert(Rect2i(origin, Vector2i(room["size"])).intersects(
+			Rect2i(WorldLayout.room_slot_origin(0), WorldLayout.ROOM_SLOT)) == false
+			and world.page_of(origin) == WorldLayout.ROOMS_PAGE,
+		"and it stands in one of the rooms page's big slots, clear of the small ones")
 	_assert(room["anchor"] == spot and world.room_exit_for(room) == spot + Vector2i(1, 1),
 		"the room is anchored to the building, and its doorstep is under the barn's middle doors")
 	var footprint_ok := true
@@ -218,16 +460,16 @@ func test_barn_room_layout() -> void:
 		footprint_ok = footprint_ok and (obj == WorldLayout.INDUSTRIAL_BARN or obj == WorldLayout.INDUSTRIAL_BARN_PART)
 	_assert(footprint_ok and MachineDefs.footprint_cells("industrial_barn", spot).size() == 6,
 		"the building stands on all six squares of its three-by-two footprint")
-	_assert(Vector2i(room["door"]) == origin + Vector2i(0, 3)
-		and world.get_object(origin.x, origin.y + 3) == WorldLayout.ROOM_DOORWAY,
-		"the livestock doorway is under the kit's south-west door")
+	_assert(Vector2i(room["door"]) == origin + Vector2i(3, 7)
+		and world.get_object(origin.x + 3, origin.y + 7) == WorldLayout.ROOM_DOORWAY,
+		"the livestock doorway is at the foot of the kit's central aisle")
 	var blocked_cells: Array = MachineDefs.room_of("industrial_barn").get("blocked_cells", [])
 	var blockers_match := true
 	for cell in blocked_cells:
 		var c: Vector2i = origin + Vector2i(cell)
 		blockers_match = blockers_match and not world.is_walkable(c.x, c.y) \
 			and world.get_object(c.x, c.y) == WorldLayout.INDUSTRIAL_BARN_MACHINERY
-	_assert(blockers_match, "cows cannot stand on the hay rack, feed bin, or cheese machinery")
+	_assert(blockers_match, "cows cannot stand on the hay, the feed bin, or the cheese machinery")
 	var route_open := true
 	for cell in MachineDefs.room_of("industrial_barn").get("cow_route", []):
 		var c: Vector2i = origin + Vector2i(cell)
@@ -240,8 +482,8 @@ func test_barn_room_layout() -> void:
 		stall_cells.append(cell - origin)
 		reachable = reachable and not Movement.path(world, SpeciesDefs.GROUND,
 			Vector2i(room["door"]), cell).is_empty()
-	_assert(stall_cells == [Vector2i(2, 0), Vector2i(3, 0), Vector2i(2, 1), Vector2i(3, 1)],
-		"the four stalls are the kit's central two-by-two block, deepest first (%s)" % str(stall_cells))
+	_assert(stall_cells == [Vector2i(1, 1), Vector2i(5, 1), Vector2i(1, 3), Vector2i(5, 3)],
+		"the four stalls are the middle cells of the kit's four pens, deepest first (%s)" % str(stall_cells))
 	_assert(reachable, "and a cow can walk from the doorway to every one of them")
 	_assert(ActionRouter.SPECIAL_OBJECTS.get(WorldLayout.INDUSTRIAL_BARN, "") == "open_structure"
 		and ActionRouter.SPECIAL_OBJECTS.get(WorldLayout.INDUSTRIAL_BARN_PART, "") == "open_structure",
@@ -362,7 +604,7 @@ func test_barn_animation_follows_sim_ticks() -> void:
 	var seen := {}
 	var cutter_ok := true
 	var held := true
-	for i in 400:
+	for i in 1200:
 		world.advance_ticks(1, GameState)
 		var state := BarnPresentation.drawn_state(world, "barn_1", world.clock.tick)
 		var barn: Dictionary = world.barns["barn_1"]
@@ -695,7 +937,7 @@ func _arrival_yard(seed_value: int, anchor: Vector2i) -> SimWorld:
 	return world
 
 
-# A small cleared yard with one barn and its real six-by-four interior.
+# A small cleared yard with one barn and its real twelve-by-eight interior.
 func test_barn_save_from_disk() -> void:
 	print("\n--- Industrial barn: a save read back from disk ---")
 	GameState.reset()

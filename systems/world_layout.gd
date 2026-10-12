@@ -198,21 +198,54 @@ const ROOM_SLOT := Vector2i(6, 6)
 # a cell would otherwise open straight into the room next door, and a gap costs a
 # page that is mostly empty nothing at all.
 const ROOM_SLOT_GAP := 1
-const ROOM_SLOT_COLUMNS := 4
+# Two columns by three rows of small slots down the west side of the page: the coop's
+# 6x6 and the tower's 2x2 each take one. Three rows of six with a gap between come to
+# exactly the page's twenty.
+const ROOM_SLOT_COLUMNS := 2
+const ROOM_SLOT_ROWS := 3
+const ROOM_SLOTS_SMALL := ROOM_SLOT_COLUMNS * ROOM_SLOT_ROWS
+# **Big slots, for the Industrial Barn's 12x8 room** (2026-10-11). The barn's first room
+# was 6x4 and held four stalls, seven stations and a shelf in 96x64 pixels; Daniel called
+# it stick drawings and asked for the room to be bigger. A 12x8 room (the farmhouse's
+# width, at the same pitch of four) does not fit a 6x6 slot, so the east of the page
+# holds two slots of its own: a column of two, each a tile clear of the small slots and
+# of each other. A room only ever takes a slot of its own size class, so a barn can never
+# be starved of its slot by coops, nor a coop given one it does not need.
+const ROOM_BIG_SLOT := Vector2i(12, 8)
+const ROOM_BIG_SLOTS := 2
 
 
 # Where slot `i` begins, in world tiles. Pure arithmetic on the slot index, so two
 # builds, a save and a replay put the same room in the same place.
 static func room_slot_origin(i: int) -> Vector2i:
+	var page_y := ROOMS_PAGE * PAGE_ROWS
+	if i < ROOM_SLOTS_SMALL:
+		return Vector2i(
+			(i % ROOM_SLOT_COLUMNS) * (ROOM_SLOT.x + ROOM_SLOT_GAP),
+			page_y + (i / ROOM_SLOT_COLUMNS) * (ROOM_SLOT.y + ROOM_SLOT_GAP))
 	return Vector2i(
-		(i % ROOM_SLOT_COLUMNS) * (ROOM_SLOT.x + ROOM_SLOT_GAP),
-		ROOMS_PAGE * PAGE_ROWS + (i / ROOM_SLOT_COLUMNS) * (ROOM_SLOT.y + ROOM_SLOT_GAP))
+		ROOM_SLOT_COLUMNS * (ROOM_SLOT.x + ROOM_SLOT_GAP),
+		page_y + (i - ROOM_SLOTS_SMALL) * (ROOM_BIG_SLOT.y + ROOM_SLOT_GAP))
 
 
-# How many rooms the page holds. Three rows of five at 6x6, which is thirty
-# squares of a thirty-two wide page and eighteen rows of twenty.
+# How big slot `i` is: the small size for the first six, the big one for the last two.
+static func room_slot_size(i: int) -> Vector2i:
+	return ROOM_SLOT if i < ROOM_SLOTS_SMALL else ROOM_BIG_SLOT
+
+
+# How many rooms the page holds, of every size.
 static func room_slot_count() -> int:
-	return ROOM_SLOT_COLUMNS * (PAGE_ROWS / (ROOM_SLOT.y + ROOM_SLOT_GAP))
+	return ROOM_SLOTS_SMALL + ROOM_BIG_SLOTS
+
+
+# Whether a room of this size belongs in slot `i`: small rooms in the small slots, a
+# room too big for those in the big ones, and never the other way about.
+static func room_slot_fits(i: int, size: Vector2i) -> bool:
+	var small := size.x <= ROOM_SLOT.x and size.y <= ROOM_SLOT.y
+	if small != (i < ROOM_SLOTS_SMALL):
+		return false
+	var slot := room_slot_size(i)
+	return size.x <= slot.x and size.y <= slot.y
 
 
 # **The shape of a room**, as tile states. Existing rooms use a one-cell ring

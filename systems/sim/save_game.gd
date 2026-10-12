@@ -394,6 +394,9 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 		world.actors = _restore_actors(saved_actors)
 	if not _valid_barn_ownership(world):
 		return false
+	# A barn saved with its first, smaller room is given the bigger one before anything
+	# is put on the clock, because its cows and its line events name the room by id.
+	world.renovate_legacy_barns()
 	# A restored registry did not go through spawn_actor, so nobody is on the
 	# clock yet. This also reconstructs factory appointments from ready ticks.
 	world.schedule_all_brains()

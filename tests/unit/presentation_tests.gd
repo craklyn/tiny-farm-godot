@@ -1367,6 +1367,11 @@ func test_cow_drawn_bigger_than_her_square() -> void:
 	var standing: Rect2i = cow.get_image().get_region(Rect2i(0, 0, int(cell.x), int(cell.y))).get_used_rect()
 	_assert(standing.size.y > 15, "the cow stands taller than the hen's 15 pixels (%d)" % standing.size.y)
 	var flipped: Rect2 = Grazer.cell_dest(cow, at, true)
-	_assert(flipped.abs() == dest, "facing left covers the same pixels as facing right")
+	# Godot draws a negative-width rectangle from its position rightwards and flips the
+	# picture, so the flipped rectangle must start where the unflipped one does. It was
+	# built from the right edge until 2026-10-11, which drew every left-facing hen, cow and
+	# rabbit one picture-width to the right of her square (found with the cows in their pens).
+	_assert(flipped.position == dest.position and flipped.size == Vector2(-dest.size.x, dest.size.y),
+		"facing left is the same rectangle with its width negated, so it covers the same pixels")
 	_assert(Grazer.cell_dest(rabbit, at, false) == Rect2(at, Vector2(16, 16)),
 		"a 16px sheet lands exactly on its square, as before")

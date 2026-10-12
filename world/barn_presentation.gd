@@ -23,33 +23,46 @@ extends RefCounted
 
 const TILE := 16
 
-# Kit-space pixel positions (`industrial_barn_interior_kit.png`, 96x64, one 16px
-# cell per room cell). Measured off the picture, which is why they are numbers.
-const PIPE_Y := 12                  # the stall pipe into the receiver
-const PIPE_FROM_X := 46
-const PIPE_TO_X := 67
-const RECEIVER_LIGHT := Vector2(75, 6)
-const VAT := Rect2(81, 5, 14, 9)
-const CUTTER_TRACK := Rect2(83, 19, 10, 6)
-const RAKE_TRACK := Rect2(67, 23, 10, 4)
-const DRAIN_DRIP_X := 78
-const DRAIN_DRIP_Y := 40
-const PRESS_XS: Array[int] = [82, 87, 92]
-const PRESS_TOP_Y := 35
-const BELT_Y := 57
-const BELT_FROM_X := 82
-const BELT_TO_X := 90
-const STORE := Vector2(82, 52)
+# Kit-space pixel positions (`industrial_barn_interior_kit.png`, 192x128, one 16px cell
+# per room cell, built by `tools/build_barn_room_art.py`, whose checks hold these to the
+# picture). The kit shows every machine empty; what is drawn on them below is the line's
+# state at the sim's tick, and nothing is drawn on an idle line.
+const PIPE_Y := 1                   # the north milk pipe, centre line
+const PIPE_FROM_X := 8
+const PIPE_TO_X := 121              # where it drops into the receiver's lid
+const RECEIVER_LIGHT := Rect2(133, 5, 3, 2)
+const RECEIVER_GLASS := Rect2(125, 16, 7, 8)
+const VAT := Rect2(150, 11, 36, 13)  # the open basin
+const CUTTER_TRACK := Rect2(152, 9, 32, 14)  # the harp hangs from the back rail
+const RAKE_TRACK := Rect2(152, 20, 32, 4)    # the comb rides the front rail
+const TABLE_TOP := Rect2(147, 39, 42, 13)
+const SLAB_XS: Array[int] = [150, 163, 176]
+const DRAIN_DRIP_X := 158
+const DRAIN_DRIP_Y := 54
+const HOOP_XS: Array[int] = [147, 163, 179]
+const HOOP_WELL_Y := 83
+const PRESS_TOP_Y := 75
+const BELT_Y := 102
+const BELT_FROM_X := 181
+const BELT_TO_X := 150
+const SHELF_COIN := Rect2(125, 97, 6, 5)
+# The shelf's two boards, where finished cheese is stacked: four a board, eight in all.
+const STORE_X := 118
+const STORE_ROWS: Array[int] = [106, 115]
+# Where the sale's cart starts: below the shelf, on the walkway side of the farmer.
+const STORE := Vector2(120, 114)
 
 const COW_STATES_CROSSING: Array[String] = ["crossing_in", "crossing_out"]
 const HOP_FRAMES := 4
 
 const STEEL_DARK := Color("2f2b3d")
 const MILK := Color("f8f4e6")
-const LIGHT_ON := Color("ff6a4a")
+const LIGHT_ON := Color("c84e39")
 const WARM := Color("c9a06b")
 const CURD := Color("e9e178")
 const CHEESE := Color("f0cf5a")
+const CHEESE_SHADE := Color("cca13c")
+const STEEL_LIGHT := Color("e0d9c4")
 const WHEY := Color("d6e2c8")
 
 
@@ -203,8 +216,8 @@ static func _facing_vector(facing: String) -> Vector2i:
 	return Vector2i.ZERO
 
 
-# Draw one barn's interior and its moving parts from a `drawn_state`. The kit
-# fills the room; everything after it is a small mark at a measured spot.
+# Draw one barn's interior and its moving parts from a `drawn_state`. The kit fills the
+# room; everything after it is the line's work, drawn at a measured spot.
 static func draw(canvas: CanvasItem, kit: Texture2D, state: Dictionary) -> void:
 	if state.is_empty():
 		return
@@ -212,39 +225,83 @@ static func draw(canvas: CanvasItem, kit: Texture2D, state: Dictionary) -> void:
 	if kit != null:
 		canvas.draw_texture(kit, o)
 	var receiver: Dictionary = state["receiver"]
+	var held := int(receiver["count"])
+	if held > 0:
+		# Milk standing in the receiver's sight glass: a pixel or two a batch.
+		var fill := mini(RECEIVER_GLASS.size.y, 3.0 + 2.0 * held)
+		canvas.draw_rect(Rect2(o + RECEIVER_GLASS.position + Vector2(0, RECEIVER_GLASS.size.y - fill),
+			Vector2(RECEIVER_GLASS.size.x, fill)), MILK, true)
 	if float(receiver["arriving"]) >= 0.0 and float(receiver["arriving"]) < 1.0:
-		var x := lerpf(PIPE_FROM_X, PIPE_TO_X - 2, float(receiver["arriving"]))
-		canvas.draw_rect(Rect2(o + Vector2(roundf(x), PIPE_Y - 1), Vector2(2, 2)), MILK, true)
+		var x := lerpf(PIPE_FROM_X, PIPE_TO_X - 1, float(receiver["arriving"]))
+		canvas.draw_rect(Rect2(o + Vector2(roundf(x), PIPE_Y - 1), Vector2(3, 3)), MILK, true)
 	for stall in state["stalls"]:
 		if bool(stall["giving"]):
-			# A drop at the stall's end of its pipe: this cow is giving now.
+			# A drop at the pen's end of its pipe: this cow is giving now. The west
+			# pens' pipe runs up the west wall, the east pens' up the partition.
 			var cell := Vector2(int(stall["cell"][0]), int(stall["cell"][1])) * TILE
-			canvas.draw_rect(Rect2(cell + Vector2(12, 11), Vector2(2, 2)), MILK, true)
+			var west := (int(stall["cell"][0]) - int(state["origin"][0])) < 6
+			canvas.draw_rect(Rect2(cell + Vector2(0.0 if west else 13.0, 5), Vector2(3, 3)), MILK, true)
 	if bool(receiver["light"]):
-		canvas.draw_rect(Rect2(o + RECEIVER_LIGHT, Vector2(2, 1)), LIGHT_ON, true)
+		canvas.draw_rect(Rect2(o + RECEIVER_LIGHT.position, RECEIVER_LIGHT.size), LIGHT_ON, true)
+	var line: Dictionary = state["line"]
 	var tools: Dictionary = state["tools"]
+	# The vat: milk warming, then curds as the harp cuts, then the rake stirs them.
 	if int(tools["vat_warm"]) >= 0:
-		var glow := Color(WARM.r, WARM.g, WARM.b, 0.55 if int(tools["vat_warm"]) == 0 else 0.8)
-		canvas.draw_rect(Rect2(o + VAT.position, VAT.size), glow, true)
-	for key in ["cutter_x", "rake_x"]:
-		if float(tools[key]) >= 0.0:
-			var track: Rect2 = CUTTER_TRACK if key == "cutter_x" else RAKE_TRACK
-			var x := roundf(track.position.x + float(tools[key]) * (track.size.x - 1))
-			canvas.draw_line(o + Vector2(x, track.position.y - 3), o + Vector2(x, track.end.y), STEEL_DARK, 1.0)
-			if key == "rake_x":
-				canvas.draw_rect(Rect2(o + Vector2(x - 1, track.end.y - 1), Vector2(3, 1)), STEEL_DARK, true)
-			else:
-				canvas.draw_rect(Rect2(o + Vector2(x - 2, track.position.y + 1), Vector2(1, 4)), CURD, true)
+		var warm := Color(WARM.r, WARM.g, WARM.b, 0.45 if int(tools["vat_warm"]) == 0 else 0.7)
+		canvas.draw_rect(Rect2(o + VAT.position, VAT.size), MILK, true)
+		canvas.draw_rect(Rect2(o + VAT.position, VAT.size), warm, true)
+	if line["cutter"] != null or line["rake"] != null:
+		canvas.draw_rect(Rect2(o + VAT.position, VAT.size), CURD, true)
+		for i in 9:
+			canvas.draw_rect(Rect2(o + VAT.position + Vector2(2 + (i * 7) % 31, 2 + (i * 5) % 8),
+				Vector2(2, 1)), CHEESE, true)
+	if float(tools["cutter_x"]) >= 0.0:
+		var track := CUTTER_TRACK
+		var x := roundf(track.position.x + float(tools["cutter_x"]) * (track.size.x - 1))
+		# A wire harp: three upright wires hung from the back rail.
+		for dx in [0, 3, 6]:
+			canvas.draw_line(o + Vector2(x + dx, track.position.y), o + Vector2(x + dx, track.end.y), STEEL_DARK, 1.0)
+		canvas.draw_rect(Rect2(o + Vector2(x - 1, track.position.y - 2), Vector2(9, 2)), STEEL_DARK, true)
+	if float(tools["rake_x"]) >= 0.0:
+		var track := RAKE_TRACK
+		var x := roundf(track.position.x + float(tools["rake_x"]) * (track.size.x - 1))
+		# A broad comb: a bar across the front of the basin with four teeth.
+		canvas.draw_rect(Rect2(o + Vector2(x - 4, track.position.y + 2), Vector2(9, 2)), STEEL_DARK, true)
+		for dx in [-4, -2, 0, 2, 4]:
+			canvas.draw_rect(Rect2(o + Vector2(x + dx, track.position.y - 3), Vector2(1, 5)), STEEL_DARK, true)
+	# The table: slabs of curd while the whey drains, and the drip below the table.
+	if line["drain"] != null:
+		for sx in SLAB_XS:
+			canvas.draw_rect(Rect2(o + Vector2(sx, TABLE_TOP.position.y + 3), Vector2(11, 7)), CURD, true)
+			canvas.draw_rect(Rect2(o + Vector2(sx + 1, TABLE_TOP.position.y + 3), Vector2(9, 1)), CHEESE, true)
+			canvas.draw_rect(Rect2(o + Vector2(sx, TABLE_TOP.position.y + 9), Vector2(11, 1)), CHEESE_SHADE, true)
 	if int(tools["drip_y"]) >= 0:
-		canvas.draw_rect(Rect2(o + Vector2(DRAIN_DRIP_X, DRAIN_DRIP_Y + int(tools["drip_y"])), Vector2(1, 1)), WHEY, true)
-	if state["line"]["press"] != null:
-		for px in PRESS_XS:
-			canvas.draw_rect(Rect2(o + Vector2(px, PRESS_TOP_Y + int(tools["press_y"])), Vector2(6, 2)), STEEL_DARK, true)
+		canvas.draw_rect(Rect2(o + Vector2(DRAIN_DRIP_X, DRAIN_DRIP_Y + int(tools["drip_y"]) * 2), Vector2(1, 2)), WHEY, true)
+	# The presses: cheese in the hoops and the heads coming down onto them.
+	if line["press"] != null:
+		for hx in HOOP_XS:
+			canvas.draw_rect(Rect2(o + Vector2(hx + 3, HOOP_WELL_Y), Vector2(4, 5)), CURD, true)
+			canvas.draw_rect(Rect2(o + Vector2(hx + 3, HOOP_WELL_Y), Vector2(4, 1)), CHEESE, true)
+			canvas.draw_rect(Rect2(o + Vector2(hx + 1, PRESS_TOP_Y + int(tools["press_y"])), Vector2(8, 4)), STEEL_DARK, true)
+			canvas.draw_rect(Rect2(o + Vector2(hx + 2, PRESS_TOP_Y + 1 + int(tools["press_y"])), Vector2(6, 1)), STEEL_LIGHT, true)
+	# The belt: one wheel travelling west toward the shelf.
 	if float(tools["belt_x"]) >= 0.0:
 		var bx := roundf(lerpf(BELT_FROM_X, BELT_TO_X, float(tools["belt_x"])))
-		canvas.draw_rect(Rect2(o + Vector2(bx, BELT_Y), Vector2(4, 3)), CHEESE, true)
+		_wheel(canvas, o + Vector2(bx, BELT_Y), 9, 7)
+	# The shelf: the finished wheels, four to a board.
 	for i in mini(int(state["finished"]), SimWorld.FINISHED_CHEESE_CAPACITY):
-		canvas.draw_rect(Rect2(o + STORE + Vector2((i % 4) * 4, -(i / 4) * 3), Vector2(3, 2)), CHEESE, true)
+		_wheel(canvas, o + Vector2(STORE_X + (i % 4) * 5, STORE_ROWS[i / 4]), 5, 4)
+	if int(state["finished"]) > 0 and posmod(int(state["tick"]) / 5, 2) == 0:
+		# Cheese is waiting: the brass disc over the shelf brightens and dims.
+		canvas.draw_rect(Rect2(o + SHELF_COIN.position + Vector2(1, 1), SHELF_COIN.size - Vector2(2, 2)), CHEESE, true)
+
+
+# A wheel of cheese seen from above: a rim, a body and a lit edge.
+static func _wheel(canvas: CanvasItem, at: Vector2, w: int, h: int) -> void:
+	canvas.draw_rect(Rect2(at + Vector2(1, 0), Vector2(w - 2, h)), CHEESE_SHADE, true)
+	canvas.draw_rect(Rect2(at + Vector2(0, 1), Vector2(w, h - 2)), CHEESE_SHADE, true)
+	canvas.draw_rect(Rect2(at + Vector2(1, 1), Vector2(w - 2, h - 2)), CHEESE, true)
+	canvas.draw_rect(Rect2(at + Vector2(1, 1), Vector2(w - 2, 1)), CURD, true)
 
 
 ## The short result picture for an accepted cheese-shelf sale. The cart carries

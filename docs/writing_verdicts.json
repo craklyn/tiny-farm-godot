@@ -4940,6 +4940,9 @@
    "verdict": "decode",
    "why": "A cold reader cannot tell whether these are sprites used in the showcase or the original sprite files for it."
   },
+  "832a48d29be62685f9c8": {
+   "verdict": "ok"
+  },
   "8331c648fb5d195b717c": {
    "verdict": "ok"
   },
@@ -7486,6 +7489,9 @@
   "c55be8e0adefa5e8cff9": {
    "verdict": "ok"
   },
+  "c568f612bc346c63bbe9": {
+   "verdict": "ok"
+  },
   "c583c724abfaa744760e": {
    "baselined": "2026-09-19",
    "instead": "Saved — see your sheet in the Work section.",
@@ -8899,6 +8905,12 @@
   },
   "eb3bc46605c726f5f07d": {
    "verdict": "ok"
+  },
+  "eb4149ac433a92b05aca": {
+   "instead": "The Industrial Barn's room is twice as wide and twice as deep as the regular barn, with pens that fit the bigger cows and a large machine for each cheese station",
+   "quote": "twice as wide and as deep",
+   "verdict": "decode",
+   "why": "The sentence does not say what the room is twice as wide and deep as."
   },
   "eba8a620b688dc480d96": {
    "instead": "Keep the writing check's verdict for the subject line of the commit that records the rulings",

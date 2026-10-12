@@ -1638,7 +1638,7 @@ static func room_exit_edge(room: Dictionary) -> String:
 # **The Industrial Barn's inside, once per barn rather than once per square**
 # (design/17; INDUSTRIAL_BARN_ENGINEERING_PLAN, "Building and interior" and
 # "Performance"). The walk over the squares has already laid the floor; here the
-# interior picture covers the room's six-by-four cells in one call, and the
+# interior picture covers the room's twelve-by-eight cells in one call, and the
 # cheese line's moving parts are drawn from `BarnPresentation.drawn_state` at
 # the sim clock's tick. The loop is over barns — a farm without one pays nothing
 # — and nothing here reads the wall clock, so the barn stands still exactly when

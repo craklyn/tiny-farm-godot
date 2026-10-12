@@ -103,11 +103,12 @@ func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
 	render_queue.append({
 		"y": position.y,
 		"draw": func():
-			# A negative width flips the cell, which is how a right-facing sheet
+			# A negative width flips the cell (Godot draws it rightwards from its position, so the
+			# position stays the left edge), which is how a right-facing sheet
 			# draws an ant walking left.
 			var dest := Rect2(position.x, position.y, TILE_SIZE, TILE_SIZE)
 			if facing_left:
-				dest = Rect2(position.x + TILE_SIZE, position.y, -TILE_SIZE, TILE_SIZE)
+				dest = Rect2(position.x, position.y, -TILE_SIZE, TILE_SIZE)
 			canvas.draw_texture_rect_region(
 				sprites, dest, Rect2(walk_frame * 16, 0, 16, 16))
 	})

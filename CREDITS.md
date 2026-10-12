@@ -33,8 +33,12 @@ before the first public build ships.*
   source and the service response (including model, cost and request id) are archived under
   `assets/raw/2026-10-08-w8081d9bfb69-industrial-barn-exterior/`. It was
   background-keyed, reduced with nearest-neighbour sampling, and palette-locked
-  to the Industrial Barn brief. The 6×4 interior atlas is original local pixel
-  work assembled from the approved palette. Its machinery silhouettes and
+  to the Industrial Barn brief. The first 6×4 interior atlas was original local pixel
+  work assembled from the approved palette; on 2026-10-11 it was replaced by a 12×8
+  room (192×128 pixels) drawn by hand in `tools/build_barn_room_art.py`, in colours the
+  game already ships (the builder refuses any other), with no new generation and no
+  spend. Its pieces are new work: the four pens, the lobby props and a larger machine for
+  each cheese station. Its machinery silhouettes and
   product sequence were informed by one Retro Diffusion Plus 96×64 reference
   generation, $0.06, archived with its service metadata under
   `assets/raw/2026-10-08-w035e7891955-industrial-barn-cheese-line-reference/`.

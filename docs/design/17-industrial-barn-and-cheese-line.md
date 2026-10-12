@@ -14,9 +14,9 @@ they are for the coop and the tower.*
 
 ## The building at a glance
 
-The **Industrial Barn** is a 3-wide by 2-tall building on the farm. Its large front livestock doors stay open: cows can walk in and out whenever they choose. Entering opens a 6-wide by 4-tall interior. The larger inside is part of the same farm view, following the interior rule in [15 — Interiors](15-interiors.md): it is not a separate scene.
+The **Industrial Barn** is a 3-wide by 2-tall building on the farm. Its large front livestock doors stay open: cows can walk in and out whenever they choose. Entering opens a 12-wide by 8-tall interior (it was 6 by 4 until 2026-10-11; see [the bigger room](#the-bigger-room--2026-10-11)). The larger inside is part of the same farm view, following the interior rule in [15 — Interiors](15-interiors.md): it is not a separate scene.
 
-Four voluntary milk stalls sit along one long wall. The opposite side holds a small cheese factory. Steel pipes carry milk from each occupied stall to the first factory station. The player can see the whole journey from milk to finished cheese without needing to read a label.
+Four voluntary milk pens, two to a side of a central aisle, fill the west side of the room. The east side holds the cheese factory, one large steel machine for each station, running down the wall in the order the milk goes. Steel pipes carry milk from each occupied pen to the first factory station. The player can see the whole journey from milk to finished cheese without needing to read a label.
 
 The barn is a place cows choose to use, not a place that confines them. Each cow may remain outside, walk through the large doors, visit an empty stall when ready to give milk, and leave again. No picture, animation, or game rule shows a cow being forced, distressed, restrained, or treated as a machine.
 
@@ -205,7 +205,8 @@ scale; enlarged working views do not count as readability checks.
   footprint. Keep the large double-door opening readable in the front silhouette. Provide
   separate closed, open and occupied/activity states only if implementation needs them;
   every state must keep the same footprint and door position.
-- **Interior shell:** a tileable floor-and-wall kit for the six-square by four-square room,
+- **Interior shell:** *(this brief was written for the first 6×4 room; the room is now 12×8,
+  192×128 pixels, see "The bigger room")* a tileable floor-and-wall kit for the six-square by four-square room,
   with a warm livestock side, a clean processing side and an open crossing between them.
   The room remains part of the farm view, so the kit must follow the depth and wall rules in
   [15 — Interiors](15-interiors.md).
@@ -298,7 +299,7 @@ size and over the shipped farm ground. Approval requires all of the following:
 
 ### Art-direction review of the redrawn kit — 2026-10-09
 
-**Native-size verdict: approved.** The redrawn 48×32-pixel exterior and 96×64-pixel interior
+**Native-size verdict: approved (the exterior still stands; the 96×64 interior below was redrawn 2026-10-11, see "The bigger room").** The redrawn 48×32-pixel exterior and 96×64-pixel interior
 pass all seven requirements at native size. On 2026-10-09,
 `python3 tools/build_industrial_barn_art.py` completed against these two retained PNGs. The
 command checked both dimensions, fully opaque or fully transparent pixels, exact membership
@@ -347,8 +348,8 @@ approved room, and left the soil problem.
 
 - **Pass — cows in the room:** walking in across the straw and standing in their stalls, each
   cow reads as a whole animal at play scale
-  ([walking](mockups/industrial_barn/cows_walking.png),
-  [stalls](mockups/industrial_barn/cows_stalls.png)).
+  ([walking](mockups/industrial_barn/cows_walking.png) and, in the 2026-10-11 room,
+  [pens](mockups/industrial_barn/cows_pens.png)).
 - **Pass — cows on the grass:** the herd in front of the barn reads clearly
   ([grass](mockups/industrial_barn/cows_grass.png)).
 - **Pass — palette:** every cow pixel is `#f8f4e6`, `#2f2b3d` or `#c84e39`, all in the brief's
@@ -393,12 +394,115 @@ Daniel picked **half again a square** on 2026-10-11. What it changes:
   `#f6ddc4`, so every colour is one the game already ships. The builder still refuses the
   straw colour.
 - **The cost, accepted:** in the stalls, cows side by side overlap by about half a square and
-  cover the post between them
-  ([stalls](mockups/industrial_barn/cows_stalls.png)). If it reads badly in play, the cheap
-  next step is to draw the two stall columns' cows tail to tail.
+  cover the post between them. **Settled 2026-10-11 by the bigger room below:** each pen is
+  now three squares wide, so a cow has 12 pixels each side of her
+  ([pens](mockups/industrial_barn/cows_pens.png)).
 - The shop's cow card shows her whole standing frame with a one-pixel rim in the barn's steel
   grey `#8d8e92`: her ink head, legs and outline are nearly the card's own colour, and without
   the rim only her white body showed.
+
+## The bigger room — 2026-10-11
+
+**Why.** Daniel looked at the room on 2026-10-11 and said its art "doesn't meet the bar, or
+frankly get close": "everything looks like stick drawings". The cause was the space. The
+room was 6 by 4 squares, 96×64 pixels, and held four stalls, seven stations, pipes, a shelf
+and the doorway, so a vat, a press bank and a cow each got about one 16-pixel square. He
+asked for both fixes offered: **make the room bigger, and draw it as fewer, larger pieces**,
+with **pens large enough for the now-larger cows** (24×20 pixels, design above). The ruled
+design does not change: four stalls, seven stations at five seconds each (S-43), one shelf,
+20 gold a batch (S-42), four cows to a barn (S-41).
+
+**What was measured.** The screen shows 266×200 room pixels at the game's zoom, and a room
+fills its building's footprint at the room's pitch. The barn's footprint is 3×2 tiles, so:
+
+| room | pitch | on screen | yard seen past each wall | pens a cow fits in a row |
+|---|---|---|---|---|
+| 6×4 (before) | 2 | 288×192 px | 2.7 tiles across, 2.1 up | none: a stall was one square, 16×14 px clear |
+| 9×6 | 3 | 432×288 px | 1.3 tiles across, 1.1 up | three, and only with a cow drawn off-centre |
+| **12×8** | **4** | **576×384 px** | **0.6 tile all round** | **four, each three squares wide** |
+
+A cow is 24 pixels wide on a 16-pixel square, drawn centred on it, so a pen only holds her
+with room to spare when the square she stands on is the middle of three. Four such pens in
+a row are 12 squares: the room has to be 12 wide. 12×8 at pitch 4 is also exactly the
+farmhouse's width at the farmhouse's pitch, and fills the barn's footprint with no strip
+left over. What it costs is yard: 0.6 of a tile is left past each wall, the same trade the
+farmhouse already makes. The whole room is 192×128 pixels and the view is 266×200, so the
+camera rests on the room's centre instead of following the farmer
+(`"fixed_view"` in the room's data, `main.gd` `_camera_limits_for`); following her cut the
+back pens off when she stood at the door.
+
+**The room** (12 by 8 squares of 16 pixels; the data is in `systems/machine_defs.gd`, the
+picture and its numbers in `tools/build_barn_room_art.py`):
+
+- **Cow side, columns 0 to 6.** Four pens, three squares wide and two deep, two each side of
+  a central aisle (column 3). A pen opens on the aisle and has its feed trough on the far
+  wall, so a cow walking in faces it. Her stall square is the middle one in the pen's lower
+  row; the pen leaves her 12 pixels each side and 12 above. Stalls are numbered deepest
+  first, as before. Below the pens, a lobby: hay, a feed bin, a pitchfork, two milk cans.
+  The livestock doorway is at the foot of the aisle, so a cow walks in and straight up it.
+- **Cheese side, columns 7 to 11.** One machine for each station, large enough to tell apart:
+  the receiver, a lidded steel vessel (7..8, 0..1); the vat, with the cutter's rail across its
+  back and the rake's across its front (9..11, 0..1); the whey drain and curd table
+  (9..11, 2..3); the press bank, three presses over forming hoops with coiled yellow hoses
+  (9..11, 4..5); the outfeed belt (9..11, 6..7); and, where the belt ends beside the lobby,
+  the cheese shelf (7..8, 6..7). Seven stations are drawn as six machines, because the
+  table above already puts stations 2 to 4 (set vat, cutter, rake) in one vat with two
+  carriages. The farmer sells from the square beside the shelf, (6, 6).
+- **Milk path.** Pipes run up the west wall and the partition and along the north wall,
+  into the receiver's lid; a pipe joins the receiver to the vat, a valve feeds the table,
+  and whey runs to a floor drain in the walkway between machines. None crosses the cows'
+  route.
+- **Every machine is drawn empty.** What the line is doing is drawn on it from the sim's
+  tick, as before: milk standing in the receiver's glass, a warm basin, curds, the harp and
+  comb moving along their rails, slabs on the table and a drip below it, cheese in the
+  hoops with the press heads coming down, a wheel travelling the belt, and the finished
+  wheels stacked on the shelf's two boards, four to a board. The brass coin over the shelf
+  brightens and dims while cheese is waiting. An idle barn shows a clean, still line.
+
+**Where the room is kept.** A 12×8 room does not fit a coop's 6×6 slot on the rooms page
+([15](15-interiors.md)), so the page has two big slots for barns (12×8, a tile clear of
+every other slot) and six small ones for coops and the tower (they were eight in two rows
+of four; the room page now makes space for the big slots on its east side). A barn takes
+only a big slot, a coop only a small one. A farm can therefore have **two barns with an
+inside**. The shop stops offering a barn once the rooms free are all spoken for (it counts
+the barns waiting in the crate as well as those standing, the way the cow card counts
+`herd_limit()`), and the verb refuses a third too (`not_offered`); a tap that still reaches
+a placement with no room left is refused with the same buzz and outline a building that does
+not fit gets (`no_room_inside`), because a barn with no inside is one no cow could use. It
+needs only a new page of rooms to lift; nothing in the sim assumes two.
+
+**A barn saved before this change.** No released game had a barn, so no player's farm is
+affected: only a tester's, such as Daniel's tablet farm. When the game loads a save whose
+barn has the old 6×4 room, it closes that room and opens the new one on the same building.
+The line comes across exactly (the batch at each station, the milk waiting at the receiver,
+the finished cheese), because none of it is kept in a square. The cows do not, since each was
+standing on a square of the old room or walking to one: every cow goes out to the nearest
+free ground beyond the doors, keeps her milk, drops her errand, and chooses a stall again
+as any cow does. A save with several old rooms standing where the big slots are can leave a
+barn with no new inside, like a barn bought when the page is full. The farmer, or a robot,
+saved inside the old room is put on the barn's doorstep, because her square is about to
+become void or somebody's machinery.
+
+**Found on the way: left-facing animals were drawn a picture-width to the right.** Putting
+a cow in each pen showed her two squares from her stall whenever she faced left. Godot draws
+a negative-width rectangle from its position rightwards and flips the picture, and
+`Grazer.cell_dest` built its flipped rectangle from the right edge, so every hen, rabbit
+and cow facing left was drawn one picture-width to the right of her square, a full tile for
+a hen. The ant, mole and songbird had the same line. It is fixed in `entities/grazer.gd`,
+`ant.gd`, `mole.gd` and `songbird.gd`; a unit test pins that the flipped rectangle starts
+where the unflipped one does.
+
+**Art status.** The room is original local pixel art, drawn by hand in code from colours
+the game already ships; nothing was generated. It is **awaiting Daniel's judgement**: the
+captures are
+[`room_before_after.png`](mockups/industrial_barn/room_before_after.png) (the old room and
+the new, empty and with cows),
+[`review_interior.png`](mockups/industrial_barn/review_interior.png),
+[`cows_pens.png`](mockups/industrial_barn/cows_pens.png) and
+[`cows_walking.png`](mockups/industrial_barn/cows_walking.png), made by
+`godot --path . res://tools/capture_industrial_barn_review.tscn` and
+`godot --path . --fixed-fps 60 res://tools/capture_cow_readability.tscn` (both need a
+display). The art director's seven checks above have not been run on this room.
 
 ## What remains before implementation
 
