@@ -573,6 +573,8 @@ func _house() -> void:
 # shot boots from it.
 const CREAMERY_SAVE := "res://video/2026-10-10_tiktok_creamery/edit/creamery-farm.json"
 const CREAMERY_CHEESE_SAVE := "res://video/2026-10-10_tiktok_creamery/edit/creamery-farm-cheese.json"
+# Where she waits inside: the open walkway between the machines, off the cows' aisle.
+const FARMER_SPOT := Vector2i(7, 3)
 const BARN_ANCHORS: Array[Vector2i] = [Vector2i(4, 13), Vector2i(3, 13), Vector2i(5, 13), Vector2i(2, 13),
 	Vector2i(4, 12), Vector2i(3, 12), Vector2i(5, 12), Vector2i(6, 12), Vector2i(10, 16), Vector2i(11, 16), Vector2i(12, 16)]
 
@@ -583,14 +585,9 @@ func _creamery_stage() -> void:
 	var sim: SimWorld = farm.sim
 	var anchor := Vector2i(-1, -1)
 	for a in BARN_ANCHORS:
-		# Every cow bought arrives on one of five squares two rows below the anchor and
-		# stays there until she goes in, so four of them must be free for four cows.
-		var free := 0
-		for dx in range(-2, 3):
-			if sim.placeable_at(a + Vector2i(dx, 2)):
-				free += 1
-		print("  anchor ", a, " barn fits ", sim.placeable_at(a, "industrial_barn"), " free arrivals ", free)
-		if sim.placeable_at(a, "industrial_barn") and free >= 4:
+		# Its first cow needs somewhere to arrive beside it (every barn takes four since
+		# 2026-10-11, so the first is the only one to check here).
+		if sim.placeable_at(a, "industrial_barn") and sim.barn_cow_arrival_cell(a).x >= 0:
 			anchor = a
 			break
 	print("barn anchor ", anchor, " gold ", GameState.gold)
@@ -696,8 +693,8 @@ func _sprite_of(actor_id: String) -> Node2D:
 	return null
 
 
-# Close on the room itself, nearer than play's own framing, so each machine reads.
-func _frame_room(barn_id: String, zoom := 5.0) -> void:
+# The whole 12-by-8 room filling the frame, so every pen and machine is in view.
+func _frame_room(barn_id: String, zoom := 2.75) -> void:
 	var room: Dictionary = farm.sim.rooms[barn_id]
 	var centre := (Vector2(_v(room["origin"])) + Vector2(_v(room["size"])) / 2.0) * 16.0
 	_free_camera(centre, zoom)
@@ -777,7 +774,7 @@ func _stalls() -> void:
 	await _go_inside_barn(barn_id)
 	await _seconds(3.0)
 	var room: Dictionary = farm.sim.rooms[barn_id]
-	await _walk_to(_v(room["origin"]) + Vector2i(1, 2))
+	await _walk_to(_v(room["origin"]) + FARMER_SPOT)
 	_frame_room(barn_id)
 	await _seconds(0.5)
 	_mark("ready")
@@ -801,7 +798,7 @@ func _sell_cheese() -> void:
 	await _seconds(3.0)
 	var room: Dictionary = farm.sim.rooms[barn_id]
 	var shelf := _v(room["origin"]) + Vector2i(MachineDefs.room_of("industrial_barn")["cheese_shelf"])
-	await _walk_to(_v(room["origin"]) + Vector2i(1, 2))
+	await _walk_to(_v(room["origin"]) + FARMER_SPOT)
 	_frame_room(barn_id)
 	# The gold total alone, from the HUD, so the coins have somewhere to land.
 	main.hud.visible = true

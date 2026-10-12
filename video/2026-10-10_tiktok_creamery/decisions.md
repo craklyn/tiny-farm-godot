@@ -72,3 +72,13 @@ Re-staged and re-recorded on main at 742196cf or later: the bigger cow (PR 15, 2
 cows grazing after milking (PR 12), and every barn taking four cows (PR 13). The barn is at the same spot.
 Cows now wander the grass, some onto the field beside the barn, so in `stalls` they reach their stalls later:
 cows come in at about 14–26 s, and the line runs every machine from about 25 s to 70 s.
+
+## Shots v4 (contact sheet sent 2026-10-11)
+
+Re-staged and re-recorded on main at 49d1af54 or later: the creamery's room redone at 12×8 with four pens and
+one large machine per station (PR 20, Daniel approved), cows routing round beds and buildings (PR 17), no
+building over crops (PR 18), robots round buildings (PR 19). The barn moved from anchor (5,12) to (4,13),
+because (5,12) overlapped the crop bed and is now refused. Inside, the camera frames the whole room (zoom
+2.75, wall to wall), and the farmer waits in the walkway between the machines, off the cows' aisle. In
+`stalls` cows come in at about 17–34 s and the line runs every machine from about 34 s to 82 s; in `sell`
+the tap is at 7.3 s. "Bigger on the inside" still holds: 3×2 outside, 12×8 inside.
