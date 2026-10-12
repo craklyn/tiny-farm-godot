@@ -1,0 +1,10 @@
+{"continued":true,"gen_seed":0,"version":1}
+{"at":[7,6],"in":"tap","kind":"tap","out":"acted","t":2023,"tile":[7,5],"tool":5,"verb":"open_structure"}
+{"actor":"player","kind":"act","ok":true,"t":3032,"tile":[7,5],"verb":"use_door"}
+{"at":[14,43],"in":"tap","kind":"tap","out":"walk","t":4430,"tile":[14,42],"tool":5,"verb":""}
+{"at":[14,42],"in":"tap","kind":"tap","out":"walk","t":5475,"tile":[14,41],"tool":5,"verb":""}
+{"at":[14,41],"in":"tap","kind":"tap","out":"none","t":6023,"tile":[14,40],"tool":5,"verb":""}
+{"at":[14,41],"in":"tap","kind":"tap","out":"walk","t":6600,"tile":[14,42],"tool":5,"verb":""}
+{"at":[14,42],"in":"tap","kind":"tap","out":"walk","t":2327642,"tile":[15,43],"tool":5,"verb":""}
+{"at":[15,43],"in":"tap","kind":"tap","out":"acted","t":2328791,"tile":[14,43],"tool":5,"verb":"use_door"}
+{"actor":"player","kind":"act","ok":true,"t":2328791,"tile":[14,43],"verb":"use_door"}
