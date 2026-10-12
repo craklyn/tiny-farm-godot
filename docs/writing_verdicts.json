@@ -1482,6 +1482,12 @@
    "verdict": "decode",
    "why": "\"Banks the sheet\" is not clear to someone who hasn't heard this term; the plain word is \"saves\"."
   },
+  "25de0d4b13ab1dcb390c": {
+   "instead": "The v0.2.1 release notes include a fix for a crash that players could not reproduce",
+   "quote": "a crash fix that released players could not hit",
+   "verdict": "second-look",
+   "why": "“Hit” makes the reader pause to work out that players could not encounter or reproduce the crash."
+  },
   "25f54f7699914bd08c49": {
    "instead": "Changing it requires a small code change and checking the comparison image again.",
    "quote": "Changing it is one line plus a re-baseline.",
@@ -6240,6 +6246,9 @@
   "a3dc90ba6a6f5644cd24": {
    "verdict": "ok"
   },
+  "a3e9a00ee8038618b7f5": {
+   "verdict": "ok"
+  },
   "a41d8fc1cf5a6377dafe": {
    "baselined": "2026-09-25",
    "instead": "Do not set a rule yet.",
@@ -9232,6 +9241,9 @@
    "verdict": "ok"
   },
   "f5e8bd059ba2ae8e1d78": {
+   "verdict": "ok"
+  },
+  "f5ebc6ff362e0b2c1556": {
    "verdict": "ok"
   },
   "f5f51633f8f5661d5d7c": {
