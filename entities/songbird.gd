@@ -96,7 +96,7 @@ func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
 			# rest of the critter sheets.
 			var dest := Rect2(position.x, position.y, TILE_SIZE, TILE_SIZE)
 			if facing_left:
-				dest = Rect2(position.x + TILE_SIZE, position.y, -TILE_SIZE, TILE_SIZE)
+				dest = Rect2(position.x, position.y, -TILE_SIZE, TILE_SIZE)
 			canvas.draw_texture_rect_region(
 				SPRITES, dest, Rect2(cell * 16, SHEET_ROW * 16, 16, 16))
 	})

@@ -583,6 +583,9 @@
   "0ec2962c85ffaa3e3743": {
    "verdict": "ok"
   },
+  "0efa8e66654e82eedf28": {
+   "verdict": "ok"
+  },
   "0f035e2ca167f386a041": {
    "verdict": "ok"
   },
@@ -1330,6 +1333,12 @@
   "2252c250bd84ec763ae5": {
    "verdict": "ok"
   },
+  "2255f4e2574b7b4a7eb3": {
+   "instead": "Cows walk around the farmer's beds and the barn's walls, and a barn can no longer be placed on top of crops",
+   "quote": "a barn no longer goes down over crops",
+   "verdict": "decode",
+   "why": "The phrase “goes down over crops” does not plainly say what happens to the barn or crops."
+  },
   "225f1189fc1319a3dbe1": {
    "instead": "Should tiles planted by the player pay more than tiles tilled by the robot?",
    "quote": "her squares",
@@ -1675,6 +1684,9 @@
    "why": "The letter is unexplained, so the reader cannot know which pose it names."
   },
   "2b4b8c9594b8973e2d83": {
+   "verdict": "ok"
+  },
+  "2b4d32fdccf864725b60": {
    "verdict": "ok"
   },
   "2b606445ab41f58ac173": {
@@ -4468,6 +4480,9 @@
   "77b57bd90e4f98172d17": {
    "verdict": "ok"
   },
+  "77bb042c3ecb2198c4db": {
+   "verdict": "ok"
+  },
   "77d61f423364c1f2260e": {
    "verdict": "ok"
   },
@@ -4927,6 +4942,9 @@
    "quote": "showcase source sprites",
    "verdict": "decode",
    "why": "A cold reader cannot tell whether these are sprites used in the showcase or the original sprite files for it."
+  },
+  "832a48d29be62685f9c8": {
+   "verdict": "ok"
   },
   "8331c648fb5d195b717c": {
    "verdict": "ok"
@@ -5639,6 +5657,9 @@
   "946a088ddc4bfffc5025": {
    "verdict": "ok"
   },
+  "9475d6fe09d89572cdd9": {
+   "verdict": "ok"
+  },
   "9486caee0a136431d1a2": {
    "instead": "Automated requests can generate pixel art for no more than $2 per request and $10 per day",
    "quote": "Queue workers can ask for pixel art, and the drain generates it within $2 a card and $10 a day",
@@ -5697,6 +5718,9 @@
    "why": "“Survive” and “verbs” make the reader work out which replay actions still work after the pouch changes."
   },
   "9590f12450dc27ee0536": {
+   "verdict": "ok"
+  },
+  "9591acc89dc9581b3f91": {
    "verdict": "ok"
   },
   "95bb18dbd185ca87e3ca": {
@@ -6589,6 +6613,9 @@
   "ac7f938c60eabe16850c": {
    "verdict": "ok"
   },
+  "acab176a9be325dd5719": {
+   "verdict": "ok"
+  },
   "acc9fb8a8c1ceab6fe82": {
    "verdict": "ok"
   },
@@ -7010,6 +7037,9 @@
    "verdict": "ok"
   },
   "ba7320a958907f89e8c0": {
+   "verdict": "ok"
+  },
+  "ba77d732b285c4723064": {
    "verdict": "ok"
   },
   "ba869e4528bb143ee2bd": {
@@ -7469,6 +7499,9 @@
    "why": "“Announce itself” makes the reader translate a visual cue into a statement about showing that the crop is ready."
   },
   "c55be8e0adefa5e8cff9": {
+   "verdict": "ok"
+  },
+  "c568f612bc346c63bbe9": {
    "verdict": "ok"
   },
   "c583c724abfaa744760e": {
@@ -8888,6 +8921,12 @@
   "eb3bc46605c726f5f07d": {
    "verdict": "ok"
   },
+  "eb4149ac433a92b05aca": {
+   "instead": "The Industrial Barn's room is twice as wide and twice as deep as the regular barn, with pens that fit the bigger cows and a large machine for each cheese station",
+   "quote": "twice as wide and as deep",
+   "verdict": "decode",
+   "why": "The sentence does not say what the room is twice as wide and deep as."
+  },
   "eba8a620b688dc480d96": {
    "instead": "Keep the writing check's verdict for the subject line of the commit that records the rulings",
    "quote": "Keep the writing check's verdict for the rulings commit subject",
@@ -9542,6 +9581,9 @@
    "verdict": "ok"
   },
   "fde5416e509f2aaa9f4d": {
+   "verdict": "ok"
+  },
+  "fdef7952fd8fce3d7ba7": {
    "verdict": "ok"
   },
   "fe52efd7c89d1d417cb7": {

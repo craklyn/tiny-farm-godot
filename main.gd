@@ -562,6 +562,19 @@ func _camera_limits_for(tile: Vector2i) -> Dictionary:
 			# off into the dark beyond the backdrop's reach.
 			var origin: Vector2i = room.get("origin", Vector2i.ZERO)
 			var size: Vector2i = room.get("size", Vector2i.ZERO)
+			# **A room that fits the screen keeps still** (the Industrial Barn's, 2026-10-11).
+			# Its 12x8 cells are 192x128 pixels, and the view at this zoom is 266x200, so the
+			# whole room is on screen if the camera rests on its centre. Following the
+			# farmer instead cut off the pens when she stood at the door. The limits are
+			# the view itself, centred on the room, so the camera has nowhere else to go.
+			if bool(MachineDefs.room_of(String(room.get("item", ""))).get("fixed_view", false)):
+				var half: Vector2 = get_viewport_rect().size / (2.0 * float(CAMERA_SCALE))
+				var centre: Vector2 = (Vector2(origin) + Vector2(size) / 2.0) * TILE_SIZE
+				return {
+					"page": SimWorld.MAP_HEIGHT / SimWorld.PAGE_ROWS - 1,
+					"left": int(floorf(centre.x - half.x)), "right": int(ceilf(centre.x + half.x)),
+					"top": int(floorf(centre.y - half.y)), "bottom": int(ceilf(centre.y + half.y)),
+				}
 			var pitch: float = maxf(0.001, float(room.get("pitch", 1)))
 			# At half pitch the same screen spans more farm, but the room must
 			# still have enough camera margin to sit near the screen centre.

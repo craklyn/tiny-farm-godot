@@ -8,8 +8,8 @@ named parameter until Milo Fern's livestock-economy decision settles it.*
 
 ## Purpose and boundaries
 
-The Industrial Barn is a placeable three-tile by two-tile building with one six-cell by
-four-cell room. Up to four cows may use its open stalls at once. A cow gains milk each
+The Industrial Barn is a placeable three-tile by two-tile building with one twelve-cell by
+eight-cell room (it was six by four until 2026-10-11). Up to four cows may use its open stalls at once. A cow gains milk each
 morning, chooses whether to walk into the barn, gives one unit when ready, and remains free
 to leave. Fixed machinery moves that unit through seven visible cheese-making stations.
 
@@ -146,8 +146,19 @@ neighbours, and not where another cow stands or is heading, and plans to it — 
 route searches per decision. If none does and she is not already on such a square, she
 searches rings outward from where she stands, to the same radius (sixty squares at most): the
 nearest such square, or failing that the nearest bare ground off every doorstep itself and
-clear of the herd. She rests `GRAZE_SECONDS` there before the next decision. Her walks are brain decisions with no Action;
+clear of the herd (bare ground that is not soil since 2026-10-11). She rests `GRAZE_SECONDS` there before the next decision. Her walks are brain decisions with no Action;
 a replay recomputes them, as it does every brain but the hen's.
+
+Her routes spare the beds (2026-10-11): the cow's species row sets the movement capability
+`spares_beds`, so `Movement.route_mode_of` plans and steps her in `GROUND_SPARING_BEDS`, whose
+crossable test is `SimWorld.is_walkable_sparing_beds` — walkable, not a `WETTABLE_STATES` tile,
+not a `BUILDING_BLOCK_OBJECTS` square. The start and the goal of a route only need to be
+walkable, so a cow loaded on soil or on a block walks off it, and where she stops stays her
+brain's choice. The route to the barn's exterior door passes `over_beds_if_needed` to
+`Movement.plan`: with no way round, she takes the ordinary ground route and `extra.over_beds`
+lets her steps follow it; grazing never does. `_barn_cow_search` walks the same crossable test
+and skips the block, and `placeable_at` refuses a barn whose block holds a crop (`_crop_under_barn`).
+Cost is unchanged in kind: one search per decision, a second only when the first finds no way.
 
 ### Milk and cheese actions
 
@@ -208,7 +219,7 @@ any amount of real time or a reload.
 ## Building and interior
 
 Add an Industrial Barn catalogue row with a three-by-two outdoor footprint and a room row
-whose declared usable grid is six by four, following [15 — Interiors](design/15-interiors.md).
+whose declared usable grid is twelve by eight at pitch four (six by four at pitch two when this was written), following [15 — Interiors](design/15-interiors.md).
 The room remains anchored to the building and rendered in the same world. Its exterior
 doors and interior threshold form one declared door pair; cows and the player cross it with
 `use_door`.
@@ -219,17 +230,21 @@ stall turn area. Placement uses the existing general building path: it validates
 of the three-by-two footprint, creates the anchored room with the building, and removes both
 together only after the barn-state checks above pass.
 
-As built (2026-10-08), the room's layout follows the redrawn interior picture
-(`industrial_barn_interior_kit.png`). All 24 cells are inside the walls, as in the Spiral
-Tower. The livestock doorway is the south-west cell (0, 3), and the outdoor doorstep is under
-the barn's middle doors. The hay rack and feed bin occupy the left supply cells (0, 0) and
-(1, 0). The four stalls form the central two-by-two block at (2, 0), (3, 0), (2, 1), and
-(3, 1), numbered deepest first. The open route runs from the doorway through the left and
-central floor cells to every stall, so a near stall never shuts in a cow at the back. The
-processing cells (4, 0), (5, 0), (4, 1), (5, 1), (4, 2), (5, 2), (4, 3), and (5, 3) are
-fixed machinery for the visible cheese route and cannot be walked through. Picking the barn up
-is refused while a cow holds a stall or any milk or cheese is inside. Otherwise the barn
-record, its pending line event and the room come up together.
+As built (2026-10-11, replacing the 2026-10-08 six-by-four layout), the room is twelve cells
+by eight, every cell inside the walls, as in the Spiral Tower, at pitch four. It is kept in
+one of two big slots on the rooms page; a third barn is refused with `no_room_inside`. The
+livestock doorway is (3, 7), at the foot of the central aisle, and the outdoor doorstep is
+under the barn's middle doors. The four stalls are the middle squares of four three-by-two
+pens: (1, 1), (5, 1), (1, 3) and (5, 3), numbered deepest first. The cheese line runs down
+the east side (receiver, vat, table, presses, belt) and ends at the shelf beside the lobby;
+the farmer sells from (6, 6). Every machine, the hay, the feed bin, the pitchfork, the milk
+cans and the bucket are blocked cells named in `machine_defs.gd`; the aisle, lobby, pens and
+the walkway between machines are open, so a near pen never shuts in a deeper one. Picking
+the barn up is refused while a cow holds a stall or any milk or cheese is inside. Otherwise
+the barn record, its pending line event and the room come up together. A save whose barn has
+the old room is renovated on load (`SimWorld.renovate_legacy_barns`). The reasoning, the
+measurements and the captures are in [design 17](design/17-industrial-barn-and-cheese-line.md),
+"The bigger room".
 
 The building and room must support the approved red dairy works art without encoding visual
 details in simulation. Open doors, stall occupancy, station state, product shape, and

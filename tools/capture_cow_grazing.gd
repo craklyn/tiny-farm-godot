@@ -6,11 +6,13 @@
 # farm saved just after four cows had each given milk shows all four on one
 # square at the start, and the field shows where they went by the end.
 #
-#   godot --path . res://tools/capture_cow_grazing.tscn -- --save=<farm.json> --out=<prefix> [--seconds=40]
+#   godot --path . res://tools/capture_cow_grazing.tscn -- --save=<farm.json> --out=<prefix> [--seconds=40] [--every=10]
 #
 # Needs a display. Writes <prefix>_start.png and <prefix>_end.png, and prints
-# where each cow stood at both moments. Plays on a scratch copy of the farm, so
-# the game's autosave never writes over the file it was given.
+# where each cow stood at both moments. `--every=N` also writes <prefix>_<t>s.png
+# every N seconds of the same play, for a strip of where the herd walked (added
+# 2026-10-11, for cows going around the beds beside the barn). Plays on a scratch
+# copy of the farm, so the game's autosave never writes over the file it was given.
 extends Node2D
 
 const SCRATCH := "user://capture_cow_grazing.json"
@@ -62,7 +64,15 @@ func _ready() -> void:
 	await _frames(20)
 	await _shot(String(opts.out) + "_start.png")
 	_report(sim, "start")
-	await _frames(int(float(opts.seconds) * 60.0))
+	var every := int(opts.get("every", "0"))
+	var played := 0
+	if every > 0:
+		while played + every < int(float(opts.seconds)):
+			await _frames(every * 60)
+			played += every
+			await _shot("%s_%ds.png" % [String(opts.out), played])
+			_report(sim, "after %ds" % played)
+	await _frames(int((float(opts.seconds) - played) * 60.0))
 	await _shot(String(opts.out) + "_end.png")
 	_report(sim, "after %ss" % opts.seconds)
 	get_tree().quit(0)

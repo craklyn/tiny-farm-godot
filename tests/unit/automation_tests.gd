@@ -3816,3 +3816,175 @@ func test_starter_brain() -> void:
 # second map costs the sim nothing but rows, that going through a door is an
 # Action like any other, and that a farm saved before any of this existed still
 # loads and still plays.
+
+
+# --- robots go round buildings, never through them (2026-10-11) ----------------
+#
+# Daniel, from play: robots "should not walk through a building's footprint
+# (effectively walking through the building)". The coop, the tower, the stall and
+# the barn are all open ground to `is_walkable` — the hen walks into her coop, the
+# farmer taps any square of the barn — so a robot's route went straight through
+# them. Every check below sets a robot's straight way across a block and fails on
+# the build before this one, except the workbench's, which was already solid.
+func test_robots_go_round_buildings() -> void:
+	print("\n--- Robots go round buildings, never through them (2026-10-11) ---")
+	_assert(Movement.route_mode_of(SpeciesDefs.BOT) == Movement.GROUND_SPARING_BUILDINGS,
+		"a robot's routes are planned in the mode that keeps out of buildings")
+	_assert(Movement.route_mode_of(SpeciesDefs.PLAYER) == SpeciesDefs.GROUND
+			and Movement.route_mode_of(SpeciesDefs.CHICKEN) == SpeciesDefs.GROUND
+			and Movement.route_mode_of(SpeciesDefs.COW) == Movement.GROUND_SPARING_BEDS,
+		"and nobody else's changes: the farmer and the hen walk as before, the cow keeps her own mode")
+
+	# Each building straddling the row a robot walks along, from (6,10) to (22,10).
+	for key in ["coop", "spiral_tower", "stall", "industrial_barn", "workbench"]:
+		var world := _robot_yard(2400)
+		var anchor := Vector2i(14, 11) if key == "spiral_tower" else Vector2i(14, 10)
+		var block := _stage_building(world, key, anchor)
+		BotBrain.deploy(world, "bot_1", BotBrain.CONFIG_ORDERS, Vector2i(6, 10))
+		var walked := _walk_robot(world, "bot_1", Vector2i(22, 10))
+		_assert(walked.arrived and walked.inside.is_empty(),
+			"a robot whose straight way crosses a %s goes round it (arrived %s, stood inside on %s)"
+				% [key, walked.arrived, str(walked.inside)])
+
+	# Parking: its stall's bays are the one building it walks into.
+	var park := _robot_yard(2401)
+	var stall := _stage_building(park, "stall", Vector2i(14, 10))
+	BotBrain.deploy(park, "bot_1", BotBrain.CONFIG_ORDERS, Vector2i(6, 10))
+	var to_slot := _walk_robot(park, "bot_1", Vector2i(15, 10))
+	var trail: Array[Vector2i] = to_slot.trail
+	_assert(to_slot.arrived and to_slot.inside == [Vector2i(15, 10)]
+			and trail[trail.size() - 2] == Vector2i(15, 11),
+		"a robot still parks in its stall's far bay, by the open front, going round the near bay rather than through it (%s)"
+			% str(trail))
+	var out_again := _walk_robot(park, "bot_1", Vector2i(22, 10))
+	_assert(out_again.arrived and out_again.inside.is_empty() and out_again.trail[0] == Vector2i(15, 11),
+		"and sets out from its bay by the front, not through the shed's back or the other bay (%s)"
+			% str(out_again.trail))
+	# The front fenced off: it still gets out, by the side, and back in.
+	park.set_tile_state(15, 11, "fence")
+	var by_side := _walk_robot(park, "bot_1", Vector2i(15, 10))
+	_assert(by_side.arrived,
+		"with a bay's front fenced off, a robot still reaches it from another side (%s)" % str(by_side.trail))
+
+	# No way round: the gap in a wall of rock is filled by a coop. No route, so
+	# its brain gives the square up as it gives up one behind a fence.
+	var walled := _robot_yard(2402)
+	for y in range(0, 20):  # the farm's whole page, top to bottom
+		if not (y == 10 or y == 11):
+			walled.set_tile_state(14, y, "obstacle_rock")
+			walled.set_tile_state(15, y, "obstacle_rock")
+	_stage_building(walled, "coop", Vector2i(14, 11))
+	BotBrain.deploy(walled, "bot_1", BotBrain.CONFIG_ORDERS, Vector2i(6, 10))
+	_assert(not Movement.plan(walled, "bot_1", Vector2i(22, 10)),
+		"with a building filling the only gap, a robot has no route: it does not walk through")
+	# The same from inside its stall's bay: it is home, not stuck, so it gives the
+	# square up rather than walking out through the bay beside it (found in review).
+	_stage_building(walled, "stall", Vector2i(6, 12))
+	BotBrain.deploy(walled, "bot_2", BotBrain.CONFIG_ORDERS, Vector2i(6, 12))
+	_assert(not Movement.plan(walled, "bot_2", Vector2i(22, 10))
+			and not Movement.has_route(walled, "bot_2"),
+		"and a robot in its stall's bay with the same unreachable square stays in its bay, not walking out through the other one")
+
+	# A save from before this rule left a robot inside a coop, with a tower beyond
+	# it: it walks out of the coop by the nearest way, then round the tower.
+	var loaded := _robot_yard(2403)
+	var coop := _stage_building(loaded, "coop", Vector2i(9, 11))
+	var tower := _stage_building(loaded, "spiral_tower", Vector2i(14, 12))
+	BotBrain.deploy(loaded, "bot_1", BotBrain.CONFIG_ORDERS, Vector2i(10, 10))
+	var got_out := _walk_robot(loaded, "bot_1", Vector2i(22, 10))
+	var in_tower := false
+	for t in got_out.inside:
+		in_tower = in_tower or t in tower
+	_assert(got_out.arrived and not in_tower and got_out.inside.size() <= 1,
+		"a robot loaded inside a coop walks out and round the tower beyond it (%s)" % str(got_out.inside))
+
+	# The middle of a tower's sixteen squares, every neighbour of which is the
+	# tower too: the way out is the ordinary walker's, as far as the first square
+	# outside, and from there it keeps out.
+	var deep := _robot_yard(2404)
+	var deep_tower := _stage_building(deep, "spiral_tower", Vector2i(14, 12))
+	BotBrain.deploy(deep, "bot_1", BotBrain.CONFIG_ORDERS, Vector2i(15, 10))
+	var deep_out := _walk_robot(deep, "bot_1", Vector2i(15, 4))
+	_assert(deep_out.arrived and deep_out.inside.size() <= 2,
+		"a robot loaded in the middle of a tower walks out by the shortest way and on to where it was going (%s)"
+			% str(deep_out.inside))
+
+	# The whole brain: a Mark I parked in its stall, sent to water squares on the
+	# far side of a coop, waters them all, comes home, and never stands in the
+	# coop or in its stall's other bay.
+	var day := _robot_yard(2405)
+	var home_stall := _stage_building(day, "stall", Vector2i(6, 10))
+	var hen_coop := _stage_building(day, "coop", Vector2i(13, 11))
+	var orders: Array[Vector2i] = [Vector2i(20, 10), Vector2i(20, 11)]
+	for t in orders:
+		day.set_tile_state(t.x, t.y, "seeded", "wheat")
+		day.get_tile(t.x, t.y).watered_today = false
+	BotBrain.deploy(day, "bot_1", BotBrain.CONFIG_ORDERS, Vector2i(6, 10),
+		{ "orders": [20, 10, 20, 11] })
+	day.actor("bot_1")["extra"]["sent"] = true
+	var wrong := {}
+	for i in SimClock.RATE * 120:
+		day.advance_ticks(1, GameState)
+		var at := day.actor_pos("bot_1")
+		if day.get_object(at.x, at.y) in SimWorld.BUILDING_BLOCK_OBJECTS and at != Vector2i(6, 10):
+			wrong[at] = true
+	var watered := 0
+	for t in orders:
+		if day.get_tile(t.x, t.y).get("watered_today", false):
+			watered += 1
+	_assert(watered == orders.size() and day.actor_pos("bot_1") == Vector2i(6, 10)
+			and wrong.is_empty(),
+		"a Mark I sent past a coop waters its squares and parks at home without entering a building (%d of %d, home %s, inside %s)"
+			% [watered, orders.size(), day.actor_pos("bot_1") == Vector2i(6, 10), str(wrong.keys())])
+
+
+# A field of cleared farm ground, nothing on it, nobody in it, the farmer out of
+# the house (machines wait for her to come outside).
+func _robot_yard(seed_value: int) -> SimWorld:
+	GameState.reset()
+	SimRng.reseed(seed_value)
+	var world := SimWorld.new()
+	world.generate()
+	for y in range(3, 18):
+		for x in range(3, 28):
+			if world.space_of(Vector2i(x, y)) != "farm":
+				continue
+			world.set_object(x, y, "")
+			world.set_tile_state(x, y, "cleared")
+	for raw in world.actors.keys():
+		var id := String(raw)
+		if world.space_of(world.actor_pos(id)) == "farm" and world.actor_pos(id).y < 18:
+			world.set_actor_pos(id, Vector2i(30, 2))
+	world.set_actor_pos(SimWorld.ACTOR_PLAYER, Vector2i(30, 1))
+	return world
+
+
+# A building's block written onto the grid as `place` leaves it. Returns its cells.
+func _stage_building(world: SimWorld, key: String, anchor: Vector2i) -> Array[Vector2i]:
+	var cells := MachineDefs.footprint_cells(key, anchor)
+	var part := MachineDefs.part_of(key)
+	for c in cells:
+		world.set_object(c.x, c.y, MachineDefs.object_of(key) if c == anchor or part == "" else part)
+	return cells
+
+
+# Plans a robot to `goal` and steps it there, re-planning as its brain would when
+# a route runs out short of the goal. Reports whether it arrived and every
+# square of a building's block it stood on after its start.
+func _walk_robot(world: SimWorld, bot: String, goal: Vector2i) -> Dictionary:
+	var inside: Array[Vector2i] = []
+	var trail: Array[Vector2i] = []
+	var tick := world.clock.tick
+	for attempt in 4:
+		if world.actor_pos(bot) == goal or not Movement.plan(world, bot, goal):
+			break
+		for i in 200:
+			tick += 1
+			if Movement.step(world, bot, tick) != Movement.MOVED:
+				break
+			var at := world.actor_pos(bot)
+			trail.append(at)
+			if world.get_object(at.x, at.y) in SimWorld.BUILDING_BLOCK_OBJECTS \
+					or world.get_object(at.x, at.y) == WorldLayout.WORKBENCH:
+				inside.append(at)
+	return { "arrived": world.actor_pos(bot) == goal, "inside": inside, "trail": trail }

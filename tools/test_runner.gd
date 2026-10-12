@@ -199,6 +199,7 @@ func _run_scenarios() -> void:
 	await _scenario_bp_one_touch_is_one_tap()
 	await _scenario_bq_a_tower_that_will_not_fit_buzzes()
 	await _scenario_br_a_walled_in_barn_buzzes()
+	await _scenario_bs_a_barn_over_a_bed_buzzes()
 
 
 func _scenario_ba_crow_spook_stops_at_room_wall() -> void:
@@ -4968,8 +4969,14 @@ func _scenario_room_wall_tap_answers() -> void:
 	var rng_revision := SimRng.stateless_revision
 
 	var rlog := _tablet_room_moment()
-	_assert(rlog != null and rlog.apply_to(farm.sim, GameState) and rlog.divergence == "",
-		"the tablet session replays to tick 64579 without diverging (%s)"
+	# Diverges at the hen's egg after the night since robots stopped walking through
+	# buildings (2026-10-11): this farm's Mark Is and Mark II used to walk along a row
+	# of stall bays, and going round shifts the farm's shared dice. Her own walk is
+	# recorded, so the room she stands in is untouched (tests/unit/core_tests.gd).
+	_assert(rlog != null and rlog.apply_to(farm.sim, GameState) and (rlog.divergence == ""
+			or rlog.divergence.begins_with(
+				"entry 186: recorded @63648 {actor=chicken,target=30,16,verb=lay_egg}")),
+		"the tablet session replays to tick 64579, diverging only at the hen's egg after robots stopped crossing stall bays (%s)"
 			% ("no replay" if rlog == null else rlog.divergence))
 	var room: Dictionary = farm.sim.rooms.get("spiral_tower_room_2", {})
 	_assert(room.get("origin", Vector2i(-1, -1)) == Vector2i(7, 40) and room.get("size", Vector2i(-1, -1)) == Vector2i(2, 2),
@@ -9889,12 +9896,19 @@ func _scenario_br_a_walled_in_barn_buzzes() -> void:
 		"the barn's whole three-by-two block is drawn at the spot she tapped (%s)" % str(shown_cells))
 	var marked: Array = Dictionary(shown.get("blocked", {})).keys()
 	var around: Array = shown.get("around", [])
-	var marks_the_fence := marked.size() == pen.size() and around.size() == pen.size()
+	# Her cows come out by the doors and never walk through the barn (2026-10-11),
+	# so the posts around the doorstep are what walls it in.
+	var doorstep := spot + Vector2i(1, 1)
+	var at_the_doors: Array[Vector2i] = []
 	for c in pen:
+		if absi(c.x - doorstep.x) + absi(c.y - doorstep.y) == 1:
+			at_the_doors.append(c)
+	var marks_the_fence := marked.size() == at_the_doors.size() and around.size() == at_the_doors.size()
+	for c in at_the_doors:
 		if not c in marked or not c in around:
 			marks_the_fence = false
 	_assert(marks_the_fence,
-		"with the fence around it marked as what is in the way, and none of its own free squares (%s)" % str(marked))
+		"with the fence around its doorstep marked as what is in the way, and none of its own squares (%s)" % str(marked))
 	var acted := 0
 	for i in range(replay_before, farm.replay.entries.size()):
 		if String(farm.replay.entries[i].get("kind", "")) != "walk":
@@ -9963,6 +9977,104 @@ func _scenario_br_a_walled_in_barn_buzzes() -> void:
 			"and with eight, it goes dark: four for each barn (%s)" % str(card))
 
 	_release_sim_clock()
+	await _bq_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
+
+
+# Scenario BS (2026-10-11, found staging the creamery video): she holds a barn,
+# stands on open ground where one square of its block is sown, taps, and the game
+# buzzes, draws the block with that square marked, and changes nothing — the crop
+# is still in the ground. It used to put the barn down over the crop.
+#
+# Then every other building the same way (2026-10-11, Daniel: "Yes please. Also
+# the building for robots"): the coop, the spiral tower, the robot stall and the
+# workbench, each over a crop at a different stage — a seed, a sprout, a ripe one.
+func _scenario_bs_a_barn_over_a_bed_buzzes() -> void:
+	await _bs_building_over_a_bed_buzzes("industrial_barn", "seeded", "wheat")
+	await _bs_building_over_a_bed_buzzes("coop", "growing", "wheat")
+	await _bs_building_over_a_bed_buzzes("spiral_tower", "ready", "wheat")
+	await _bs_building_over_a_bed_buzzes("stall", "growing", "wheat")
+	await _bs_building_over_a_bed_buzzes("workbench", "seeded", "wheat")
+
+
+func _bs_building_over_a_bed_buzzes(item: String, crop_state: String, crop: String) -> void:
+	var label := MachineDefs.name_of(item)
+	print("\n--- Scenario BS: %s over a %s square buzzes and marks the crop ---" % [label, crop_state])
+	var real_paths := [GameState.save_path, GameState.replay_path, GameState.trace_path]
+	GameState.save_path = "user://barn_bed_autosave.json"
+	GameState.replay_path = "user://barn_bed_replay.json"
+	GameState.trace_path = "user://barn_bed_trace.jsonl"
+	main_scene.menus.close_menu()
+	main_scene.end_teaching()
+	await get_tree().process_frame
+	var before := SaveGame.capture(farm.sim, GameState)
+	var rng_seed := SimRng.current_seed()
+	var rng_state := SimRng.rng.state
+	var rng_revision := SimRng.stateless_revision
+	_hold_sim_clock()
+	GameState.machines = { item: 1 }
+	GameState.selected_seed_type = item
+	GameState.set_energy(GameState.max_energy)
+
+	# A spot it fits on bare ground, nobody but her on its block.
+	var size := MachineDefs.footprint_of(item)
+	var spot := Vector2i(-1, -1)
+	for ty in range(4, WorldLayout.PAGE_ROWS - 3):
+		for tx in range(2, SimWorld.MAP_WIDTH - 4):
+			if spot.x >= 0:
+				break
+			var at := Vector2i(tx, ty)
+			if not farm.sim.placeable_at(at, item):
+				continue
+			var clear := true
+			for c in MachineDefs.footprint_cells(item, at):
+				if farm.sim.has_crop(c.x, c.y):
+					clear = false
+				for raw in farm.sim.actors:
+					if c in Movement.occupied_tiles(farm.sim, String(raw)):
+						clear = false
+			if clear:
+				spot = at
+	_assert(spot.x >= 0, "the farm has open ground for the %s (%s)" % [label, spot])
+	if spot.x < 0:
+		await _bq_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
+		return
+	# One square of its block holds a crop: the corner furthest from where she
+	# stands (her own square, for a one-square workbench).
+	var bed := spot + Vector2i(size.x - 1, -(size.y - 1))
+	_stage_tile(bed.x, bed.y, crop_state, crop)
+	player.init_position(spot.x, spot.y)
+	farm.sim.set_actor_pos(SimWorld.ACTOR_PLAYER, spot)
+	player.path.clear()
+	player.pending_action = {}
+	player.tap_indicator = {}
+	InputManager.has_click = false
+	farm.sync_actors()
+	await get_tree().process_frame
+	_assert(not farm.sim.placeable_at(spot, item),
+		"with a crop in one square of its block, the %s does not fit at %s" % [label, spot])
+
+	var world_before := JSON.stringify(SaveGame.capture(farm.sim, GameState))
+	var replay_before: int = farm.replay.entries.size()
+	var sounds_before: int = AudioManager.sfx_count
+	var answer := await _finger_tap(spot)
+	for i in 3:
+		await get_tree().process_frame
+	_assert(String(answer.get("verb", "")) == "place" and String(answer.get("out", "")) == "refused",
+		"the tap goes to the gateway as a placing, which refuses it (%s)" % str(answer))
+	_assert(AudioManager.sfx_count > sounds_before and AudioManager.last_sfx == "nope",
+		"she hears the buzz (%s)" % AudioManager.last_sfx)
+	var shown: Dictionary = farm.footprint_refusal()
+	var marked: Array = Dictionary(shown.get("blocked", {})).keys()
+	_assert(shown.get("anchor", Vector2i(-1, -1)) == spot and Array(shown.get("cells", [])).size() == size.x * size.y
+			and marked == [bed],
+		"the %s's block is drawn where she tapped with the crop's square, and only it, marked (%s)" % [label, str(marked)])
+	var acted := 0
+	for i in range(replay_before, farm.replay.entries.size()):
+		if String(farm.replay.entries[i].get("kind", "")) != "walk":
+			acted += 1
+	_assert(JSON.stringify(SaveGame.capture(farm.sim, GameState)) == world_before and acted == 0
+			and int(GameState.machines.get(item, 0)) == 1 and farm.sim.has_crop(bed.x, bed.y),
+		"and nothing changed: no %s, the crop still in the ground, the %s still in her hands" % [label, label])
 	await _bq_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
 
 

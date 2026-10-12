@@ -149,6 +149,20 @@ That remains an optional visual detail, not part of the chosen yard treatment. T
 frame in the comparison was one illustration of the unchosen option, not a geometric
 requirement.
 
+### The Industrial Barn's room: 12×8 at pitch 4 (2026-10-11)
+
+The barn's 3×2 footprint holds a **12×8** room at **pitch 4**, the farmhouse's width at the
+farmhouse's pitch, which fills the footprint exactly (the rule above: width is the
+footprint's width times `k`, here with the height filling it too). It is bigger than the
+coop's 6×6 slot, so the rooms page has two **big slots** (12×8) beside its six small ones,
+a tile clear of each other and of every small slot; a room only takes a slot of its own
+size class, and a barn is refused where no big slot is free. The room is smaller than the
+screen at the game's zoom (192×128 room pixels in a 266×200 view), so while she is inside the
+camera rests on its centre rather than following her (`"fixed_view"` in the room's data):
+the whole room, pens and machines, is on screen whatever she is doing. Why it is this size,
+the measurements, and how a barn saved with the old 6×4 room is renovated on load are in
+[17](17-industrial-barn-and-cheese-line.md), "The bigger room".
+
 ### A larger building with a coarser interior (Daniel's chosen target, 2026-09-23)
 
 A 4×4-tile building containing **2×2 total interior cells** is the view Daniel wants

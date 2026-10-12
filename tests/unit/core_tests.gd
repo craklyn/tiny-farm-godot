@@ -439,8 +439,18 @@ func test_pathfinding() -> void:
 		room_log.end_tick = int(room_log.entries[499].get("tick", 0))
 		var room_farm = FarmScript.new()
 		var room_gs = load("res://systems/game_state.gd").new()
-		_assert(room_log.apply_to(room_farm.sim, room_gs) and room_log.divergence == "",
-			"the tablet session replays to tick 64579 without diverging (%s)" % room_log.divergence)
+		# It replayed without diverging until 2026-10-11, when robots stopped walking
+		# through buildings. This farm parks six Mark Is in a row of stall bays and
+		# patrols a Mark II from one, and on the old build they walked along the row
+		# through each other's bays; going round shifts the farm's shared dice, and
+		# the first thing that shows it is where the hen lays her egg after the night
+		# (entry 186). Her own walk is recorded, not recomputed, so the room checks
+		# below are untouched.
+		_assert(room_log.apply_to(room_farm.sim, room_gs) and (room_log.divergence == ""
+				or room_log.divergence.begins_with(
+					"entry 186: recorded @63648 {actor=chicken,target=30,16,verb=lay_egg}")),
+			"the tablet session replays to tick 64579, diverging only at the hen's egg after robots stopped crossing stall bays (%s)"
+				% room_log.divergence)
 		_assert(room_farm.sim.actor_pos(SimWorld.ACTOR_PLAYER) == Vector2i(7, 41),
 			"the replay puts her on (7,41) inside the Spiral Tower room")
 		var room: Dictionary = room_farm.sim.rooms.get("spiral_tower_room_2", {})

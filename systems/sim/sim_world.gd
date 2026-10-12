@@ -201,6 +201,15 @@ func offers(key: String, gs) -> bool:
 	var counts: Dictionary = gs.harvest_counts if gs != null else {}
 	if not MachineDefs.is_unlocked(key, counts):
 		return false
+	# **A barn is offered only while there is a room for it to open into** (2026-10-11):
+	# the rooms page has two big slots, and a barn bought with none free would stand
+	# with no inside. Counts the barns already waiting in the crate as well as those
+	# standing, the way the cow card counts `herd_limit()`.
+	if key == BARN_ITEM:
+		var waiting: int = int(gs.machines.get(BARN_ITEM, 0)) if gs != null else 0
+		var cells := Vector2i(MachineDefs.room_of(BARN_ITEM).get("cells", Vector2i.ZERO))
+		if free_room_slots(cells).size() <= waiting:
+			return false
 	var needs := MachineDefs.earned_by(key)
 	return needs == "" or rungs.has(needs)
 
@@ -912,6 +921,18 @@ const OPEN_STRUCTURE_OBJECTS := {
 	WorldLayout.SPIRAL_TOWER: true, WorldLayout.SPIRAL_TOWER_PART: true,
 }
 
+# Every object that is a square of a building's block on the farm: the open
+# structures above and the Industrial Barn, whose block is open ground too (the
+# player taps any square of it) but whose way in is its doors, not its walls.
+# What a walker that spares the beds keeps out of (`is_walkable_sparing_beds`),
+# and what a robot's route goes around (`is_walkable_sparing_buildings`).
+const BUILDING_BLOCK_OBJECTS := {
+	WorldLayout.ROBOT_STALL: true, WorldLayout.ROBOT_STALL_SLOT: true,
+	WorldLayout.CHICKEN_COOP: true, WorldLayout.CHICKEN_COOP_PART: true,
+	WorldLayout.SPIRAL_TOWER: true, WorldLayout.SPIRAL_TOWER_PART: true,
+	WorldLayout.INDUSTRIAL_BARN: true, WorldLayout.INDUSTRIAL_BARN_PART: true,
+}
+
 # The catalogue rows the sim refers to by name. A constant rather than a bare
 # string because a typo in one of those would be silent — a rule that quietly
 # stopped applying to anything.
@@ -982,7 +1003,7 @@ func make_barn(barn_id: String, anchor: Vector2i = Vector2i.ZERO) -> Dictionary:
 	var room: Dictionary = rooms.get(barn_id, {})
 	var origin: Vector2i = room.get("origin", Vector2i(-1, -1))
 	var size: Vector2i = room.get("size", Vector2i.ZERO)
-	if origin.x < 0 or size != Vector2i(6, 4):
+	if origin.x < 0 or size != Vector2i(MachineDefs.room_of(BARN_ITEM).get("cells", Vector2i.ZERO)):
 		return {}
 	var stalls: Array[Dictionary] = []
 	var layout: Dictionary = MachineDefs.room_of("industrial_barn")
@@ -1004,6 +1025,81 @@ func make_barn(barn_id: String, anchor: Vector2i = Vector2i.ZERO) -> Dictionary:
 		"stations": stations, "next_batch_id": 1, "finished_cheese_count": 0}
 	barns[barn_id] = barn
 	return barn
+
+
+# **A barn saved with the old 6x4 room gets the 12x8 one** (2026-10-11). The room was
+# redrawn bigger, so a farm saved before then has a barn whose room is the wrong size
+# for the picture and whose stall squares are in the wrong places. Called once, by
+# `SaveGame.restore`, before the cast is put on the clock.
+#
+# The room is closed and opened again in the new size; what the barn was doing comes
+# with it, because none of that lives in a square: the batch at each station, the milk
+# waiting at the receiver, the cheese on the shelf. The cows are the part that cannot
+# come with it, since each was standing on a square of the old room or walking to one.
+# They go outside, each to the nearest free ground beyond the doors, with her milk kept
+# and her errand dropped, and choose a stall again as any cow does.
+#
+# Only a barn built before the change is a barn that needed this: no released build had
+# a barn, so no player's farm is renovated, only a tester's. A barn whose new room finds
+# no slot (a farm with several legacy rooms standing where the big slots are) is left
+# without an inside, like any barn bought when the page is full.
+func renovate_legacy_barns() -> int:
+	var want := Vector2i(MachineDefs.room_of(BARN_ITEM).get("cells", Vector2i.ZERO))
+	var ids: Array = barns.keys().map(func(k): return String(k))
+	ids.sort()
+	var renovated := 0
+	for old_id in ids:
+		var room: Dictionary = rooms.get(old_id, {})
+		if room.is_empty() or Vector2i(room.get("size", Vector2i.ZERO)) == want:
+			continue
+		var anchor := Vector2i(room["anchor"])
+		var old_barn: Dictionary = barns[old_id]
+		var herd: Array = []
+		for actor_id in actors:
+			if species_of(String(actor_id)) != SpeciesDefs.COW:
+				continue
+			var extra: Dictionary = actors[actor_id].get("extra", {})
+			if String(extra.get("barn_id", "")) == old_id \
+					or String(extra.get("leaving_barn_id", "")) == old_id \
+					or room_of_cell(actor_pos(String(actor_id))) == old_id:
+				herd.append(String(actor_id))
+		herd.sort()
+		# Anyone else standing in the old room (the farmer, a robot) is put on the doorstep:
+		# her square is about to become void or somebody else's machinery.
+		var strays: Array = []
+		for actor_id in actors:
+			if species_of(String(actor_id)) != SpeciesDefs.COW \
+					and room_of_cell(actor_pos(String(actor_id))) == old_id:
+				strays.append(String(actor_id))
+		strays.sort()
+		if _barn_events.has(old_id):
+			clock.cancel(int(_barn_events[old_id]))
+			_barn_events.erase(old_id)
+		close_room(anchor)
+		barns.erase(old_id)
+		var outside := Vector2i(room.get("exit", anchor))
+		for actor_id in strays:
+			Movement.clear_route(self, actor_id)
+			set_actor_pos(actor_id, outside)
+		for cow_id in herd:
+			Movement.clear_route(self, cow_id)
+			var at := barn_cow_arrival_cell(anchor)
+			set_actor_pos(cow_id, at if at.x >= 0 else outside)
+			var cow_extra: Dictionary = actor(cow_id)["extra"]
+			for key in ["barn_id", "leaving_barn_id", "route_stage"]:
+				cow_extra.erase(key)
+			cow_extra["barn_id"] = ""
+			cow_extra["stall_index"] = -1
+			cow_extra["state"] = "idle"
+			cow_extra["wake"] = clock.tick + 1
+		var new_id := open_room(BARN_ITEM, anchor)
+		if new_id == "":
+			continue
+		var fresh := make_barn(new_id, anchor)
+		for key in ["stations", "receiver", "next_batch_id", "finished_cheese_count"]:
+			fresh[key] = old_barn.get(key, fresh[key])
+		renovated += 1
+	return renovated
 
 
 # Whether picking this barn up would lose something: a cow holding one of its
@@ -1033,10 +1129,12 @@ func _barn_in_use(barn_id: String) -> bool:
 # Now she arrives on the nearest free square of outdoor ground she could walk to
 # from the doors: a breadth-first walk out of the doorstep, south first, then east,
 # west and north (the order `room_exit_for` leaves by), so a save, a replay and two
-# machines agree on the square. She may cross the barn's own floor, as she does on
-# her way to a stall, but never arrives on it, nor on the doorstep itself. "Free"
-# is `placeable_at`'s answer for bare ground: walkable farm ground nobody else is
-# standing on. Only a barn whose ground is truly walled in finds no square.
+# machines agree on the square. The walk goes where her own route could
+# (`is_walkable_sparing_beds`, 2026-10-11): around soil beds and around the barn's
+# block rather than through it, since she reaches her stall by the doors. "Free" is
+# `placeable_at`'s answer for bare ground — walkable farm ground nobody else is
+# standing on — on a square that is not a bed, and never the doorstep itself. Only
+# a barn whose ground is walled in, by fences, beds or anything else, finds none.
 #
 # Asked before the barn is set down as well as after, which is why it takes an
 # anchor rather than a barn: the doors and the block are the same squares either way.
@@ -1078,12 +1176,12 @@ func _barn_cow_search(anchor: Vector2i) -> Dictionary:
 			walls.append(c)
 		for step in [Vector2i(0, 1), Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, -1)]:
 			var n: Vector2i = c + step
-			if seen.has(n):
+			if seen.has(n) or n in block:
 				continue
 			seen[n] = true
 			if space_of(n) != "farm":
 				continue
-			if is_walkable(n.x, n.y):
+			if is_walkable_sparing_beds(n.x, n.y):
 				queue.append(n)
 			else:
 				walls.append(n)
@@ -1297,18 +1395,45 @@ func room_door_at(t: Vector2i) -> Dictionary:
 	return {}
 
 
-# The lowest free slot on the rooms page, or -1. Lowest rather than next, for
-# `next_machine_id`'s reason: put two coops down and pick the first up, and the
-# next one built takes the empty slot — in a live session and in a replay of it
+# The lowest free slot of a room's own size on the rooms page, or -1. Lowest rather
+# than next, for `next_machine_id`'s reason: put two coops down and pick the first up,
+# and the next one built takes the empty slot — in a live session and in a replay of it
 # alike, with no allocator history to save.
-func _free_room_slot() -> int:
+#
+# **Free means the slot's ground is clear, not only that no room names its number**
+# (2026-10-11). A farm saved before the slots were rearranged for the barn's bigger room
+# has rooms standing where the new arrangement puts big slots; one of those would hold
+# the slot number of the old arrangement, which names a different square now. So the
+# rectangle is checked too, a tile wider each way as the slots' own gap is.
+func _free_room_slot(size: Vector2i = WorldLayout.ROOM_SLOT) -> int:
+	var free := free_room_slots(size)
+	return -1 if free.is_empty() else int(free[0])
+
+
+# Every free slot of a room's own size, lowest first. The shop asks how many, so it
+# never sells a barn that has no room to open into.
+func free_room_slots(size: Vector2i) -> Array[int]:
 	var taken := {}
+	var standing: Array[Rect2i] = []
 	for id in rooms:
-		taken[int(rooms[id].get("slot", -1))] = true
+		var room: Dictionary = rooms[id]
+		var number := int(room.get("slot", -1))
+		taken[number] = true
+		if page_of(Vector2i(room.get("origin", Vector2i.ZERO))) == WorldLayout.ROOMS_PAGE:
+			standing.append(Rect2i(Vector2i(room["origin"]), Vector2i(room.get("size", Vector2i.ZERO))))
+	var out: Array[int] = []
 	for i in WorldLayout.room_slot_count():
-		if not taken.has(i):
-			return i
-	return -1
+		if taken.has(i) or not WorldLayout.room_slot_fits(i, size):
+			continue
+		var ground := Rect2i(WorldLayout.room_slot_origin(i), WorldLayout.room_slot_size(i)).grow(1)
+		var clear := true
+		for rect in standing:
+			if ground.intersects(rect):
+				clear = false
+				break
+		if clear:
+			out.append(i)
+	return out
 
 
 # Put a room down: claim a slot, write its walls and floor into the grid, and
@@ -1317,10 +1442,10 @@ func open_room(item: String, anchor: Vector2i) -> String:
 	var spec: Dictionary = MachineDefs.room_of(item)
 	if spec.is_empty():
 		return ""
-	var slot := _free_room_slot()
+	var size: Vector2i = spec.get("cells", WorldLayout.ROOM_SLOT)
+	var slot := _free_room_slot(size)
 	if slot < 0:
 		return ""    # every slot full: the building still stands, it just has no inside
-	var size: Vector2i = spec.get("cells", WorldLayout.ROOM_SLOT)
 	var origin := WorldLayout.room_slot_origin(slot)
 	var edge_walls := bool(spec.get("edge_walls", false))
 	var cells := WorldLayout.room_cells(size, edge_walls)
@@ -1448,6 +1573,7 @@ const CROP_STATES := ["seeded", "growing", "ready"]
 # The same list as a set, so the membership test is one hash. `OPEN_OBJECTS` is
 # this move for the same reason (Q-67).
 static var _crop_state_set: Dictionary = _states_as_set(CROP_STATES)
+static var _wettable_state_set: Dictionary = _states_as_set(WETTABLE_STATES)
 
 
 static func _states_as_set(states: Array) -> Dictionary:
@@ -1545,6 +1671,31 @@ func is_walkable(tx: int, ty: int) -> bool:
 	if obj != "" and not OPEN_OBJECTS.has(obj):
 		return false
 	return true
+
+
+# **Walkable ground a cow's route may cross** (2026-10-11): walkable, and neither
+# a soil bed (`WETTABLE_STATES`: tilled, watered or not, sown, growing or ripe) nor
+# the block of a building on the farm. Measured on the staged creamery farm: cows
+# walking to their grass crossed the planted field beside the barn and the barn's
+# own block, and a save made mid-walk loaded them standing inside the barn. The
+# route mode of every species whose row sets `spares_beds` (`Movement.route_mode_of`).
+func is_walkable_sparing_beds(tx: int, ty: int) -> bool:
+	if not is_walkable_sparing_buildings(tx, ty):
+		return false
+	return not _wettable_state_set.has(tiles[ty][tx].state)
+
+
+# **Walkable ground a robot's route may cross** (2026-10-11): walkable, and not a
+# square of any building's block. The coop, the tower, the stall and the barn are
+# all open ground to `is_walkable` (the hen walks into her coop, the farmer taps
+# any square of the barn), so a robot's route ran straight through them and it
+# looked like a machine walking through a wall. The route mode of every species
+# whose row sets `spares_buildings` (`Movement.route_mode_of`); the cow's test
+# above is this one plus the beds.
+func is_walkable_sparing_buildings(tx: int, ty: int) -> bool:
+	if not is_walkable(tx, ty):
+		return false
+	return not BUILDING_BLOCK_OBJECTS.has(objects[ty][tx])
 
 
 # Parcels are open when their gate is (or they never had one). Derived from the
@@ -2202,7 +2353,17 @@ func placeable_at(t: Vector2i, item: String = "") -> bool:
 	# is one no cow could ever walk into.
 	if item == BARN_ITEM and barn_cow_arrival_cell(t).x < 0:
 		return false
+	# **And an inside to open** (2026-10-11). A barn's room is bigger than the coop's, so
+	# it has two slots of its own on the rooms page; a third barn would stand with no
+	# inside and no cow could ever use it. It is refused like any block that will not fit.
+	if item == BARN_ITEM and not barn_room_free():
+		return false
 	return true
+
+
+# Whether the rooms page has a slot left for another barn's room.
+func barn_room_free() -> bool:
+	return _free_room_slot(Vector2i(MachineDefs.room_of(BARN_ITEM).get("cells", Vector2i.ZERO))) >= 0
 
 
 # Whether the thing itself fits on its block: `placeable_at` without a barn's
@@ -2249,12 +2410,13 @@ func _block_fits(t: Vector2i, item: String) -> bool:
 	# each cell of its block, so a cell that already holds one would lose it: an
 	# egg or an acorn on the ground, or the open floor of another building — the
 	# tower's, the barn's — which `is_walkable` lets a foot onto and so let a
-	# second building be set down half on top of the first. A machine that is an
-	# actor stands over what is there and writes nothing, so it is not asked.
+	# second building be set down half on top of the first — or a crop, which it
+	# would bury (`_crop_under_structure`). A machine that is an actor stands over
+	# what is there and writes nothing, so it is not asked.
 	if item != "" and MachineDefs.has(item) and not MachineDefs.spawns_actor(item) \
 			and MachineDefs.terrain_of(item) == "":
 		for cell in MachineDefs.footprint_cells(item, t):
-			if get_object(cell.x, cell.y) != "":
+			if get_object(cell.x, cell.y) != "" or _crop_under_structure(cell):
 				return false
 	for raw in actors:
 		var id := String(raw)
@@ -2263,6 +2425,24 @@ func _block_fits(t: Vector2i, item: String) -> bool:
 		if t in Movement.occupied_tiles(self, id):
 			return false
 	return true
+
+
+# **No building goes down on a crop** (2026-10-11). Every square of a structure's
+# block becomes the structure's own object, so a crop under it — sown, growing or
+# ripe — is left where nothing can reach it for as long as the building stands.
+# Found with the barn first (staging the creamery video: a barn set down by tap on
+# the edge of a planted field, three of its six squares sown or growing), and then
+# Daniel's call for the rest: "Yes please. Also the building for robots" — the
+# coop, the spiral tower, the robot stall and the workbench all refuse the same way,
+# and the refusal shows the crop squares marked like any other square in the way.
+#
+# Bare tilled soil is still taken: nothing is lost under a building but the
+# tilling. A machine that is an actor — the sprinkler, every robot — writes nothing
+# and is not asked, because standing among the crops is what it is for; a fence
+# goes through `buildable_at`, which already wants cleared ground. Placement only:
+# a save with a building already over crops loads as it is.
+func _crop_under_structure(cell: Vector2i) -> bool:
+	return has_crop(cell.x, cell.y)
 
 
 # **Which squares of the block are in the way** (2026-10-09, from play: "I am having
@@ -2298,7 +2478,7 @@ func footprint_blockers(t: Vector2i, item: String) -> Array[Vector2i]:
 				and objects[cell.y][cell.x] == ""
 		else:
 			free = placeable_at(cell)
-		if free and writes_objects and get_object(cell.x, cell.y) != "":
+		if free and writes_objects and (get_object(cell.x, cell.y) != "" or _crop_under_structure(cell)):
 			free = false
 		if not free:
 			out.append(cell)
@@ -3389,6 +3569,8 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			# A barn whose cows would have nowhere to come out onto is refused by
 			# this same question (`placeable_at`); the reason only names it.
 			if not placeable_at(target, item):
+				if item == BARN_ITEM and _block_fits(target, item) and barn_cow_arrival_cell(target).x >= 0:
+					return _fail("no_room_inside")
 				return _fail("no_cow_arrival_space" if _block_fits(target, item) else "occupied")
 			# The approved 500-gold barn includes the farm's first cow. Where she
 			# arrives is found before energy or crate stock changes, then she is

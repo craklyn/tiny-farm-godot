@@ -90,6 +90,19 @@ The loop, end to end, and it is four taps:
    buzz, holds, and fades after about a second and a half. What is not ground keeps its
    own job: a weed, rock or tree is still cleared by a tap on it, and a drag never
    places. Captures from the real game: `mockups/footprint_refusal/`.
+
+   **No building goes down over a crop** (2026-10-11). Every square of a building's
+   block is covered by the building, so a seed, a sprout or a ripe crop under it would
+   sit there out of reach for as long as the building stood. The barn was first (found
+   staging the creamery video); Daniel then asked for the rest: *"Yes please. Also the
+   building for robots."* So the coop, the spiral tower, the barn, the robot stall and
+   the workbench all refuse a block with a crop in it, and the refusal is the one above:
+   the buzz, and the block drawn with each crop's square marked red. Bare tilled soil is
+   still allowed, because nothing is lost under a building but the tilling. Machines
+   that walk or stand among the crops (the sprinkler, every robot) cover nothing and
+   still go down on a crop; that is what they are for. A fence already wants cleared
+   ground. This is a rule for setting a building down only: a save that already has a
+   building over crops loads as it is.
 4. **Instruct** (machines that have a choice — §1's roster will mostly not). See
    `design/06`'s "the machine menu".
 

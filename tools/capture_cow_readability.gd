@@ -9,7 +9,9 @@
 #   grass    the herd on the grass below the barn, from outside
 #   walking  the first moment two cows are walking across the room's floor, clear of
 #            the doorway
-#   stalls   the moment two cows are in their stalls
+#   stalls   the moment two cows are in their stalls (if it ever happens: milked cows go
+#            back out to graze, so two at once is rare)
+#   pens     all four cows in their four pens, staged through the gateway's own verbs
 #
 # With no arguments it captures the shipped art into docs/design/mockups/industrial_barn/
 # as cows_<moment>.png. With `-- --variants=<dir> --out=<dir>` it also swaps in every
@@ -97,10 +99,10 @@ func _ready() -> void:
 			and main.player.path.is_empty(), 900):
 		_fail("the farmer did not get inside the barn")
 		return
-	# At the cheese shelf, the far end of the cows' route: every open square in
-	# the room is on it, and a farmer at the hay rack stood where they turn in.
+	# Beside the cheese shelf, off the cows' route (the central aisle and the pens): a
+	# farmer standing in the aisle stands where they turn in.
 	var origin: Vector2i = room["origin"]
-	_place_player(origin + Vector2i(3, 3))
+	_place_player(origin + Vector2i(6, 6))
 	await _frames(30)
 
 	for id in _cow_ids():
@@ -115,6 +117,15 @@ func _ready() -> void:
 		await _capture("stalls")
 	else:
 		print("never two cows in their stalls at once; no stalls capture")
+	# All four cows in their four pens at once, staged through the gateway's own verbs
+	# with the clock held: a cow is seldom in her pen while the others are in theirs, since
+	# each walks out as soon as she has given.
+	Engine.time_scale = 0.0
+	if _stage_full_pens(barn_id):
+		await _frames(5)
+		await _capture("pens")
+	else:
+		print("could not stage four cows in their pens; no pens capture")
 	print("captured cow readability -> %s" % out_dir)
 	get_tree().quit(0)
 
@@ -146,7 +157,9 @@ func _capture(moment: String) -> void:
 			sprite.sprites = spec.get("cow", shipped_cow)
 			sprite.queue_redraw()
 		farm.queue_redraw()
-		await _frames(3)
+		await _frames(8)
+		farm.queue_redraw()
+		await _frames(2)
 		await RenderingServer.frame_post_draw
 		var file := ("cows_%s.png" % moment) if variants.is_empty() else ("%s_%s.png" % [moment, name])
 		get_viewport().get_texture().get_image().save_png(out_dir + file)
@@ -184,13 +197,43 @@ func _cows_inside(barn_id: String, state: String) -> int:
 	return n
 
 
-# Cows walking in the room's upper three rows: past the doorway, out on the straw.
+# Puts every cow in her own pen, at her stall's cell, giving. Held clock, so they stay.
+func _stage_full_pens(barn_id: String) -> bool:
+	var ids := _cow_ids()
+	if ids.size() < 4:
+		return false
+	for i in 4:
+		var id := ids[i]
+		var extra: Dictionary = farm.sim.actor(id)["extra"]
+		extra["barn_id"] = ""
+		extra["stall_index"] = -1
+		extra["state"] = "idle"
+		extra["milk_milliunits"] = 1000
+		var stall: Dictionary = farm.sim.barns[barn_id]["stalls"][i]
+		stall["cow_id"] = ""
+	for i in 4:
+		var id := ids[i]
+		var reserved: Dictionary = farm.apply_action({ "actor": id, "verb": "reserve_milk_stall",
+			"barn_id": barn_id, "stall_index": i }, gs)
+		var cell: Array = farm.sim.barns[barn_id]["stalls"][i]["cell"]
+		farm.sim.set_actor_pos(id, Vector2i(int(cell[0]), int(cell[1])), "left" if int(cell[0]) - int(farm.sim.rooms[barn_id]["origin"].x) < 3 else "right")
+		var entered: Dictionary = farm.apply_action({ "actor": id, "verb": "enter_milk_stall",
+			"barn_id": barn_id, "stall_index": i }, gs)
+		if not bool(reserved.get("ok", false)) or not bool(entered.get("ok", false)):
+			print("pen %d: reserve %s, enter %s" % [i, reserved, entered])
+			return false
+	_place_player(farm.sim.rooms[barn_id]["origin"] + Vector2i(6, 6))
+	farm.queue_redraw()
+	return true
+
+
+# Cows walking in the room's aisle and lobby, past the doorway.
 func _cows_on_floor(barn_id: String, origin: Vector2i) -> int:
 	var n := 0
 	for id in _cow_ids():
 		var extra: Dictionary = farm.sim.actor(id).get("extra", {})
 		var at: Vector2i = farm.sim.actor_pos(id)
-		if farm.sim.room_of_cell(at) == barn_id and at.y <= origin.y + 2 \
+		if farm.sim.room_of_cell(at) == barn_id and at.y <= origin.y + 5 \
 				and String(extra.get("state", "")) == "moving":
 			n += 1
 	return n

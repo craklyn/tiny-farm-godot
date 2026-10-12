@@ -149,6 +149,11 @@ godot --path . res://tools/capture_worm_crawl.tscn
 # went after milking) — needs a display; plays on a scratch copy of the save
 godot --path . res://tools/capture_cow_grazing.tscn -- --save=<farm.json> --out=<prefix>
 
+# A Mark I walking round a coop on its way from its stall to two squares and back, as one
+# strip of frames every 3 s with its walk traced over the last (robot_round_coop_strip.png
+# under user://capture_robot_round_building/ or --out=<dir>) — needs a display
+godot --path . --fixed-fps 60 res://tools/capture_robot_round_building.tscn
+
 # The training workbench's six plates as PNGs (tools/shot_workbench_0..5.png) on a fresh
 # Mark III — needs a display; saves to scratch so it never seeds the next suite run
 godot --path . res://tools/capture_workbench.tscn
@@ -158,7 +163,7 @@ godot --path . res://tools/capture_workbench.tscn
 godot --path . res://tools/capture_industrial_barn_review.tscn
 
 # Cows in the creamery and on the grass: a barn with four cows on a fixed farm, captured on
-# the grass, walking in and at their stalls, under docs/design/mockups/industrial_barn/cows_*.png;
+# the grass, walking in and in their four pens, under docs/design/mockups/industrial_barn/cows_*.png;
 # `-- --variants=<dir> --out=<dir>` also shoots candidate cow_*.png / kit_*.png at the same
 # moment — needs a display
 godot --path . --fixed-fps 60 res://tools/capture_cow_readability.tscn
