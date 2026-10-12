@@ -1,0 +1,11 @@
+# Gameplay panel v2: the same shots as v1, re-timed to the v2 voice cut (edl-v2.yaml, captions-v2.txt).
+- {at: 0.00, src: gameplay/raw/barnfarm.mp4, in: 0.00, note: "the yard, drifting down to the red barn (What's up TikTok … until the game is good)"}
+- {at: 7.87, src: gameplay/raw/cowsin.mp4, in: 0.30, note: "the barn with its cows (And today's feature, the creamery)"}
+- {at: 9.93, src: gameplay/raw/placebarn.mp4, in: 1.00, note: "the shop's barn card, a tap puts the barn down, its cows arrive (You know the drill … they come. Cows)"}
+- {at: 17.88, src: gameplay/raw/cowsin.mp4, in: 5.00, note: "cows wandering the grass (They walk around)"}
+- {at: 19.48, src: gameplay/raw/stalls.mp4, in: 21.50, note: "inside: a cow comes in through the doorway and up to her pen, gives milk; more follow (They can step outside the barn … the processing pipeline)"}
+- {at: 27.18, src: gameplay/raw/stalls.mp4, in: 37.00, note: "the vat warming, the cutter (The milk is made into cheese through a sequence of mechanical devices)"}
+- {at: 31.51, src: gameplay/raw/stalls.mp4, in: 52.00, note: "every machine working at once (We animate everything … and pressed)"}
+- {at: 36.57, src: gameplay/raw/sell.mp4, in: 6.60, note: "one tap at the shelf, four cheeses to the cart, gold up (And then, as usual, one tap sells the cheese)"}
+- {at: 39.72, src: gameplay/raw/barnin.mp4, in: 1.60, note: "she taps the barn, Go inside, the room opens on 'the space opens up' (Following the style … larger for you)"}
+- {at: 45.38, src: gameplay/raw/stalls.mp4, in: 31.00, note: "cows in their pens, the line running (What do you think about the style? … where they go)"}

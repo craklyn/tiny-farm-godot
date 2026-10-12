@@ -1,0 +1,37 @@
+# v2, Daniel's notes on v1 (2026-10-12): "And today's game feature" loses "game" and most of the pause after
+# "feature" (cuts at the loudness dips, 18.59 / 19.13, and 19.62 / 20.10, leaving a short beat before "The
+# creamery"); "ultimately being made into products such as cheese" is cut (it repeats the next line), ending
+# that segment after "pipeline" at 60.22 (medium.en hears "ultimately" from 60.15; a cut at 60.45 left "ul-"); and the pause inside "Leave your comments … where they go" is cut
+# (176.06 / 176.80).
+# The creamery TikTok's voice: take 0042 (2026-10-12, portrait, green t-shirt), one clip of repeated takes.
+# Every repeated line uses its last take, as Daniel asked. Hand-trimmed from autocut's pass (auto-0042.yaml):
+# "Cows." (34.9 s) is kept as the punchline of "if you build it, they come?" (autocut cut it as a stutter),
+# and only the last full "warmed, cut, stirred, drained, and pressed" take is used (107.6 s), after
+# "We animate everything." Small.en dropped "Leave" from the last line; medium.en hears "Leave your comments
+# where they go", and the word was added to the transcript so the caption times to it.
+version: 2
+fps: 30000/1001
+sections:
+  - title: hook
+    segments:
+      - {clip: "footage/raw/DJI_20000411080411_0042_D.MP4", in: 10.310, out: 18.590, says: "What's up, TikTok? It's your boy Buddy-O Vlogs. I'm back at it with another one. We're adding a new feature to my game every day until the game is good. And today's"}
+      - {clip: "footage/raw/DJI_20000411080411_0042_D.MP4", in: 19.130, out: 19.620, says: "feature"}
+      - {clip: "footage/raw/DJI_20000411080411_0042_D.MP4", in: 20.100, out: 21.188, says: "The creamery."}
+  - title: cows
+    segments:
+      - {clip: "footage/raw/DJI_20000411080411_0042_D.MP4", in: 29.363, out: 35.350, says: "You know the drill? You place a big barn on your farm and what comes next if you build it? They come? Cows."}
+      - {clip: "footage/raw/DJI_20000411080411_0042_D.MP4", in: 43.310, out: 50.684, says: "Cows have a mind of their own just like everything. They walk around. They can step outside the barn. If the door is open, they can come back inside."}
+      - {clip: "footage/raw/DJI_20000411080411_0042_D.MP4", in: 56.390, out: 60.220, says: "When they're due, they give milk. The milk runs through the processing pipeline."}
+  - title: cheese line
+    segments:
+      - {clip: "footage/raw/DJI_20000411080411_0042_D.MP4", in: 71.705, out: 75.809, says: "The milk is made into cheese through a sequence of mechanical devices."}
+      - {clip: "footage/raw/DJI_20000411080411_0042_D.MP4", in: 100.934, out: 102.202, says: "We animate everything."}
+      - {clip: "footage/raw/DJI_20000411080411_0042_D.MP4", in: 107.574, out: 111.945, says: "The milk is warmed, cut, stirred, drained, and pressed."}
+      - {clip: "footage/raw/DJI_20000411080411_0042_D.MP4", in: 115.015, out: 117.918, says: "And then as usual, one tap sells the cheese."}
+  - title: style
+    segments:
+      - {clip: "footage/raw/DJI_20000411080411_0042_D.MP4", in: 144.745, out: 150.350, says: "Following the style that we implemented elsewhere, when you enter the building, the space opens up and becomes larger for you."}
+  - title: ask
+    segments:
+      - {clip: "footage/raw/DJI_20000411080411_0042_D.MP4", in: 172.773, out: 176.060, says: "What do you think about the style? What should we do next? Leave your comments"}
+      - {clip: "footage/raw/DJI_20000411080411_0042_D.MP4", in: 176.800, out: 177.511, says: "where they go."}

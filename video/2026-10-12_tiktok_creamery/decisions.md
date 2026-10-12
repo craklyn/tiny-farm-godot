@@ -117,3 +117,21 @@ rather than reading the script word for word, and the cut follows what he said. 
 - **Checks**: no black frames; a frame sheet of every beat read.
 
 Post description (Daniel posts): see the message that sent v1; it carries the music credit line.
+
+## v2 (sent 2026-10-12): Daniel's notes on v1
+
+Daniel: "This is awesome." His notes, all taken:
+- "And today's game… feature" → "And today's feature": "game" cut, and most of the pause after "feature" (a short
+  beat kept before "The creamery").
+- "Leave your comments … where they go" without the pause in the middle (0.74 s cut).
+- "Cut the 'ultimately being made into products such as cheese' portion. It gets repeated shortly after." The
+  segment now ends after "pipeline" at 60.22 s; medium.en hears "ultimately" from 60.15, and a first try at
+  60.45 left "ul-" in.
+- Captions: "You know the drill." and "If you build it, they come." (no question marks; full stops are dropped
+  on screen as before). "Cows" is drawn about twice the size, bounces in, and has gold twinkling stars around
+  it: a caption line may now end in `{big sparkle}` (`video/tools/compose.py`).
+- Each edit checked by transcribing the finished mix with medium.en: "…today's feature, the creamery",
+  "…the processing pipeline. The milk is made…", "Leave your comments where they go."
+
+Inputs: `edit/edl-v2.yaml`, `edit/captions-v2.txt`, `edit/gameplay-v2.yaml` (the v1 shots re-timed). 49.3 s of
+voice, 51.5 s with the end card.
