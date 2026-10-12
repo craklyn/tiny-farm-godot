@@ -28,13 +28,17 @@ import overlays as ov  # noqa: E402
 import render_edl as re_  # noqa: E402
 
 W, H = 1080, 1920
-# Face crop per clip (matched by the clip number in the file name): centre x, top y, crop height, in 4K pixels.
+# Face crop per clip (matched by the clip number in the file name): centre x, top y, crop height, in source
+# pixels (4K landscape unless a fourth value gives another source width).
 # The crop's width follows from the panel's aspect. 0023 sits a little left of 0020 in frame. Framed loose and
 # high (hair at the panel's top, his shirt below) so his eyes and mouth stay above TikTok's bottom quarter,
 # where the app draws the username and description.
 CROPS = {"0023": (1800, 400, 1600), "0020": (1950, 400, 1600), "0019": (1880, 400, 1600),
          # the re-record (2026-10-06, grey t-shirt) sits closer and lower: eyes near 960 px, mouth near 1320
-         "0025": (1824, 477, 1655)}
+         "0025": (1824, 477, 1655),
+         # the creamery read (2026-10-12) was filmed portrait, 1728 x 3072: a fourth value gives the source
+         # width; the crop nearly fills it, eyes near 1500 px and mouth near 1840
+         "0042": (864, 1030, 1530, 1728)}
 # TikTok's like/comment/share column covers about the right 14% of the screen between a quarter and 60% of
 # its height, which is where the seam captions sit: centre them in the width left of it.
 CAPTION_W = 940
@@ -55,9 +59,10 @@ def left_caption(img, **kw):
 
 def crop_vf(clip, panel_h):
     num = re.search(r"_(\d{4})_D", Path(clip).name).group(1)
-    cx, top, ch = CROPS.get(num, (1920, 150, 1500))
-    cw = round(ch * W / panel_h) // 2 * 2
-    x = max(0, min(3840 - cw, cx - cw // 2)) // 2 * 2
+    cx, top, ch, *src_w = CROPS.get(num, (1920, 150, 1500))
+    src_w = src_w[0] if src_w else 3840
+    cw = min(round(ch * W / panel_h) // 2 * 2, src_w)
+    x = max(0, min(src_w - cw, cx - cw // 2)) // 2 * 2
     return f"crop={cw}:{ch}:{x}:{top},scale={W}:{panel_h}:flags=lanczos"
 
 

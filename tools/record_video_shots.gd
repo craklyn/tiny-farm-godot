@@ -68,6 +68,7 @@ func _ready() -> void:
 		"overview": await _overview()
 		"cstage": await _creamery_stage()
 		"barnfarm": await _barn_farm()
+		"placebarn": await _place_barn()
 		"cowsin": await _cows_in()
 		"barnin": await _barn_in()
 		"stalls": await _stalls()
@@ -571,8 +572,8 @@ func _house() -> void:
 # so the shelf has cheese (a second save). The ten-egg unlock is granted first (that farm has collected
 # fewer eggs). The staged farm is written beside the video's edit files; every creamery
 # shot boots from it.
-const CREAMERY_SAVE := "res://video/2026-10-10_tiktok_creamery/edit/creamery-farm.json"
-const CREAMERY_CHEESE_SAVE := "res://video/2026-10-10_tiktok_creamery/edit/creamery-farm-cheese.json"
+const CREAMERY_SAVE := "res://video/2026-10-12_tiktok_creamery/edit/creamery-farm.json"
+const CREAMERY_CHEESE_SAVE := "res://video/2026-10-12_tiktok_creamery/edit/creamery-farm-cheese.json"
 # Where she waits inside: the open walkway between the machines, off the cows' aisle.
 const FARMER_SPOT := Vector2i(7, 3)
 const BARN_ANCHORS: Array[Vector2i] = [Vector2i(4, 13), Vector2i(3, 13), Vector2i(5, 13), Vector2i(2, 13),
@@ -815,3 +816,40 @@ func _sell_cheese() -> void:
 	InputManager.has_click = true
 	await _seconds(4.0)
 	print("  gold after ", GameState.gold, " cheese ", farm.sim.barns[barn_id].get("finished_cheese_count", 0))
+
+
+# "You place a big barn on your farm… if you build it, they come? Cows.": the shop with the barn's card
+# chosen, then a tap puts the barn down below the field and its first cow arrives; the other three
+# are bought with the shop's own cow action, one after another, and appear beside it.
+func _place_barn() -> void:
+	await _boot_farm()
+	GameState.harvest_counts["egg"] = maxi(10, int(GameState.harvest_counts.get("egg", 0)))
+	var anchor := Vector2i(4, 13)   # where the staged farm's barn stands
+	# Beside the footprint already: holding the barn, a tap on open ground would be a placement.
+	_place_player(anchor + Vector2i(-1, 0))
+	_free_camera(_px(anchor) + Vector2(8, 0), 3.0)
+	await _seconds(0.5)
+	_mark("shop")
+	var menus = main.menus
+	menus.open_menu("shop")
+	await _frames(2)
+	for i in menus.shop_items.size():
+		if String(menus.shop_items[i].get("seed_type", "")) == "industrial_barn":
+			menus.selected_option = i
+	await _seconds(1.2)
+	menus._select_current_option()
+	await _seconds(0.5)
+	menus.close_menu()
+	await _frames(2)
+	await _seconds(0.3)
+	_mark("place")
+	InputManager.click_tile = anchor
+	InputManager.has_click = true
+	await _wait_until(func(): return farm.get_object(anchor.x, anchor.y) == WorldLayout.INDUSTRIAL_BARN, ACT_FRAMES)
+	await _seconds(1.5)
+	_mark("cows")
+	for i in 3:
+		print("  cow ", farm.apply_action({"actor": "player", "verb": "buy_cow"}, GameState))
+		farm.sync_actors()
+		await _seconds(0.5)
+	await _seconds(3.0)
