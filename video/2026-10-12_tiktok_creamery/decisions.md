@@ -135,3 +135,7 @@ Daniel: "This is awesome." His notes, all taken:
 
 Inputs: `edit/edl-v2.yaml`, `edit/captions-v2.txt`, `edit/gameplay-v2.yaml` (the v1 shots re-timed). 49.3 s of
 voice, 51.5 s with the end card.
+
+## Posted (2026-10-12)
+
+Daniel posted v2 on TikTok ("Great work"), with the music credit in the description. v2 is the final version.
