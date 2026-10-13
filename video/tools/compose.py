@@ -28,13 +28,17 @@ import overlays as ov  # noqa: E402
 import render_edl as re_  # noqa: E402
 
 W, H = 1080, 1920
-# Face crop per clip (matched by the clip number in the file name): centre x, top y, crop height, in 4K pixels.
+# Face crop per clip (matched by the clip number in the file name): centre x, top y, crop height, in source
+# pixels (4K landscape unless a fourth value gives another source width).
 # The crop's width follows from the panel's aspect. 0023 sits a little left of 0020 in frame. Framed loose and
 # high (hair at the panel's top, his shirt below) so his eyes and mouth stay above TikTok's bottom quarter,
 # where the app draws the username and description.
 CROPS = {"0023": (1800, 400, 1600), "0020": (1950, 400, 1600), "0019": (1880, 400, 1600),
          # the re-record (2026-10-06, grey t-shirt) sits closer and lower: eyes near 960 px, mouth near 1320
-         "0025": (1824, 477, 1655)}
+         "0025": (1824, 477, 1655),
+         # the creamery read (2026-10-12) was filmed portrait, 1728 x 3072: a fourth value gives the source
+         # width; the crop nearly fills it, eyes near 1500 px and mouth near 1840
+         "0042": (864, 1030, 1530, 1728)}
 # TikTok's like/comment/share column covers about the right 14% of the screen between a quarter and 60% of
 # its height, which is where the seam captions sit: centre them in the width left of it.
 CAPTION_W = 940
@@ -53,11 +57,35 @@ def left_caption(img, **kw):
     img.alpha_composite(part, (0, 0))
 
 
+def sparkles(img, *, y_center, phase, seed=7, count=14, spread=(360, 150)):
+    """Twinkling four-pointed stars around a caption centred in CAPTION_W at y_center. phase runs 0..1 over the
+    caption's life; each star has its own offset, so they flash in turn rather than together."""
+    import math
+    import random
+    from PIL import ImageDraw
+    rnd = random.Random(seed)
+    d = ImageDraw.Draw(img)
+    cx = CAPTION_W / 2
+    for k in range(count):
+        ang = 2 * math.pi * k / count + rnd.uniform(-0.3, 0.3)
+        x = cx + math.cos(ang) * spread[0] * rnd.uniform(0.75, 1.05)
+        y = y_center + math.sin(ang) * spread[1] * rnd.uniform(0.7, 1.15)
+        tw = max(0.0, math.sin(math.pi * 2 * (phase * 1.6 + k / count)))   # 0 (gone) .. 1 (full)
+        r = 14 + 42 * tw * rnd.uniform(0.6, 1.0)
+        if r < 18:
+            continue
+        for rr, col in ((r, (255, 214, 64, 255)), (r * 0.55, (255, 250, 220, 255))):
+            w = rr * 0.22
+            d.polygon([(x, y - rr), (x + w, y - w), (x + rr, y), (x + w, y + w),
+                       (x, y + rr), (x - w, y + w), (x - rr, y), (x - w, y - w)], fill=col)
+
+
 def crop_vf(clip, panel_h):
     num = re.search(r"_(\d{4})_D", Path(clip).name).group(1)
-    cx, top, ch = CROPS.get(num, (1920, 150, 1500))
-    cw = round(ch * W / panel_h) // 2 * 2
-    x = max(0, min(3840 - cw, cx - cw // 2)) // 2 * 2
+    cx, top, ch, *src_w = CROPS.get(num, (1920, 150, 1500))
+    src_w = src_w[0] if src_w else 3840
+    cw = min(round(ch * W / panel_h) // 2 * 2, src_w)
+    x = max(0, min(src_w - cw, cx - cw // 2)) // 2 * 2
     return f"crop={cw}:{ch}:{x}:{top},scale={W}:{panel_h}:flags=lanczos"
 
 
@@ -84,6 +112,9 @@ def phrase_chunks(path, segs, fps):
     words = kept_words(segs, fps)
     out, i = [], 0
     for line in [ln.strip() for ln in Path(path).read_text().splitlines() if ln.strip()]:
+        # A line may end in {tags}, e.g. "Cows. {big sparkle}": how that one caption is drawn.
+        m = re.match(r"^(.*?)\s*\{([^}]*)\}$", line)
+        line, tags = (m.group(1), set(m.group(2).split())) if m else (line, set())
         target, got, t0, t1 = _alnum(line), "", None, None
         # Take words while they bring the letters closer to the line's; a word the transcriber missed ("it has
         # a farming element" heard as "it has farming element") must not pull in the next line's first word.
@@ -96,7 +127,7 @@ def phrase_chunks(path, segs, fps):
             i += 1
         if got != target:
             print(f"caption mismatch: {line!r} heard as {got!r}", file=sys.stderr)
-        out.append([t0, t1, line.rstrip(",.")])
+        out.append([t0, t1, line.rstrip(",."), tags])
     if i < len(words):
         print(f"caption: {len(words) - i} words left over: {' '.join(w for *_, w in words[i:])}", file=sys.stderr)
     for cur, nxt in zip(out, out[1:]):  # hold each chunk until the next one unless there's a real pause
@@ -181,10 +212,25 @@ def main():
     chunks = phrase_chunks(args.captions, items, fps) if args.captions else word_chunks(edl, items, fps)
     cy = args.caption_y or args.game_h
     style = dict(size=78, y_center=cy, max_w=CAPTION_W - 100, weight="Black", stroke=8, font_file=str(CAPTION_FONT))
-    layers = [(a, b, 3, partial(left_caption, text=t, **style)) for a, b, t in chunks]
+    chunks = [c if len(c) == 4 else [*c, set()] for c in chunks]
+    layers = []
+    for a, b, t, tags in chunks:
+        st = dict(style, size=int(style["size"] * 1.9), stroke=12) if "big" in tags else style
+        if "sparkle" not in tags:
+            layers.append((a, b, 3, partial(left_caption, text=t, **st)))
+            continue
+        # Animated: one layer per twelfth of a second, the stars twinkling and the word bouncing in.
+        n = max(2, round((b - a) * 12))
+        for k in range(n):
+            ta, tb = a + (b - a) * k / n, a + (b - a) * (k + 1) / n
+            pop = (0.8, 1.12, 1.0)[min(k, 2)]   # a little bounce as the word lands
+            def draw(img, t=t, st=st, pop=pop, ph=k / n):
+                left_caption(img, text=t, **dict(st, size=int(st["size"] * pop)))
+                sparkles(img, y_center=st["y_center"], phase=ph)
+            layers.append((ta, tb, 3, draw))
     track = ov.build_track(layers, total, (W, H), work / "track", fps=fps)
-    ov.write_srt(chunks, args.out.with_name(args.out.stem + ".en.srt"))
-    plan = {"total": round(total, 3), "captions": [[round(a, 3), round(b, 3), t] for a, b, t in chunks]}
+    ov.write_srt([c[:3] for c in chunks], args.out.with_name(args.out.stem + ".en.srt"))
+    plan = {"total": round(total, 3), "captions": [[round(a, 3), round(b, 3), t] for a, b, t, _ in chunks]}
     args.out.with_name(args.out.stem + ".plan.json").write_text(json.dumps(plan, indent=1))
 
     has_game_audio = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "a", "-show_entries", "stream=index",

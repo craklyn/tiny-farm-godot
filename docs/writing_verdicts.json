@@ -3977,6 +3977,9 @@
   "68991bac4ab580f160ea": {
    "verdict": "ok"
   },
+  "689dca7752789a108c92": {
+   "verdict": "ok"
+  },
   "68a3539225cfff3214ef": {
    "verdict": "ok"
   },
@@ -7346,6 +7349,12 @@
   "c199a89f06dacb982a69": {
    "verdict": "ok"
   },
+  "c19a6f8dcb152b62e8dc": {
+   "instead": "Correct the creamery video notes to say which prepared farm setup appears in each shot",
+   "quote": "which staged farm each shot loads",
+   "verdict": "second-look",
+   "why": "“Loads” makes the reader translate a technical action into which prepared farm setup appears in the video shot."
+  },
   "c1b158abd5284e200bed": {
    "verdict": "ok"
   },
@@ -8762,6 +8771,9 @@
    "quote": "a quiet unpaid stretch while the reserve fills",
    "verdict": "second-look",
    "why": "The metaphor is understandable, but the concrete fact is that early harvests produce no gold."
+  },
+  "e61a2183c150b25b7540": {
+   "verdict": "ok"
   },
   "e633ee5ea674e11ce333": {
    "baselined": "2026-09-19",
