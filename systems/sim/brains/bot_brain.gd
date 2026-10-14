@@ -2329,10 +2329,21 @@ func on_new_day(world: SimWorld, actor_id: String) -> void:
 		return
 	if String(extra.get("config", "")) != CONFIG_ORDERS:
 		return
+	new_day_for_orders(extra)
+	Movement.clear_route(world, actor_id)
+
+
+# **A mark-1's morning**: not out, not yet sent today, at the top of its list.
+# Static and on `extra` alone, because the day turn is not the only place a morning
+# reaches a mark-1: one that spent the night in the crate missed this hook (it was
+# not on the farm to be asked), and `SimWorld`'s `place` gives it the morning it
+# missed when it comes out on a later day than it went in.
+static func new_day_for_orders(extra: Dictionary) -> void:
+	if String(extra.get("config", "")) != CONFIG_ORDERS:
+		return
 	extra["ran_today"] = false
 	extra["sent"] = false
 	extra["at_order"] = 0
-	Movement.clear_route(world, actor_id)
 
 
 # --- what the gateway made of it ------------------------------------------------

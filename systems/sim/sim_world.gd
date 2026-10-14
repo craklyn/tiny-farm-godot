@@ -1659,9 +1659,32 @@ func close_room(anchor: Vector2i) -> void:
 # somebody else's by the time it is set down, and a `wake` from yesterday's clock
 # would have it stand still or think twice. A fresh `deploy` has already written
 # each of these to its resting value, so dropping the key is all that is needed.
+#
+# The route it was walking (`path`, `step`, `over_beds`; `Movement`) is the same
+# errand written down square by square, and goes with it. So does a Mark II's chase
+# (`target`, `ignore`, `ignore_until`): the bird it was after, and the one it had
+# given up on until a tick of a clock that was still running when it was lifted.
+#
+# **And where it lives is where she puts it** (`home_x`, `home_y`). A Mark I set
+# down in a stall bay has that bay as its home and one set down on open ground has
+# none; a Mark II's patch is centred on the square it is put down on. `deploy` works
+# both out from the square, so a home brought out of the box would be the old one: a
+# robot walking back every evening to a stall it no longer stands in, or guarding a
+# patch on the far side of the farm. A Mark I's round goes with it, though, and so
+# does how far along that round it was (`sent`, `at_order`): her squares and her
+# morning are hers, not an errand of the machine's, and a robot lifted halfway
+# through its round carries on from the square it had reached when she puts it
+# down. `ran_today` stays as well, so a pick-up never buys a second round in a day.
+# The day a machine went into the crate, written on its box by `_crate_machine` and
+# read by `place`. Kept on the box and never put back on the robot.
+const BOXED_ON_DAY := "boxed_on_day"
+
 const BOXED_FORGETS := [
 	"job", "job_x", "job_y", "job_target", "pending",
 	"state", "goal_x", "goal_y", "wake",
+	"path", "step", "over_beds",
+	"target", "ignore", "ignore_until",
+	"home_x", "home_y",
 ]
 
 
@@ -3548,10 +3571,9 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				# robot."
 				#
 				# So the box carries the machine rather than a tally of machines.
-				# Only the ones with something to carry — `weights` is the test,
-				# because a learner is the only machine whose past cannot be built
-				# again from its catalogue row, and it is the same test `learners()`
-				# asks.
+				# Only the ones with something to carry: a Mark III's practice, a
+				# Mark I's round, a Mark II's job (2026-10-13; `_crate_machine` says
+				# how that is decided). A sprinkler goes in as a plain count.
 				#
 				# Here rather than inside `despawn_actor`, because this is the
 				# *verb's* meaning rather than the registry's: a despawn is also
@@ -3869,6 +3891,8 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				# the robots' rule (below), so the box and the stall move together.
 				if item == STALL_ITEM and placer_charged:
 					_unbox_stall_residents(cells, gs)
+				if item == STALL_ITEM:
+					_adopt_homeless_in_bays(cells)
 				# **A structure's first use is being set down** (S-12). A bench
 				# has no job of its own to complete — it is a thing robots are
 				# worked on at — so the moment it stands on the farm is the
@@ -3902,6 +3926,21 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			var config := String(action.get("config", MachineDefs.default_config(item)))
 			if not config in MachineDefs.configs_of(item):
 				config = MachineDefs.default_config(item)
+			# The box, if the crate remembers one (the long note below says which
+			# box and why). Opened before the robot is built, because a Mark II's
+			# job is in it: one put away on shoo is deployed as a shoo bot, so it
+			# comes out with the shape of `extra` that job needs and then gets its
+			# own settings back over that, rather than a shoo bot's settings laid
+			# over an idle one.
+			var remembered: Array = gs.boxed.get(item, [])
+			var was: Dictionary = {}
+			if placer_charged and not remembered.is_empty():
+				was = remembered.pop_back()
+				gs.boxed[item] = remembered
+				var boxed_config := String(was.get("config", config))
+				if boxed_config in MachineDefs.configs_of(item) \
+						or boxed_config == MachineDefs.default_config(item):
+					config = boxed_config
 			# The bot has one door into a world and this is it: `BotBrain.deploy`
 			# is what builds a valid `extra` for a config, and routing around it
 			# would be the second place that knowledge lives. Every other machine
@@ -3937,13 +3976,25 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			# Under the same condition that spends the crate, because the crate and
 			# its memory move together: an uncharged placer that opened the box
 			# would unbox a trained robot without one being taken out of it.
-			var remembered: Array = gs.boxed.get(item, [])
-			if placer_charged and not remembered.is_empty():
-				var was: Dictionary = remembered.pop_back()
+			#
+			# Its home is not in the box (`BOXED_FORGETS`): `deploy` has just
+			# worked it out from the square she put it on, a stall bay or none. The
+			# list is asked again on the way out because a box packed by an older
+			# build, with a shorter list, may still hold a route or a home.
+			#
+			# **And a night in the crate is still a night.** The day turn resets a
+			# Mark I's round only for robots standing on the farm
+			# (`BotBrain.on_new_day`), so one boxed yesterday would come out still
+			# "sent today", refusing to go out, or finishing yesterday's walk. The
+			# box says which day it went in; a box from before the stamp existed is
+			# taken as today's, which is what every box was until it did.
+			if not was.is_empty():
 				var now: Dictionary = actors[machine_id]["extra"]
 				for key in was:
-					now[key] = was[key]
-				gs.boxed[item] = remembered
+					if not key in BOXED_FORGETS and key != BOXED_ON_DAY:
+						now[key] = was[key]
+				if int(was.get(BOXED_ON_DAY, gs.day)) != int(gs.day):
+					BotBrain.new_day_for_orders(now)
 			if placer_charged:
 				gs.machines[item] = int(gs.machines.get(item, 0)) - 1
 			return { "ok": true, "machine": machine_id, "config": config }
@@ -4617,13 +4668,25 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 # **A machine into the crate, with everything it had learned** (Q-98). The body of
 # `collect`'s machine branch, shared with taking a building up with a machine
 # inside it (S-22) so both keep exactly the same things. Returns its row.
+#
+# **Every machine with something of its own to keep is boxed** (2026-10-13). This
+# used to ask for `weights`, so only a Mark III was remembered: a Mark I came out of
+# the crate without the round she had taught it, and a Mark II back on idle with
+# its job forgotten, which is the factory reset Q-98 ruled out. Now the test is
+# what is left once the errand (`BOXED_FORGETS`) and the row it was bought from
+# (`model`, which `place` writes again) are taken away. Every robot has its job in
+# `config`, so every robot is boxed; a sprinkler or a scarecrow has nothing left
+# and goes in as a plain count, the way it always has.
 func _crate_machine(machine_id: String, gs) -> String:
 	var machine_key := machine_key_of(machine_id)
 	var picked: Dictionary = actor(machine_id).get("extra", {})
-	if picked.has("weights"):
-		var kept: Dictionary = picked.duplicate(true)
-		for forgotten in BOXED_FORGETS:
-			kept.erase(forgotten)
+	var kept: Dictionary = picked.duplicate(true)
+	for forgotten in BOXED_FORGETS:
+		kept.erase(forgotten)
+	if kept.size() > (1 if kept.has("model") else 0):
+		# The day it went in, so `place` can tell whether a night has passed while
+		# it was in the crate (`BOXED_ON_DAY`).
+		kept[BOXED_ON_DAY] = int(gs.day)
 		var crate: Array = gs.boxed.get(machine_key, [])
 		crate.append(kept)
 		gs.boxed[machine_key] = crate
@@ -4727,6 +4790,28 @@ func _unbox_stall_residents(cells: Array[Vector2i], gs) -> void:
 		var extra: Dictionary = actors[String(resident["id"])]["extra"]
 		extra["home_x"] = cells[bay].x
 		extra["home_y"] = cells[bay].y
+
+
+# **A Mark I standing in a bay with no home of its own moves in** (2026-10-14). A
+# stall put down over a robot that has no stall to go back to gives it the bay it is
+# standing in, as `deploy` does for one set down in a bay. That covers a Mark I she
+# put down on the old bay's square while its stall was in the crate (put down on
+# bare ground, it got no home), and one whose stall's record of it went stale when
+# she picked it up and set it down again. A home that is still a stall somewhere is
+# left alone: a robot passing through someone else's bay keeps its own.
+func _adopt_homeless_in_bays(cells: Array[Vector2i]) -> void:
+	for cell in cells:
+		var id := machine_at(cell)
+		if id == "" or String(actors[id].get("species", "")) != SpeciesDefs.BOT:
+			continue
+		var extra: Dictionary = actors[id]["extra"]
+		if String(extra.get("config", "")) != BotBrain.CONFIG_ORDERS:
+			continue
+		var home := Vector2i(int(extra.get("home_x", -1)), int(extra.get("home_y", -1)))
+		if home.x >= 0 and is_stall_tile(home):
+			continue
+		extra["home_x"] = cell.x
+		extra["home_y"] = cell.y
 
 
 # **Everything inside the buildings about to come up, handed back before their rooms
