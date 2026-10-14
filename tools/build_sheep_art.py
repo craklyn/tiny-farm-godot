@@ -154,10 +154,18 @@ def spots(cv, cx, cy, a, b):
     y0, y1 = min(y for _, y in fleece), max(y for _, y in fleece) + 1
     cx, cy, a, b = (x0 + x1) / 2, (y0 + y1) / 2, (x1 - x0) / 2, (y1 - y0) / 2
     size = math.sqrt(a * b)
+    inside = set(fleece)
+    rim = {(x, y) for x, y in inside
+           if any((x + dx, y + dy) not in inside for dx in (-1, 0, 1) for dy in (-1, 0, 1))}
     for u, v, r, wide in SPOTS_LAYOUT:
         px, py, ry = cx + u * a, cy + v * b, r * size
         rx = ry * wide
         for (x, y), c in list(cv.px.items()):
+            # Never on the fleece's outermost pixels: a spot that reached the edge
+            # coloured a lump of the silhouette and read as a growth sticking out of
+            # her (Daniel, 2026-10-14), so a rim of plain fleece always rings the spots.
+            if (x, y) in rim:
+                continue
             if c in ("W", "S", "D") and ((x + 0.5 - px) / rx) ** 2 + ((y + 0.5 - py) / ry) ** 2 <= 1.0:
                 # Solid spots: only the fleece's shaded underside shows through.
                 cv.put(x, y, "Y" if c == "D" else "X")
