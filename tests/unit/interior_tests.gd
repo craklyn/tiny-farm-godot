@@ -1681,9 +1681,15 @@ func test_spiral_tower_pick_up() -> void:
 		came_out.append([String(entry.item), Vector2i(entry.cell)])
 	_assert(came_out == [["test_lantern", lantern], ["test_perch", perch], ["egg", egg_at]],
 		"everything inside comes out first, row by row across the floor (%s)" % [came_out])
+	var egg_landed := Vector2i(-1, -1)
+	for entry in up.get("contents", []):
+		if String(entry.item) == "egg":
+			egg_landed = Vector2i(entry.get("to", Vector2i(-1, -1)))
 	_assert(int(GameState.machines["test_lantern"]) == 1 and int(GameState.machines["test_perch"]) == 1
-			and int(GameState.items.get("egg", 0)) == egg_before + 1,
-		"each as its own item: the fitting and the machine in the crate, the egg in her basket")
+			and int(GameState.items.get("egg", 0)) == egg_before
+			and egg_landed.x >= 0 and not egg_landed in MachineDefs.footprint_cells("spiral_tower", spot)
+			and world.space_of(egg_landed) == "farm" and world.get_object(egg_landed.x, egg_landed.y) == "egg",
+		"each as its own thing: the fitting and the machine in the crate, the egg tumbled out onto the grass beside the tower (Daniel, 2026-10-13)")
 	var kept: Array = GameState.boxed.get("test_perch", [])
 	_assert(kept.size() == 1 and kept[0].get("weights", []) == [0.25, -0.5]
 			and kept[0].get("ledger", []) == [7],
@@ -2303,9 +2309,18 @@ func test_room_fittings() -> void:
 	_assert(came_out == [["nest_box", box_b], ["test_perch", perch], ["egg", egg_at],
 			["nest_box", box_a]],
 		"everything inside comes out first, row by row across the floor (%s)" % [came_out])
+	var egg_landed := Vector2i(-1, -1)
+	for entry in up.get("contents", []):
+		if String(entry.item) == "egg":
+			egg_landed = Vector2i(entry.get("to", Vector2i(-1, -1)))
 	_assert(int(GameState.machines["nest_box"]) == 2 and int(GameState.machines["test_perch"]) == 1
-			and int(GameState.items.get("egg", 0)) == egg_before + 1,
-		"each as its own item: two nest boxes and the machine in the crate, the egg in her basket")
+			and int(GameState.items.get("egg", 0)) == egg_before
+			and egg_landed.x >= 0 and not egg_landed in MachineDefs.footprint_cells("coop", spot)
+			and world.space_of(egg_landed) == "farm" and world.get_object(egg_landed.x, egg_landed.y) == "egg",
+		"each as its own thing: two nest boxes and the machine in the crate, the egg tumbled out onto the grass beside the coop (Daniel, 2026-10-13)")
+	var picked := _replay_do(world, rlog, { "verb": "collect", "target": egg_landed, "actor": "player" })
+	_assert(picked.get("ok", false) and int(GameState.items.get("egg", 0)) == egg_before + 1,
+		"and a tap picks the egg up off the grass into her basket")
 	var kept: Array = GameState.boxed.get("test_perch", [])
 	_assert(kept.size() == 1 and kept[0].get("weights", []) == [0.5, -0.25]
 			and kept[0].get("ledger", []) == [3],
