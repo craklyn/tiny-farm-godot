@@ -332,6 +332,9 @@
   "09038201ce3f814b67ef": {
    "verdict": "ok"
   },
+  "09051a54487e110bf006": {
+   "verdict": "ok"
+  },
   "090878c90c1a3fc73b2b": {
    "verdict": "ok"
   },
@@ -1153,6 +1156,12 @@
   "1c4ac778274a65a899d9": {
    "verdict": "ok"
   },
+  "1c5ff9f3005f39299358": {
+   "instead": "The recorded writing review results for the sheep art README",
+   "quote": "saved verdicts",
+   "verdict": "decode",
+   "why": "The reader has to work out that this means the writing review results recorded for the document."
+  },
   "1c6f19a350111a0459fb": {
    "verdict": "ok"
   },
@@ -1531,6 +1540,9 @@
    "why": "“Weights,” “running score,” and “baseline” are internal terms whose meanings are not stated."
   },
   "270e95f908c745cb9684": {
+   "verdict": "ok"
+  },
+  "271af0ab58afc2c4b9c0": {
    "verdict": "ok"
   },
   "271f24eb5c162bd89385": {
@@ -3883,6 +3895,12 @@
   },
   "65e254f9a2ecfffc76aa": {
    "verdict": "ok"
+  },
+  "663c01df0b7e5b0a326b": {
+   "instead": "The sheep's picture collection: eight happy poses, five coat patterns each, all drawn by us",
+   "quote": "sprite sheet: eight happy looks, five coats each, drawn locally",
+   "verdict": "decode",
+   "why": "The reader has to know that a sprite sheet is a collection of game images and that “drawn locally” means made by the studio."
   },
   "663f4f366662c330160b": {
    "verdict": "ok"
