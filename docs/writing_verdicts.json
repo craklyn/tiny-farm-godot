@@ -389,6 +389,12 @@
   "0a69cb9fdd2b0e92380b": {
    "verdict": "ok"
   },
+  "0a79db8047bf6b6de719": {
+   "instead": "Sheep in the simulation: bought after the barn, grow one coat each night, slow down in doors and gaps, and become permanently stuck once fully coated",
+   "quote": "stuck for good at the extreme coat",
+   "verdict": "decode",
+   "why": "It does not say plainly what happens to the sheep or what an “extreme coat” is."
+  },
   "0a8dd8cd42692675bddb": {
    "verdict": "ok"
   },
@@ -1667,6 +1673,12 @@
   "2af222856528739ba96c": {
    "verdict": "ok"
   },
+  "2b0c5c49614e7207d15b": {
+   "instead": "The sheep picture tool now passes the test that every script has a matching Godot file",
+   "quote": "every script has its Godot file",
+   "verdict": "decode",
+   "why": "A stranger cannot tell what a Godot file is or how it belongs to a script."
+  },
   "2b1553174c7d2b9c191b": {
    "verdict": "ok"
   },
@@ -1966,6 +1978,9 @@
    "verdict": "ok"
   },
   "31fbbe8c1393227f7c57": {
+   "verdict": "ok"
+  },
+  "322d319c9f39ae0193fd": {
    "verdict": "ok"
   },
   "3232591e25fb0fb7444e": {
@@ -4087,6 +4102,12 @@
   "6c435f4c2e78fe5a8366": {
    "verdict": "ok"
   },
+  "6c49cd07d0c091dcc49d": {
+   "instead": "The sheep picture tool includes the Godot project file that lets all its scripts run",
+   "quote": "the Godot ID file every script needs",
+   "verdict": "decode",
+   "why": "The reader cannot tell what this file does or why having it matters."
+  },
   "6c8806bfbd4d8e5d0869": {
    "verdict": "ok"
   },
@@ -5520,6 +5541,9 @@
    "verdict": "ok"
   },
   "9152912fc273b22478c2": {
+   "verdict": "ok"
+  },
+  "91569d0ae21bf2b02f41": {
    "verdict": "ok"
   },
   "91757e1af2c66a9d5097": {
@@ -8308,6 +8332,9 @@
   "da2fd0d805350247a045": {
    "verdict": "ok"
   },
+  "da3e082e41c9c80a6392": {
+   "verdict": "ok"
+  },
   "da4181ebe25092a65578": {
    "verdict": "ok"
   },
@@ -9366,6 +9393,9 @@
    "quote": "standing up a fresh mailbox",
    "verdict": "second-look",
    "why": "The phrase makes the reader translate an idiom into creating a new mailbox."
+  },
+  "f82ed4bcaadf52f1a5b8": {
+   "verdict": "ok"
   },
   "f8400215fa513cd9e53d": {
    "verdict": "ok"

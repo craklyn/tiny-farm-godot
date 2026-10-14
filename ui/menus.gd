@@ -916,8 +916,20 @@ static func seed_box_icon() -> AtlasTexture:
 ## rim only her white body showed (design/17, "How big a cow is").
 static func cow_card_icon() -> ImageTexture:
 	var sheet: Texture2D = load("res://assets/sprites/generated/cow.png")
-	var frame := sheet.get_image().get_region(
-		Rect2i(0, 0, sheet.get_width() / 4, sheet.get_height()))
+	return _rimmed_card_icon(sheet.get_image().get_region(
+		Rect2i(0, 0, sheet.get_width() / 4, sheet.get_height())))
+
+
+## The sheep on her card: the standing frame of the coat she arrives in (mid-growth),
+## rimmed as the cow's is (design/18).
+static func sheep_card_icon() -> ImageTexture:
+	var image := SheepArt.sheet().get_image()
+	var frame := image.get_region(Rect2i(SheepArt.cell_rect(Wool.BOUGHT_COAT, 0)))
+	var used := frame.get_used_rect()
+	return _rimmed_card_icon(frame.get_region(used) if used.size.x > 0 else frame)
+
+
+static func _rimmed_card_icon(frame: Image) -> ImageTexture:
 	var icon := Image.create(frame.get_width() + 2, frame.get_height() + 2, false, Image.FORMAT_RGBA8)
 	icon.blit_rect(frame, Rect2i(Vector2i.ZERO, frame.get_size()), Vector2i(1, 1))
 	var rim := Color8(141, 142, 146)
@@ -1555,6 +1567,8 @@ func _select_current_option() -> void:
 				var purchase := { "actor": "player" }
 				if String(item.kind) == "cow":
 					purchase["verb"] = "buy_cow"
+				elif String(item.kind) == "sheep":
+					purchase["verb"] = "buy_sheep"
 				elif String(item.kind) == "machine":
 					purchase["verb"] = "buy_machine"
 					purchase["item"] = item.seed_type
@@ -1566,7 +1580,7 @@ func _select_current_option() -> void:
 				if bought:
 					# A cow is delivered as a live registry actor, not crate stock.
 					# Bring its presentation in on the same successful shop tap.
-					if result.has("cow"):
+					if result.has("cow") or result.has("sheep"):
 						farm.sync_actors()
 					shop_refused_seed = ""
 					AudioManager.play_sfx("harvest")
@@ -1756,11 +1770,21 @@ func _build_shop_items() -> void:
 	# barn, never pass through the machine crate, and replay with their actor id.
 	if farm != null and not farm.sim.barns.is_empty():
 		var cows: int = farm.sim.cow_count()
+		# Cows and sheep share the four places a barn (design/18), so both cards
+		# go dark together when the barns are full.
+		var herd_room: bool = farm.sim.barn_animal_count() < farm.sim.herd_limit()
 		var cow_icon := cow_card_icon()
 		shop_items.append({
 			"kind": "cow", "seed_type": "cow", "item_name": "Cow",
 			"price": SimWorld.COW_PRICE, "unlocked": true,
 			# Four for each barn, not four in all (S-41): the gateway's own limit.
-			"affordable": GameState.gold >= SimWorld.COW_PRICE and cows < farm.sim.herd_limit(),
+			"affordable": GameState.gold >= SimWorld.COW_PRICE and herd_room,
 			"icon": cow_icon, "owned": cows
+		})
+		# The sheep, beside the cow and bought the same way (Daniel, 2026-10-13).
+		shop_items.append({
+			"kind": "sheep", "seed_type": "sheep", "item_name": "Sheep",
+			"price": SimWorld.SHEEP_PRICE, "unlocked": true,
+			"affordable": GameState.gold >= SimWorld.SHEEP_PRICE and herd_room,
+			"icon": sheep_card_icon(), "owned": farm.sim.sheep_count()
 		})

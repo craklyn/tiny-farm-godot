@@ -52,7 +52,11 @@ var speed_px: float = 30.0
 
 var facing_left: bool = false
 var hop_frame: int = 0
+var coat_row: int = 0
 var is_cow: bool = false
+# A sheep is drawn as a cow is, from the sim clock, from her own sheet: the row is
+# her look and her coat (`SheepArt`, docs/design/18-sheep.md).
+var is_sheep: bool = false
 # Cosmetic, and the only die roll in this file: two animals in one field should
 # not hop in lockstep. `CosmeticRng`, never the sim's seeded stream — see
 # systems/cosmetic_rng.gd, and the unit test that reads this directory for the
@@ -65,9 +69,10 @@ func init_actor(farm_ref: Node2D, id: String = SpeciesDefs.RABBIT) -> void:
 	farm = farm_ref
 	actor_id = id
 	var species: String = farm.sim.species_of(actor_id)
-	sprites = SPRITES.get(species, SPRITES[SpeciesDefs.RABBIT])
+	is_sheep = species == SpeciesDefs.SHEEP
+	sprites = SheepArt.sheet() if is_sheep else SPRITES.get(species, SPRITES[SpeciesDefs.RABBIT])
 	speed_px = SpeciesDefs.speed_of(species) * TILE_SIZE * float(SimClock.RATE)
-	is_cow = species == SpeciesDefs.COW
+	is_cow = species == SpeciesDefs.COW or is_sheep
 	position = sim_position()
 
 
@@ -98,10 +103,12 @@ func _process(delta: float) -> void:
 		var at: Vector2 = pose.get("pos", Vector2.ZERO) * TILE_SIZE
 		var frame := int(pose.get("frame", 0))
 		var left := bool(pose.get("facing_left", false))
-		if at != position or frame != hop_frame or left != facing_left:
+		var row := SheepArt.row_of(SheepArt.look_of(actor_id), Wool.coat_of(farm.sim, actor_id)) if is_sheep else 0
+		if at != position or frame != hop_frame or left != facing_left or row != coat_row:
 			position = at
 			hop_frame = frame
 			facing_left = left
+			coat_row = row
 			queue_redraw()
 		return
 
@@ -128,16 +135,19 @@ func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
 	render_queue.append({
 		"y": position.y,
 		"draw": func():
-			var cell := cell_size(sprites)
-			canvas.draw_texture_rect_region(sprites, cell_dest(sprites, position, facing_left),
-				Rect2(hop_frame * cell.x, 0, cell.x, cell.y))
+			var rows := SheepArt.ROWS if is_sheep else 1
+			var cell := cell_size(sprites, rows)
+			canvas.draw_texture_rect_region(sprites, cell_dest(sprites, position, facing_left, rows),
+				Rect2(hop_frame * cell.x, coat_row * cell.y, cell.x, cell.y))
 	})
 
 
 # A sheet is its four frames in one row, so a cell is a quarter of its width and
-# all of its height.
-static func cell_size(sheet: Texture2D) -> Vector2:
-	return Vector2(sheet.get_width() / HOP_FRAMES, sheet.get_height())
+# all of its height — or, for the sheep's five coats, a fifth of it.
+static func cell_size(sheet: Texture2D, rows: int = 1) -> Vector2:
+	if rows == SheepArt.ROWS and sheet == SheepArt.sheet():
+		return Vector2(SheepArt.cell_size())
+	return Vector2(sheet.get_width() / HOP_FRAMES, sheet.get_height() / rows)
 
 
 # Where one frame lands for an animal whose square's corner is `at`. A cell larger
@@ -145,8 +155,8 @@ static func cell_size(sheet: Texture2D) -> Vector2:
 # square's bottom edge and overhangs it sideways and upward, as the farmer's own
 # picture does; a 16px cell lands exactly on the square. A negative width flips the
 # cell, which is how a right-facing sheet draws an animal moving left.
-static func cell_dest(sheet: Texture2D, at: Vector2, flip: bool) -> Rect2:
-	var cell := cell_size(sheet)
+static func cell_dest(sheet: Texture2D, at: Vector2, flip: bool, rows: int = 1) -> Rect2:
+	var cell := cell_size(sheet, rows)
 	var corner := Vector2(at.x + (TILE_SIZE - cell.x) / 2.0, at.y + TILE_SIZE - cell.y)
 	if flip:
 		return Rect2(corner.x, corner.y, -cell.x, cell.y)

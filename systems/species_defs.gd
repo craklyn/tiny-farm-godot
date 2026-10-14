@@ -67,6 +67,9 @@ const WORM := "worm"
 # setting rather than three animals.
 const BOT := "bot"
 const COW := "cow"
+# Sheep (2026-10-13, docs/design/18-sheep.md): the barn's second animal. She shares
+# the cows' stalls and their four places a barn, gives nothing, and grows wool.
+const SHEEP := "sheep"
 
 # --- what kind of thing a species is (M2.5 WI-9) -------------------------------
 #
@@ -148,9 +151,14 @@ const PLAYER_VERBS: Array[String] = [
 # The cheese line's seven verbs (`SimWorld.BARN_LINE_VERBS`) are in no row: they
 # are the barn's fixed machinery, issued as `actor: "world"` by its clock event,
 # the way `open_gate` is issued for a tool proof.
+# ...and the sheep's one joined on 2026-10-13 (docs/design/18-sheep.md):
+#   grow_wool — like `gain_milk`, not a capability: a night's growth of her coat,
+#     applied inside the `sleep` that turns the day. She uses the cows' stall verbs
+#     to rest in a stall (the stall is the barn's, not the milk's), and never
+#     `give_milk`: the gateway refuses her it.
 const ENTITY_VERBS: Array[String] = ["eat_crop", "eat_acorn", "lay_egg", "crow_scared",
 		"open_gate", "use_door", "gain_milk", "reserve_milk_stall", "enter_milk_stall", "give_milk",
-		"leave_milk_stall"]
+		"leave_milk_stall", "grow_wool"]
 
 static var ROWS: Dictionary = {
 	# The farmer. Her brain is the ActionRouter — a person, not a policy — and it
@@ -598,6 +606,20 @@ static var ROWS: Dictionary = {
 		# She walks around the farmer's beds and the barn's walls (2026-10-11,
 		# `Movement.route_mode_of`).
 		"movement": { "mode": GROUND, "body_len": 1, "tile_exclusive": false, "spares_beds": true },
+		"senses": {}, "persistent": true, "max_energy": 480,
+	},
+	# **The sheep** (2026-10-13, docs/design/18-sheep.md). The cow's walk, the cow's
+	# stalls and the cow's pace — and a coat that grows a stage a night and is never
+	# cut, because there are no shears yet, on purpose. `coat_pace` hands her step
+	# timing to `Wool.step_ticks`: from the extra-full coat she slows to a quarter in
+	# doorways and one-square gaps, and from the extreme coat she does not walk at all.
+	SHEEP: {
+		"name": "Sheep", "brain": "sheep_barn",
+		"verbs": ["grow_wool", "use_door", "reserve_milk_stall", "enter_milk_stall", "leave_milk_stall"],
+		# 20 px/s, the cow's walk: two barn animals that share a door share a pace.
+		"speed": 0.125,
+		"movement": { "mode": GROUND, "body_len": 1, "tile_exclusive": false, "spares_beds": true,
+			"coat_pace": true },
 		"senses": {}, "persistent": true, "max_energy": 480,
 	},
 }

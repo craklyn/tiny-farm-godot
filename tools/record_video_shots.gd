@@ -73,6 +73,14 @@ func _ready() -> void:
 		"barnin": await _barn_in()
 		"stalls": await _stalls()
 		"sell": await _sell_cheese()
+		# Sheep (docs/design/18-sheep.md). The variant (the wrapper's 4th argument) is
+		# the coats to stage, dash-separated, 0 freshly sheared to 4 extreme: e.g.
+		# `record_shot.sh . sheepline 540x540 0-1-2-3-4`.
+		"sheepline": await _sheep_line()
+		"sheepstalls": await _sheep_stalls()
+		"sheepdoor": await _sheep_door()
+		"sheepstuck": await _sheep_stuck()
+		"sheepbuy": await _sheep_buy()
 		"walk": await _walk()
 		"yard": await _yard()
 		"eggs": await _eggs()
@@ -853,3 +861,155 @@ func _place_barn() -> void:
 		farm.sync_actors()
 		await _seconds(0.5)
 	await _seconds(3.0)
+
+
+# --- sheep (docs/design/18-sheep.md) ---------------------------------------------
+#
+# Every sheep shot stands on the creamery farm with its cows led away, so the barn and
+# its four stalls are the sheep's. A sheep the shot needs in a given coat is put down
+# with that coat written by hand, as the Zoo does: in the game she arrives mid-growth
+# and grows a coat a night, and nothing ever makes her freshly sheared again.
+
+
+# The coats asked for on the command line, or the default.
+func _sheep_coats(default: Array[int]) -> Array[int]:
+	var args := OS.get_cmdline_user_args()
+	if args.size() < 2 or String(args[1]) == "":
+		return default
+	var out: Array[int] = []
+	for part in String(args[1]).split("-", false):
+		out.append(clampi(int(part), Wool.SHEARED, Wool.EXTREME))
+	return out
+
+
+# The creamery farm with no cows: the barn's stalls and grass are the sheep's.
+func _sheep_farm() -> String:
+	await _boot_farm(true, true, CREAMERY_SAVE)
+	for id in _cows():
+		farm.sim.despawn_actor(id)
+	farm.sync_actors()
+	GameState.gold = maxi(int(GameState.gold), 5000)
+	return _barn_room()
+
+
+# One sheep, put down at `at` in `coat`, with a picture.
+func _put_sheep(at: Vector2i, coat: int) -> String:
+	var id: String = farm.sim.next_sheep_id()
+	farm.sim.spawn_actor(id, SpeciesDefs.SHEEP, at, { "coat": coat })
+	farm.sync_actors()
+	return id
+
+
+# Squares of open grass in a row below the barn's doors, one a sheep, two apart.
+func _sheep_row(barn_id: String, n: int) -> Array[Vector2i]:
+	var doorstep: Vector2i = _barn_doors(barn_id)[0]
+	var out: Array[Vector2i] = []
+	for dy in range(3, 8):
+		for dx in range(-6, 12, 2):
+			var t := doorstep + Vector2i(dx, dy)
+			if out.size() < n and farm.sim.placeable_at(t) and farm.sim.is_walkable_sparing_beds(t.x, t.y):
+				out.append(t)
+		if out.size() >= n:
+			break
+	return out
+
+
+# "Five coats": a sheep in each coat on the grass below the barn, sheared to extreme,
+# left to right. The four that can walk graze; the extreme one wiggles where she stands.
+func _sheep_line() -> void:
+	var barn_id := await _sheep_farm()
+	var coats := _sheep_coats([0, 1, 2, 3, 4])
+	var spots := _sheep_row(barn_id, coats.size())
+	for i in spots.size():
+		print("  sheep ", _put_sheep(spots[i], coats[i]), " coat ", coats[i], " at ", spots[i])
+	_place_player(_barn_doors(barn_id)[0] + Vector2i(-8, 2))
+	var mid := (Vector2(_px(spots[0])) + Vector2(_px(spots[-1]))) / 2.0 if not spots.is_empty() else _px(_barn_doors(barn_id)[0])
+	_free_camera(mid, 3.0)
+	await _seconds(0.5)
+	_mark("coats")
+	await _seconds(12.0)
+
+
+# "They rest in the stalls": inside the barn, a sheep resting in each stall in the coats
+# asked for (four at most), the farmer by the shelf.
+func _sheep_stalls() -> void:
+	var barn_id := await _sheep_farm()
+	var coats := _sheep_coats([1, 2, 3, 4])
+	var stalls: Array = farm.sim.barns[barn_id]["stalls"]
+	for i in mini(coats.size(), stalls.size()):
+		var cell := _v(stalls[i]["cell"])
+		var id := _put_sheep(cell, coats[i])
+		farm.apply_action({ "actor": id, "verb": "reserve_milk_stall", "barn_id": barn_id, "stall_index": i }, GameState)
+		farm.apply_action({ "actor": id, "verb": "enter_milk_stall", "barn_id": barn_id, "stall_index": i }, GameState)
+		# Resting for the whole shot: her brain sets this on a real visit.
+		farm.sim.actor(id)["extra"]["rest_until"] = farm.sim.clock.tick + 100000
+		print("  sheep ", id, " coat ", coats[i], " in stall ", i)
+	farm.sim.schedule_all_brains()
+	await _go_inside_barn(barn_id)
+	await _seconds(2.0)
+	var room: Dictionary = farm.sim.rooms[barn_id]
+	await _walk_to(_v(room["origin"]) + FARMER_SPOT)
+	_frame_room(barn_id)
+	await _seconds(0.5)
+	_mark("stalls")
+	await _seconds(10.0)
+
+
+# "Too fluffy for the door": close on the barn's doors from outside. An extra-full sheep
+# walks in to rest, slowing to a quarter of her pace on the doorstep and speeding up again
+# inside; a full-coat sheep goes first at her own pace, for comparison.
+func _sheep_door() -> void:
+	var barn_id := await _sheep_farm()
+	var coats := _sheep_coats([2, 3])
+	var doorstep: Vector2i = _barn_doors(barn_id)[0]
+	var ids: Array[String] = []
+	for i in coats.size():
+		var id := _put_sheep(doorstep + Vector2i(-2 + i * 4, 4), coats[i])
+		ids.append(id)
+	_place_player(doorstep + Vector2i(9, 4))
+	_free_camera(_px(doorstep) + Vector2(0, 24), 3.0)
+	await _seconds(0.6)
+	_mark("walkin")
+	for i in ids.size():
+		print("  ", ids[i], " ", farm.apply_action({ "actor": ids[i], "verb": "reserve_milk_stall",
+			"barn_id": barn_id, "stall_index": i }, GameState))
+		farm.sim.schedule_all_brains()
+		await _seconds(2.0)
+	await _seconds(18.0)
+
+
+# "And then she stops": an extreme sheep on the grass, content where she stands; the
+# farmer walks up to her and past her.
+func _sheep_stuck() -> void:
+	var barn_id := await _sheep_farm()
+	var spot: Vector2i = _sheep_row(barn_id, 1)[0]
+	print("  sheep ", _put_sheep(spot, Wool.EXTREME), " at ", spot)
+	_place_player(spot + Vector2i(-5, 0))
+	_free_camera(_px(spot), 3.0)
+	await _seconds(1.0)
+	_mark("stuck")
+	await _walk_to(spot + Vector2i(4, 1))
+	await _seconds(4.0)
+
+
+# "Are there sheep?": the shop open, the sheep's card beside the cow's; a tap buys her
+# and she arrives outside the barn's doors, mid-growth.
+func _sheep_buy() -> void:
+	var barn_id := await _sheep_farm()
+	var doorstep: Vector2i = _barn_doors(barn_id)[0]
+	_place_player(doorstep + Vector2i(-3, 2))
+	_free_camera(_px(doorstep) + Vector2(0, 16), 3.0)
+	await _seconds(0.5)
+	_mark("shop")
+	var menus = main.menus
+	menus.open_menu("shop")
+	await _frames(2)
+	for i in menus.shop_items.size():
+		if String(menus.shop_items[i].get("kind", "")) == "sheep":
+			menus.selected_option = i
+	await _seconds(1.2)
+	menus._select_current_option()
+	await _seconds(0.5)
+	menus.close_menu()
+	_mark("arrives")
+	await _seconds(5.0)
