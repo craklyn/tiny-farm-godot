@@ -72,10 +72,14 @@ The actor registry remains the source of truth for cows. The barn record owns eq
 batch state because fixed machinery is building state, not an actor. The simulation clock
 holds a `barn_line` event for each next station completion. Dispatch derives the next line
 Action from the barn record and sends it through `SimWorld.apply_action`; it does not
-register a controller, run a brain, or carry energy. Picking up the building is refused
-while a cow occupies a stall, a batch is in the line, or its finished-cheese count is
-nonzero. This prevents a room removal from deleting living actors or product. The existing
-rule that empties room fittings applies after those checks and cancels the barn's pending
+register a controller, run a brain, or carry energy. Picking up the building is never
+refused (Daniel, 2026-10-13; it used to be refused while a cow held a stall or anything was
+on the line). Every cow and sheep of the barn gives up her stall and any trip to it, and the
+ones inside are put out on the grass outside its doors (`SimWorld._let_go_of_barn`). The
+batches, the finished cheese and the batch count go into the crate with the barn,
+`gs.boxed["industrial_barn"]`, with their ticks paused (`_box_barn_line`), and come back
+when the barn is put down (`_unbox_barn_line`). The existing
+rule that empties room fittings applies after that and cancels the barn's pending
 clock event.
 
 ### Cow actor
@@ -240,8 +244,9 @@ the east side (receiver, vat, table, presses, belt) and ends at the shelf beside
 the farmer sells from (6, 6). Every machine, the hay, the feed bin, the pitchfork, the milk
 cans and the bucket are blocked cells named in `machine_defs.gd`; the aisle, lobby, pens and
 the walkway between machines are open, so a near pen never shuts in a deeper one. Picking
-the barn up is refused while a cow holds a stall or any milk or cheese is inside. Otherwise
-the barn record, its pending line event and the room come up together. A save whose barn has
+the barn up always works (2026-10-13): its animals are let go of and put outside, its line
+goes into the crate with it, and the barn record, its pending line event and the room come
+up together. A save whose barn has
 the old room is renovated on load (`SimWorld.renovate_legacy_barns`). The reasoning, the
 measurements and the captures are in [design 17](design/17-industrial-barn-and-cheese-line.md),
 "The bigger room".

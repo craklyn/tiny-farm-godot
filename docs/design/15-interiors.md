@@ -551,6 +551,23 @@ chose the model below over built-in fittings (b) and decoration only (c).
   she had collected it. A hen indoors is moved to the squares the building stood on
   (P-17), and her walk is reset. Only then does the room close. `collect` returns the list
   of contents, and a replay reproduces it.
+- **The Industrial Barn too, whatever it is doing** (Daniel, 2026-10-13: "Let the barn be
+  picked up. When picked up, living entities inside spill out."). It used to be refused
+  while a cow held a stall or there was milk or cheese inside. Now every cow and sheep of
+  the barn gives up her stall and any trip to it, and the ones inside come out through its
+  doors onto the grass, each on the square a newly bought cow would arrive on: never a crop
+  bed or the doorstep. That differs from the hen on purpose. A sheep stopped for good in
+  her extreme coat (design/18) stays where she is put, and on the barn's own squares she
+  would keep the barn from ever going back down where it stood. She stays content. The
+  barn's line is not living and is not lost: the batches, the cheese on the shelf and the
+  batch count ride in the crate with the barn, in the memory a robot's practice uses (Q-98),
+  paused, and the line carries on when the barn is put down again. Cheese is not an item
+  she could hold (the shelf sells straight to gold), so going with the barn is the coop's
+  rule applied to it: nothing she owns is lost and nothing is reset.
+- **The coop, the Spiral Tower and the barn read the same way:** a tap on the building opens
+  its panel with Go inside and Pick up, and Pick up always works. The robot stall and the
+  workbench are the gap. They have no room, so they have no panel, and a tap on either
+  cannot pick it up at all (`collect` answers "nothing to collect").
 - **Nothing in the save or replay format changed.** A fitting is an object string on the
   grid, and fittings in the crate use the crate's existing counts. Old farms load unchanged,
   and the rescue for nested buildings still returns every one it finds.
