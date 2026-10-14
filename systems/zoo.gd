@@ -195,7 +195,7 @@ static func icon_of(species: String) -> Array:
 	if renderer == null:
 		return []
 	if species == SpeciesDefs.SHEEP:
-		return [SheepArt.sheet(), SheepArt.cell_rect(Wool.FULL, 0)]
+		return [SheepArt.sheet(), SheepArt.body_rect(Wool.FULL, 0)]
 	var sheet = renderer.get_script_constant_map().get("SPRITES", null)
 	# A script that renders several species (the ants, the grazers) holds one
 	# sheet per species; pick this one's.

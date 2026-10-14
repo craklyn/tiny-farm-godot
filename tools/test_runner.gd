@@ -201,6 +201,7 @@ func _run_scenarios() -> void:
 	await _scenario_br_a_walled_in_barn_buzzes()
 	await _scenario_bs_a_barn_over_a_bed_buzzes()
 	await _scenario_sh_a_sheep_is_bought_by_a_tap()
+	await _scenario_sg_a_stuck_sheep_grazes_a_ring_and_is_perched_on()
 	await _scenario_si_a_busy_barn_is_picked_up_by_a_tap()
 	await _scenario_bt_the_stall_and_bench_pick_up_by_tap()
 
@@ -11282,3 +11283,56 @@ func _camera_settled() -> void:
 # canvas (`window/stretch/mode`) on their way in, so a canvas point is scaled up first.
 func _window_point(canvas_point: Vector2) -> Vector2:
 	return get_tree().root.get_final_transform() * canvas_point
+
+
+# A sheep stopped for good in the real game (design/18, "Stuck for good"): the grass
+# round her is drawn grazed, she strains for the tuft past it, and a bird sits on
+# her. The beats are cued, as the video tools cue them, so the scenario need not wait
+# out their cycles; what is tested is that the farm and her sprite draw them.
+func _scenario_sg_a_stuck_sheep_grazes_a_ring_and_is_perched_on() -> void:
+	print("\n--- Scenario SG: a stuck sheep grazes a bald ring, strains for a tuft, and a bird sits on her ---")
+	var real_paths := [GameState.save_path, GameState.replay_path, GameState.trace_path]
+	GameState.save_path = "user://sheep_gags_autosave.json"
+	GameState.replay_path = "user://sheep_gags_replay.json"
+	GameState.trace_path = "user://sheep_gags_trace.jsonl"
+	main_scene.menus.close_menu()
+	main_scene.end_teaching()
+	await get_tree().process_frame
+	var before := SaveGame.capture(farm.sim, GameState)
+	var rng_seed := SimRng.current_seed()
+	var rng_state := SimRng.rng.state
+	var rng_revision := SimRng.stateless_revision
+
+	# Open grass for her ring and a tuft either side, cleared by hand on this farm.
+	var at := Vector2i(16, 9)
+	for y in range(-1, 2):
+		for x in range(-3, 4):
+			farm.sim.set_tile_state(at.x + x, at.y + y, "cleared")
+			farm.sim.set_object(at.x + x, at.y + y, "")
+	var id: String = farm.sim.next_sheep_id()
+	farm.sim.spawn_actor(id, SpeciesDefs.SHEEP, at, { "coat": Wool.EXTREME })
+	farm.sim.actor(id)["facing"] = "right"
+	farm.sim.schedule_all_brains()
+	farm.sync_actors()
+	var stopped := await _wait_until(func(): return SheepGags.is_stuck_outside(farm.sim, id), 120)
+	_assert(stopped and int(farm.sim.actor(id).extra.get("content_since", -1)) >= 0,
+		"an extreme-coat sheep put down on the grass stops for good, and her stop is recorded")
+	farm.sim.actor(id).extra["nights_content"] = 1
+	var pieces := SheepGags.ring_pieces(farm.sim, farm.sim.clock.tick)
+	_assert(pieces.size() == 9 and pieces.all(func(p): return int(p.stage) == SheepGags.BARE),
+		"a night on, her square and the eight round it are bare earth")
+	var target := SheepGags.stretch_target(farm.sim, id)
+	_assert(target.get("cell") == at + Vector2i(2, 0), "and the tuft she strains for is two squares out, the way she faces")
+
+	var node = farm.actor_nodes.get(id, null)
+	SheepGags.cue(id, "stretch", farm.sim.clock.tick)
+	var strained := await _wait_until(func(): return node != null and int(node.stretch_frame) == SheepArt.STRETCH_STRAIN, 120)
+	var smug := await _wait_until(func(): return node != null and int(node.stretch_frame) == SheepArt.STRETCH_SMUG, 120)
+	var back := await _wait_until(func(): return node != null and int(node.stretch_frame) == -1, 120)
+	_assert(strained and smug and back, "her sprite strains for it, settles back smug, and goes back to her wiggle")
+	SheepGags.cue(id, "bird", farm.sim.clock.tick)
+	var landed := await _wait_until(func(): return node != null and not node.bird.is_empty() and not bool(node.bird.flying), 120)
+	_assert(landed and float(node.bird.heart) >= 0.0, "a bird flies in and sits on her, and her heart shows")
+	await get_tree().process_frame
+	SheepGags.clear_cues()
+	await _bo_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)

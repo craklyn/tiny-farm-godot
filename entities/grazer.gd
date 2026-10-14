@@ -57,6 +57,13 @@ var is_cow: bool = false
 # A sheep is drawn as a cow is, from the sim clock, from her own sheet: the row is
 # her look and her coat (`SheepArt`, docs/design/18-sheep.md).
 var is_sheep: bool = false
+# A sheep stopped for good does more than wiggle (design/18, "Stuck for good";
+# `SheepGags`): the neck stretch frame she shows instead (-1 for none) and which way
+# she strains, and the bird on her back ({} for none). Read off the sim tick.
+var stretch_frame: int = -1
+var stretch_left: bool = false
+var bird: Dictionary = {}
+const BIRD_SHEET := preload("res://assets/sprites/generated/songbird.png")
 # Cosmetic, and the only die roll in this file: two animals in one field should
 # not hop in lockstep. `CosmeticRng`, never the sim's seeded stream — see
 # systems/cosmetic_rng.gd, and the unit test that reads this directory for the
@@ -104,7 +111,8 @@ func _process(delta: float) -> void:
 		var frame := int(pose.get("frame", 0))
 		var left := bool(pose.get("facing_left", false))
 		var row := SheepArt.row_of(SheepArt.look_of(actor_id), Wool.coat_of(farm.sim, actor_id)) if is_sheep else 0
-		if at != position or frame != hop_frame or left != facing_left or row != coat_row:
+		var gags_changed := is_sheep and _read_gags(farm.sim.clock.tick)
+		if at != position or frame != hop_frame or left != facing_left or row != coat_row or gags_changed:
 			position = at
 			hop_frame = frame
 			facing_left = left
@@ -131,15 +139,62 @@ func _process(delta: float) -> void:
 		queue_redraw()
 
 
+# The stretch and the bird, from the tick. True when either changed since the last
+# frame, so a stuck sheep redraws only when something about her picture moved.
+func _read_gags(tick: int) -> bool:
+	var frame := -1
+	var left := facing_left
+	var visit := {}
+	if SheepGags.is_stuck_outside(farm.sim, actor_id):
+		visit = SheepGags.bird(actor_id, tick)
+		if SheepArt.has_stretch():
+			var target := SheepGags.stretch_target(farm.sim, actor_id)
+			if not target.is_empty():
+				frame = SheepGags.stretch_frame(actor_id, tick)
+				left = bool(target["left"])
+	var changed := frame != stretch_frame or (frame >= 0 and left != stretch_left) or visit != bird
+	stretch_frame = frame
+	stretch_left = left
+	bird = visit
+	return changed
+
+
 func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
 	render_queue.append({
 		"y": position.y,
 		"draw": func():
 			var rows := SheepArt.ROWS if is_sheep else 1
 			var cell := cell_size(sprites, rows)
-			canvas.draw_texture_rect_region(sprites, cell_dest(sprites, position, facing_left, rows),
-				Rect2(hop_frame * cell.x, coat_row * cell.y, cell.x, cell.y))
+			if stretch_frame >= 0:
+				canvas.draw_texture_rect_region(sprites, cell_dest(sprites, position, stretch_left, rows),
+					SheepArt.stretch_rect(SheepArt.look_of(actor_id), stretch_frame))
+			else:
+				canvas.draw_texture_rect_region(sprites, cell_dest(sprites, position, facing_left, rows),
+					Rect2(hop_frame * cell.x, coat_row * cell.y, cell.x, cell.y))
+			if not bird.is_empty():
+				_draw_bird(canvas)
 	})
+
+
+# The songbird on her back, and her heart when it lands. Its offsets are drawn for a
+# sheep facing right and mirrored with her, as her own frames are.
+func _draw_bird(canvas: CanvasItem) -> void:
+	var mirror := -1.0 if (stretch_left if stretch_frame >= 0 else facing_left) else 1.0
+	var foot := position + Vector2(TILE_SIZE / 2.0, TILE_SIZE)
+	var at: Vector2 = foot + Vector2(bird["pos"].x * mirror, bird["pos"].y)
+	var col := 0 if not bool(bird["flying"]) else 1 + int(bird["flap"])
+	var left := bool(bird["left"]) != (mirror < 0.0)
+	# A negative width mirrors the cell in place, as `cell_dest` relies on.
+	canvas.draw_texture_rect_region(BIRD_SHEET, Rect2(at.x - 8.0, at.y - 13.0, -16.0 if left else 16.0, 16.0),
+		Rect2(col * 16, 0, 16, 16))
+	var since := float(bird["heart"])
+	var sheet := SheepArt.gag_sheet()
+	if since >= 0.0 and sheet != null:
+		var heart := SheepArt.gag_rect("heart")
+		var rise := since / SheepGags.HEART_SECONDS
+		canvas.draw_texture_rect_region(sheet,
+			Rect2(foot + Vector2(6.0 * mirror - heart.size.x / 2.0, -34.0 - 8.0 * rise), heart.size),
+			heart, Color(1, 1, 1, 1.0 - rise * rise))
 
 
 # A sheet is its four frames in one row, so a cell is a quarter of its width and

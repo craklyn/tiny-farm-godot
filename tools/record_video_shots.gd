@@ -81,6 +81,9 @@ func _ready() -> void:
 		"sheepdoor": await _sheep_door()
 		"sheepstuck": await _sheep_stuck()
 		"sheepbuy": await _sheep_buy()
+		# What a stuck sheep does with forever (design/18, "Stuck for good"). The
+		# variant is `<ring>-<sheep>`: grazing, stubble or bare, and 1 or 2 sheep.
+		"sheepgags": await _sheep_gags()
 		"walk": await _walk()
 		"yard": await _yard()
 		"eggs": await _eggs()
@@ -1013,3 +1016,100 @@ func _sheep_buy() -> void:
 	menus.close_menu()
 	_mark("arrives")
 	await _seconds(5.0)
+
+
+# --- what a stuck sheep does with forever (design/18, "Stuck for good") ------------
+#
+# Her bald ring, the tuft she strains for, and the birds that sit on her. The variant
+# (the wrapper's 4th argument) is `<ring>-<sheep>`:
+#   ring    grazing  she has just stopped: her square and the eight round it go to
+#                    stubble one by one, 25 s apart, through a shot of about four
+#                    minutes (speed it up in the edit);
+#           stubble  her first day: the whole ring stubble;
+#           bare     a night on (the default): the ring bare earth, the tuft past it;
+#   sheep   1 (the default) or 2 side by side, two squares apart, their rings joined.
+# With a bare ring she strains for the tuft at 1.5 s and again at 15.5 s, and a bird
+# lands on her at 5 s; with two, the second strains half a second after the first.
+#   video/tools/record_shot.sh video/<video> sheepgags 540x540 bare-2
+func _sheep_gags() -> void:
+	var args := OS.get_cmdline_user_args()
+	var parts := (String(args[1]) if args.size() > 1 and String(args[1]) != "" else "bare-1").split("-")
+	var ring := String(parts[0])
+	var ids := await _stage_stuck_sheep(ring, clampi(int(parts[1]) if parts.size() > 1 else 1, 1, 2))
+	var tick: int = farm.sim.clock.tick
+	for i in ids.size():
+		SheepGags.cue(ids[i], "stretch", tick + SheepGags.ticks(1.5 + 0.5 * i))
+	if not ids.is_empty():
+		SheepGags.cue(ids[0], "bird", tick + SheepGags.ticks(5.0))
+	_mark(ring)
+	await _seconds(232.0 if ring == "grazing" else 30.0)
+
+
+# Sheep stopped for good on open grass below the barn, facing right, their ring at
+# `ring` (above), with their stretch and birds held back until the caller cues them.
+# Returns their ids, left to right, with the camera on them.
+func _stage_stuck_sheep(ring: String, n: int) -> Array[String]:
+	var barn_id := await _sheep_farm()
+	SheepGags.clear_cues()
+	var at := _open_grass_for(barn_id, n)
+	var ids: Array[String] = []
+	for i in n:
+		var id := _put_sheep(at + Vector2i(2 * i, 0), Wool.EXTREME)
+		farm.sim.actor(id)["facing"] = "right"
+		ids.append(id)
+	farm.sim.schedule_all_brains()
+	_place_player(at + Vector2i(-5, 3))
+	# No mouse hover square on the grass: the shot is watched, not played.
+	InputManager.current_mode = InputManager.Mode.TOUCH
+	_on_page_camera(_px(at) + Vector2(16.0 * (n - 1), -6), 4.0)
+	await _wait_until(func(): return ids.all(func(id): return SheepGags.is_stuck_outside(farm.sim, id)), 120)
+	var tick: int = farm.sim.clock.tick
+	for id in ids:
+		var extra: Dictionary = farm.sim.actor(id)["extra"]
+		extra["content_since"] = tick if ring == "grazing" else tick - SheepGags.ticks(SheepGags.GRAZE_SECONDS * 9)
+		extra["nights_content"] = 1 if ring == "bare" else 0
+		print("  sheep ", id, " stuck at ", farm.sim.actor_pos(id), ", ring ", ring)
+		# Nothing happens to her until the shot cues it.
+		SheepGags.cue(id, "stretch", tick + 1000000)
+		SheepGags.cue(id, "bird", tick + 1000000)
+	await _seconds(0.5)
+	return ids
+
+
+# A square with field ground round it for `n` stuck sheep two apart, their rings, and a
+# tuft's square either side, below the barn's doors: the nearest found where the only
+# thing in the way is weeds, which are pulled for the shot (a sheep grazes grass, not
+# weeds, so a weed would leave a hole in her ring).
+func _open_grass_for(barn_id: String, n: int) -> Vector2i:
+	var doorstep: Vector2i = _barn_doors(barn_id)[0]
+	var spots: Array[Vector2i] = []
+	for y in range(1, SimWorld.PAGE_ROWS - 1):
+		for x in range(3, SimWorld.MAP_WIDTH - 3):
+			if y > doorstep.y + 2:
+				spots.append(Vector2i(x, y))
+	spots.sort_custom(func(a, b): return (a - doorstep).length_squared() < (b - doorstep).length_squared())
+	for at in spots:
+		var cells: Array[Vector2i] = []
+		for y in range(-1, 2):
+			for x in range(-3, 2 * (n - 1) + 4):
+				cells.append(at + Vector2i(x, y))
+		if cells.all(func(c): return SheepGags.grazable(farm.sim, c) or _weed_on_grass(c)):
+			for c in cells:
+				if _weed_on_grass(c):
+					farm.sim.set_tile_state(c.x, c.y, "cleared")
+			return at
+	return _sheep_row(barn_id, 1)[0]
+
+
+func _weed_on_grass(c: Vector2i) -> bool:
+	return c.y >= 0 and c.y < SimWorld.PAGE_ROWS and c.x >= 0 and c.x < SimWorld.MAP_WIDTH \
+		and String(farm.sim.get_tile(c.x, c.y).get("state", "")) == "obstacle_weed" \
+		and farm.sim.get_object(c.x, c.y) == "" and farm.sim.room_of_cell(c) == ""
+
+
+# The free camera, kept inside the farm page so the dark past its edge never shows.
+func _on_page_camera(centre: Vector2, zoom: float) -> void:
+	var half := Vector2(get_viewport().get_visible_rect().size) / (2.0 * zoom)
+	centre.x = clampf(centre.x, half.x, SimWorld.MAP_WIDTH * 16 - half.x)
+	centre.y = clampf(centre.y, half.y, SimWorld.PAGE_ROWS * 16 - half.y)
+	_free_camera(centre, zoom)

@@ -10,6 +10,7 @@ const AutomationTests := preload("res://tests/unit/automation_tests.gd")
 const InteriorTests := preload("res://tests/unit/interior_tests.gd")
 const BarnTests := preload("res://tests/unit/barn_tests.gd")
 const SheepTests := preload("res://tests/unit/sheep_tests.gd")
+const SheepGagTests := preload("res://tests/unit/sheep_gag_tests.gd")
 
 
 func _init() -> void:
@@ -22,6 +23,7 @@ func _init() -> void:
 	var interior = InteriorTests.new()
 	var barn = BarnTests.new()
 	var sheep = SheepTests.new()
+	var sheep_gags = SheepGagTests.new()
 
 	print(String("=").repeat(60))
 	print("TINY FARM - GODOT Automated Test Suite")
@@ -166,6 +168,7 @@ func _init() -> void:
 	barn.test_barn_cow_arrival()
 	barn.test_barn_cows_spare_beds()
 	sheep.test_sheep()
+	sheep_gags.test_sheep_gags()
 	interior.test_carry_cap()
 	interior.test_save_v5_migration()
 	interior.test_mark_three_assigned_tiles()
@@ -174,7 +177,7 @@ func _init() -> void:
 	core.test_farm_page_draw_order_merge()
 	barn.test_room_edge_styles()
 
-	var areas: Array = [core, persistence, homestead, actor, presentation, automation, interior, barn, sheep]
+	var areas: Array = [core, persistence, homestead, actor, presentation, automation, interior, barn, sheep, sheep_gags]
 	var pass_count := 0
 	var fail_count := 0
 	var fail_log: Array[String] = []

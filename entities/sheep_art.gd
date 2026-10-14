@@ -35,6 +35,8 @@ const ROWS := 5
 const FRAMES := 4
 # The placeholder's cell: the art session's size, so the two stand alike.
 const PLACEHOLDER_CELL := Vector2i(32, 28)
+# How wide every coat is drawn, inside however wide a cell (`body_rect`).
+const BODY_W := 32.0
 # How many pixels of wool stand out around her body at each coat.
 const WOOL_PX: Array[int] = [0, 1, 2, 3, 4]
 const WOOL := Color8(242, 236, 222)
@@ -51,6 +53,20 @@ static var _looks := 1
 # sheet's JSON may say otherwise, as `idle_frame_seconds` or in its `idle_frames` note.
 const IDLE_FRAME_SECONDS := 0.25
 static var _idle_seconds := IDLE_FRAME_SECONDS
+# **The gags' pictures** (design/18, "Stuck for good"). The neck stretch is a row a look
+# after every look's five coats (`sheep.json`'s `extra_rows.stretch`, four frames:
+# reach, stretch, strain, smug); the ground she grazes bare, the tuft she strains at
+# and her heart are on `sheep_gags.png`, at the rects `sheep.json`'s `gags` names. The
+# cow-made placeholder has none of them, and the game then plays no stretch and draws
+# no ring: the gags wait for the art.
+const GAGS_PATH := "res://assets/sprites/generated/sheep_gags.png"
+const STRETCH_REACH := 0
+const STRETCH_FULL := 1
+const STRETCH_STRAIN := 2
+const STRETCH_SMUG := 3
+static var _stretch_first := -1
+static var _gag_rects := {}
+static var _gag_sheet: Texture2D = null
 
 
 ## The sheet her renderer draws from: the delivered one, or the placeholder.
@@ -96,6 +112,15 @@ static func cell_rect(coat: int, frame: int, look: int = 0) -> Rect2:
 	return Rect2(posmod(frame, FRAMES) * cell.x, row_of(look, coat) * cell.y, cell.x, cell.y)
 
 
+## A coat's frame without the clear columns either side of it: the shipped sheet's
+## cells are wider than any coat (the neck stretch reaches into them), so a picture
+## of one coat, like the Zoo's button, takes the middle `BODY_W` of the cell.
+static func body_rect(coat: int, frame: int, look: int = 0) -> Rect2:
+	var r := cell_rect(coat, frame, look)
+	var pad := maxf(0.0, (r.size.x - BODY_W) / 2.0)
+	return Rect2(r.position.x + pad, r.position.y, r.size.x - 2.0 * pad, r.size.y)
+
+
 ## Is this the art session's sheet, or the cow-made stand-in?
 static func is_placeholder() -> bool:
 	return not ResourceLoader.exists(SHEET_PATH)
@@ -114,6 +139,7 @@ static func _load() -> void:
 				_looks = meta["looks"].size()
 			if meta is Dictionary:
 				_idle_seconds = idle_seconds_from(meta)
+				_load_gags(meta)
 		# Never more looks than the sheet has rows for.
 		_looks = clampi(_looks, 1, maxi(1, _sheet.get_height() / (_cell.y * ROWS)))
 		return
@@ -121,6 +147,52 @@ static func _load() -> void:
 	_sheet = ImageTexture.create_from_image(image)
 	_cell = PLACEHOLDER_CELL
 	_looks = 1
+
+
+## Does the sheet carry the neck stretch?
+static func has_stretch() -> bool:
+	if _sheet == null:
+		_load()
+	return _stretch_first >= 0
+
+
+## Where one frame of a look's neck stretch is on the sheet (STRETCH_REACH..STRETCH_SMUG).
+static func stretch_rect(look: int, frame: int) -> Rect2:
+	var cell := cell_size()
+	return Rect2(posmod(frame, FRAMES) * cell.x, (_stretch_first + clampi(look, 0, looks() - 1)) * cell.y,
+		cell.x, cell.y)
+
+
+## The gags' sheet (`sheep_gags.png`), or null when there is none.
+static func gag_sheet() -> Texture2D:
+	if _sheet == null:
+		_load()
+	return _gag_sheet
+
+
+## A named piece of the gags' sheet: "stubble", "bare", "tuft" or "heart".
+static func gag_rect(name: String) -> Rect2:
+	if _sheet == null:
+		_load()
+	return _gag_rects.get(name, Rect2())
+
+
+static func _load_gags(meta: Dictionary) -> void:
+	_stretch_first = -1
+	_gag_rects = {}
+	_gag_sheet = null
+	var extra_rows = meta.get("extra_rows", {})
+	if extra_rows is Dictionary and extra_rows.get("stretch") is Dictionary:
+		var first := int(extra_rows["stretch"].get("first_row", -1))
+		if first >= 0 and (first + _looks) * _cell.y <= _sheet.get_height():
+			_stretch_first = first
+	var gags = meta.get("gags", {})
+	if gags is Dictionary and ResourceLoader.exists(GAGS_PATH):
+		_gag_sheet = load(GAGS_PATH)
+		for key in gags:
+			var r = gags[key]
+			if r is Array and r.size() == 4:
+				_gag_rects[String(key)] = Rect2(float(r[0]), float(r[1]), float(r[2]), float(r[3]))
 
 
 ## The idle frame time a sheet's JSON gives: `idle_frame_seconds` if it has one, else

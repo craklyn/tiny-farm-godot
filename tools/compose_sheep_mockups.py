@@ -23,6 +23,14 @@ STAGES = ["sheared", "mid-growth", "full coat", "extra full", "extreme"]
 GRASS = ROOT / "assets/sprites/generated/terrain_grass.png"
 
 
+def frame(sheet, row, col=0):
+    """One 32x28 frame of a sheep sheet: the middle of its cell, however wide the sheet's
+    cells are (the shipped sheet pads every cell so the neck stretch has room)."""
+    cell_w = sheet.width // 4
+    x = col * cell_w + (cell_w - CELL[0]) // 2
+    return sheet.crop((x, row * CELL[1], x + CELL[0], (row + 1) * CELL[1]))
+
+
 def grass_strip(w, h):
     tile = Image.open(GRASS).convert("RGBA").crop((0, 0, 16, 16))
     strip = Image.new("RGBA", (w, h))
@@ -43,7 +51,7 @@ def lineup(named_sheets):
         strip = grass_strip(w, h)
         strip.alpha_composite(cow, (6, h - 3 - 20))
         for r in range(5):
-            strip.alpha_composite(sheet.crop((0, r * CELL[1], CELL[0], (r + 1) * CELL[1])),
+            strip.alpha_composite(frame(sheet, r),
                                   (6 + 24 + gap + r * (CELL[0] + gap), h - 3 - CELL[1]))
         rows.append((name, strip))
     big = 6
@@ -112,7 +120,7 @@ def looks(sheet_path, scale=5):
         strip.alpha_composite(cow, (3, 1 + li * (CELL[1] + 2) + CELL[1] - 20))
         for r in range(5):
             row = li * 5 + r
-            strip.alpha_composite(sheet.crop((0, row * CELL[1], CELL[0], (row + 1) * CELL[1])),
+            strip.alpha_composite(frame(sheet, row),
                                   (30 + r * (CELL[0] + 2), 1 + li * (CELL[1] + 2)))
     big = strip.resize((w * scale, h * scale), Image.NEAREST)
     label_w, head = 230, 22
@@ -147,7 +155,7 @@ def flock(sheet_path, scale=4):
     for y, kind, x, li, coat, flip in sorted(items):
         if kind == "sheep":
             row = li * 5 + coat
-            im = sheet.crop((0, row * CELL[1], CELL[0], (row + 1) * CELL[1]))
+            im = frame(sheet, row)
         elif kind == "cow":
             im = cow
         else:
