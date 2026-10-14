@@ -1,0 +1,56 @@
+{
+  "cell_w": 32,
+  "cell_h": 28,
+  "rows": 5,
+  "frames": 4,
+  "looks": [
+    "cream_light",
+    "cream_black",
+    "cream_brown",
+    "brown_light",
+    "black_light",
+    "grey_black",
+    "spotted_black_horns",
+    "cream_light_horns"
+  ],
+  "row_of": "look index x rows + coat index",
+  "row_names": [
+    "sheared",
+    "mid",
+    "full",
+    "extra_full",
+    "extreme"
+  ],
+  "row_kinds": [
+    "walk",
+    "walk",
+    "walk",
+    "walk",
+    "idle"
+  ],
+  "drawn_size": {
+    "sheared": {
+      "w": 21,
+      "h": 15
+    },
+    "mid": {
+      "w": 25,
+      "h": 20
+    },
+    "full": {
+      "w": 30,
+      "h": 21
+    },
+    "extra_full": {
+      "w": 30,
+      "h": 23
+    },
+    "extreme": {
+      "w": 32,
+      "h": 26
+    }
+  },
+  "anchor": "feet on the cell's bottom row, body centred: stand it like the cow",
+  "facing": "right",
+  "idle_frames": "rest, breathe in, sway, paddle a hoof: holds best at about 0.25 s a frame"
+}
