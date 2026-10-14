@@ -809,7 +809,8 @@ func _rebuild_options() -> void:
 					if int(sold[crop_name]) > 0:
 						var label := tr(String(CropDefs.TYPES.get(crop_name, {}).get("name", crop_name))).to_lower()
 						pieces.append(tr("sold %d %s") % [int(sold[crop_name]),
-							tr("eggs") if String(crop_name) == "egg" else tr("%s units") % label])
+							tr("eggs") if String(crop_name) == "egg" else tr("cheeses") if String(crop_name) == "cheese" \
+								else tr("%s units") % label])
 				var summary := Label.new()
 				summary.text = tr("Last deposit: %s") % (", ".join(pieces) if not pieces.is_empty() else tr("nothing sold"))
 				options_container.add_child(summary)

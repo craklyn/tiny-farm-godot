@@ -512,14 +512,14 @@ const BIN_RESERVE_CAP := 10
 
 
 func sellable_total() -> int:
-	var n := int(items.get("egg", 0))
+	var n := int(items.get("egg", 0)) + int(items.get("cheese", 0))
 	for crop_type in pouch:
 		n += int(pouch[crop_type])
 	return n
 
 
 # Shared allocator for player deposits and machine deliveries. Only the excess
-# pays gold and counts as shipped. An egg keeps its old immediate-sale behavior.
+# pays gold and counts as shipped. An egg (and a cheese) keeps the old immediate-sale behavior.
 func allocate_bin_delivery(crop_type: String, count: int) -> Dictionary:
 	if count <= 0 or not CropDefs.is_sellable(crop_type):
 		return { "ok": false, "reserved": 0, "sold": 0, "gold": 0 }
@@ -548,14 +548,17 @@ func sell_crops_to_bin() -> Dictionary:
 		result.reserved[crop_type] = int(delivery.reserved)
 		result.sold[crop_type] = int(delivery.sold)
 		result.gold += int(delivery.gold)
-	var eggs := int(items.get("egg", 0))
-	if eggs > 0:
-		var egg_delivery := allocate_bin_delivery("egg", eggs)
-		items["egg"] = 0
+	# Eggs, and cheese from a barn she picked up: carried items the bin buys outright.
+	for item in ["egg", "cheese"]:
+		var held := int(items.get(item, 0))
+		if held <= 0:
+			continue
+		var delivery := allocate_bin_delivery(item, held)
+		items[item] = 0
 		result.ok = true
-		result.reserved["egg"] = 0
-		result.sold["egg"] = eggs
-		result.gold += int(egg_delivery.gold)
+		result.reserved[item] = 0
+		result.sold[item] = held
+		result.gold += int(delivery.gold)
 	if result.ok:
 		bin_deposits += 1
 		last_bin_delivery = result.duplicate(true)

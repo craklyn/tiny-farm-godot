@@ -551,6 +551,28 @@ chose the model below over built-in fittings (b) and decoration only (c).
   she had collected it. A hen indoors is moved to the squares the building stood on
   (P-17), and her walk is reset. Only then does the room close. `collect` returns the list
   of contents, and a replay reproduces it.
+- **The Industrial Barn too, whatever it is doing** (Daniel, 2026-10-13: "Let the barn be
+  picked up. When picked up, living entities inside spill out."). It used to be refused
+  while a cow held a stall or there was milk or cheese inside. Now every cow and sheep of
+  the barn gives up her stall and any trip to it, and the ones inside come out through its
+  doors onto the grass, each on the square a newly bought cow would arrive on: never a crop
+  bed or the doorstep. That differs from the hen on purpose. A sheep stopped for good in
+  her extreme coat (design/18) stays where she is put, and on the barn's own squares she
+  would keep the barn from ever going back down where it stood. She stays content.
+- **The barn's cheese comes to her as items, as the coop's eggs do.** Daniel, 2026-10-13:
+  "Cheese and eggs come to me as items, with P1 they tumble to the ground to be picked up".
+  Each wheel on the shelf becomes one cheese she carries, which the shipping bin buys for
+  20 gold, the shelf's price. Making both tumble onto the ground for her to pick up is the
+  next change, for the coop and the barn alike.
+- **Milk still on the barn's line rides in the crate with the barn.** Daniel did not rule on
+  it, so it follows the rule that picking something up never loses or resets it: the
+  batches at the receiver and on each station, and the batch count, go into the crate in
+  the memory a robot's practice uses (Q-98), with their timers paused. When the barn is put
+  down again they come back and the line carries on.
+- **The coop, the Spiral Tower and the barn read the same way:** a tap on the building opens
+  its panel with Go inside and Pick up, and Pick up always works. The robot stall and the
+  workbench are the gap. They have no room, so they have no panel, and a tap on either
+  cannot pick it up at all (`collect` answers "nothing to collect").
 - **Nothing in the save or replay format changed.** A fitting is an object string on the
   grid, and fittings in the crate use the crate's existing counts. Old farms load unchanged,
   and the rescue for nested buildings still returns every one it finds.

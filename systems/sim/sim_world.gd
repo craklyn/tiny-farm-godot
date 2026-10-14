@@ -1105,21 +1105,130 @@ func renovate_legacy_barns() -> int:
 	return renovated
 
 
-# Whether picking this barn up would lose something: a cow holding one of its
-# stalls, a batch waiting in the receiver or on a station, or finished cheese.
-func _barn_in_use(barn_id: String) -> bool:
+# **Every animal of this barn, let go of** (2026-10-13, the barn picked up): a cow or
+# sheep holding one of its stalls, walking out of it, or anywhere in its room, and any
+# animal outside on her way to it. Each gives her stall and her trip up and thinks
+# again, as if she had never set out. The ones indoors are put outside the barn's
+# doors, each on the square a newly bought cow would arrive on (`barn_cow_arrival_cell`:
+# the nearest free grass, never a bed or the doorstep), one after another — not on the
+# barn's own squares, as the coop's hen is, because a sheep stopped for good there
+# would keep the barn from ever going back down where it stood. A sheep who had stopped
+# for good in her extreme coat stays content: she is carried, not walked. Sorted, so
+# the order is the same in a replay.
+func _let_go_of_barn(barn_id: String) -> void:
+	var ids: Array = actors.keys().map(func(k): return String(k))
+	ids.sort()
+	var anchor := Vector2i(rooms[barn_id].get("anchor", Vector2i(-1, -1))) if rooms.has(barn_id) else Vector2i(-1, -1)
+	for who in ids:
+		if is_barn_animal(who) and anchor.x >= 0 and room_of_cell(actor_pos(who)) == barn_id:
+			var out := barn_cow_arrival_cell(anchor)
+			if out.x >= 0:
+				set_actor_pos(who, out)
+	for who in ids:
+		if not is_barn_animal(who):
+			continue
+		var extra: Dictionary = actors[who].get("extra", {})
+		var mine := String(extra.get("barn_id", "")) == barn_id \
+			or String(extra.get("leaving_barn_id", "")) == barn_id \
+			or room_of_cell(actor_pos(who)) == barn_id
+		if not mine:
+			continue
+		Movement.clear_route(self, who)
+		for key in ["route_stage", "leaving_barn_id", "rest_until", "squeeze_tries"]:
+			extra.erase(key)
+		extra["barn_id"] = ""
+		extra["stall_index"] = -1
+		extra["state"] = "content" if String(extra.get("state", "")) == "content" else "idle"
+		extra["wake"] = clock.tick + 1
+		_schedule_brain(who, clock.tick + 1)
+
+
+# **What a barn's line was doing goes into the crate with it** (2026-10-13). The
+# batches at the receiver and on each station and the next batch's number are kept in
+# `gs.boxed["industrial_barn"]` (the finished cheese has gone to her already,
+# `_hand_over_cheese`), the crate memory
+# a robot's practice rides in (Q-98: "pick up is just repositioning, it shouldn't
+# factory reset"), and `place` takes the newest one back out. A batch's two ticks are
+# kept as offsets from the moment it was boxed, so the line is paused in the crate:
+# a batch three seconds from done is three seconds from done when the barn is down
+# again. A barn with nothing on its line leaves nothing in the crate.
+func _box_barn_line(barn_id: String, gs) -> void:
 	var barn: Dictionary = barns.get(barn_id, {})
-	if barn.is_empty():
-		return false
-	for stall in barn["stalls"]:
-		if String(stall.get("cow_id", "")) != "":
-			return true
-	if not barn["receiver"].is_empty() or int(barn["finished_cheese_count"]) > 0:
-		return true
+	if barn.is_empty() or gs == null:
+		return
+	var stations: Dictionary = barn.get("stations", {})
+	var busy := not (barn.get("receiver", []) as Array).is_empty()
 	for station in BARN_STATIONS:
-		if barn["stations"].get(station) != null:
-			return true
-	return false
+		busy = busy or stations.get(station) != null
+	if not busy:
+		return
+	var kept := {
+		"receiver": [],
+		"stations": {},
+		"next_batch_id": int(barn.get("next_batch_id", 1)),
+	}
+	for batch in barn.get("receiver", []):
+		kept["receiver"].append(_batch_shifted(batch, -clock.tick))
+	for station in BARN_STATIONS:
+		var batch = stations.get(station)
+		kept["stations"][station] = null if batch == null else _batch_shifted(batch, -clock.tick)
+	var crate: Array = gs.boxed.get(BARN_ITEM, [])
+	crate.append(kept)
+	gs.boxed[BARN_ITEM] = crate
+
+
+# ...and back out, onto a barn just put down: the newest box first, its ticks moved to
+# now, and the line's clock started.
+func _unbox_barn_line(barn_id: String, gs) -> void:
+	var crate: Array = gs.boxed.get(BARN_ITEM, [])
+	if crate.is_empty() or not barns.has(barn_id):
+		return
+	var kept: Dictionary = crate.pop_back()
+	gs.boxed[BARN_ITEM] = crate
+	var barn: Dictionary = barns[barn_id]
+	barn["next_batch_id"] = maxi(1, int(kept.get("next_batch_id", 1)))
+	var receiver: Array = []
+	for batch in kept.get("receiver", []):
+		receiver.append(_batch_shifted(batch, clock.tick))
+	barn["receiver"] = receiver
+	var kept_stations: Dictionary = kept.get("stations", {})
+	for station in BARN_STATIONS:
+		var batch = kept_stations.get(station)
+		barn["stations"][station] = null if batch == null else _batch_shifted(batch, clock.tick)
+	_schedule_barn(barn_id, clock.tick + 1)
+
+
+# **The cheese on a barn's shelf comes to her as items** when the barn is picked up
+# (Daniel, 2026-10-13: "Cheese and eggs come to me as items"), the way a coop's eggs
+# go to her basket: one `cheese` a wheel, which the shipping bin buys at the shelf's
+# price (S-42). Returned as `{ item, cell }` pairs on the shelf's square, as
+# `_empty_rooms` lists what it hands over.
+func _hand_over_cheese(barn_id: String, gs) -> Array:
+	var out: Array = []
+	var barn: Dictionary = barns.get(barn_id, {})
+	var wheels := int(barn.get("finished_cheese_count", 0))
+	if wheels <= 0 or gs == null:
+		return out
+	barn["finished_cheese_count"] = 0
+	gs.items["cheese"] = int(gs.items.get("cheese", 0)) + wheels
+	var shelf := Vector2i(-1, -1)
+	if rooms.has(barn_id):
+		shelf = Vector2i(rooms[barn_id].get("origin", Vector2i.ZERO)) \
+			+ Vector2i(MachineDefs.room_of(BARN_ITEM).get("cheese_shelf", Vector2i.ZERO))
+	for i in wheels:
+		out.append({ "item": "cheese", "cell": shelf })
+	return out
+
+
+# A copy of a batch with its ticks moved by `by`, and its numbers whole again (a box
+# that has been through a save file comes back with JSON's floats).
+static func _batch_shifted(batch: Dictionary, by: int) -> Dictionary:
+	var out: Dictionary = batch.duplicate(true)
+	out["batch_id"] = int(batch.get("batch_id", 0))
+	out["amount_milliunits"] = int(batch.get("amount_milliunits", 1000))
+	out["entry_tick"] = int(batch.get("entry_tick", 0)) + by
+	out["ready_tick"] = int(batch.get("ready_tick", 0)) + by
+	return out
 
 
 # **Where a cow comes out onto the farm** (2026-10-10, found staging the creamery
@@ -3463,26 +3572,35 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				# gone. Every building anchored inside the one coming up comes up
 				# with it, and the crate is paid for each.
 				var taken_up := _building_nest(building)
-				# **A barn in use stays where it is** (INDUSTRIAL_BARN_ENGINEERING_PLAN,
-				# "Simulation model"): a cow holding a stall, a batch anywhere on the
-				# line or finished cheese inside would be deleted with the room. The
-				# refusal changes nothing; an idle barn comes up like any other.
+				# **A barn comes up like any other building, whatever it is doing**
+				# (Daniel, 2026-10-13: "Let the barn be picked up. When picked up,
+				# living entities inside spill out." It used to be refused while a cow
+				# held a stall or there was milk or cheese inside.) Its animals are let
+				# go of here — out of their stalls, off any trip to it — and put
+				# outside its doors. Its finished cheese comes to her as items, as a
+				# coop's eggs do (Daniel, 2026-10-13: "Cheese and eggs come to me as
+				# items"). The milk still on its line is not lost: the batches and the
+				# batch count go into the crate with the barn and come back out when it
+				# is put down (`_box_barn_line`, as a robot's memory does, Q-98).
 				var barn_ids: Array[String] = []
+				var cheese_out: Array = []
 				for b in taken_up:
 					var barn_room := room_of_anchor(b["anchor"])
 					if barns.has(barn_room):
-						if _barn_in_use(barn_room): return _fail("barn_in_use")
 						barn_ids.append(barn_room)
 				for barn_room in barn_ids:
 					if _barn_events.has(barn_room):
 						clock.cancel(int(_barn_events[barn_room]))
 						_barn_events.erase(barn_room)
+					_let_go_of_barn(barn_room)
+					cheese_out.append_array(_hand_over_cheese(barn_room, gs))
+					_box_barn_line(barn_room, gs)
 					barns.erase(barn_room)
 				# **And what is inside comes out first** (S-22, design/15 §9a).
 				# The slot is reused by the next room, so nothing may be left in
 				# it: every fitting, egg and machine goes to her as its own item,
 				# and the hen is walked out onto the grass.
-				var contents := _empty_rooms(taken_up, gs)
+				var contents := cheese_out + _empty_rooms(taken_up, gs)
 				for b in taken_up:
 					var b_item := String(b["item"])
 					close_room(b["anchor"])
@@ -3753,6 +3871,10 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				var room_id := open_room(item, target)
 				if item == "industrial_barn" and room_id != "":
 					make_barn(room_id, target)
+					# A barn picked up with work on its line gets that work back
+					# (`_box_barn_line`), under the condition that spent the crate.
+					if placer_charged:
+						_unbox_barn_line(room_id, gs)
 				var laid := { "ok": true, "structure": item, "cells": cells }
 				if bundled_cow_at.x >= 0:
 					var cow_id := next_cow_id()
@@ -4578,7 +4700,9 @@ func _unbox_stall_residents(cells: Array[Vector2i], gs) -> void:
 # **Living occupants stay outside** (P-17). A hen indoors when her coop is taken up
 # is walked out onto the tapped building's footprint, the squares it stood on,
 # rather than pocketed or left on a floor that no longer exists — a coop's four, a
-# tower's sixteen, from the front-left square inward.
+# tower's sixteen, from the front-left square inward. A barn's cows and sheep are put
+# out before this, through its doors (`_let_go_of_barn`, 2026-10-13); only a barn
+# walled in so tight that no cow could arrive at it leaves them to this.
 func _empty_rooms(buildings: Array, gs) -> Array:
 	var out: Array = []
 	var living: Array[String] = []
@@ -4624,7 +4748,8 @@ func _empty_rooms(buildings: Array, gs) -> Array:
 		set_actor_pos(who, outside[i % outside.size()])
 		var extra: Dictionary = actors[who].get("extra", {})
 		extra["path"] = []
-		extra["state"] = "idle"
+		# A sheep who stopped for good stays stopped: she is put down, not walked.
+		extra["state"] = "content" if String(extra.get("state", "")) == "content" else "idle"
 		extra["wake"] = clock.tick + 1
 		_schedule_brain(who, clock.tick + 1)
 	return out

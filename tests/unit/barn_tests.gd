@@ -538,37 +538,134 @@ func test_barn_room_layout() -> void:
 	GameState.machines.erase("stall")
 
 
-# Picking the barn up: refused while it would take a cow's stall or any milk or
-# cheese with it, and otherwise the building, its room and its barn record come
-# up together.
+# Picking the barn up (Daniel, 2026-10-13: "Let the barn be picked up. When picked up,
+# living entities inside spill out."): a barn with a cow in a stall about to give milk,
+# a sheep stopped for good in another stall, a cow outside on her way in, a batch on
+# the press and cheese on the shelf comes up anyway. The animals are let go of and the
+# ones inside put out on its squares; the line goes into the crate with it, paused, and
+# comes back when it is put down, where it carries on.
 func test_barn_pick_up() -> void:
-	print("\n--- Industrial barn: picking it up ---")
+	print("\n--- Industrial barn: picking it up, whatever it is doing ---")
 	var placed := _placed_barn_world(1723)
 	var world: SimWorld = placed[0]; var spot: Vector2i = placed[1]
 	var room_id: String = placed[2]; var cow_id: String = placed[3]
 	if room_id == "" or cow_id == "":
 		_assert(false, "the barn and its cow were placed for the pick-up test")
 		return
-	world.actor(cow_id)["extra"]["milk_milliunits"] = 1000
-	_barn_run_until(world, func(): return String(world.barns[room_id]["stalls"][0]["cow_id"]) == cow_id, 400)
-	var before := SaveGame.capture_canonical(world, GameState)
-	var refused := world.apply_action({ "verb": "collect", "target": spot, "actor": "player" }, GameState)
-	_assert(not refused.get("ok", true) and String(refused.get("reason", "")) == "barn_in_use"
-		and SaveGame.capture_canonical(world, GameState) == before,
-		"a barn whose stall a cow holds stays put, and nothing changes (%s)" % refused)
+	var barn: Dictionary = world.barns[room_id]
+	var stall3: Array = barn.stalls[3].cell
+	world.spawn_actor("sheep_1", SpeciesDefs.SHEEP, Vector2i(int(stall3[0]), int(stall3[1])), { "coat": Wool.EXTREME })
+	world.apply_action({ "actor": "sheep_1", "verb": "reserve_milk_stall", "barn_id": room_id, "stall_index": 3 }, GameState)
+	world.apply_action({ "actor": "sheep_1", "verb": "enter_milk_stall", "barn_id": room_id, "stall_index": 3 }, GameState)
+	world.actor(cow_id)["extra"]["milk_milliunits"] = 2000
+	world.schedule_all_brains()
+	var giving := _barn_run_until(world, func(): return String(world.actor(cow_id).extra.get("state", "")) == "giving", 2000)
+	_assert(giving and String(world.actor("sheep_1").extra.state) == "content",
+		"a cow stands in her stall about to give milk, and a stuck sheep is content in another")
+	var cow_2 := world.next_cow_id()
+	world.spawn_actor(cow_2, SpeciesDefs.COW, world.added_cow_arrival_cell(), { "milk_milliunits": 1000 })
+	world.schedule_all_brains()
+	var heading := _barn_run_until(world, func(): return String(world.actor(cow_2).extra.get("barn_id", "")) == room_id, 200)
+	var t := world.clock.tick
+	barn.stations.press = { "batch_id": 50, "cow_id": cow_id, "amount_milliunits": 1000,
+		"station": "press", "entry_tick": t - 20, "ready_tick": t + 30 }
+	barn.next_batch_id = 51
+	barn.finished_cheese_count = 2
+	var milk_before := int(world.actor(cow_id).extra.milk_milliunits)
+	var cow_2_at := world.actor_pos(cow_2)
+	_assert(heading and world.room_of_cell(cow_2_at) == "", "and a second cow outside has set off for the barn")
 
-	var idle := _placed_barn_world(1724)
-	var w2: SimWorld = idle[0]; var spot2: Vector2i = idle[1]; var room2: String = idle[2]
-	var taken := w2.apply_action({ "verb": "collect", "target": spot2, "actor": "player" }, GameState)
-	_assert(taken.get("ok", false) and not w2.barns.has(room2) and not w2.rooms.has(room2)
-		and w2.get_object(spot2.x, spot2.y) == "" and int(GameState.machines.get("industrial_barn", 0)) == 1,
-		"an idle barn comes up with its room and barn record, back into the crate (%s)" % taken)
-	_assert(w2.has_actor(String(idle[3])), "and its cow stays on the farm")
-	var relaid := w2.apply_action({ "verb": "place", "target": spot2, "item": "industrial_barn",
-		"actor": "player" }, GameState)
-	_assert(relaid.get("ok", false) and w2.barns.has(String(relaid.get("room", "")))
-		and String(relaid.get("cow", "")) == "",
-		"put down again, it opens a fresh room and barn, and brings no second cow (%s)" % relaid)
+	var base := SaveGame.capture(world, GameState)
+	var log := ReplayLog.new(); log.start_from_save(base, world.gen_seed)
+	var taken := _replay_do(world, log, { "verb": "collect", "target": spot, "actor": "player" })
+	_assert(taken.get("ok", false) and not world.barns.has(room_id) and not world.rooms.has(room_id)
+		and world.get_object(spot.x, spot.y) == "" and int(GameState.machines.get("industrial_barn", 0)) == 1,
+		"the busy barn comes up with its room, back into the crate (%s)" % taken)
+	var footprint := MachineDefs.footprint_cells("industrial_barn", spot)
+	var let_go := true
+	for id in [cow_id, "sheep_1", cow_2]:
+		var e: Dictionary = world.actor(id).extra
+		let_go = let_go and String(e.get("barn_id", "")) == "" and int(e.get("stall_index", 0)) == -1 \
+			and world.room_of_cell(world.actor_pos(id)) == "" and not e.has("leaving_barn_id")
+	_assert(let_go, "every cow and sheep is let go of: no stall held, nobody indoors")
+	var bed_free := true
+	for id in [cow_id, "sheep_1"]:
+		var at := world.actor_pos(id)
+		bed_free = bed_free and not at in footprint and world.is_walkable_sparing_beds(at.x, at.y) \
+			and at != world.room_exit_for({ "item": "industrial_barn", "anchor": spot,
+				"exit": spot + Vector2i(MachineDefs.room_of("industrial_barn").get("exit_offset", Vector2i(0, 1))) })
+	_assert(bed_free and world.actor_pos(cow_id) != world.actor_pos("sheep_1"),
+		"the cow and the sheep from inside are put out through the doors onto grass, as a new cow arrives: not a bed, not the doorstep, not the barn's own squares, and not on each other")
+	_assert(String(world.actor("sheep_1").extra.state) == "content" and Wool.coat_of(world, "sheep_1") == Wool.EXTREME,
+		"the stuck sheep is carried out and is still content")
+	_assert(world.actor_pos(cow_2) == cow_2_at and String(world.actor(cow_2).extra.state) == "idle",
+		"the cow on her way in gives up the trip where she stands")
+	_assert(int(world.actor(cow_id).extra.milk_milliunits) == milk_before,
+		"the cow who was about to give keeps her milk")
+	_assert(int(GameState.items.get("cheese", 0)) == 2
+		and (taken.get("contents", []) as Array).filter(func(c): return String(c.item) == "cheese").size() == 2,
+		"the two cheeses on the shelf come to her as items, as a coop's eggs do (Daniel: \"Cheese and eggs come to me as items\")")
+	var boxed: Array = GameState.boxed.get("industrial_barn", [])
+	_assert(boxed.size() == 1 and not boxed[0].has("finished_cheese_count")
+		and int(boxed[0].stations.press.batch_id) == 50 and int(boxed[0].stations.press.ready_tick) == 30,
+		"the milk still on the line, a batch on the press, goes into the crate with the barn, thirty ticks from done")
+
+	# With the barn in the crate, the herd grazes and nobody looks for a stall.
+	var sheep_at := world.actor_pos("sheep_1")
+	var reserved := false
+	for step in world.advance_ticks(1500, GameState):
+		reserved = reserved or (String(step.action.get("verb", "")) == "reserve_milk_stall" and bool(step.result.get("ok", false)))
+	_assert(not reserved and world.actor_pos("sheep_1") == sheep_at,
+		"with no barn standing, no cow or sheep reserves a stall, and the stuck sheep stays put")
+
+	# A save with the barn in the crate keeps the line.
+	var saved: Dictionary = JSON.parse_string(JSON.stringify(SaveGame.capture(world, GameState)))
+	var reloaded := SimWorld.new()
+	var reloaded_state = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(saved, reloaded, reloaded_state)
+		and int((reloaded_state.boxed.get("industrial_barn", []) as Array).size()) == 1,
+		"a save with the barn in the crate keeps its line in the crate")
+	reloaded_state.free()
+
+	# Put down again: the line is back, paused where it was, and it carries on.
+	var relaid := _replay_do(world, log, { "verb": "place", "target": spot, "item": "industrial_barn", "actor": "player" })
+	var again_id := String(relaid.get("room", ""))
+	var again: Dictionary = world.barns.get(again_id, {})
+	_assert(relaid.get("ok", false) and String(relaid.get("cow", "")) == "" and not again.is_empty()
+		and int(again.finished_cheese_count) == 0 and again.stations.press != null
+		and int(again.stations.press.batch_id) == 50 and int(again.stations.press.ready_tick) == world.clock.tick + 30
+		and int(again.next_batch_id) == 51 and (GameState.boxed.get("industrial_barn", []) as Array).is_empty(),
+		"put down again, the barn has its batch on the press back, thirty ticks from done (%s)" % relaid)
+	var resumed := _barn_run_until(world, func(): return int(again.finished_cheese_count) >= 1, 600)
+	_assert(resumed, "and the line carries on: the pressed batch becomes a cheese on the new shelf")
+	var gold_before := int(GameState.gold)
+	var sold: Dictionary = GameState.sell_crops_to_bin()
+	_assert(int(GameState.items.get("cheese", 0)) == 0 and int(GameState.gold) - gold_before >= 2 * SimWorld.CHEESE_BATCH_VALUE
+		and int(sold.sold.get("cheese", 0)) == 2,
+		"the two cheeses she carried sell at the shipping bin for 20 gold each")
+	var back_in := _barn_run_until(world, func():
+		for stall in again.stalls:
+			if String(stall.cow_id).begins_with("cow_"):
+				return true
+		return false, 3000)
+	_assert(back_in, "and a cow with milk goes back to a stall")
+	# The pick-up and the put-down replay: from the save before, both Actions, on a
+	# farm of their own and again from the log.
+	var direct_state = load("res://systems/game_state.gd").new()
+	var w3 := SimWorld.new()
+	SaveGame.restore(base, w3, direct_state)
+	var short_log := ReplayLog.new(); short_log.start_from_save(base, w3.gen_seed)
+	var up_action := { "verb": "collect", "target": spot, "actor": "player" }
+	short_log.record(up_action, w3.apply_action(up_action, direct_state))
+	var down_action := { "verb": "place", "target": spot, "item": "industrial_barn", "actor": "player" }
+	short_log.record(down_action, w3.apply_action(down_action, direct_state))
+	var replay_world := SimWorld.new()
+	var replay_state = load("res://systems/game_state.gd").new()
+	_assert(short_log.apply_to(replay_world, replay_state) and short_log.divergence == ""
+		and SaveGame.capture_canonical(replay_world, replay_state) == SaveGame.capture_canonical(w3, direct_state),
+		"picking the busy barn up and putting it down replays to the same farm (%s)" % short_log.divergence)
+	direct_state.free()
+	replay_state.free()
 
 
 # **The barn's motion is a function of the saved tick** (INDUSTRIAL_BARN_ENGINEERING_PLAN,
