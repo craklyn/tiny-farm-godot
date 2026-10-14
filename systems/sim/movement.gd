@@ -795,9 +795,16 @@ static func step(world: SimWorld, actor_id: String, tick: int) -> String:
 	var next := Vector2i(int(route[idx * 2]), int(route[idx * 2 + 1]))
 	if not can_enter(world, actor_id, next, idx * 2 + 2 >= route.size()):
 		return BLOCKED
+	var from := world.actor_pos(actor_id)
 	place_on_tile(world, actor_id, next)
 	extra["step"] = idx + 1
-	extra["wake"] = tick + ticks_per_tile(String(e.get("species", "")))
+	var species := String(e.get("species", ""))
+	# A sheep's coat sets the length of each step (`Wool.step_ticks`, design/18):
+	# a species flag, like `spares_beds`, so nothing here names her.
+	if bool(capability_of(species).get("coat_pace", false)):
+		extra["wake"] = tick + Wool.step_ticks(world, actor_id, from, next)
+	else:
+		extra["wake"] = tick + ticks_per_tile(species)
 	return MOVED
 
 

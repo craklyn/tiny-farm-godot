@@ -75,6 +75,8 @@ func step(world: SimWorld, actor_id: String, tick: int, _gs = null) -> Dictionar
 			return _stall_action(actor_id, "enter_milk_stall", barn_id, stall_index)
 		"giving":
 			return _stall_action(actor_id, "give_milk", barn_id, stall_index)
+		"resting":
+			return _rest_in_stall(world, actor_id, extra, tick, barn_id, stall_index)
 		"leaving_stall", "releasing":
 			return _stall_action(actor_id, "leave_milk_stall", barn_id, stall_index)
 		"leaving_barn":
@@ -93,7 +95,7 @@ func step(world: SimWorld, actor_id: String, tick: int, _gs = null) -> Dictionar
 				extra["state"] = "leaving_barn"
 				extra["wake"] = tick + 1
 				return {}
-			if int(extra.get("milk_milliunits", 0)) >= 1000 and world.energy_of(actor_id) >= SimWorld.COW_GIVE_MILK_ENERGY:
+			if _wants_stall(world, actor_id, extra, tick):
 				var choice := _first_open_stall(world)
 				if not choice.is_empty():
 					return { "actor": actor_id, "verb": "reserve_milk_stall", "barn_id": choice[0], "stall_index": choice[1] }
@@ -146,6 +148,19 @@ func day_actions(world: SimWorld, actor_id: String, gs = null) -> Array[Dictiona
 	var salt := int(hash("cow_milk_gain:%s:%d" % [actor_id, day]))
 	return [{"actor": actor_id, "verb": "gain_milk",
 		"amount_milliunits": 400 + SimRng.stateless(world.gen_seed ^ salt, day) % 601}]
+
+
+# Whether she goes to a stall now, if one is free. A cow goes with milk to give and
+# the energy to give it; `SheepBrain` answers it her own way.
+func _wants_stall(world: SimWorld, actor_id: String, extra: Dictionary, _tick: int) -> bool:
+	return int(extra.get("milk_milliunits", 0)) >= 1000 and world.energy_of(actor_id) >= SimWorld.COW_GIVE_MILK_ENERGY
+
+
+# A cow is never resting in a stall (she gives milk and leaves); a sheep is, and
+# `SheepBrain` says how long. A cow that a save somehow left resting leaves.
+func _rest_in_stall(_world: SimWorld, actor_id: String, _extra: Dictionary, _tick: int,
+		barn_id: String, stall_index: int) -> Dictionary:
+	return _stall_action(actor_id, "leave_milk_stall", barn_id, stall_index)
 
 
 static func _stall_action(actor_id: String, verb: String, barn_id: String, stall_index: int) -> Dictionary:
@@ -347,10 +362,13 @@ func _pasture_centre(world: SimWorld, here: Vector2i) -> Vector2i:
 	return best
 
 
-# Where every other cow is, and where each one walking is headed.
+# Where every other cow is, and where each one walking is headed — and every sheep,
+# since the herd that spreads out over the grass is the barn's whole herd (design/18).
 func _other_cows_squares(world: SimWorld, actor_id: String) -> Dictionary:
 	var out := {}
-	for cow_id in world.actors_of_species(SpeciesDefs.COW):
+	var herd: Array[String] = world.actors_of_species(SpeciesDefs.COW)
+	herd.append_array(world.actors_of_species(SpeciesDefs.SHEEP))
+	for cow_id in herd:
 		if cow_id == actor_id:
 			continue
 		out[world.actor_pos(cow_id)] = true

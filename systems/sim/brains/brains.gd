@@ -50,6 +50,8 @@ static func _table() -> Dictionary:
 			# the two ways this table stays small.
 			"bot_line": BotBrain.new(),
 			"cow_barn": CowBrain.new(),
+			# The cow's brain with a coat and no milk (design/18).
+			"sheep_barn": SheepBrain.new(),
 		}
 	return _by_id
 

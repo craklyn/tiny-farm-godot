@@ -29,7 +29,10 @@ const AtomicFileWriter := preload("res://systems/atomic_file.gd")
 # distinguish an older save from a new empty one, so v4 needs a real migration.
 # v6: the per-day stateless RNG derivation changed. V5 and earlier saves keep
 # their original rolls, including future days, by migrating to legacy revision.
-const VERSION := 7
+# v8 (2026-10-13, docs/design/18-sheep.md): a barn's stall may be held by a sheep, and
+# a sheep carries her coat. Nothing in a v7 file changes; the bump is so a build from
+# before sheep refuses a farm that has one rather than failing on her in a stall.
+const VERSION := 8
 
 # 600 / 20. The one place the old scale is written down.
 const LEGACY_ENERGY_SCALE := 30
@@ -606,18 +609,23 @@ static func _valid_barn_ownership(world: SimWorld) -> bool:
 			if typeof(cell) != TYPE_ARRAY or cell.size() != 2: return false
 			var cow_id := String(stall.get("cow_id", ""))
 			if cow_id == "": continue
-			if claimed.has(cow_id) or world.species_of(cow_id) != SpeciesDefs.COW: return false
+			if claimed.has(cow_id) or not world.is_barn_animal(cow_id): return false
 			claimed[cow_id] = true
 			var extra: Dictionary = world.actor(cow_id).get("extra", {})
 			if String(extra.get("barn_id", "")) != String(barn_id) \
 					or int(extra.get("stall_index", -1)) != int(stall["index"]): return false
 	for actor_id in world.actors:
-		if world.species_of(String(actor_id)) != SpeciesDefs.COW: continue
+		if not world.is_barn_animal(String(actor_id)): continue
 		var extra: Dictionary = world.actor(String(actor_id)).get("extra", {})
-		var milk = extra.get("milk_milliunits", null)
-		if typeof(milk) != TYPE_INT or int(milk) < 0 or int(milk) > 2000: return false
 		var state := String(extra.get("state", "idle"))
-		if state not in CowBrain.STATES: return false
+		if world.species_of(String(actor_id)) == SpeciesDefs.SHEEP:
+			var coat = extra.get("coat", null)
+			if typeof(coat) != TYPE_INT or int(coat) < Wool.SHEARED or int(coat) > Wool.EXTREME: return false
+			if state not in SheepBrain.SHEEP_STATES: return false
+		else:
+			var milk = extra.get("milk_milliunits", null)
+			if typeof(milk) != TYPE_INT or int(milk) < 0 or int(milk) > 2000: return false
+			if state not in CowBrain.STATES: return false
 		if typeof(extra.get("stall_index", -1)) != TYPE_INT: return false
 		var barn_id := String(extra.get("barn_id", "")); var index := int(extra.get("stall_index", -1))
 		if barn_id == "":
@@ -661,6 +669,11 @@ static func migrate(data: Dictionary) -> Dictionary:
 		if out.get("world") is Dictionary:
 			out["world"]["barns"] = {}
 		v = 7
+	if v == 7:
+		# No farm before v8 had a sheep, so there is nothing to carry over.
+		out = out.duplicate(true)
+		out["version"] = 8
+		v = 8
 	if v != VERSION:
 		return {}
 	return out
@@ -1206,6 +1219,11 @@ static func _restore_actors(raw: Dictionary) -> Dictionary:
 		# (Other scratch fields keep JSON's shape, as every actor's always has.)
 		if species == SpeciesDefs.COW:
 			for key in ["milk_milliunits", "stall_index"]:
+				if restored_extra.has(key):
+					restored_extra[key] = _whole_ints(restored_extra[key])
+		# ...and a sheep's coat, stall and the step counts her pace is drawn from.
+		elif species == SpeciesDefs.SHEEP:
+			for key in ["coat", "stall_index", "clear_steps", "step_ticks", "rest_until", "squeeze_tries"]:
 				if restored_extra.has(key):
 					restored_extra[key] = _whole_ints(restored_extra[key])
 		out[String(id)] = {

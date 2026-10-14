@@ -16,6 +16,11 @@ dog (the first creature the player commands; pre-figures phase 4's bots). Straw-
 roster order: sheep → cow → llama → dog; horse and pig parked (no current friction their
 relief would answer).
 
+**Sheep came after the cow after all** (2026-10-13, S-47,
+[design/18](../design/18-sheep.md)): they share the creamery barn's stalls with the cows and
+grow wool that cannot yet be sheared, on purpose. Shearing, and wool as income, are the
+follow-up.
+
 The proposed [Industrial Barn and Cheese Line](../design/17-industrial-barn-and-cheese-line.md)
 is the cow's later livestock building: four cows may voluntarily give milk at once, then
 watchable fixed machinery turns each batch into cheese. Daniel selected the red dairy works:

@@ -842,6 +842,21 @@ checks and its records of decisions, and its workers keep small unattended chore
 Daniel's Claude plan, sessions doing mechanical work (recording shots, renames, test fixes)
 run on cheaper models, and the most capable model is kept for judgement.
 
+### S-47. Sheep grow wool that nobody can shear yet, until they are too fluffy to walk
+**Ruled by Daniel on 2026-10-13**, after a viewer asked "are there sheep?" under the
+creamery video. Sheep have five coats (freshly sheared, mid-growth, full, extra full,
+extreme). At the extra full coat a sheep slows to 25% through doors and one-square gaps and
+speeds back up once clear; at the extreme coat she "literally becomes unable to take another
+step because they've become too fluffy", and is "content/happy" about it. There is **no
+shearing, on purpose**: "a monkey's paw version of game development where we leave part of
+the feature missing", so viewers ask for shears, which come later. Wool is not an item.
+Sheep may use any stall, including the creamery barn's, but never the cream station, and a
+sheep's stall is one a cow cannot have: cows and sheep share a barn's four places (S-41).
+They unlock with the barn and are bought from the shop like an added cow, for 250 gold.
+How fast the coat grows, the speed-up after a gap and how often a sheep rests in a stall
+were not ruled; they are a strawman with tunable numbers in
+[design/18](design/18-sheep.md).
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported

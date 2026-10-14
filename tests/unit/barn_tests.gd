@@ -1298,9 +1298,10 @@ func test_barn_save_v6_migration() -> void:
 	v6["version"] = 6
 	v6.world.erase("barns")
 	var migrated := SaveGame.migrate(v6)
-	_assert(int(migrated.get("version", 0)) == 7 and SaveGame.VERSION == 7
+	# Through v7 to today's version (v8 added sheep and changed nothing in a v7 file).
+	_assert(int(migrated.get("version", 0)) == SaveGame.VERSION and SaveGame.VERSION == 8
 		and migrated.world.barns is Dictionary and migrated.world.barns.is_empty(),
-		"a v6 save becomes v7 with an empty barn block")
+		"a v6 save becomes v7 with an empty barn block, and goes on to v8")
 	_assert(not v6.world.has("barns"), "and the migration leaves the v6 dictionary it was given untouched")
 	var restored := SimWorld.new()
 	_assert(SaveGame.restore(JSON.parse_string(JSON.stringify(v6)), restored, GameState) and restored.barns.is_empty(),
