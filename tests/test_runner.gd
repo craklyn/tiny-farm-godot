@@ -133,6 +133,7 @@ func _init() -> void:
 	automation.test_learning_robot_day()
 	automation.test_workbench_sim()
 	automation.test_crate_remembers()
+	automation.test_crate_keeps_a_taught_round()
 	automation.test_workbench_place()
 	automation.test_first_robot_unlocks()
 	automation.test_robot_ladder()

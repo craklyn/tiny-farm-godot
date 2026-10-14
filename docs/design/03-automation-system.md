@@ -111,6 +111,14 @@ square first is pick up what is on it. It returns to the crate, and the id it ha
 back to the next machine placed, because ids are a pure function of the registry rather
 than a counter in a save.
 
+**Moving a machine keeps what it knows** (Q-98, P-17; 2026-10-13). A robot goes into the
+crate with its own settings and comes back out with them: a Mark I keeps the squares she
+taught it, a Mark II its job, a Mark III everything it has learned. Where it lives is
+worked out again from where she puts it down: a Mark I set down in a stall bay lives
+there, and on open ground it has no home. A sprinkler has nothing of its own and goes
+back in as a plain count. The details are in `design/06`, "Moving a robot keeps what it
+knows".
+
 **She picks it up from beside it** (from play, 2026-10-09: *"If I select a sprinkler,
 it'll pick up even if I'm standing far away"*). The machine's panel still opens from
 anywhere (`design/06`, P0 clause 4), but its "Pick up" walks her over first, following a

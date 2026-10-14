@@ -2615,11 +2615,10 @@ func test_crate_remembers() -> void:
 		"the second Mark III she buys knows nothing at all: no nights, no weights, factory dials")
 
 	s.world.earn(SimWorld.RUNG_MK1_EARNED)
-	# --- nothing is kept for a machine with nothing to keep -------------------
-	# `weights` is the test, so a mark-1 — whose whole behaviour is its catalogue row
-	# and the squares she taught it — goes into the crate as a plain count, exactly
-	# as it did before this release. A box full of empty lists would be a box
-	# somebody has to migrate one day for no reason.
+	# --- a mark-1's box is its own --------------------------------------------
+	# Since 2026-10-13 a Mark I is boxed too, for the round she taught it
+	# (`test_crate_keeps_a_taught_round`). An untaught one has a short box, and it
+	# must still come out as a mark-1 and leave the Mark III's box alone.
 	s.act({ "verb": "buy_machine", "item": "bot_mk1", "actor": "player" })
 	var mk1_spot := Vector2i(MK3_SPOT.x + 4, MK3_SPOT.y + 5)
 	var mk1 := String(s.act({ "verb": "place", "target": mk1_spot, "item": "bot_mk1",
@@ -2627,12 +2626,14 @@ func test_crate_remembers() -> void:
 	_assert(mk1 != "", "a mark-1 goes down on the yard below the patch (%s)" % mk1)
 	_assert(s.act({ "verb": "collect", "target": s.world.actor_pos(mk1),
 			"actor": "player" }).get("ok", false)
-			and int(s.gs.machines.get("bot_mk1", 0)) == 1 and not s.gs.boxed.has("bot_mk1"),
-		"picked up, it is one more in the crate and not a line in the box")
+			and int(s.gs.machines.get("bot_mk1", 0)) == 1
+			and (s.gs.boxed.get("bot_mk1", []) as Array).size() == 1,
+		"picked up, it is one more in the crate with a box of its own")
 	var mk1_again := String(s.act({ "verb": "place", "target": mk1_spot, "item": "bot_mk1",
 		"actor": "player" }).get("machine", ""))
-	_assert(mk1_again != "" and not s.gs.boxed.has("bot_mk1"),
-		"and set down again it is the machine it always was, with nothing remembered about it")
+	_assert(mk1_again != "" and (s.gs.boxed.get("bot_mk1", []) as Array).is_empty()
+			and String(s.world.actor(mk1_again)["extra"].get("config", "")) == BotBrain.CONFIG_ORDERS,
+		"and set down again it is a mark-1 waiting to be taught, its box emptied")
 
 	# --- the box rides the disk -----------------------------------------------
 	s.act({ "verb": "collect", "target": s.world.actor_pos(again), "actor": "player" })
@@ -2757,6 +2758,190 @@ func test_crate_remembers() -> void:
 			and _numbers_match(replayed["tuned"] as Array, lex["tuned"] as Array),
 		"with the dial she turned before she ever moved it still on the replayed robot")
 	live.done()
+
+
+# **A Mark I keeps the round she taught it, and a Mark II its job** (2026-10-13;
+# Q-98, P-17). Until this the crate kept only a robot with `weights`, so a Mark I
+# came back out with no squares and a Mark II back on idle. Everything here is a
+# robot picked up and put down again: what comes back, where it lives afterwards,
+# what it forgets, and that the save and the replay agree about all of it.
+func test_crate_keeps_a_taught_round() -> void:
+	print("\n--- The crate keeps a Mark I's round and a Mark II's job (2026-10-13) Tests ---")
+	var s := _bot_yard(9821, true)
+	s.gs.gold = 5000
+	s.world.earn(SimWorld.RUNG_MK1_EARNED)
+	s.world.earn(SimWorld.RUNG_MK2_EARNED)
+	s.gs.machines["sprinkler"] = 1
+	s.rebase()
+
+	# --- a Mark I in its stall, taught three squares and sent ------------------
+	var stall := Vector2i(6, 13)
+	s.act({ "verb": "buy_machine", "item": "stall", "actor": "player" })
+	var shed := s.act({ "verb": "place", "target": stall, "item": "stall", "actor": "player" })
+	_assert(shed.get("ok", false), "a stall goes down (%s)" % str(shed))
+	var bay: Vector2i = shed.get("slot", Vector2i(-1, -1))
+	s.act({ "verb": "buy_machine", "item": "bot_mk1", "actor": "player" })
+	var mk1 := String(s.act({ "verb": "place", "target": stall, "item": "bot_mk1",
+		"actor": "player" }).get("machine", ""))
+	var lesson: Array[Vector2i] = [
+		Vector2i(BOT_CROP_X0, BOT_CROP_ROW_Y), Vector2i(BOT_CROP_X0 + 2, BOT_CROP_ROW_Y),
+		Vector2i(BOT_CROP_X0 + 4, BOT_CROP_ROW_Y)]
+	for t in lesson:
+		s.act({ "verb": "teach", "target": t, "machine": mk1, "actor": "player" })
+	_assert(str(BotBrain.orders_of(s.world.actor(mk1)["extra"])) == str(lesson)
+			and int(s.world.actor(mk1)["extra"].get("home_x", -1)) == stall.x,
+		"a Mark I lives in the stall and knows three squares")
+	_assert(s.act({ "verb": "activate", "target": stall, "actor": "player" }).get("ok", false),
+		"she sends it out")
+	var guard := 0
+	while int(s.world.actor(mk1)["extra"].get("at_order", 0)) < 2 and guard < 400:
+		s.tick(SimClock.RATE)
+		guard += 1
+	var halfway: Dictionary = s.world.actor(mk1)["extra"].duplicate(true)
+	_assert(int(halfway["at_order"]) == 2 and bool(halfway["sent"])
+			and bool(s.world.get_tile(lesson[0].x, lesson[0].y).get("watered_today", false)),
+		"and it is two squares into its round when she catches it (%d)" % int(halfway["at_order"]))
+	_assert(not bool(s.world.get_tile(lesson[2].x, lesson[2].y).get("watered_today", false)),
+		"with its third square still dry")
+
+	# --- picked up halfway round ------------------------------------------------
+	var lifted := s.act({ "verb": "collect", "target": s.world.actor_pos(mk1), "actor": "player" })
+	_assert(lifted.get("ok", false) and String(lifted.get("collected", "")) == "bot_mk1"
+			and not s.world.has_actor(mk1),
+		"she picks it up mid-round")
+	var crate: Array = s.gs.boxed.get("bot_mk1", [])
+	_assert(crate.size() == 1, "and the crate keeps a box for it, as it does for a Mark III (%d)"
+		% crate.size())
+	var box: Dictionary = crate[0] if crate.size() == 1 else {}
+	_assert(str(BotBrain.orders_of(box)) == str(lesson) and _json_plain(box),
+		"the box holds the three squares she taught it, JSON-plain like every save field")
+	var forgot := true
+	for key in SimWorld.BOXED_FORGETS:
+		if box.has(key):
+			forgot = false
+	_assert(forgot and not box.has("home_x") and not box.has("path"),
+		"and none of what it was in the middle of: no route, no goal, no home")
+
+	# --- put down on open ground ----------------------------------------------
+	var open_ground := Vector2i(20, 14)
+	var down := s.act({ "verb": "place", "target": open_ground, "item": "bot_mk1",
+		"actor": "player" })
+	var mk1b := String(down.get("machine", ""))
+	_assert(mk1b != "" and String(down.get("config", "")) == BotBrain.CONFIG_ORDERS,
+		"she sets it down on the open yard (%s)" % str(down))
+	var back: Dictionary = s.world.actor(mk1b)["extra"]
+	_assert(str(BotBrain.orders_of(back)) == str(lesson),
+		"and it is the robot she taught, with all three squares (%s)" % str(BotBrain.orders_of(back)))
+	_assert(not back.has("home_x") and not back.has("home_y"),
+		"with no home: open ground is nowhere to live")
+	_assert(bool(back["sent"]) and int(back["at_order"]) == 2 and bool(back["ran_today"]),
+		"and still on today's round, at the square it had reached")
+	_assert((s.gs.boxed.get("bot_mk1", []) as Array).is_empty()
+			and int(s.gs.machines.get("bot_mk1", 0)) == 0,
+		"the box and the crate empty together")
+	guard = 0
+	while bool(s.world.actor(mk1b)["extra"].get("sent", false)) and guard < 400:
+		s.tick(SimClock.RATE)
+		guard += 1
+	_assert(bool(s.world.get_tile(lesson[2].x, lesson[2].y).get("watered_today", false)),
+		"it walks from where she put it to its third square and waters it")
+	_assert(s.world.actor_pos(mk1b) == lesson[2],
+		"and stops there, because a robot with no home has nowhere to walk back to (%s)"
+			% s.world.actor_pos(mk1b))
+	var twice := s.act({ "verb": "activate", "target": s.world.actor_pos(mk1b), "actor": "player" })
+	_assert(not twice.get("ok", false) and String(twice.get("reason", "")) == "already_sent",
+		"a pick-up does not buy a second round in a day (%s)" % str(twice))
+
+	# --- and back into the stall's second bay -----------------------------------
+	s.act({ "verb": "collect", "target": s.world.actor_pos(mk1b), "actor": "player" })
+	var mk1c := String(s.act({ "verb": "place", "target": bay, "item": "bot_mk1",
+		"actor": "player" }).get("machine", ""))
+	var housed: Dictionary = s.world.actor(mk1c)["extra"] if mk1c != "" else {}
+	_assert(mk1c != "" and int(housed.get("home_x", -1)) == bay.x
+			and int(housed.get("home_y", -1)) == bay.y,
+		"put down in a stall bay, that bay is its home (%s)" % str(bay))
+	_assert(str(BotBrain.orders_of(housed)) == str(lesson) and not bool(housed.get("sent", true)),
+		"still knowing its round, and finished with today's")
+
+	# --- a Mark II keeps its job ---------------------------------------------
+	s.act({ "verb": "buy_machine", "item": "bot_mk2", "actor": "player" })
+	var guard_spot := Vector2i(24, 6)
+	var mk2 := String(s.act({ "verb": "place", "target": guard_spot, "item": "bot_mk2",
+		"actor": "player" }).get("machine", ""))
+	s.act({ "verb": "configure", "target": guard_spot, "config": BotBrain.CONFIG_SHOO,
+		"actor": "player" })
+	s.tick(SimClock.RATE * 5)
+	var shoo_before: Dictionary = s.world.actor(mk2)["extra"].duplicate(true)
+	s.act({ "verb": "collect", "target": s.world.actor_pos(mk2), "actor": "player" })
+	var mk2_box: Array = s.gs.boxed.get("bot_mk2", [])
+	_assert(mk2_box.size() == 1 and String((mk2_box[0] as Dictionary).get("config", "")) == BotBrain.CONFIG_SHOO
+			and not (mk2_box[0] as Dictionary).has("target"),
+		"a Mark II on shoo goes into the crate with its job and without the bird it was after")
+	var new_patch := Vector2i(18, 5)
+	var set_down := s.act({ "verb": "place", "target": new_patch, "item": "bot_mk2",
+		"actor": "player" })
+	var mk2b := String(set_down.get("machine", ""))
+	var shoo_after: Dictionary = s.world.actor(mk2b)["extra"] if mk2b != "" else {}
+	_assert(String(set_down.get("config", "")) == BotBrain.CONFIG_SHOO
+			and String(shoo_after.get("config", "")) == BotBrain.CONFIG_SHOO,
+		"and comes out on shoo, not back on idle (%s)" % str(set_down))
+	_assert(int(shoo_after.get("home_x", -1)) == new_patch.x
+			and int(shoo_after.get("home_y", -1)) == new_patch.y,
+		"guarding a patch round the square she put it on (%d,%d)"
+			% [int(shoo_after.get("home_x", -1)), int(shoo_after.get("home_y", -1))])
+	_assert(is_equal_approx(float(shoo_after.get("radius", -1.0)), float(shoo_before["radius"]))
+			and String(shoo_after.get("quarry", "")) == String(shoo_before["quarry"]),
+		"with the same patch size and the same quarry")
+	s.act({ "verb": "configure", "target": new_patch, "config": BotBrain.CONFIG_FOLLOW,
+		"actor": "player" })
+	s.act({ "verb": "collect", "target": s.world.actor_pos(mk2b), "actor": "player" })
+	var mk2c := String(s.act({ "verb": "place", "target": guard_spot, "item": "bot_mk2",
+		"actor": "player" }).get("machine", ""))
+	_assert(mk2c != "" and String(s.world.actor(mk2c)["extra"].get("config", "")) == BotBrain.CONFIG_FOLLOW,
+		"one set to follow her comes back following her")
+
+	# --- a sprinkler has nothing to keep --------------------------------------
+	var drip := Vector2i(24, 14)
+	s.act({ "verb": "place", "target": drip, "item": "sprinkler", "actor": "player" })
+	s.act({ "verb": "collect", "target": drip, "actor": "player" })
+	_assert(int(s.gs.machines.get("sprinkler", 0)) == 1 and not s.gs.boxed.has("sprinkler"),
+		"a sprinkler goes back in the crate as a plain count, as it always has")
+
+	# --- the box rides the disk, and the session replays -----------------------
+	s.act({ "verb": "collect", "target": s.world.actor_pos(mk1c), "actor": "player" })
+	var with_box := SaveGame.capture_canonical(s.world, s.gs)
+	var snapshot = JSON.parse_string(JSON.stringify(SaveGame.capture(s.world, s.gs)))
+	var gs_back = load("res://systems/game_state.gd").new()
+	gs_back.reset()
+	var reloaded := SimWorld.new()
+	_assert(SaveGame.restore(snapshot, reloaded, gs_back)
+			and SaveGame.capture_canonical(reloaded, gs_back) == with_box,
+		"a farm with a taught Mark I in the crate saves and loads to the same farm")
+	var from_disk := String(reloaded.apply_action({ "verb": "place", "target": open_ground,
+		"item": "bot_mk1", "actor": "player" }, gs_back).get("machine", ""))
+	_assert(from_disk != "" and str(BotBrain.orders_of(reloaded.actor(from_disk)["extra"])) == str(lesson),
+		"and set down on the reloaded farm it still knows her three squares")
+	gs_back.free()
+	var end_save = JSON.parse_string(JSON.stringify(SaveGame.capture(s.world, s.gs)))
+	var report := SaveGame.replay_report(s.log, end_save)
+	_assert(bool(report.get("matched", false)),
+		"and the whole session, pick-ups and put-downs, replays to the same farm (%s)" % str(report))
+
+	# --- a box from an older build -------------------------------------------
+	# A box packed under a shorter BOXED_FORGETS may hold a home or a route. They
+	# are left behind on the way out, so the robot is not sent home to an old stall.
+	# Arranged by hand, so after the replay check rather than inside the session.
+	s.gs.machines["bot_mk1"] = 1
+	s.gs.boxed["bot_mk1"] = [{ "config": BotBrain.CONFIG_ORDERS, "orders": [3, 4],
+		"home_x": 30, "home_y": 1, "path": [3, 4], "step": 0, "model": "bot_mk1" }]
+	var old_spot := Vector2i(22, 14)
+	var mk1d := String(s.world.apply_action({ "verb": "place", "target": old_spot,
+		"item": "bot_mk1", "actor": "player" }, s.gs).get("machine", ""))
+	var oldx: Dictionary = s.world.actor(mk1d)["extra"] if mk1d != "" else {}
+	_assert(mk1d != "" and str(BotBrain.orders_of(oldx)) == str([Vector2i(3, 4)])
+			and not oldx.has("home_x") and (oldx.get("path", []) as Array).is_empty(),
+		"an older box keeps its round and drops a stale home and route (%s)" % str(oldx))
+	s.done()
 
 
 # --- The bench, bought and set down (v0.2.2 WI-2) -----------------------------

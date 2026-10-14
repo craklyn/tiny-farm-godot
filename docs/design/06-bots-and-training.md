@@ -173,7 +173,7 @@ mark buys is which settings the machine will answer to.
 | --- | --- | --- |
 | Show it where to work (n/8) | `teach` | enters teaching mode: the view rises to frame the whole farm (chapter 11, *Altitude*), every tap toggles that square in the machine's list at any distance and for free, and the squares it cannot be sent to dim |
 | Send it out (n tiles) | `activate` | it walks the list once, doing each square in the order she taught it, and stops |
-| Pick up | `collect` | back in the crate — and a Mark III's crate remembers what it learned (Q-98, 2026-09-10) |
+| Pick up | `collect` | back in the crate, still knowing the squares she taught it (Q-98; see "Moving a robot keeps what it knows" below) |
 
 **What it does to a square is the square's answer, not the machine's** (designer,
 2026-09-07: *"make the robot till if it's grass, and water if it's soil — basically,
@@ -292,6 +292,42 @@ replants. Teaching is deliberately *not* work — no energy, no tick of the day'
 clock, no walking — because a machine that cost more to instruct than to replace is not
 a delegation, it is a chore with extra steps.
 
+### Moving a robot keeps what it knows (Q-98, P-17; 2026-10-13)
+
+Picking a robot up and putting it down is moving it, never resetting it. Q-98 (2026-09-10)
+gave the Mark III that: its practice, dials and ledger go into the crate with it. Until
+2026-10-13 that rule reached only the Mark III, so the other two marks lost what she had
+set. A Mark I came back out of the crate with no squares, and a Mark II came back on
+"Wait here". Now every robot keeps its own settings:
+
+| Mark | Kept in the crate | Worked out again where she puts it down |
+| --- | --- | --- |
+| Mark I | the squares she taught it, in order; whether it is out on today's round and how far down the list it had got; whether it has already been sent today | its home: a stall bay if she puts it in one, none on open ground |
+| Mark II | its job (shoo, follow, circle or wait here) and that job's settings | the middle of its guarding patch: the square she puts it on |
+| Mark III | everything it has learned (Q-98) | nothing; it has no home |
+
+**What every robot forgets** is the errand it was halfway through: the square it was
+walking to and its route there, what it was about to do on arrival, and the bird it was
+chasing. The list is `SimWorld.BOXED_FORGETS`, a list of what is dropped rather than of
+what is kept, so a setting added next release is kept without anyone remembering to
+add it.
+
+**A Mark I picked up halfway through its round carries on** from the square it had
+reached, wherever she puts it, and then stops: on open ground it stops on its last
+square, in a stall it walks home to its bay. Because it remembers it has been sent
+today, a pick-up never buys a second round in a day. The alternative, dropping the
+rest of the round as a Mark III drops its job, would lose her the rest of a morning's
+watering for moving it.
+
+The crate keeps one box per robot, newest on top. Pick up two Mark Is and put two down,
+and each gets its own round back, the one picked up last coming out first. A robot she
+has just bought has no box and comes out as new.
+
+In code: `SimWorld._crate_machine` packs the box and `place` opens it, rebuilding the
+robot for its job from scratch and then laying its settings back over that. Tests:
+`test_crate_keeps_a_taught_round()` (the round, the job, a save and a replay) and
+integration Scenario AJ-2 (her "Pick up" on the panel and the tap that puts it down).
+
 ### Mark-2 — the three that decide
 
 One row per setting, the current one ticked, then "pick it up":
@@ -388,7 +424,8 @@ Clause by clause, with the reason each is in the floor rather than assumed:
 6. **Pick up works while it is running**, and returns it to the crate. She walks over to
    it first and lifts it from beside it, following it if it moves (2026-10-09,
    `design/03`, "She picks it up from beside it"); the panel opening from anywhere is
-   clause 4's business, the lifting is her hands'.
+   clause 4's business, the lifting is her hands'. Put down again, it is still on the
+   job she chose for it (2026-10-13; "Moving a robot keeps what it knows", below).
 7. **Save, load and replay hold in every config**, because a config is data on the actor
    and that is what makes it savable, replayable and comparable.
 8. **Two on the farm do not interfere** — the brain is per-actor, and a second machine

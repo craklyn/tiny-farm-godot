@@ -1659,9 +1659,28 @@ func close_room(anchor: Vector2i) -> void:
 # somebody else's by the time it is set down, and a `wake` from yesterday's clock
 # would have it stand still or think twice. A fresh `deploy` has already written
 # each of these to its resting value, so dropping the key is all that is needed.
+#
+# The route it was walking (`path`, `step`, `over_beds`; `Movement`) is the same
+# errand written down square by square, and goes with it. So does a Mark II's chase
+# (`target`, `ignore`, `ignore_until`): the bird it was after, and the one it had
+# given up on until a tick of a clock that was still running when it was lifted.
+#
+# **And where it lives is where she puts it** (`home_x`, `home_y`). A Mark I set
+# down in a stall bay has that bay as its home and one set down on open ground has
+# none; a Mark II's patch is centred on the square it is put down on. `deploy` works
+# both out from the square, so a home brought out of the box would be the old one: a
+# robot walking back every evening to a stall it no longer stands in, or guarding a
+# patch on the far side of the farm. A Mark I's round goes with it, though, and so
+# does how far along that round it was (`sent`, `at_order`): her squares and her
+# morning are hers, not an errand of the machine's, and a robot lifted halfway
+# through its round carries on from the square it had reached when she puts it
+# down. `ran_today` stays as well, so a pick-up never buys a second round in a day.
 const BOXED_FORGETS := [
 	"job", "job_x", "job_y", "job_target", "pending",
 	"state", "goal_x", "goal_y", "wake",
+	"path", "step", "over_beds",
+	"target", "ignore", "ignore_until",
+	"home_x", "home_y",
 ]
 
 
@@ -3516,10 +3535,9 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				# robot."
 				#
 				# So the box carries the machine rather than a tally of machines.
-				# Only the ones with something to carry — `weights` is the test,
-				# because a learner is the only machine whose past cannot be built
-				# again from its catalogue row, and it is the same test `learners()`
-				# asks.
+				# Only the ones with something to carry: a Mark III's practice, a
+				# Mark I's round, a Mark II's job (2026-10-13; `_crate_machine` says
+				# how that is decided). A sprinkler goes in as a plain count.
 				#
 				# Here rather than inside `despawn_actor`, because this is the
 				# *verb's* meaning rather than the registry's: a despawn is also
@@ -3841,6 +3859,21 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			var config := String(action.get("config", MachineDefs.default_config(item)))
 			if not config in MachineDefs.configs_of(item):
 				config = MachineDefs.default_config(item)
+			# The box, if the crate remembers one (the long note below says which
+			# box and why). Opened before the robot is built, because a Mark II's
+			# job is in it: one put away on shoo is deployed as a shoo bot, so it
+			# comes out with the shape of `extra` that job needs and then gets its
+			# own settings back over that, rather than a shoo bot's settings laid
+			# over an idle one.
+			var remembered: Array = gs.boxed.get(item, [])
+			var was: Dictionary = {}
+			if placer_charged and not remembered.is_empty():
+				was = remembered.pop_back()
+				gs.boxed[item] = remembered
+				var boxed_config := String(was.get("config", config))
+				if boxed_config in MachineDefs.configs_of(item) \
+						or boxed_config == MachineDefs.default_config(item):
+					config = boxed_config
 			# The bot has one door into a world and this is it: `BotBrain.deploy`
 			# is what builds a valid `extra` for a config, and routing around it
 			# would be the second place that knowledge lives. Every other machine
@@ -3876,13 +3909,16 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			# Under the same condition that spends the crate, because the crate and
 			# its memory move together: an uncharged placer that opened the box
 			# would unbox a trained robot without one being taken out of it.
-			var remembered: Array = gs.boxed.get(item, [])
-			if placer_charged and not remembered.is_empty():
-				var was: Dictionary = remembered.pop_back()
+			#
+			# Its home is not in the box (`BOXED_FORGETS`): `deploy` has just
+			# worked it out from the square she put it on, a stall bay or none. The
+			# list is asked again on the way out because a box packed by an older
+			# build, with a shorter list, may still hold a route or a home.
+			if not was.is_empty():
 				var now: Dictionary = actors[machine_id]["extra"]
 				for key in was:
-					now[key] = was[key]
-				gs.boxed[item] = remembered
+					if not key in BOXED_FORGETS:
+						now[key] = was[key]
 			if placer_charged:
 				gs.machines[item] = int(gs.machines.get(item, 0)) - 1
 			return { "ok": true, "machine": machine_id, "config": config }
@@ -4556,13 +4592,22 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 # **A machine into the crate, with everything it had learned** (Q-98). The body of
 # `collect`'s machine branch, shared with taking a building up with a machine
 # inside it (S-22) so both keep exactly the same things. Returns its row.
+#
+# **Every machine with something of its own to keep is boxed** (2026-10-13). This
+# used to ask for `weights`, so only a Mark III was remembered: a Mark I came out of
+# the crate without the round she had taught it, and a Mark II back on idle with
+# its job forgotten, which is the factory reset Q-98 ruled out. Now the test is
+# what is left once the errand (`BOXED_FORGETS`) and the row it was bought from
+# (`model`, which `place` writes again) are taken away. Every robot has its job in
+# `config`, so every robot is boxed; a sprinkler or a scarecrow has nothing left
+# and goes in as a plain count, the way it always has.
 func _crate_machine(machine_id: String, gs) -> String:
 	var machine_key := machine_key_of(machine_id)
 	var picked: Dictionary = actor(machine_id).get("extra", {})
-	if picked.has("weights"):
-		var kept: Dictionary = picked.duplicate(true)
-		for forgotten in BOXED_FORGETS:
-			kept.erase(forgotten)
+	var kept: Dictionary = picked.duplicate(true)
+	for forgotten in BOXED_FORGETS:
+		kept.erase(forgotten)
+	if kept.size() > (1 if kept.has("model") else 0):
 		var crate: Array = gs.boxed.get(machine_key, [])
 		crate.append(kept)
 		gs.boxed[machine_key] = crate

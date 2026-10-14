@@ -162,6 +162,7 @@ func _run_scenarios() -> void:
 	await _scenario_ai_the_house_has_a_door()
 	await _scenario_room_wall_tap_answers()
 	await _scenario_aj_the_robot_lives_in_a_stall()
+	await _scenario_aj2_a_taught_robot_keeps_its_round()
 	await _scenario_ax_she_can_get_back_out_of_the_coop()
 	await _scenario_ak_she_puts_up_a_fence()
 	await _scenario_al_a_ripe_crop_carries()
@@ -5285,6 +5286,10 @@ func _scenario_aj_the_robot_lives_in_a_stall() -> void:
 	var menus = main_scene.menus
 	GameState.gold = 1000
 	GameState.machines = {}
+	# An empty crate has no robots' memories in it either: a Mark I picked up by an
+	# earlier scenario is boxed with its round (2026-10-13), and the robot bought
+	# below would come out of that box knowing someone else's squares.
+	GameState.boxed = {}
 	GameState.set_energy(GameState.max_energy)
 	main_scene.end_teaching()
 
@@ -5503,6 +5508,131 @@ func _scenario_aj_the_robot_lives_in_a_stall() -> void:
 	farm.sim.set_object(stall.x, stall.y, "")
 	farm.sim.set_object(bay.x, bay.y, "")
 	GameState.machines = {}
+	GameState.selected_seed_type = "wheat"
+	GameState.set_energy(GameState.max_energy)
+	_restore_session_paths(real_paths)
+
+
+# --- AJ-2: a taught Mark I is picked up and put down with its round (2026-10-13) -
+#
+# Q-98 and P-17: picking a robot up is moving it, never resetting it. The unit suite
+# (`test_crate_keeps_a_taught_round`) proves the crate keeps the round; this is the
+# same claim by the player's route: "Pick up" on the robot's own panel, then a tap
+# on the square she wants it on, once on open ground and once in a stall bay.
+func _scenario_aj2_a_taught_robot_keeps_its_round() -> void:
+	print("\n--- Scenario AJ-2: a taught Mark I keeps its round when she moves it ---")
+	var real_paths := [GameState.save_path, GameState.replay_path, GameState.trace_path]
+	GameState.save_path = "user://move_mk1_autosave.json"
+	GameState.replay_path = "user://move_mk1_replay.json"
+	GameState.trace_path = "user://move_mk1_trace.jsonl"
+	var menus = main_scene.menus
+	main_scene.end_teaching()
+	menus.close_menu()
+	GameState.machines = { "stall": 1, "bot_mk1": 1 }
+	GameState.boxed = {}
+	GameState.set_energy(GameState.max_energy)
+
+	var stall := Vector2i(15, 9)
+	var bay := stall + Vector2i(1, 0)
+	var open_ground := Vector2i(12, 10)
+	for tx in range(11, 20):
+		_stage_tile(tx, 9, "cleared")
+		_stage_tile(tx, 10, "cleared")
+		_stage_tile(tx, 11, "seeded", "wheat")
+	await get_tree().process_frame
+
+	# --- a Mark I in a stall, taught two squares (by the verbs; AJ taps them) ---
+	var blocker := _clear_ground_for_fixture(stall, "stall")
+	_assert(blocker == "", "the stall's ground is free (%s)" % blocker)
+	_assert(farm.apply_action({ "verb": "place", "target": stall, "item": "stall",
+		"actor": "player" }, GameState).get("ok", false), "a stall stands on the yard")
+	_clear_ground_for_fixture(stall, "bot_mk1")
+	_assert(farm.sim.placeable_at(stall, "bot_mk1"), "and its first bay is free")
+	var mk1 := String(farm.apply_action({ "verb": "place", "target": stall, "item": "bot_mk1",
+		"actor": "player" }, GameState).get("machine", ""))
+	var lesson: Array[Vector2i] = [Vector2i(17, 11), Vector2i(18, 11)]
+	for t in lesson:
+		farm.apply_action({ "verb": "teach", "target": t, "machine": mk1, "actor": "player" },
+			GameState)
+	_assert(mk1 != "" and str(BotBrain.orders_of(farm.sim.actor(mk1)["extra"])) == str(lesson),
+		"a Mark I lives in the stall and knows two squares")
+	menus.close_menu()
+
+	# --- "Pick up" on its panel --------------------------------------------------
+	_stand_her_at(stall + Vector2i(0, 1))
+	await get_tree().process_frame
+	menus.open_machine_menu_for(mk1)
+	await get_tree().process_frame
+	var row := -1
+	for i in menus.machine_options.size():
+		if String(menus.machine_options[i].get("kind", "")) == "collect":
+			row = i
+	_assert(row >= 0, "its panel offers 'Pick up'")
+	menus.selected_option = row
+	menus._select_current_option()
+	var lifted := await _wait_until(func(): return not farm.sim.has_actor(mk1), 300)
+	_assert(lifted and int(GameState.machines.get("bot_mk1", 0)) == 1,
+		"standing beside it, 'Pick up' puts it in the crate")
+	_assert((GameState.boxed.get("bot_mk1", []) as Array).size() == 1,
+		"with a box beside it holding what it knows")
+
+	# --- a tap on open ground puts it down -------------------------------------
+	GameState.selected_seed_type = "bot_mk1"
+	_assert(GameState.holding_machine(), "she is holding the robot")
+	blocker = _clear_ground_for_fixture(open_ground, "bot_mk1")
+	_assert(blocker == "", "the open square is free (%s)" % blocker)
+	_stand_her_at(open_ground + Vector2i(0, -1))
+	await get_tree().process_frame
+	_hold_sim_clock()
+	InputManager.click_tile = open_ground
+	InputManager.has_click = true
+	var down := await _wait_until(func(): return farm.sim.machine_at(open_ground) != "", 300)
+	_release_sim_clock()
+	_assert(down, "a tap on the open yard sets it down there")
+	var moved: String = farm.sim.machine_at(open_ground)
+	var mx: Dictionary = farm.sim.actor(moved)["extra"] if moved != "" else {}
+	_assert(str(BotBrain.orders_of(mx)) == str(lesson),
+		"and it still knows the two squares she taught it (%s)" % str(BotBrain.orders_of(mx)))
+	_assert(not mx.has("home_x"), "with no home, since open ground is nowhere to live")
+	_assert((GameState.boxed.get("bot_mk1", []) as Array).is_empty(), "the box is empty again")
+	await get_tree().process_frame
+	menus.close_menu()
+
+	# --- and back into the stall's second bay, by the same two taps -------------
+	_stand_her_at(open_ground + Vector2i(0, -1))
+	await get_tree().process_frame
+	menus.open_machine_menu_for(moved)
+	await get_tree().process_frame
+	for i in menus.machine_options.size():
+		if String(menus.machine_options[i].get("kind", "")) == "collect":
+			menus.selected_option = i
+	menus._select_current_option()
+	await _wait_until(func(): return not farm.sim.has_actor(moved), 300)
+	GameState.selected_seed_type = "bot_mk1"
+	_clear_ground_for_fixture(bay, "bot_mk1")
+	_assert(farm.sim.placeable_at(bay, "bot_mk1"), "the second bay is free")
+	_stand_her_at(bay + Vector2i(0, 1))
+	await get_tree().process_frame
+	_hold_sim_clock()
+	InputManager.click_tile = bay
+	InputManager.has_click = true
+	var parked := await _wait_until(func(): return farm.sim.machine_at(bay) != "", 300)
+	_release_sim_clock()
+	_assert(parked, "a tap on the stall's second bay parks it there")
+	var housed: String = farm.sim.machine_at(bay)
+	var hx: Dictionary = farm.sim.actor(housed)["extra"] if housed != "" else {}
+	_assert(int(hx.get("home_x", -1)) == bay.x and int(hx.get("home_y", -1)) == bay.y
+			and str(BotBrain.orders_of(hx)) == str(lesson),
+		"and the bay is its home now, with its round still in it")
+	await get_tree().process_frame
+	menus.close_menu()
+
+	# Tidy up for whatever runs next.
+	farm.sim.apply_action({ "verb": "collect", "target": bay, "actor": "player" }, GameState)
+	farm.sim.set_object(stall.x, stall.y, "")
+	farm.sim.set_object(bay.x, bay.y, "")
+	GameState.machines = {}
+	GameState.boxed = {}
 	GameState.selected_seed_type = "wheat"
 	GameState.set_energy(GameState.max_energy)
 	_restore_session_paths(real_paths)
