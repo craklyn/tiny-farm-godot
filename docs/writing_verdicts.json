@@ -1391,6 +1391,9 @@
    "verdict": "decode",
    "why": "The reader has to know that this means separate test runs the robot has not practiced on."
   },
+  "2316d3e0b757e93e5e16": {
+   "verdict": "ok"
+  },
   "233ca98376d75d9bb4fe": {
    "verdict": "ok"
   },
@@ -7005,6 +7008,9 @@
    "quote": "Held repairs",
    "verdict": "second-look",
    "why": "“Held” can mean either paused or physically retained, so the title makes the reader stop to determine which meaning applies."
+  },
+  "b77f96c978f4e51c60a5": {
+   "verdict": "ok"
   },
   "b798094b925671e1070f": {
    "verdict": "ok"

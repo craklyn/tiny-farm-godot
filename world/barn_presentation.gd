@@ -344,3 +344,37 @@ static func draw_sale_feedback(canvas: CanvasItem, state: Dictionary, progress: 
 		var end := start + Vector2(12 + i * 4, -20 - i * 3)
 		var at := start.lerp(end, coin_t)
 		canvas.draw_circle(at, 1.5, Color(CHEESE.r, CHEESE.g, CHEESE.b, 1.0 - coin_t * 0.25))
+
+
+## A cheese lying on the grass (2026-10-13: cheese tumbles out of a barn picked up): a
+## wheel of the barn's own cheese colours, drawn into a 16x16 cell like the egg's, with
+## a wedge cut out so it reads as cheese rather than a coin. Made once, in code, from
+## the colours above: no sprite is shipped for it.
+static var _cheese_wheel: ImageTexture = null
+
+
+static func cheese_wheel_texture() -> ImageTexture:
+	if _cheese_wheel != null:
+		return _cheese_wheel
+	var img := Image.create(16, 16, false, Image.FORMAT_RGBA8)
+	var rind := Color("8a6420")
+	for y in 16:
+		for x in 16:
+			var d := Vector2(x + 0.5 - 8.0, (y + 0.5 - 9.0) * 1.35)
+			var r := d.length()
+			if r > 7.0:
+				continue
+			# The wedge: a slice missing from the front right.
+			if d.x > 0.0 and d.y > 0.0 and d.y < d.x * 0.9:
+				continue
+			var c := CHEESE
+			if r > 6.0:
+				c = rind
+			elif y >= 10:
+				c = CHEESE_SHADE
+			elif y <= 5 and r < 5.0:
+				c = CURD
+			img.set_pixel(x, y, c)
+	_cheese_wheel = ImageTexture.create_from_image(img)
+	return _cheese_wheel
+

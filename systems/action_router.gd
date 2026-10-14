@@ -48,6 +48,8 @@ const SPECIAL_OBJECTS := {
 	"seed_box":     "open_shop",
 	"shipping_bin": "open_bin",
 	"egg":          "collect",
+	# A cheese tumbled out of a barn she picked up (2026-10-13): picked up as an egg is.
+	"cheese":       "collect",
 	"scarecrow":    "collect",
 	# T-30 (Q-48). Resolved here, in the object table, which settles the ordering
 	# question it raises: acorns are dropped on **cleared** ground, so the same tap

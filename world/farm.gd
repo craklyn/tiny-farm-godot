@@ -571,6 +571,9 @@ func _load_textures() -> void:
 	object_regions["scarecrow"] = [icons_texture, Rect2(2 * 16, 0, 16, 16)]
 	object_regions["acorn"] = [load("res://assets/sprites/generated/acorn.png"), Rect2(0, 0, 16, 16)]
 	object_regions["egg"] = [egg_texture, Rect2(0, 0, 16, 16)]
+	# A cheese tumbled out of a barn she picked up (design/17), drawn in code from the
+	# barn's own cheese colours.
+	object_regions["cheese"] = [BarnPresentation.cheese_wheel_texture(), Rect2(0, 0, 16, 16)]
 	# T-9: a tool lying at its gate is drawn with the icon the HUD already uses
 	# for it, so what she picks up and what she then holds are the same picture.
 	# No new art needed for either.
@@ -745,9 +748,57 @@ func apply_action(action: Dictionary, gs = null) -> Dictionary:
 	var pre_wet := _wet_snapshot() if day_turn else {}
 	var result := sim.apply_action(action, gs)
 	_record(action, result, sim.clock.tick)
+	_start_tumbles(result)
 	if day_turn and result.get("ok", false):
 		_soak_new_wetness(pre_wet)
 	return result
+
+
+# **Eggs and cheese tumbling out of a building picked up** (Daniel, 2026-10-13: "they
+# tumble to the ground to be picked up"). Presentation only: the sim has already put
+# each one on its square (`SimWorld._tumble_out`); this draws it hopping there from
+# the middle of where the building stood, one after another, over `TUMBLE_MS`. Keyed
+# by square, and dropped when done.
+const TUMBLE_MS := 450
+const TUMBLE_STAGGER_MS := 70
+const TUMBLE_HOP_PX := 10.0
+var _tumbles: Dictionary = {}   # Vector2i square -> { from: Vector2 px offset, start: msec }
+
+
+func _start_tumbles(result: Dictionary) -> void:
+	if not bool(result.get("ok", false)) or not result.has("contents") or not result.has("anchor"):
+		return
+	var item := String(result.get("collected", ""))
+	var cells := MachineDefs.footprint_cells(item, Vector2i(result["anchor"]))
+	if cells.is_empty():
+		return
+	var middle := Vector2.ZERO
+	for c in cells:
+		middle += Vector2(c)
+	middle /= float(cells.size())
+	var now := Time.get_ticks_msec()
+	var n := 0
+	for entry in result["contents"]:
+		if not entry.has("to"):
+			continue
+		var to := Vector2i(entry["to"])
+		_tumbles[to] = { "from": (middle - Vector2(to)) * TILE_SIZE, "start": now + n * TUMBLE_STAGGER_MS }
+		n += 1
+
+
+## Where a tumbling egg or cheese is drawn relative to its square, in pixels; zero once
+## it has landed (and for every square that has nothing tumbling onto it).
+func tumble_offset(square: Vector2i) -> Vector2:
+	if not _tumbles.has(square):
+		return Vector2.ZERO
+	var t: Dictionary = _tumbles[square]
+	var k := float(Time.get_ticks_msec() - int(t["start"])) / float(TUMBLE_MS)
+	if k >= 1.0:
+		_tumbles.erase(square)
+		return Vector2.ZERO
+	k = clampf(k, 0.0, 1.0)
+	var from: Vector2 = t["from"]
+	return from * (1.0 - k) + Vector2(0.0, -TUMBLE_HOP_PX * 4.0 * k * (1.0 - k))
 
 
 # The player's tile crossings, which are the one thing about her no rule can
@@ -2017,7 +2068,7 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 							house_tex, house_rect, house_reg)
 					})
 				continue
-			if obj == "egg" or obj == "acorn":
+			if obj == "egg" or obj == "acorn" or obj == "cheese":
 				# Drawn at half a tile and centred: at full tile size it read as
 				# boulder-sized next to the chicken that laid it. The tap target is
 				# unaffected — taps resolve by tile coordinate, not by sprite bounds,
@@ -2026,6 +2077,9 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 					px + (TILE_SIZE - EGG_SIZE) / 2.0,
 					py + (TILE_SIZE - EGG_SIZE) / 2.0,
 					EGG_SIZE, EGG_SIZE)
+				# An egg or cheese that has just tumbled out of a building picked up
+				# is drawn on its way to this square (`_tumbles`).
+				egg_rect.position += tumble_offset(Vector2i(tx, ty))
 				var small_data: Array = object_regions.get(obj, [egg_texture, Rect2(0, 0, 16, 16)])
 				var small_tex: Texture2D = small_data[0]
 				var small_reg: Rect2 = small_data[1]
