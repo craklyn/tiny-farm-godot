@@ -570,9 +570,8 @@ chose the model below over built-in fittings (b) and decoration only (c).
   the memory a robot's practice uses (Q-98), with their timers paused. When the barn is put
   down again they come back and the line carries on.
 - **The coop, the Spiral Tower and the barn read the same way:** a tap on the building opens
-  its panel with Go inside and Pick up, and Pick up always works. The robot stall and the
-  workbench are the gap. They have no room, so they have no panel, and a tap on either
-  cannot pick it up at all (`collect` answers "nothing to collect").
+  its panel with Go inside and Pick up, and Pick up always works. Since 2026-10-13 the
+  robot stall and the workbench do too, through the same panel (the last point below).
 - **Nothing in the save or replay format changed.** A fitting is an object string on the
   grid, and fittings in the crate use the crate's existing counts. Old farms load unchanged,
   and the rescue for nested buildings still returns every one it finds.

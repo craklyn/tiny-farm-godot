@@ -401,6 +401,9 @@
   "0a8dd8cd42692675bddb": {
    "verdict": "ok"
   },
+  "0a9fbbee6b53aeddeb10": {
+   "verdict": "ok"
+  },
   "0aa1384dfce1708d70cb": {
    "verdict": "ok"
   },
@@ -1603,6 +1606,12 @@
    "verdict": "second-look",
    "why": "The reader may not know whether this means no software changes or merely no compilation."
   },
+  "28a73269cc6dd2be4d60": {
+   "instead": "The building-pickup design — Design 15 — no longer lists the stall and workbench as buildings that cannot be picked up",
+   "quote": "Design 15",
+   "verdict": "decode",
+   "why": "The sentence uses an unexplained design name, so a stranger does not know what it refers to."
+  },
   "28cdb7ccd7fdb6956450": {
    "instead": "Use the Work page's Accept and Drop buttons to decide which Animation Lab items to keep or remove",
    "quote": "keep and drop verdicts",
@@ -2076,6 +2085,12 @@
   },
   "34ace10b1957325793f3": {
    "verdict": "ok"
+  },
+  "34cd5c2e65b16428fd29": {
+   "instead": "The interiors design now says the robot stall and workbench can be picked up.",
+   "quote": "no longer says the robot stall and workbench cannot be picked up",
+   "verdict": "second-look",
+   "why": "The two negatives make the reader reread to work out that the design now allows them to be picked up."
   },
   "34d7232f349f52b13c73": {
    "verdict": "ok"
