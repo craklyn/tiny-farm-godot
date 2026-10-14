@@ -56,8 +56,13 @@ wiggling happily. There is one exception: **she never stops in a doorway, on a d
 a one-square gap.** If she is in one, she finishes squeezing through first and stops on the
 first square past it.
 
-- If she was on her way to a stall, she gives the stall back as she stops, so no cow waits for
-  ever on a sheep who never arrives.
+- She never stops on a crop bed either: no animal stands on one (2026-10-11). A sheep whose
+  coat goes extreme while she is crossing a bed walks off it first, and a strip of grass one
+  square wide between two beds counts as a gap.
+- If she was on her way to a stall, she gives the stall back before anything else, so no cow
+  waits for ever on a sheep who never arrives.
+- If she is boxed into a one-square pocket with nowhere she may stop within reach, she tries
+  five times, a second apart, and then stops where she is.
 - If she was resting in a stall, she stays in it, and the stall is hers for good. Daniel's brief
   calls that "fine and funny".
 
@@ -140,6 +145,7 @@ Nothing new is shipped for it (`entities/sheep_art.gd`).
 | Her own pace | 1.25 squares a second (the cow's) | `SpeciesDefs` sheep row |
 | Chance she goes in to rest, each time she picks a grazing spot | 20% | `SheepBrain.REST_CHANCE_PERCENT` |
 | How long she rests in a stall | 20 to 40 seconds | `SheepBrain.REST_SECONDS` |
+| How far a stuck sheep looks for somewhere to stop, and how often she tries | 4 squares, 5 tries | `SheepBrain.SETTLE_SEARCH`, `SQUEEZE_TRIES` |
 
 ## What is left for later
 

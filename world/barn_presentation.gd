@@ -95,14 +95,15 @@ static func drawn_state(world: SimWorld, barn_id: String, tick: int) -> Dictiona
 		line[station] = null if batch == null else {
 			"batch_id": int(batch.get("batch_id", -1)), "progress": progress(batch, tick) }
 
-	# The cows this barn is drawing: whoever holds a stall here, is on her way
-	# out of it, or is standing in the room. Sorted for a stable comparison.
+	# The animals this barn is drawing, cows and sheep (design/18): whoever holds a
+	# stall here, is on her way out of it, or is standing in the room. Sorted for a
+	# stable comparison.
 	var cows := {}
 	var ids: Array = world.actors.keys()
 	ids.sort()
 	for raw in ids:
 		var cow_id := String(raw)
-		if world.species_of(cow_id) != SpeciesDefs.COW:
+		if not world.is_barn_animal(cow_id):
 			continue
 		var extra: Dictionary = world.actor(cow_id).get("extra", {})
 		var mine := String(extra.get("barn_id", "")) == barn_id \

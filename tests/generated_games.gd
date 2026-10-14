@@ -571,14 +571,17 @@ static func _place_something(g: Game) -> void:
 			return
 
 
-const WISHLIST := ["stall", "bot_mk1", "coop", "industrial_barn", "sheep", "bot_mk3", "workbench",
-	"sprinkler", "nest_box"]
+const WISHLIST := ["stall", "bot_mk1", "coop", "industrial_barn", "bot_mk3", "workbench",
+	"sprinkler", "nest_box", "sheep"]
 
 
 # Whether she has one of these standing on the farm or in her hands.
 static func _owns(g: Game, key: String) -> bool:
+	# A barn full of cows has no place for one, which counts as having her: the
+	# guided buy moves on rather than asking again for a sheep it cannot have.
 	if key == "sheep":
-		return g.world.sheep_count() > 0
+		return g.world.sheep_count() > 0 or g.world.barns.is_empty() \
+			or g.world.barn_animal_count() >= g.world.herd_limit()
 	if g.gs.held_count(key) > 0:
 		return true
 	if not _robots_by(g, key).is_empty():

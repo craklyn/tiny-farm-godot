@@ -37,8 +37,13 @@ const REST_SECONDS := [20.0, 40.0]
 # this only notices a coat that a test or the Zoo set back.
 const CONTENT_SECONDS := 60.0
 # How far, in squares, an extreme-coat sheep stranded in a gap looks for a square
-# to settle on. Every square she might be stranded on has one within two.
+# to settle on, and how many routes she searches each time she looks (a route to a
+# square she cannot reach searches everything she can before it fails, as the cow's
+# `GRAZE_ROUTES` says). A sheep who finds nowhere `SQUEEZE_TRIES` times running —
+# a one-square pocket fenced all round — stops where she is.
 const SETTLE_SEARCH := 4
+const SQUEEZE_ROUTES := 2
+const SQUEEZE_TRIES := 5
 
 
 func step(world: SimWorld, actor_id: String, tick: int, gs = null) -> Dictionary:
@@ -52,17 +57,17 @@ func step(world: SimWorld, actor_id: String, tick: int, gs = null) -> Dictionary
 		extra["wake"] = tick + ticks(CONTENT_SECONDS)
 		return {}
 	var here := world.actor_pos(actor_id)
-	if Wool.may_settle(world, actor_id, here):
+	if Wool.may_settle(world, actor_id, here) or int(extra.get("squeeze_tries", 0)) >= SQUEEZE_TRIES:
 		return _settle(world, actor_id, extra, tick, here)
+	# Not to a stall now: a stall she holds and is not standing in goes back first,
+	# so no cow waits on her while she squeezes out.
+	if String(extra.get("barn_id", "")) != "" and not Wool.in_own_stall(world, actor_id, here):
+		return _stall_action(actor_id, "leave_milk_stall", String(extra.get("barn_id", "")),
+			int(extra.get("stall_index", -1)))
 	# Still squeezing through. Whatever she was doing carries her on, at a quarter
-	# of her pace; if she was doing nothing, she makes for the nearest square she
-	# may settle on.
-	if state == "idle":
-		_squeeze_out(world, actor_id, extra, tick, here)
-		return {}
-	if state in ["going_to_stall", "at_interior_door"]:
-		# Not to a stall now: out of the gap and no further. Her reservation goes
-		# back when she settles.
+	# of her pace — through a door she is crossing, along a route she is walking; if
+	# she was doing nothing, she makes for the nearest square she may settle on.
+	if state in ["idle", "going_to_stall", "at_interior_door"]:
 		_squeeze_out(world, actor_id, extra, tick, here)
 		return {}
 	return super.step(world, actor_id, tick, gs)
@@ -114,29 +119,36 @@ func _settle(world: SimWorld, actor_id: String, extra: Dictionary, tick: int, he
 	extra.erase("route_stage")
 	extra.erase("rest_until")
 	extra.erase("leaving_barn_id")
+	extra.erase("squeeze_tries")
 	extra["state"] = "content"
 	extra["wake"] = tick + ticks(CONTENT_SECONDS)
 	return {}
 
 
 # Walk to the nearest square she may settle on. Rings out from where she stands,
-# nearest first, as far as `SETTLE_SEARCH`; the first with a route is hers.
+# nearest first, as far as `SETTLE_SEARCH`; the first with a route is hers. Her
+# route keeps off the beds, as every walk of hers does — and a sheep whose coat
+# went extreme while she stood on one walks off it this way too.
 func _squeeze_out(world: SimWorld, actor_id: String, extra: Dictionary, tick: int, here: Vector2i) -> void:
+	var routes := 0
 	for d in range(1, SETTLE_SEARCH + 1):
 		for dx in range(-d, d + 1):
 			var dy := d - absi(dx)
 			for cell in ([here + Vector2i(dx, -dy), here + Vector2i(dx, dy)] if dy != 0 else [here + Vector2i(dx, 0)]):
-				if world.space_of(cell) != world.space_of(here) or not world.is_walkable(cell.x, cell.y):
+				if routes >= SQUEEZE_ROUTES:
+					break
+				if world.space_of(cell) != world.space_of(here) or not Wool.may_settle(world, actor_id, cell):
 					continue
-				if not Wool.may_settle(world, actor_id, cell):
-					continue
-				if Movement.plan(world, actor_id, cell, true):
+				if Movement.plan(world, actor_id, cell):
 					extra["route_stage"] = "squeeze"; extra["state"] = "moving"
 					extra["wake"] = tick + Movement.ticks_per_tile(world.species_of(actor_id))
 					return
-	# Nowhere: she waits where she is and looks again in a second.
+				routes += 1
+	# Nowhere: she waits where she is and looks again in a second, and after
+	# `SQUEEZE_TRIES` of those she stops where she is.
 	Movement.clear_route(world, actor_id)
 	extra["state"] = "idle"
+	extra["squeeze_tries"] = int(extra.get("squeeze_tries", 0)) + 1
 	extra["wake"] = tick + SimClock.RATE
 
 

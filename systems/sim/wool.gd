@@ -72,13 +72,15 @@ static func is_tight(world: SimWorld, cell: Vector2i, mode: String) -> bool:
 	return (not w and not e) or (not n and not s)
 
 
-# Where an extreme-coat sheep may stop for good: not a tight square — except her
-# own stall, which she may keep for ever (a sheep that freezes in a stall keeps it,
-# and Daniel's brief says that is fine and funny).
+# Where an extreme-coat sheep may stop for good: ground her own walk may cross (never
+# a crop bed: no animal stands on one, 2026-10-11) that is not a tight square —
+# except her own stall, which she may keep for ever (a sheep that freezes in a stall
+# keeps it, and Daniel's brief says that is fine and funny).
 static func may_settle(world: SimWorld, actor_id: String, cell: Vector2i) -> bool:
 	if in_own_stall(world, actor_id, cell):
 		return true
-	return not is_tight(world, cell, Movement.route_mode_of(world.species_of(actor_id)))
+	var mode := Movement.route_mode_of(world.species_of(actor_id))
+	return Movement.passable(world, mode, cell) and not is_tight(world, cell, mode)
 
 
 static func in_own_stall(world: SimWorld, actor_id: String, cell: Vector2i) -> bool:

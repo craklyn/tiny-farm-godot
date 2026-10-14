@@ -1223,7 +1223,7 @@ static func _restore_actors(raw: Dictionary) -> Dictionary:
 					restored_extra[key] = _whole_ints(restored_extra[key])
 		# ...and a sheep's coat, stall and the step counts her pace is drawn from.
 		elif species == SpeciesDefs.SHEEP:
-			for key in ["coat", "stall_index", "clear_steps", "step_ticks", "rest_until"]:
+			for key in ["coat", "stall_index", "clear_steps", "step_ticks", "rest_until", "squeeze_tries"]:
 				if restored_extra.has(key):
 					restored_extra[key] = _whole_ints(restored_extra[key])
 		out[String(id)] = {

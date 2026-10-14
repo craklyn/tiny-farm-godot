@@ -21,6 +21,10 @@ func test_sheep() -> void:
 	test_sheep_save_round_trip()
 	test_sheep_save_v7_migration()
 	test_sheep_sheet()
+	test_sheep_save_and_play_on()
+	test_sheep_frozen_on_the_barn_floor()
+	test_sheep_never_stop_on_a_bed()
+	test_sheep_boxed_in_stop_where_they_are()
 
 
 func test_sheep_purchase() -> void:
@@ -417,3 +421,114 @@ func test_sheep_sheet() -> void:
 	_assert(SheepArt.row_of(last_look, Wool.EXTREME) == last_look * 5 + 4
 		and SheepArt.cell_rect(Wool.FULL, 1, last_look) == Rect2(cell.x, (last_look * 5 + 2) * cell.y, cell.x, cell.y),
 		"a look's coats are five rows down the sheet, one look under another")
+
+
+# A save taken with one sheep part-way along her speed-up after the barn door and another
+# resting in a stall, loaded, and played on beside the farm that kept going: the two end
+# on the same sheep and the same barn.
+func test_sheep_save_and_play_on() -> void:
+	GameState.reset()
+	SimRng.reseed(1815)
+	var world := _open_barn_world()
+	for raw in world.actors.keys():
+		if String(raw) != SimWorld.ACTOR_PLAYER:
+			world.despawn_actor(String(raw))
+	var doorstep := world.room_exit_for(world.rooms["barn_1"])
+	world.spawn_actor("sheep_1", SpeciesDefs.SHEEP, doorstep + Vector2i(0, 4), { "coat": Wool.EXTRA_FULL })
+	world.spawn_actor("sheep_2", SpeciesDefs.SHEEP, Vector2i(14, 15), { "coat": Wool.FULL })
+	world.apply_action({ "actor": "sheep_1", "verb": "reserve_milk_stall", "barn_id": "barn_1", "stall_index": 0 }, GameState)
+	var cell: Array = world.barns["barn_1"].stalls[1].cell
+	world.set_actor_pos("sheep_2", Vector2i(int(cell[0]), int(cell[1])))
+	world.apply_action({ "actor": "sheep_2", "verb": "reserve_milk_stall", "barn_id": "barn_1", "stall_index": 1 }, GameState)
+	world.apply_action({ "actor": "sheep_2", "verb": "enter_milk_stall", "barn_id": "barn_1", "stall_index": 1 }, GameState)
+	world.actor("sheep_2").extra["rest_until"] = world.clock.tick + 400
+	world.schedule_all_brains()
+	var mid_ramp := false
+	for i in 3000:
+		world.advance_ticks(1, GameState)
+		var e: Dictionary = world.actor("sheep_1").extra
+		if world.room_of_cell(world.actor_pos("sheep_1")) == "barn_1" and int(e.get("clear_steps", -1)) == 1:
+			mid_ramp = true
+			break
+	_assert(mid_ramp and String(world.actor("sheep_2").extra.state) == "resting",
+		"the save is taken with one sheep speeding up again inside the door and the other resting")
+	var saved: Dictionary = JSON.parse_string(JSON.stringify(SaveGame.capture(world, GameState)))
+	var loaded := SimWorld.new()
+	_assert(SaveGame.restore(saved, loaded, GameState), "and it loads")
+	# A loaded farm wakes every animal on the next tick (`schedule_all_brains`, as the
+	# game's Continue and its replay's rebase both do), so the farm that kept going is
+	# woken the same way at the moment of the save. What is compared is then exactly
+	# what the file carried: her coat, her step counts, her rest and her stall.
+	world.schedule_all_brains()
+	world.advance_ticks(1500, GameState)
+	loaded.advance_ticks(1500, GameState)
+	var live := SaveGame._canonical_capture(world, GameState)
+	var again := SaveGame._canonical_capture(loaded, GameState)
+	var diff := SaveGame._first_difference(again.world.barns, live.world.barns, "barns")
+	for id in ["sheep_1", "sheep_2"]:
+		if diff == "":
+			diff = SaveGame._first_difference(again.world.actors[id], live.world.actors[id], id)
+	_assert(diff == "" and loaded.clock.tick == world.clock.tick,
+		"played on for 150 seconds, the loaded farm ends on the same sheep and barn as the one that kept going (%s)" % diff)
+
+
+func test_sheep_frozen_on_the_barn_floor() -> void:
+	GameState.reset()
+	SimRng.reseed(1816)
+	var world := _open_barn_world()
+	var origin: Vector2i = world.rooms["barn_1"]["origin"]
+	var aisle := origin + Vector2i(3, 4)
+	world.spawn_actor("sheep_1", SpeciesDefs.SHEEP, aisle, { "coat": Wool.EXTREME })
+	world.schedule_all_brains()
+	world.advance_ticks(3000, GameState)
+	var held := false
+	for stall in world.barns["barn_1"].stalls:
+		held = held or String(stall.cow_id) != ""
+	_assert(world.actor_pos("sheep_1") == aisle and String(world.actor("sheep_1").extra.state) == "content" and not held,
+		"an extreme sheep on the barn floor outside a stall stops there, holding no stall")
+
+
+func test_sheep_never_stop_on_a_bed() -> void:
+	var mode := Movement.route_mode_of(SpeciesDefs.SHEEP)
+	# Standing on a bed when her coat goes extreme: she walks off it first.
+	var world := _gap_yard(1817)
+	world.set_tile_state(16, 16, "tilled")
+	world.spawn_actor("sheep_1", SpeciesDefs.SHEEP, Vector2i(16, 16), { "coat": Wool.EXTREME })
+	world.schedule_all_brains()
+	world.advance_ticks(3000, GameState)
+	var there := world.actor_pos("sheep_1")
+	_assert(there != Vector2i(16, 16) and Movement.passable(world, mode, there)
+		and String(world.actor("sheep_1").extra.state) == "content",
+		"a sheep whose coat goes extreme on a bed steps off it before she stops (%s)" % there)
+	# On a strip of grass one square wide between two beds: a gap, so she leaves it.
+	var strip := _gap_yard(1817)
+	strip.set_tile_state(18, 15, "tilled"); strip.set_tile_state(18, 17, "tilled")
+	strip.spawn_actor("sheep_1", SpeciesDefs.SHEEP, Vector2i(18, 16), { "coat": Wool.EXTREME })
+	strip.schedule_all_brains()
+	strip.advance_ticks(3000, GameState)
+	there = strip.actor_pos("sheep_1")
+	_assert(there != Vector2i(18, 16) and Movement.passable(strip, mode, there) and not Wool.is_tight(strip, there, mode),
+		"between two beds she does not stop in the one-square strip, nor on either bed (%s)" % there)
+
+
+func test_sheep_boxed_in_stop_where_they_are() -> void:
+	var world := _gap_yard(1818)
+	for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		world.set_tile_state(16 + d.x, 16 + d.y, "obstacle_rock")
+	world.spawn_actor("sheep_1", SpeciesDefs.SHEEP, Vector2i(16, 16), { "coat": Wool.EXTREME })
+	world.schedule_all_brains()
+	world.advance_ticks(3000, GameState)
+	_assert(world.actor_pos("sheep_1") == Vector2i(16, 16) and String(world.actor("sheep_1").extra.state) == "content",
+		"a sheep boxed into a one-square pocket stops where she is after a few tries, rather than trying for ever")
+	# ...and gives back a stall she held before she stops.
+	GameState.reset()
+	SimRng.reseed(1818)
+	var yard := _open_barn_world()
+	for d in [Vector2i(1, 0), Vector2i(-1, 0), Vector2i(0, 1), Vector2i(0, -1)]:
+		yard.set_tile_state(16 + d.x, 16 + d.y, "obstacle_rock")
+	yard.spawn_actor("sheep_1", SpeciesDefs.SHEEP, Vector2i(16, 16), { "coat": Wool.EXTREME })
+	yard.apply_action({ "actor": "sheep_1", "verb": "reserve_milk_stall", "barn_id": "barn_1", "stall_index": 2 }, GameState)
+	yard.schedule_all_brains()
+	yard.advance_ticks(3000, GameState)
+	_assert(String(yard.barns["barn_1"].stalls[2].cow_id) == "" and String(yard.actor("sheep_1").extra.state) == "content",
+		"a boxed-in sheep on her way to a stall gives it back")
