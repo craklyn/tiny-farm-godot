@@ -6,9 +6,17 @@
 # row is a happy idle wiggle, because at that coat she does not walk.
 #
 # **The art session's sheet, when it is there.** `assets/sprites/generated/sheep.png`
-# with `sheep.json` beside it (`cell_w`, `cell_h`) is drawn as delivered: dropping
-# the two files in needs no change here. Without the JSON the cell is read off the
-# sheet's own size (a quarter of its width, a fifth of its height).
+# with `sheep.json` beside it (`cell_w`, `cell_h`, `looks`) is drawn as delivered:
+# dropping the two files in needs no change here. Without the JSON the sheet is one
+# look and the cell is read off its size (a quarter of its width, a fifth of its height).
+#
+# **Every sheep looks a little different** (Daniel, 2026-10-13: different face and
+# fleece colours and shapes). The sheet stacks its looks one under another, five coat
+# rows each, so a sheep's row is `look × 5 + coat`. How many looks there are is the
+# length of the JSON's `looks`, never a number written here. Which look a sheep wears
+# is picked from her actor id (`look_of`): the same sheep always looks the same, on
+# every machine and after every load, and nothing about it is saved or replayed —
+# it is a picture, not a fact about the farm.
 #
 # **Until then, a placeholder made from the cow** (no art generation: the brief
 # reserves that for the art session). Built once, at first use, from the cow's own
@@ -36,6 +44,7 @@ const FACE := Color8(92, 86, 84)
 
 static var _sheet: Texture2D = null
 static var _cell := Vector2i.ZERO
+static var _looks := 1
 
 
 ## The sheet her renderer draws from: the delivered one, or the placeholder.
@@ -51,10 +60,27 @@ static func cell_size() -> Vector2i:
 	return _cell
 
 
-## Where one frame of one coat is on the sheet.
-static func cell_rect(coat: int, frame: int) -> Rect2:
+## How many looks the sheet holds (one for the placeholder).
+static func looks() -> int:
+	if _sheet == null:
+		_load()
+	return _looks
+
+
+## The look this sheep wears: a stable pick from her id, the same on every run.
+static func look_of(actor_id: String) -> int:
+	return posmod(actor_id.hash(), looks())
+
+
+## The sheet row for a look and a coat.
+static func row_of(look: int, coat: int) -> int:
+	return clampi(look, 0, looks() - 1) * ROWS + clampi(coat, 0, ROWS - 1)
+
+
+## Where one frame of one coat of one look is on the sheet.
+static func cell_rect(coat: int, frame: int, look: int = 0) -> Rect2:
 	var cell := cell_size()
-	return Rect2(posmod(frame, FRAMES) * cell.x, clampi(coat, 0, ROWS - 1) * cell.y, cell.x, cell.y)
+	return Rect2(posmod(frame, FRAMES) * cell.x, row_of(look, coat) * cell.y, cell.x, cell.y)
 
 
 ## Is this the art session's sheet, or the cow-made stand-in?
@@ -65,15 +91,21 @@ static func is_placeholder() -> bool:
 static func _load() -> void:
 	if not is_placeholder():
 		_sheet = load(SHEET_PATH)
+		_looks = 1
 		_cell = Vector2i(_sheet.get_width() / FRAMES, _sheet.get_height() / ROWS)
 		if FileAccess.file_exists(META_PATH):
 			var meta = JSON.parse_string(FileAccess.get_file_as_string(META_PATH))
 			if meta is Dictionary and int(meta.get("cell_w", 0)) > 0 and int(meta.get("cell_h", 0)) > 0:
 				_cell = Vector2i(int(meta["cell_w"]), int(meta["cell_h"]))
+			if meta is Dictionary and meta.get("looks") is Array and not meta["looks"].is_empty():
+				_looks = meta["looks"].size()
+		# Never more looks than the sheet has rows for.
+		_looks = clampi(_looks, 1, maxi(1, _sheet.get_height() / (_cell.y * ROWS)))
 		return
 	var image := placeholder_image()
 	_sheet = ImageTexture.create_from_image(image)
 	_cell = PLACEHOLDER_CELL
+	_looks = 1
 
 
 ## The stand-in sheet as an image: five coats of four frames, from the cow's frames.

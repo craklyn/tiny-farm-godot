@@ -10369,7 +10369,7 @@ func _scenario_sh_a_sheep_is_bought_by_a_tap() -> void:
 	await get_tree().process_frame
 	await get_tree().process_frame
 	var node = farm.actor_nodes.get("sheep_1", null)
-	_assert(node != null and bool(node.is_sheep) and int(node.coat_row) == Wool.MID_GROWTH,
+	_assert(node != null and bool(node.is_sheep) and int(node.coat_row) == SheepArt.row_of(SheepArt.look_of("sheep_1"), Wool.MID_GROWTH),
 		"she has a picture on the farm, drawn from her mid-growth row")
 
 	# Three nights' wool, and the picture follows her coat to the extreme row.
@@ -10377,7 +10377,7 @@ func _scenario_sh_a_sheep_is_bought_by_a_tap() -> void:
 		farm.apply_action({ "actor": "sheep_1", "verb": "grow_wool" }, GameState)
 	await get_tree().process_frame
 	await get_tree().process_frame
-	_assert(Wool.coat_of(farm.sim, "sheep_1") == Wool.EXTREME and node != null and int(node.coat_row) == Wool.EXTREME,
+	_assert(Wool.coat_of(farm.sim, "sheep_1") == Wool.EXTREME and node != null and int(node.coat_row) == SheepArt.row_of(SheepArt.look_of("sheep_1"), Wool.EXTREME),
 		"three nights later she is in her extreme coat, and drawn in it")
 
 	# The four places: the barn's own cow, this sheep, and two more fill it.

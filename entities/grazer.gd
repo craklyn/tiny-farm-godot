@@ -54,8 +54,8 @@ var facing_left: bool = false
 var hop_frame: int = 0
 var coat_row: int = 0
 var is_cow: bool = false
-# A sheep is drawn as a cow is, from the sim clock, from her own five-row sheet: the
-# row is her coat (`SheepArt`, docs/design/18-sheep.md).
+# A sheep is drawn as a cow is, from the sim clock, from her own sheet: the row is
+# her look and her coat (`SheepArt`, docs/design/18-sheep.md).
 var is_sheep: bool = false
 # Cosmetic, and the only die roll in this file: two animals in one field should
 # not hop in lockstep. `CosmeticRng`, never the sim's seeded stream — see
@@ -103,7 +103,7 @@ func _process(delta: float) -> void:
 		var at: Vector2 = pose.get("pos", Vector2.ZERO) * TILE_SIZE
 		var frame := int(pose.get("frame", 0))
 		var left := bool(pose.get("facing_left", false))
-		var row := Wool.coat_of(farm.sim, actor_id) if is_sheep else 0
+		var row := SheepArt.row_of(SheepArt.look_of(actor_id), Wool.coat_of(farm.sim, actor_id)) if is_sheep else 0
 		if at != position or frame != hop_frame or left != facing_left or row != coat_row:
 			position = at
 			hop_frame = frame

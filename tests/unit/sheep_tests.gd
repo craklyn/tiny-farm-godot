@@ -20,6 +20,7 @@ func test_sheep() -> void:
 	test_sheep_frozen_on_the_way_give_the_stall_back()
 	test_sheep_save_round_trip()
 	test_sheep_save_v7_migration()
+	test_sheep_sheet()
 
 
 func test_sheep_purchase() -> void:
@@ -394,3 +395,25 @@ func _open_barn_world() -> SimWorld:
 		for x in range(6, 22):
 			world.set_tile_state(x, y, "cleared"); world.set_object(x, y, "")
 	return world
+
+
+# The sheet she is drawn from: five coats a look, four frames a coat, and a look picked
+# from her id that is the same every time it is asked.
+func test_sheep_sheet() -> void:
+	var sheet := SheepArt.sheet()
+	var cell := SheepArt.cell_size()
+	var looks := SheepArt.looks()
+	_assert(sheet != null and cell.x > 0 and cell.y > 0 and looks >= 1
+		and sheet.get_width() == cell.x * SheepArt.FRAMES and sheet.get_height() >= cell.y * SheepArt.ROWS * looks,
+		"the sheep sheet holds %d look(s) of five coats, four %dx%d frames each (%s placeholder)"
+			% [looks, cell.x, cell.y, "the" if SheepArt.is_placeholder() else "not the"])
+	var stable := true
+	var in_range := true
+	for id in ["sheep_1", "sheep_2", "sheep_3", "sheep_17"]:
+		stable = stable and SheepArt.look_of(id) == SheepArt.look_of(String(id))
+		in_range = in_range and SheepArt.look_of(id) >= 0 and SheepArt.look_of(id) < looks
+	_assert(stable and in_range, "a sheep's look is picked from her id, the same every time, and is on the sheet")
+	var last_look := looks - 1
+	_assert(SheepArt.row_of(last_look, Wool.EXTREME) == last_look * 5 + 4
+		and SheepArt.cell_rect(Wool.FULL, 1, last_look) == Rect2(cell.x, (last_look * 5 + 2) * cell.y, cell.x, cell.y),
+		"a look's coats are five rows down the sheet, one look under another")

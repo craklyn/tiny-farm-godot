@@ -98,6 +98,13 @@ facing right (mirrored for left, like the cow). The extreme row is a happy idle 
 than a walk. The game reads the cell size from `sheep.json` (`cell_w`, `cell_h`), so dropping
 the two files in needs no change to the code.
 
+**Every sheep looks a little different** (Daniel, 2026-10-13: different face and fleece
+colours and shapes). The sheet stacks its looks one under another, five coat rows each, and
+`sheep.json` lists them under `looks`. The game counts the looks from that list, so Daniel can
+keep as many as he likes. Which look a sheep wears is picked from her name (`sheep_1`,
+`sheep_2`, …): the same sheep always looks the same, and the pick is only part of the picture,
+so nothing about it is saved or replayed.
+
 Until then the game makes a placeholder when it starts, from the cow's own four frames: her
 white body turned the cream of wool, her face and legs a soft grey, and a coat of wool grown
 round her body a pixel thicker each stage, until at the extreme coat her legs are lost in it.
