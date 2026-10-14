@@ -977,6 +977,9 @@ const BARN_LINE_VERBS: Array[String] = ["set_curd", "cut_curd", "stir_curd", "dr
 # allows four cows for every placed barn.
 const HERD_LIMIT := 4
 const COW_PRICE := 250
+# A sheep is sold from the same shop as an added cow, at the same price (Daniel,
+# 2026-10-13, docs/design/18-sheep.md), and takes one of the same four places.
+const SHEEP_PRICE := 250
 const FINISHED_CHEESE_CAPACITY := 8
 const CHEESE_BATCH_VALUE := 20
 const COW_GIVE_MILK_ENERGY := 20
@@ -1056,7 +1059,7 @@ func renovate_legacy_barns() -> int:
 		var old_barn: Dictionary = barns[old_id]
 		var herd: Array = []
 		for actor_id in actors:
-			if species_of(String(actor_id)) != SpeciesDefs.COW:
+			if not is_barn_animal(String(actor_id)):
 				continue
 			var extra: Dictionary = actors[actor_id].get("extra", {})
 			if String(extra.get("barn_id", "")) == old_id \
@@ -1068,7 +1071,7 @@ func renovate_legacy_barns() -> int:
 		# her square is about to become void or somebody else's machinery.
 		var strays: Array = []
 		for actor_id in actors:
-			if species_of(String(actor_id)) != SpeciesDefs.COW \
+			if not is_barn_animal(String(actor_id)) \
 					and room_of_cell(actor_pos(String(actor_id))) == old_id:
 				strays.append(String(actor_id))
 		strays.sort()
@@ -1210,6 +1213,28 @@ func cow_count() -> int:
 	return count
 
 
+func sheep_count() -> int:
+	return actors_of_species(SpeciesDefs.SHEEP).size()
+
+
+# **Cows and sheep share a barn's four places** (Daniel, 2026-10-13: a sheep "take[s]
+# up a slot that prevents a cow from having that slot"). What the limit counts, for
+# both shop cards and both purchases.
+func barn_animal_count() -> int:
+	var count := 0
+	for actor_id in actors:
+		if is_barn_animal(String(actor_id)):
+			count += 1
+	return count
+
+
+# The animals a barn's stalls are for. A stall's record calls its holder `cow_id`
+# because cows came first; it holds a sheep's id as readily.
+func is_barn_animal(actor_id: String) -> bool:
+	var species := species_of(actor_id)
+	return species == SpeciesDefs.COW or species == SpeciesDefs.SHEEP
+
+
 # An added cow arrives at an existing barn's livestock doors. Barn ids are sorted
 # and the walk out of each doorway is in a fixed order, so the accepted Action
 # resolves to the same square during replay.
@@ -1232,6 +1257,13 @@ func next_cow_id() -> String:
 	while has_actor("cow_%d" % number):
 		number += 1
 	return "cow_%d" % number
+
+
+func next_sheep_id() -> String:
+	var number := 1
+	while has_actor("sheep_%d" % number):
+		number += 1
+	return "sheep_%d" % number
 
 
 # The rooms a farm has, by id, sorted — the registry's iteration-order rule, for
@@ -1947,7 +1979,7 @@ func water_tile(tx: int, ty: int) -> void:
 # Verbs that can change milestone inputs (harvest counts, gold); other verbs
 # skip the check — it dominated fast-forward throughput when run per action.
 const MILESTONE_VERBS := { "harvest": true, "collect": true, "sell": true, "sleep": true,
-		"buy_seed": true, "buy_machine": true, "buy_cow": true, "buy_upgrade": true }
+		"buy_seed": true, "buy_machine": true, "buy_cow": true, "buy_sheep": true, "buy_upgrade": true }
 
 
 # Verbs that do not advance the day's clock: sleep ends it, and the shop and bin
@@ -1960,7 +1992,7 @@ const NON_WORK_VERBS := { "sleep": true, "sell": true, "withdraw_seed": true,
 		# costs no energy and must not tick the clock the crows are scheduled
 		# against. **Placing** one is absent on purpose: carrying a sprinkler out
 		# to the far corner and setting it down is work, and it is charged as such.
-		"buy_machine": true, "buy_cow": true, "configure": true,
+		"buy_machine": true, "buy_cow": true, "buy_sheep": true, "configure": true,
 		# Turning a reward dial on the workbench is the same kind of thing as
 		# turning a config dial (v0.2.2, Q-101): she is telling a machine what to
 		# care about, not doing a stroke of farm work. It costs no energy, and a
@@ -2111,6 +2143,11 @@ func spawn_actor(actor_id: String, species: String, at: Vector2i, extra: Diction
 	var actor_extra := extra.duplicate(true)
 	if species == SpeciesDefs.COW:
 		actor_extra["milk_milliunits"] = int(actor_extra.get("milk_milliunits", 0))
+		actor_extra["barn_id"] = String(actor_extra.get("barn_id", ""))
+		actor_extra["stall_index"] = int(actor_extra.get("stall_index", -1))
+		actor_extra["state"] = String(actor_extra.get("state", "idle"))
+	elif species == SpeciesDefs.SHEEP:
+		actor_extra["coat"] = clampi(int(actor_extra.get("coat", Wool.BOUGHT_COAT)), Wool.SHEARED, Wool.EXTREME)
 		actor_extra["barn_id"] = String(actor_extra.get("barn_id", ""))
 		actor_extra["stall_index"] = int(actor_extra.get("stall_index", -1))
 		actor_extra["state"] = String(actor_extra.get("state", "idle"))
@@ -3182,6 +3219,15 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			var cow_extra: Dictionary = actors[cow_id]["extra"]
 			cow_extra["milk_milliunits"] = mini(2000, int(cow_extra.get("milk_milliunits", 0)) + gain)
 			return {"ok": true, "milk_milliunits": cow_extra["milk_milliunits"]}
+		"grow_wool":
+			# A night's wool (design/18). Applied inside the `sleep` that turns the
+			# day, like `gain_milk`; the coat stops at the extreme, and nothing in
+			# the game takes it back.
+			var sheep_id := String(action.get("actor", ""))
+			if species_of(sheep_id) != SpeciesDefs.SHEEP: return _fail("not_a_sheep")
+			var sheep_extra: Dictionary = actors[sheep_id]["extra"]
+			sheep_extra["coat"] = mini(Wool.EXTREME, Wool.coat_of(self, sheep_id) + Wool.GROWTH_PER_NIGHT)
+			return {"ok": true, "coat": sheep_extra["coat"]}
 		"reserve_milk_stall":
 			return _reserve_milk_stall(action)
 		"enter_milk_stall":
@@ -3271,7 +3317,7 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 		"buy_cow":
 			if gs == null: return _fail("no_state")
 			if barns.is_empty(): return _fail("no_barn")
-			if cow_count() >= herd_limit(): return _fail("herd_full")
+			if barn_animal_count() >= herd_limit(): return _fail("herd_full")
 			if int(gs.gold) < COW_PRICE: return _fail("not_enough_gold")
 			var arrival := added_cow_arrival_cell()
 			if arrival.x < 0: return _fail("no_cow_arrival_space")
@@ -3279,6 +3325,20 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			gs.set_gold(int(gs.gold) - COW_PRICE)
 			spawn_actor(cow_id, SpeciesDefs.COW, arrival)
 			return { "ok": true, "cow": cow_id, "price": COW_PRICE }
+		"buy_sheep":
+			# The added cow's purchase, for a sheep (Daniel, 2026-10-13): after the
+			# barn, from the same shop, for the same price, into one of the same four
+			# places a barn, out of the same livestock doors. She arrives mid-growth.
+			if gs == null: return _fail("no_state")
+			if barns.is_empty(): return _fail("no_barn")
+			if barn_animal_count() >= herd_limit(): return _fail("herd_full")
+			if int(gs.gold) < SHEEP_PRICE: return _fail("not_enough_gold")
+			var sheep_at := added_cow_arrival_cell()
+			if sheep_at.x < 0: return _fail("no_sheep_arrival_space")
+			var sheep_id := next_sheep_id()
+			gs.set_gold(int(gs.gold) - SHEEP_PRICE)
+			spawn_actor(sheep_id, SpeciesDefs.SHEEP, sheep_at, { "coat": Wool.BOUGHT_COAT })
+			return { "ok": true, "sheep": sheep_id, "price": SHEEP_PRICE }
 		"collect":
 			if gs == null: return _fail("no_state")
 			var obj := get_object(target.x, target.y)
@@ -4832,11 +4892,13 @@ func _parcel_with_gate(gate: Vector2i) -> Dictionary:
 func _reserve_milk_stall(action: Dictionary) -> Dictionary:
 	var cow_id := String(action.get("actor", "")); var barn_id := String(action.get("barn_id", ""))
 	var index := int(action.get("stall_index", -1))
-	if species_of(cow_id) != SpeciesDefs.COW: return _fail("not_a_cow")
+	if not is_barn_animal(cow_id): return _fail("not_a_cow")
 	if not barns.has(barn_id): return _fail("no_such_barn")
 	if index < 0 or index >= 4: return _fail("no_such_stall")
 	var extra: Dictionary = actors[cow_id]["extra"]
-	if int(extra.get("milk_milliunits", 0)) < 1000: return _fail("not_ready")
+	# A cow comes to give milk; a sheep comes to rest, and needs nothing to do it
+	# (design/18). While she rests the stall is hers, and a cow waits.
+	if species_of(cow_id) == SpeciesDefs.COW and int(extra.get("milk_milliunits", 0)) < 1000: return _fail("not_ready")
 	if String(extra.get("barn_id", "")) != "": return _fail("already_in_stall")
 	var stall: Dictionary = barns[barn_id]["stalls"][index]
 	if String(stall.get("cow_id", "")) != "": return _fail("stall_occupied")
@@ -4848,7 +4910,7 @@ func _reserve_milk_stall(action: Dictionary) -> Dictionary:
 # The stall a cow's own reservation names, or {} when the action names a barn or
 # stall that does not exist or that is not hers.
 func _cows_stall(cow_id: String, barn_id: String, index: int) -> Dictionary:
-	if cow_id == "" or species_of(cow_id) != SpeciesDefs.COW or not barns.has(barn_id):
+	if cow_id == "" or not is_barn_animal(cow_id) or not barns.has(barn_id):
 		return {}
 	if index < 0 or index >= 4:
 		return {}
@@ -4870,7 +4932,7 @@ func _enter_milk_stall(action: Dictionary) -> Dictionary:
 	var stall := _cows_stall(cow_id, String(action.get("barn_id", "")), int(action.get("stall_index", -1)))
 	if stall.is_empty(): return _fail("wrong_stall")
 	if not _at_stall(cow_id, stall): return _fail("not_at_stall")
-	actors[cow_id]["extra"]["state"] = "giving"
+	actors[cow_id]["extra"]["state"] = "resting" if species_of(cow_id) == SpeciesDefs.SHEEP else "giving"
 	return {"ok": true}
 
 
@@ -4880,6 +4942,9 @@ func _enter_milk_stall(action: Dictionary) -> Dictionary:
 # visit costs, may give.
 func _give_milk(action: Dictionary) -> Dictionary:
 	var cow_id := String(action.get("actor", "")); var barn_id := String(action.get("barn_id", ""))
+	# Only a cow gives milk. A sheep in a stall is resting, and the cream station
+	# stays out of her reach (Daniel, 2026-10-13: "we'll keep it that way").
+	if species_of(cow_id) != SpeciesDefs.COW: return _fail("not_a_cow")
 	var stall := _cows_stall(cow_id, barn_id, int(action.get("stall_index", -1)))
 	if stall.is_empty(): return _fail("wrong_stall")
 	var extra: Dictionary = actors[cow_id]["extra"]
