@@ -547,8 +547,9 @@ chose the model below over built-in fittings (b) and decoration only (c).
   with a `room` is taken up this way — the coop, and since 2026-09-25 the Spiral Tower. Its contents come out
   in a fixed order: row by row across the floor, with a square's object before any machine
   on it. Fittings return to the crate. Any machine goes to the crate with its memory, by
-  the same code a direct pickup uses (Q-98). An egg on the floor goes to her basket as if
-  she had collected it. A hen indoors is moved to the squares the building stood on
+  the same code a direct pickup uses (Q-98). An egg on the floor tumbles out onto the grass
+  beside the building, for her to pick up (Daniel, 2026-10-13; see below). Until then it
+  went straight to her basket. A hen indoors is moved to the squares the building stood on
   (P-17), and her walk is reset. Only then does the room close. `collect` returns the list
   of contents, and a replay reproduces it.
 - **The Industrial Barn too, whatever it is doing** (Daniel, 2026-10-13: "Let the barn be
@@ -559,11 +560,15 @@ chose the model below over built-in fittings (b) and decoration only (c).
   bed or the doorstep. That differs from the hen on purpose. A sheep stopped for good in
   her extreme coat (design/18) stays where she is put, and on the barn's own squares she
   would keep the barn from ever going back down where it stood. She stays content.
-- **The barn's cheese comes to her as items, as the coop's eggs do.** Daniel, 2026-10-13:
-  "Cheese and eggs come to me as items, with P1 they tumble to the ground to be picked up".
-  Each wheel on the shelf becomes one cheese she carries, which the shipping bin buys for
-  20 gold, the shelf's price. Making both tumble onto the ground for her to pick up is the
-  next change, for the coop and the barn alike.
+- **Eggs and cheese tumble out onto the ground.** Daniel, 2026-10-13: "Cheese and eggs come
+  to me as items, with P1 they tumble to the ground to be picked up". When the coop, the
+  tower or the barn is picked up, every egg on its floor and every wheel on the barn's shelf
+  hops out onto the grass around where it stood (`SimWorld._tumble_out`). They land nearest
+  first, row by row, never on a crop bed, a doorstep or the building's own squares, so the
+  building can go straight back down where it was. A tap picks each one up like an egg laid
+  in the yard. She carries a cheese like an egg, and the shipping bin buys it for 20 gold,
+  the shelf's price. One that finds no free grass within four squares goes straight to her
+  basket instead, so nothing is ever lost.
 - **Milk still on the barn's line rides in the crate with the barn.** Daniel did not rule on
   it, so it follows the rule that picking something up never loses or resets it: the
   batches at the receiver and on each station, and the batch count, go into the crate in

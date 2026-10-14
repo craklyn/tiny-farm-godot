@@ -10607,7 +10607,7 @@ func _scenario_sh_a_sheep_is_bought_by_a_tap() -> void:
 # for good in another and a cheese on its shelf is picked up by finger: a tap on its
 # roof opens its panel and a tap on Pick up takes it into the crate. The cow and the
 # sheep are left on the grass outside its doors with pictures, the stuck sheep still
-# content, and the cheese goes into the crate with the barn.
+# content, and the cheese tumbles out onto the grass, where a tap picks it up.
 func _scenario_si_a_busy_barn_is_picked_up_by_a_tap() -> void:
 	print("\n--- Scenario SI: a busy barn is picked up by a tap on its panel ---")
 	var real_paths := [GameState.save_path, GameState.replay_path, GameState.trace_path]
@@ -10697,14 +10697,27 @@ func _scenario_si_a_busy_barn_is_picked_up_by_a_tap() -> void:
 		var node = farm.actor_nodes.get(id, null)
 		drawn = drawn and node != null and farm.sim.page_of(Vector2i((node.position / 16.0).floor())) == 0
 	_assert(drawn, "and both are drawn on the farm where they now stand")
-	_assert(int(GameState.items.get("cheese", 0)) == 1,
-		"the cheese on the shelf comes to her as an item, as a coop's eggs do")
+	var cheese_at := Vector2i(-1, -1)
+	for ty in range(0, WorldLayout.PAGE_ROWS):
+		for tx in range(SimWorld.MAP_WIDTH):
+			if farm.get_object(tx, ty) == "cheese":
+				cheese_at = Vector2i(tx, ty)
+	_assert(cheese_at.x >= 0 and int(GameState.items.get("cheese", 0)) == 0,
+		"the cheese on the shelf tumbles out onto the grass beside where the barn stood (%s)" % cheese_at)
+	if cheese_at.x >= 0:
+		await _finger_tap(cheese_at)
+		var got := await _wait_until(func(): return int(GameState.items.get("cheese", 0)) == 1, 900)
+		if not got:
+			await _finger_tap(cheese_at)
+			got = await _wait_until(func(): return int(GameState.items.get("cheese", 0)) == 1, 600)
+		_assert(got and farm.get_object(cheese_at.x, cheese_at.y) == "",
+			"and a tap on it picks it up into her basket")
 	var verbs: Array = []
 	for i in range(replay_from, farm.replay.entries.size()):
 		var e: Dictionary = farm.replay.entries[i]
 		if String(e.get("actor", "")) == SimWorld.ACTOR_PLAYER and String(e.get("verb", "")) == "collect":
 			verbs.append(String(e.verb))
-	_assert(verbs == ["collect"], "the replay records the one pick-up (%s)" % str(verbs))
+	_assert(verbs == ["collect", "collect"], "the replay records the pick-up and the cheese picked up (%s)" % str(verbs))
 	_release_sim_clock()
 	await _bo_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
 

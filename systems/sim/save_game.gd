@@ -397,6 +397,11 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 		world.actors = _restore_actors(saved_actors)
 	if not _valid_barn_ownership(world):
 		return false
+	# ...and a barn's line kept in the crate (2026-10-13) is checked the same way, so a
+	# box that would put down a barn the next save refuses is refused here instead.
+	var raw_state = d.get("state", {})
+	if typeof(raw_state) == TYPE_DICTIONARY and not _valid_boxed_barns(raw_state.get("boxed", {})):
+		return false
 	# A barn saved with its first, smaller room is given the bigger one before anything
 	# is put on the clock, because its cows and its line events name the room by id.
 	world.renovate_legacy_barns()
@@ -546,6 +551,51 @@ static func _holds_float(v) -> bool:
 				if _holds_float(item):
 					return true
 	return false
+
+
+# **A barn's line in the crate** (`gs.boxed["industrial_barn"]`, `SimWorld._box_barn_line`):
+# each box is `{ receiver, stations, next_batch_id }`, with every batch's ticks kept as
+# offsets from the moment it was boxed. Read straight from the file, so its numbers may
+# be JSON's floats; they must be whole. The rules are `_valid_barns`' for the same
+# batches: one batch a station, each named for where it sits, 1000 milliunits, distinct
+# ids below the next id, and ready no earlier than it entered.
+static func _valid_boxed_barns(raw) -> bool:
+	if typeof(raw) != TYPE_DICTIONARY or not raw.has(SimWorld.BARN_ITEM):
+		return true
+	var boxes = raw[SimWorld.BARN_ITEM]
+	if typeof(boxes) != TYPE_ARRAY: return false
+	for box in boxes:
+		if typeof(box) != TYPE_DICTIONARY: return false
+		var receiver = box.get("receiver", [])
+		var stations = box.get("stations", {})
+		if typeof(receiver) != TYPE_ARRAY or typeof(stations) != TYPE_DICTIONARY: return false
+		if not _whole(box.get("next_batch_id", null)) or int(box["next_batch_id"]) < 1: return false
+		var batches: Array = []
+		for batch in receiver:
+			if typeof(batch) != TYPE_DICTIONARY or String(batch.get("station", "")) != "receiver": return false
+			batches.append(batch)
+		for key in stations:
+			if String(key) not in SimWorld.BARN_STATIONS: return false
+			var batch = stations[key]
+			if batch == null:
+				continue
+			if typeof(batch) != TYPE_DICTIONARY or String(batch.get("station", "")) != String(key): return false
+			batches.append(batch)
+		var ids := {}
+		for batch in batches:
+			for key in ["batch_id", "amount_milliunits", "entry_tick", "ready_tick"]:
+				if not _whole(batch.get(key, null)): return false
+			if typeof(batch.get("cow_id", null)) != TYPE_STRING: return false
+			var batch_id := int(batch["batch_id"])
+			if batch_id < 1 or ids.has(batch_id) or batch_id >= int(box["next_batch_id"]): return false
+			ids[batch_id] = true
+			if int(batch["amount_milliunits"]) != 1000: return false
+			if int(batch["ready_tick"]) < int(batch["entry_tick"]): return false
+	return true
+
+
+static func _whole(v) -> bool:
+	return typeof(v) == TYPE_INT or (typeof(v) == TYPE_FLOAT and float(v) == floor(float(v)))
 
 
 static func _valid_barns(world: SimWorld) -> bool:

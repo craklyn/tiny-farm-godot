@@ -886,6 +886,9 @@ const TALL_OBJECTS: Array[String] = ["cot", "well", "seed_box", WorldLayout.WORK
 # test is one hash rather than one comparison per exception.
 const OPEN_OBJECTS := {
 	"egg": true, "acorn": true,
+	# A cheese tumbled out of a barn picked up (2026-10-13) lies on the grass as an
+	# egg does, to be picked up.
+	"cheese": true,
 	WorldLayout.ROBOT_STALL: true, WorldLayout.ROBOT_STALL_SLOT: true,
 	# ...and, since 2026-09-11, the four cells of a chicken coop, for the same
 	# reason: a coop the hen cannot step into is a shed with a chicken standing
@@ -1198,11 +1201,12 @@ func _unbox_barn_line(barn_id: String, gs) -> void:
 	_schedule_barn(barn_id, clock.tick + 1)
 
 
-# **The cheese on a barn's shelf comes to her as items** when the barn is picked up
-# (Daniel, 2026-10-13: "Cheese and eggs come to me as items"), the way a coop's eggs
-# go to her basket: one `cheese` a wheel, which the shipping bin buys at the shelf's
-# price (S-42). Returned as `{ item, cell }` pairs on the shelf's square, as
-# `_empty_rooms` lists what it hands over.
+# **The cheese on a barn's shelf comes out with the barn** when it is picked up
+# (Daniel, 2026-10-13: "Cheese and eggs come to me as items, with P1 they tumble to the
+# ground to be picked up"): one `cheese` a wheel, taken off the shelf here and put on
+# the grass by `_tumble_out`, where a tap picks it up and the shipping bin buys it at
+# the shelf's price (S-42). Returned as `{ item, cell, tumbles }` on the shelf's
+# square, as `_empty_rooms` lists what it hands over.
 func _hand_over_cheese(barn_id: String, gs) -> Array:
 	var out: Array = []
 	var barn: Dictionary = barns.get(barn_id, {})
@@ -1210,13 +1214,12 @@ func _hand_over_cheese(barn_id: String, gs) -> Array:
 	if wheels <= 0 or gs == null:
 		return out
 	barn["finished_cheese_count"] = 0
-	gs.items["cheese"] = int(gs.items.get("cheese", 0)) + wheels
 	var shelf := Vector2i(-1, -1)
 	if rooms.has(barn_id):
 		shelf = Vector2i(rooms[barn_id].get("origin", Vector2i.ZERO)) \
 			+ Vector2i(MachineDefs.room_of(BARN_ITEM).get("cheese_shelf", Vector2i.ZERO))
 	for i in wheels:
-		out.append({ "item": "cheese", "cell": shelf })
+		out.append({ "item": "cheese", "cell": shelf, "tumbles": true })
 	return out
 
 
@@ -3488,6 +3491,12 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				gs.items["egg"] = gs.items.get("egg", 0) + 1
 				gs.harvest_counts["egg"] = gs.harvest_counts.get("egg", 0) + 1
 				return { "ok": true, "collected": "egg" }
+			# A cheese that tumbled out of a barn she picked up: into her basket,
+			# where the shipping bin buys it (design/17).
+			if obj == "cheese":
+				set_object(target.x, target.y, "")
+				gs.items["cheese"] = int(gs.items.get("cheese", 0)) + 1
+				return { "ok": true, "collected": "cheese" }
 			if obj == "scarecrow":
 				# **No cap on picking one up.** Taking a scarecrow back is
 				# repositioning, not a gain (Q-98's rule), and a cap that refused it
@@ -3607,6 +3616,8 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 					for cell in MachineDefs.footprint_cells(b_item, b["anchor"]):
 						set_object(cell.x, cell.y, "")
 					gs.machines[b_item] = int(gs.machines.get(b_item, 0)) + 1
+				# ...and the eggs and cheese tumble out onto the ground it stood on.
+				_tumble_out(contents, building, gs)
 				return { "ok": true, "collected": item, "anchor": anchor,
 					"count": taken_up.size(), "contents": contents }
 			# **And so do the buildings with no inside** (Daniel, 2026-10-13: picking
@@ -4758,10 +4769,10 @@ func _empty_rooms(buildings: Array, gs) -> Array:
 					gs.machines[fitting] = int(gs.machines.get(fitting, 0)) + 1
 					out.append({ "item": fitting, "cell": c })
 				elif obj == "egg":
+					# Off the floor; `_tumble_out` puts it on the grass once the
+					# building is gone (Daniel, 2026-10-13).
 					set_object(c.x, c.y, "")
-					gs.items["egg"] = gs.items.get("egg", 0) + 1
-					gs.harvest_counts["egg"] = gs.harvest_counts.get("egg", 0) + 1
-					out.append({ "item": "egg", "cell": c })
+					out.append({ "item": "egg", "cell": c, "tumbles": true })
 				var standing := machine_at(c)
 				while standing != "":
 					out.append({ "item": _crate_machine(standing, gs), "cell": c,
@@ -4788,6 +4799,69 @@ func _empty_rooms(buildings: Array, gs) -> Array:
 		extra["wake"] = clock.tick + 1
 		_schedule_brain(who, clock.tick + 1)
 	return out
+
+
+# **Eggs and cheese tumble out onto the ground** (Daniel, 2026-10-13: "Cheese and eggs
+# come to me as items, with P1 they tumble to the ground to be picked up"). Every
+# entry of `contents` marked `tumbles` is put down as an object, egg or cheese, for a
+# tap to pick up: on free grass in rings around the squares the building stood on,
+# nearest first and row by row within a ring, so a replay puts each in the same place.
+# Never on those squares themselves, so the building can go straight back down where
+# it stood. A square takes one if it is open farm ground
+# with nothing on it: not a crop bed, not a building, not a doorstep. Each entry gets
+# `to`, the square it landed on. One that finds no square within `TUMBLE_RINGS`
+# (a building walled in tight) goes straight to her basket instead, as before, with
+# `to` left out: never lost.
+const TUMBLE_RINGS := 4
+
+
+func _tumble_out(contents: Array, building: Dictionary, gs) -> void:
+	var falling: Array = contents.filter(func(e): return bool(e.get("tumbles", false)))
+	if falling.is_empty():
+		return
+	var spots := _tumble_spots(building, falling.size())
+	for i in falling.size():
+		var entry: Dictionary = falling[i]
+		var item := String(entry["item"])
+		entry.erase("tumbles")
+		if i < spots.size():
+			set_object(spots[i].x, spots[i].y, item)
+			entry["to"] = spots[i]
+		elif gs != null:
+			gs.items[item] = int(gs.items.get(item, 0)) + 1
+			if item == "egg":
+				gs.harvest_counts["egg"] = gs.harvest_counts.get("egg", 0) + 1
+
+
+func _tumble_spots(building: Dictionary, wanted: int) -> Array[Vector2i]:
+	var out: Array[Vector2i] = []
+	var footprint := MachineDefs.footprint_cells(String(building["item"]), building["anchor"])
+	var doorsteps := {}
+	for id in room_ids():
+		doorsteps[room_exit_for(rooms[id])] = true
+	var lo := footprint[0]
+	var hi := footprint[0]
+	for c in footprint:
+		lo = Vector2i(mini(lo.x, c.x), mini(lo.y, c.y))
+		hi = Vector2i(maxi(hi.x, c.x), maxi(hi.y, c.y))
+	for ring in range(1, TUMBLE_RINGS + 1):
+		for y in range(lo.y - ring, hi.y + ring + 1):
+			for x in range(lo.x - ring, hi.x + ring + 1):
+				var c := Vector2i(x, y)
+				var dx := maxi(0, maxi(lo.x - x, x - hi.x))
+				var dy := maxi(0, maxi(lo.y - y, y - hi.y))
+				if dx + dy != ring:
+					continue
+				if out.size() < wanted and _takes_a_tumble(c, doorsteps):
+					out.append(c)
+		if out.size() >= wanted:
+			break
+	return out
+
+
+func _takes_a_tumble(c: Vector2i, doorsteps: Dictionary) -> bool:
+	return space_of(c) == "farm" and is_walkable_sparing_beds(c.x, c.y) \
+		and get_object(c.x, c.y) == "" and not doorsteps.has(c)
 
 
 func _fail(reason: String) -> Dictionary:

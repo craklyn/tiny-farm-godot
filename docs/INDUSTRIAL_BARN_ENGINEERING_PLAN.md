@@ -76,10 +76,11 @@ register a controller, run a brain, or carry energy. Picking up the building is 
 refused (Daniel, 2026-10-13; it used to be refused while a cow held a stall or anything was
 on the line). Every cow and sheep of the barn gives up her stall and any trip to it, and the
 ones inside are put out on the grass outside its doors (`SimWorld._let_go_of_barn`). The
-finished cheese comes to her as `cheese` items (`_hand_over_cheese`), which the bin buys
-at 20 gold. The batches still on the line and the batch count go into the crate with the
+finished cheese tumbles out onto the grass as `cheese` objects (`_hand_over_cheese`,
+`_tumble_out`); a tap collects one into her basket and the bin buys it at 20 gold. The batches still on the line and the batch count go into the crate with the
 barn, `gs.boxed["industrial_barn"]`, with their ticks paused (`_box_barn_line`), and come
-back when the barn is put down (`_unbox_barn_line`). The existing
+back when the barn is put down (`_unbox_barn_line`, newest box first). A box is validated on
+load by the batch rules a standing barn's line is (`SaveGame._valid_boxed_barns`). The existing
 rule that empties room fittings applies after that and cancels the barn's pending
 clock event.
 
@@ -246,7 +247,7 @@ the farmer sells from (6, 6). Every machine, the hay, the feed bin, the pitchfor
 cans and the bucket are blocked cells named in `machine_defs.gd`; the aisle, lobby, pens and
 the walkway between machines are open, so a near pen never shuts in a deeper one. Picking
 the barn up always works (2026-10-13): its animals are let go of and put outside, its cheese
-comes to her as items, the milk on its line goes into the crate with it, and the barn record, its pending line event and the room come
+tumbles out onto the grass, the milk on its line goes into the crate with it, and the barn record, its pending line event and the room come
 up together. A save whose barn has
 the old room is renovated on load (`SimWorld.renovate_legacy_barns`). The reasoning, the
 measurements and the captures are in [design 17](design/17-industrial-barn-and-cheese-line.md),
