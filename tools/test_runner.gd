@@ -201,6 +201,7 @@ func _run_scenarios() -> void:
 	await _scenario_br_a_walled_in_barn_buzzes()
 	await _scenario_bs_a_barn_over_a_bed_buzzes()
 	await _scenario_sh_a_sheep_is_bought_by_a_tap()
+	await _scenario_si_a_busy_barn_is_picked_up_by_a_tap()
 
 
 func _scenario_ba_crow_spook_stops_at_room_wall() -> void:
@@ -10397,6 +10398,113 @@ func _scenario_sh_a_sheep_is_bought_by_a_tap() -> void:
 		if String(e.get("verb", "")) == "buy_sheep":
 			hers.append(String(e.get("actor", "")))
 	_assert(hers == [SimWorld.ACTOR_PLAYER], "the replay records her one sheep purchase (%s)" % str(hers))
+	await _bo_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
+
+
+# Daniel, 2026-10-13: "Let the barn be picked up. When picked up, living entities
+# inside spill out." A barn with a cow in her stall about to give milk, a sheep stopped
+# for good in another and a cheese on its shelf is picked up by finger: a tap on its
+# roof opens its panel and a tap on Pick up takes it into the crate. The cow and the
+# sheep are left on the grass outside its doors with pictures, the stuck sheep still
+# content, and the cheese goes into the crate with the barn.
+func _scenario_si_a_busy_barn_is_picked_up_by_a_tap() -> void:
+	print("\n--- Scenario SI: a busy barn is picked up by a tap on its panel ---")
+	var real_paths := [GameState.save_path, GameState.replay_path, GameState.trace_path]
+	GameState.save_path = "user://barn_pickup_autosave.json"
+	GameState.replay_path = "user://barn_pickup_replay.json"
+	GameState.trace_path = "user://barn_pickup_trace.jsonl"
+	var menus = main_scene.menus
+	menus.close_menu()
+	main_scene.end_teaching()
+	await get_tree().process_frame
+	var before := SaveGame.capture(farm.sim, GameState)
+	var rng_seed := SimRng.current_seed()
+	var rng_state := SimRng.rng.state
+	var rng_revision := SimRng.stateless_revision
+	var replay_from: int = farm.replay.entries.size()
+
+	_hold_sim_clock()
+	GameState.machines = { "industrial_barn": 1 }
+	GameState.boxed = {}
+	GameState.items["cheese"] = 0
+	var anchor := _bo_free_barn_spot()
+	if anchor.x >= 0:
+		_clear_ground_for_fixture(anchor, "industrial_barn")
+	var laid: Dictionary = farm.apply_action({ "verb": "place", "target": anchor,
+		"item": "industrial_barn", "actor": "player" }, GameState)
+	var barn_id := String(laid.get("room", ""))
+	_assert(laid.get("ok", false) and farm.sim.barns.has(barn_id), "a barn stands on the farm (%s)" % laid)
+	if not farm.sim.barns.has(barn_id):
+		_release_sim_clock()
+		await _bo_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
+		return
+	# Her cow in stall 0, about to give milk; a sheep stopped for good in stall 3.
+	var stalls: Array = farm.sim.barns[barn_id]["stalls"]
+	var cow_id := String(laid.get("cow", ""))
+	if cow_id == "":
+		cow_id = farm.sim.next_cow_id()
+		farm.sim.spawn_actor(cow_id, SpeciesDefs.COW, farm.sim.added_cow_arrival_cell())
+	farm.sim.actor(cow_id)["extra"]["milk_milliunits"] = 1500
+	farm.sim.spawn_actor("sheep_1", SpeciesDefs.SHEEP, farm.sim.added_cow_arrival_cell(), { "coat": Wool.EXTREME })
+	for pair in [[cow_id, 0], ["sheep_1", 3]]:
+		var c: Array = stalls[pair[1]]["cell"]
+		farm.sim.set_actor_pos(pair[0], Vector2i(int(c[0]), int(c[1])))
+		farm.apply_action({ "actor": pair[0], "verb": "reserve_milk_stall", "barn_id": barn_id, "stall_index": pair[1] }, GameState)
+		farm.apply_action({ "actor": pair[0], "verb": "enter_milk_stall", "barn_id": barn_id, "stall_index": pair[1] }, GameState)
+	farm.sim.actor("sheep_1")["extra"]["state"] = "content"
+	farm.sim.barns[barn_id]["finished_cheese_count"] = 1
+	farm.sync_actors()
+	_assert(String(farm.sim.actor(cow_id).extra.state) == "giving" and String(stalls[3]["cow_id"]) == "sheep_1",
+		"the cow is in her stall about to give milk, and the stuck sheep holds another")
+
+	player.init_position(anchor.x - 1, anchor.y + 1)
+	farm.sim.set_actor_pos(SimWorld.ACTOR_PLAYER, Vector2i(anchor.x - 1, anchor.y + 1))
+	player.path.clear()
+	player.pending_action = {}
+	await get_tree().process_frame
+	await _finger_tap(anchor + Vector2i(1, -1))
+	var asked := await _wait_until(func(): return menus.active_menu == "structure", 900)
+	_assert(asked and menus.structure_item == "industrial_barn", "a tap on the barn opens its panel (%s)" % menus.active_menu)
+	if not asked:
+		_release_sim_clock()
+		await _bo_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
+		return
+	await get_tree().create_timer(0.3).timeout
+	var pick_row := -1
+	for i in menus.structure_options.size():
+		if String(menus.structure_options[i].get("kind", "")) == "collect":
+			pick_row = i
+	var panel_buttons: Array = menus.options_container.find_children("*", "Button", true, false)
+	_assert(pick_row >= 0 and pick_row < panel_buttons.size(), "the panel has its Pick up control")
+	if pick_row >= 0 and pick_row < panel_buttons.size():
+		await _gui_tap(panel_buttons[pick_row])
+	var gone := await _wait_until(func(): return not farm.sim.barns.has(barn_id), 300)
+	_assert(gone and farm.get_object(anchor.x, anchor.y) == "" and int(GameState.machines.get("industrial_barn", 0)) == 1,
+		"a tap on Pick up takes the busy barn into the crate")
+	var outside := true
+	for id in [cow_id, "sheep_1"]:
+		var at: Vector2i = farm.sim.actor_pos(id)
+		outside = outside and farm.sim.page_of(at) == 0 and farm.sim.room_of_cell(at) == "" \
+			and String(farm.sim.actor(id).extra.get("barn_id", "")) == ""
+	_assert(outside and String(farm.sim.actor("sheep_1").extra.state) == "content"
+		and int(farm.sim.actor(cow_id).extra.milk_milliunits) == 1500,
+		"the cow and the stuck sheep spill out onto the farm, the sheep still content and the cow keeping her milk")
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var drawn := true
+	for id in [cow_id, "sheep_1"]:
+		var node = farm.actor_nodes.get(id, null)
+		drawn = drawn and node != null and farm.sim.page_of(Vector2i((node.position / 16.0).floor())) == 0
+	_assert(drawn, "and both are drawn on the farm where they now stand")
+	_assert(int(GameState.items.get("cheese", 0)) == 1,
+		"the cheese on the shelf comes to her as an item, as a coop's eggs do")
+	var verbs: Array = []
+	for i in range(replay_from, farm.replay.entries.size()):
+		var e: Dictionary = farm.replay.entries[i]
+		if String(e.get("actor", "")) == SimWorld.ACTOR_PLAYER and String(e.get("verb", "")) == "collect":
+			verbs.append(String(e.verb))
+	_assert(verbs == ["collect"], "the replay records the one pick-up (%s)" % str(verbs))
+	_release_sim_clock()
 	await _bo_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
 
 

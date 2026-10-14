@@ -64,7 +64,8 @@ first square past it.
 - If she is boxed into a one-square pocket with nowhere she may stop within reach, she tries
   five times, a second apart, and then stops where she is.
 - If she was resting in a stall, she stays in it, and the stall is hers for good. Daniel's brief
-  calls that "fine and funny".
+  calls that "fine and funny". Picking the barn up still works (2026-10-13): she is carried
+  out through its doors onto the grass, still content, and the stall goes with the barn.
 
 A stopped sheep never walls anyone in. In Tiny Farm animals do not block one another or the
 farmer: the farmer's paths, the cows' and the hen's all go through a square another animal
