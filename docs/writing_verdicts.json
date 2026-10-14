@@ -1673,6 +1673,12 @@
   "2af222856528739ba96c": {
    "verdict": "ok"
   },
+  "2b0c5c49614e7207d15b": {
+   "instead": "The sheep picture tool now passes the test that every script has a matching Godot file",
+   "quote": "every script has its Godot file",
+   "verdict": "decode",
+   "why": "A stranger cannot tell what a Godot file is or how it belongs to a script."
+  },
   "2b1553174c7d2b9c191b": {
    "verdict": "ok"
   },
@@ -4095,6 +4101,12 @@
   },
   "6c435f4c2e78fe5a8366": {
    "verdict": "ok"
+  },
+  "6c49cd07d0c091dcc49d": {
+   "instead": "The sheep picture tool includes the Godot project file that lets all its scripts run",
+   "quote": "the Godot ID file every script needs",
+   "verdict": "decode",
+   "why": "The reader cannot tell what this file does or why having it matters."
   },
   "6c8806bfbd4d8e5d0869": {
    "verdict": "ok"
@@ -8315,6 +8327,9 @@
    "why": "“Tap reply” is internal shorthand whose meaning a reader would have to work out."
   },
   "da2fd0d805350247a045": {
+   "verdict": "ok"
+  },
+  "da3e082e41c9c80a6392": {
    "verdict": "ok"
   },
   "da4181ebe25092a65578": {
