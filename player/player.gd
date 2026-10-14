@@ -747,6 +747,28 @@ func pick_up_machine(machine_id: String) -> void:
 	_chase_machine(true)
 
 
+# **A building picked up from a robot's panel** (2026-10-13): the stall a robot is
+# parked in. A building does not move, so this is an ordinary walk-up: beside it
+# already, it comes up at once; otherwise she walks beside it and `collect` goes on
+# arrival, with `building` set so the robot in the bay stays where it is.
+func pick_up_building(at: Vector2i) -> void:
+	if farm == null:
+		return
+	tap_indicator = {}
+	var pa := { "action": "collect", "tool_idx": 0, "walk_to": true, "seed_type": "",
+		"target_t": at, "building": true }
+	var here := get_tile_pos()
+	if absi(here.x - at.x) + absi(here.y - at.y) <= 1:
+		path = []
+		pending_action = {}
+		approach_target = Vector2i(-1, -1)
+		_execute_resolved_action(pa)
+		return
+	approach_target = at
+	path = Pathfinding.find_path_toward(farm, here, at)
+	pending_action = pa if not path.is_empty() else {}
+
+
 # One look at the machine she is going to pick up: lift it if she is beside it,
 # otherwise (re)plan the walk toward where it stands now. Returns true when it has
 # taken over this frame — she picked it up, gave up, or set off on a new route.
@@ -976,6 +998,8 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 		act["item"] = pa["item"]
 	if String(pa.get("barn_id", "")) != "":
 		act["barn_id"] = pa["barn_id"]
+	if bool(pa.get("building", false)):
+		act["building"] = true
 	var result: Dictionary = farm.apply_action(act, gs)
 	if not result.get("ok", false):
 		return

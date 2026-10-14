@@ -128,6 +128,9 @@ the same building panel as the coop, the Spiral Tower and the barn. A tap on the
 offers **Use bench** (where a coop offers Go inside) and **Pick up**. A tap on an empty
 stall bay offers **Pick up**; a tap on a robot standing in a bay still opens the robot's
 own panel. "Pick up" on a panel always means the building, never what is standing in it.
+With a robot in both bays every tap on the stall lands on a robot, so a robot standing in
+a bay has a **Pick up stall** row on its own panel: she walks up and the stall comes up,
+with both robots left where they stand.
 
 Nothing either one holds is lost. The bench holds nothing of its own: every dial, plate,
 card and ledger line it shows belongs to the robot (`design/14` §1), so a robot keeps all
@@ -136,13 +139,20 @@ in a stall is not pocketed: it stays standing where its bay was. What the stall 
 Mark I is an address, the bay it walks home to and the reason it goes out on its own each
 morning. That address goes into the crate with the stall (`GameState.boxed["stall"]`, the
 crate memory a picked-up robot already uses). While the stall is in the crate its Mark Is
-wait to be sent by hand, like any Mark I without a stall. When the stall is put down
+wait to be sent by hand, like any Mark I without a stall, and one sent by hand stops where
+its round ends instead of walking back to the bare square. When the stall is put down
 again, anywhere, each one's address moves to its own bay in it: a robot standing on the
 stall's ground is home at once, and one elsewhere walks there at the end of its next
-round. A stall may be put down over robots standing on its squares, since a bay is where
-a robot stands, so picking one up and putting it straight back works with its robots
-still parked: holding the stall, a tap on a parked robot is the placement rather than
-the robot's panel.
+round. The memory goes with that stall and no other. Stalls in the crate are a stack, so
+an empty stall picked up after it, or one bought after it, is put down first and moves
+nobody. A stall put down over the robots that lived in it is theirs, whichever order the
+crate is in.
+
+A stall may be put down over robots standing on its squares, since a bay is where a robot
+stands, so picking one up and putting it straight back works with its robots still parked.
+Holding the stall, a tap on a robot that lived in it and is still on its old bay puts the
+stall back where it stood, with that robot in its own bay, rather than opening the robot's
+panel. A tap on any other robot still opens it.
 
 The gateway does not yet refuse a far `collect`, and that is deliberate for now: the
 recorded session of 2026-10-09 23:26 holds three machines lifted from three to five

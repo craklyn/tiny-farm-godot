@@ -156,6 +156,7 @@ func _init() -> void:
 	interior.test_room_fittings()
 	interior.test_spiral_tower_interior()
 	interior.test_stall_and_workbench_pick_up()
+	interior.test_stall_box_goes_to_its_own_stall()
 	interior.test_spiral_tower_pick_up()
 	interior.test_building_that_will_not_fit()
 	interior.test_senses_stop_at_space_boundary()

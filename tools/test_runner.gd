@@ -9358,6 +9358,51 @@ func _scenario_bt_the_stall_and_bench_pick_up_by_tap() -> void:
 	_assert((GameState.boxed.get("stall", []) as Array).is_empty(),
 		"with nothing left behind in the crate")
 
+	# --- both bays full: the stall comes up from a robot's panel ---------------
+	# Every tap on a full stall lands on a robot, so the robot's panel offers it.
+	GameState.machines["bot_mk1"] = 1
+	var mk1_b := String(farm.apply_action({ "verb": "place", "target": bay, "item": "bot_mk1",
+		"actor": "player" }, GameState).get("machine", ""))
+	farm.apply_action({ "verb": "teach", "target": lesson, "machine": mk1_b, "actor": "player" }, GameState)
+	menus.close_menu()
+	await get_tree().process_frame
+	InputManager.click_tile = bay
+	InputManager.has_click = true
+	var robot_asked := await _wait_until(func(): return menus.active_menu == "machine", 200)
+	var stall_row := -1
+	for i in menus.machine_options.size():
+		if String(menus.machine_options[i].get("kind", "")) == "collect_stall":
+			stall_row = i
+	_assert(robot_asked and menus.machine_id == mk1_b and stall_row >= 0,
+		"with both bays full, a tap on the right-hand robot opens its panel, and it offers \"Pick up stall\"")
+	if stall_row < 0:
+		_restore_session_paths(real_paths)
+		return
+	menus.selected_option = stall_row
+	menus._select_current_option()
+	var full_gone := await _wait_until(func(): return not farm.sim.is_stall_tile(stall), 300)
+	_assert(full_gone and int(GameState.machines.get("stall", 0)) == 1,
+		"she walks up and the stall comes up into the crate")
+	_assert(farm.sim.has_actor(mk1) and farm.sim.has_actor(mk1_b)
+			and farm.sim.actor_pos(mk1) == stall and farm.sim.actor_pos(mk1_b) == bay,
+		"and both robots stay standing in their bays' squares")
+
+	# --- put back by a tap on the right-hand robot -----------------------------
+	GameState.selected_seed_type = "stall"
+	var back_right := false
+	for attempt in 3:
+		InputManager.click_tile = bay
+		InputManager.has_click = true
+		back_right = await _wait_until(func(): return farm.sim.is_stall_tile(stall), 200)
+		if back_right:
+			break
+	_assert(back_right and farm.get_object(stall.x, stall.y) == WorldLayout.ROBOT_STALL
+			and farm.get_object(bay.x, bay.y) == WorldLayout.ROBOT_STALL_SLOT,
+		"holding the stall, a tap on the right-hand robot puts it back where it stood, not a square to the right")
+	_assert(int(farm.sim.actor(mk1).extra.get("home_x", -1)) == stall.x
+			and int(farm.sim.actor(mk1_b).extra.get("home_x", -1)) == bay.x and mine.call() == mk1_before,
+		"with each robot in its own bay again")
+
 	# --- the bench -------------------------------------------------------------
 	var bench := Vector2i(28, 13)
 	GameState.machines["workbench"] = 1
@@ -9404,6 +9449,7 @@ func _scenario_bt_the_stall_and_bench_pick_up_by_tap() -> void:
 	# Tidy up for the scenarios after this one.
 	farm.apply_action({ "verb": "collect", "target": bench_again, "building": true, "actor": "player" }, GameState)
 	farm.apply_action({ "verb": "collect", "target": stall, "actor": "player" }, GameState)
+	farm.apply_action({ "verb": "collect", "target": bay, "actor": "player" }, GameState)
 	farm.apply_action({ "verb": "collect", "target": stall, "building": true, "actor": "player" }, GameState)
 	GameState.machines = {}
 	GameState.boxed = {}

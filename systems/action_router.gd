@@ -200,21 +200,27 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 			"walk_to": false, "seed_type": "", "machine": teaching_machine,
 		})
 
-	# **A stall in her hands goes down over the robot parked where it stood**
-	# (2026-10-13). A bay is where a robot stands, so `placeable_at` takes a stall
-	# over one, and a tap there is the placement rather than the robot's panel.
-	# Asked only when the held thing fits, so holding anything that does not, a
-	# tap on a robot still opens it.
-	var places_over_machine: bool = gs != null and gs.has_method("holding_machine") \
-		and gs.holding_machine() and teach_world != null \
-		and teach_world.machine_at(tap_t) != "" \
-		and not MachineDefs.spawns_actor(String(gs.selected_seed_type)) \
-		and teach_world.placeable_at(tap_t, gs.selected_seed_type)
+	# **A stall in her hands goes back down over a robot that lived in it**
+	# (2026-10-13). She picked the stall up with a Mark I parked in it, and the
+	# robot is still standing in its old bay. A tap on that robot, holding the
+	# stall, puts the stall back where it stood, anchored so the robot is in its
+	# own bay again, rather than opening the robot's panel. Only such a robot:
+	# every other tap on a robot still opens it.
+	var stall_back := Vector2i(-1, -1) if is_drag else stall_return_anchor(teach_world, gs, tap_t)
+	if stall_back.x >= 0:
+		if player_t != null:
+			var pts: Vector2i = player_t
+			if absi(pts.x - tx) + absi(pts.y - ty) > 1:
+				return {}   # a far tap is a walk (Q-30); the tap from beside places
+		return check_result.call({
+			"action": "place", "tool_idx": 0, "target_t": stall_back,
+			"walk_to": true, "seed_type": "", "item": gs.selected_seed_type,
+		})
 
 	# A moving machine may have left the touched square between the input event
 	# and this frame. A captured actor id keeps that single tap attached to what
 	# the finger hit; a machine already picked up cannot answer it.
-	if not is_drag and not places_over_machine and tapped_machine_id != "" and teach_world != null \
+	if not is_drag and tapped_machine_id != "" and teach_world != null \
 			and teach_world.has_actor(tapped_machine_id):
 		var machine_tile: Vector2i = teach_world.actor_pos(tapped_machine_id)
 		if teach_world.machine_at(machine_tile) == tapped_machine_id:
@@ -277,7 +283,7 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 	# Resolves to `open_machine`, which is UI navigation and not a verb: nothing
 	# about opening a panel belongs in a replay (CLAUDE.md). What the panel does
 	# afterwards is `configure` and `collect`, both ordinary Actions.
-	if world != null and world.machine_at(tap_t) != "" and not places_over_machine:
+	if world != null and world.machine_at(tap_t) != "":
 		# **At any distance, because opening a panel is not work.** It used to
 		# demand she stand beside the machine first, borrowed from the grammar of
 		# a workable tile — and that is the rule for a tile, which cannot walk.
@@ -734,3 +740,34 @@ func get_cursor_color(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, 
 	if state == "border" or state.begins_with("obstacle"):
 		return Color(0.9, 0.3, 0.2, 0.6)  # Red — blocked
 	return Color(0.9, 0.85, 0.3, 0.6)     # Yellow — neutral
+
+
+## Where a held stall goes down if the robot on `tap_t` lived in it (2026-10-13):
+## the anchor that puts that robot back in its own bay, or (-1, -1). Read off the
+## crate's memory of the stall (`gs.boxed["stall"]`), and only for a robot still
+## standing on the square that was its home, so a robot that has walked off, or
+## was never in a stall, opens its own panel as before.
+static func stall_return_anchor(world, gs, tap_t: Vector2i) -> Vector2i:
+	var none := Vector2i(-1, -1)
+	if world == null or gs == null or not gs.has_method("holding_machine") \
+			or not gs.holding_machine() or String(gs.selected_seed_type) != SimWorld.STALL_ITEM:
+		return none
+	var id: String = world.machine_at(tap_t)
+	if id == "":
+		return none
+	var extra: Dictionary = world.actor(id).get("extra", {})
+	if Vector2i(int(extra.get("home_x", -1)), int(extra.get("home_y", -1))) != tap_t:
+		return none
+	var bays := MachineDefs.footprint_cells(SimWorld.STALL_ITEM, Vector2i.ZERO)
+	for box in gs.boxed.get(SimWorld.STALL_ITEM, []):
+		for raw in (box as Dictionary).get("residents", []):
+			var resident: Dictionary = raw
+			var was: Array = resident.get("home", [])
+			var bay := int(resident.get("bay", -1))
+			if String(resident.get("id", "")) != id or was.size() != 2 \
+					or Vector2i(int(was[0]), int(was[1])) != tap_t or bay < 0 or bay >= bays.size():
+				continue
+			var anchor := tap_t - bays[bay]
+			if world.placeable_at(anchor, SimWorld.STALL_ITEM):
+				return anchor
+	return none

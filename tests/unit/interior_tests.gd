@@ -1705,6 +1705,14 @@ func test_stall_and_workbench_pick_up() -> void:
 
 	# --- up again, and down somewhere else -------------------------------------
 	act.call({ "verb": "collect", "target": stall, "building": true, "actor": "player" })
+	# Sent by hand while its stall is in the crate, it stops where its round ends
+	# rather than walking back to a bare square.
+	_assert(act.call({ "verb": "activate", "target": world.actor_pos(mk1), "actor": "player" }).get("ok", false),
+		"with the stall in the crate she can still send a Mark I out by hand")
+	for taken in world.advance_to_tick(world.clock.tick + SimClock.RATE * 300, GameState):
+		_record_brain_step(log, taken)
+	_assert(world.actor_pos(mk1) == row[row.size() - 1] and not bool(world.actor(mk1).extra.get("sent", true)),
+		"and it stops where its round ends, not back on the square its stall stood on (%s)" % world.actor_pos(mk1))
 	act.call({ "verb": "sleep", "actor": "world", "weather": "sunny" })
 	_assert(not bool(world.actor(mk1).extra.get("sent", false)),
 		"while the stall is in the crate, nobody is sent out in the morning")
@@ -1777,6 +1785,94 @@ func test_stall_and_workbench_pick_up() -> void:
 			and replayed.actor(mk3).extra.get("rewards") == mk3_before.extra.get("rewards")
 			and replayed.actor(mk1).extra.get("home_x") == world.actor(mk1).extra.get("home_x"),
 		"and ends with both buildings where the live farm has them and every robot's state the same")
+
+
+
+# **A stall's box goes back to that stall** (review of PR #28, 2026-10-13). Stalls in
+# the crate are alike and the crate is a stack, so the memory of who lived in one has
+# to come out with that one: not with an empty stall picked up after it, nor with a
+# newly bought one, and two stalls with robots must never swap them. And holding the
+# stall, a tap on the robot left in its right-hand bay puts the stall back with that
+# robot in its own bay, while a tap on any other robot still opens it.
+func test_stall_box_goes_to_its_own_stall() -> void:
+	print("\n--- A picked-up stall's robots go with that stall, in any order (2026-10-13) Tests ---")
+	GameState.reset()
+	var farm = load("res://world/farm.gd").new()
+	farm.generate_on_ready = false
+	SimRng.reseed(4244)
+	farm.sim.generate()
+	var world: SimWorld = farm.sim
+	GameState.gold = 5000
+	GameState.energy = 100
+	for y in range(8, 18):
+		for x in range(4, 26):
+			world.set_tile_state(x, y, "cleared")
+	var a := Vector2i(6, 10)
+	var b := Vector2i(12, 10)
+	var c := Vector2i(18, 10)
+	GameState.machines["stall"] = 2
+	GameState.machines["bot_mk1"] = 3
+	world.apply_action({ "verb": "place", "target": a, "item": "stall", "actor": "player" }, GameState)
+	world.apply_action({ "verb": "place", "target": b, "item": "stall", "actor": "player" }, GameState)
+	var in_a := String(world.apply_action({ "verb": "place", "target": a + Vector2i(1, 0), "item": "bot_mk1",
+		"actor": "player" }, GameState).get("machine", ""))
+	var in_b := String(world.apply_action({ "verb": "place", "target": b, "item": "bot_mk1",
+		"actor": "player" }, GameState).get("machine", ""))
+	var loose_at := Vector2i(-1, -1)
+	for x in range(16, 25):
+		if world.placeable_at(Vector2i(x, 13), "bot_mk1"):
+			loose_at = Vector2i(x, 13)
+			break
+	var patrol := String(world.apply_action({ "verb": "place", "target": loose_at, "item": "bot_mk1",
+		"actor": "player" }, GameState).get("machine", ""))
+	var home_of := func(id: String) -> Vector2i:
+		var x: Dictionary = world.actor(id).extra
+		return Vector2i(int(x.get("home_x", -1)), int(x.get("home_y", -1)))
+	_assert(in_a != "" and in_b != "" and patrol != "" and home_of.call(in_a) == a + Vector2i(1, 0) and home_of.call(in_b) == b,
+		"a robot lives in stall A's right-hand bay and another in stall B's left")
+
+	# --- A (with a robot), then B (with a robot); A goes down first, over its robot ---
+	world.apply_action({ "verb": "collect", "target": a, "building": true, "actor": "player" }, GameState)
+	world.apply_action({ "verb": "collect", "target": b, "building": true, "actor": "player" }, GameState)
+	GameState.selected_seed_type = "stall"
+	var right_bay := a + Vector2i(1, 0)
+	var r: Dictionary = ActionRouter.resolve(farm, GameState, right_bay, right_bay + Vector2i(0, 1))
+	_assert(String(r.get("action", "")) == "place" and r.get("target_t", Vector2i(-1, -1)) == a,
+		"holding a stall, a tap on the robot left in A's right-hand bay puts the stall back at A, not one square right (%s)" % str(r))
+	var patrol_tap: Dictionary = ActionRouter.resolve(farm, GameState, world.actor_pos(patrol), world.actor_pos(patrol) + Vector2i(0, 1))
+	_assert(String(patrol_tap.get("action", "")) == "open_machine",
+		"a tap on a robot that never lived in a stall still opens its panel (%s)" % str(patrol_tap))
+	_assert(world.apply_action({ "verb": "place", "target": a, "item": "stall", "actor": "player" },
+			GameState).get("ok", false), "stall A goes back over its robot, though B is the newer box")
+	_assert(home_of.call(in_a) == a + Vector2i(1, 0) and home_of.call(in_b) == b,
+		"each robot keeps its own address: nobody swapped (%s, %s)" % [home_of.call(in_a), home_of.call(in_b)])
+	_assert((GameState.boxed.get("stall", []) as Array).size() == 1, "and only A's box came out")
+	world.apply_action({ "verb": "place", "target": c, "item": "stall", "actor": "player" }, GameState)
+	_assert(home_of.call(in_b) == c, "B's robot moves to the next stall put down, its own (%s)" % home_of.call(in_b))
+
+	# --- A (with a robot) up, then an empty stall up after it: the empty one is on top ---
+	GameState.machines["stall"] = 1
+	world.apply_action({ "verb": "place", "target": Vector2i(6, 15), "item": "stall", "actor": "player" }, GameState)
+	world.apply_action({ "verb": "collect", "target": a, "building": true, "actor": "player" }, GameState)
+	world.apply_action({ "verb": "collect", "target": Vector2i(6, 15), "building": true, "actor": "player" }, GameState)
+	_assert(int(GameState.machines.get("stall", 0)) == 2, "two stalls in the crate, an empty one on top of A")
+	world.apply_action({ "verb": "place", "target": Vector2i(14, 15), "item": "stall", "actor": "player" }, GameState)
+	_assert(home_of.call(in_a) == right_bay,
+		"the empty stall, on top, goes down first and carries nobody's address off (%s)" % home_of.call(in_a))
+	world.apply_action({ "verb": "place", "target": Vector2i(20, 16), "item": "stall", "actor": "player" }, GameState)
+	_assert(home_of.call(in_a) == Vector2i(21, 16), "then A goes down and its robot's address moves with it")
+
+	# --- and a newly bought stall in between --------------------------------------
+	world.apply_action({ "verb": "collect", "target": Vector2i(20, 16), "building": true, "actor": "player" }, GameState)
+	_assert(world.apply_action({ "verb": "buy_machine", "item": "stall", "actor": "player" }, GameState).get("ok", false),
+		"she buys another stall with A in the crate")
+	world.apply_action({ "verb": "place", "target": Vector2i(6, 15), "item": "stall", "actor": "player" }, GameState)
+	_assert(home_of.call(in_a) == Vector2i(21, 16), "the new stall, on top, does not take A's robot")
+	world.apply_action({ "verb": "place", "target": Vector2i(10, 17), "item": "stall", "actor": "player" }, GameState)
+	_assert(home_of.call(in_a) == Vector2i(11, 17) and (GameState.boxed.get("stall", []) as Array).is_empty(),
+		"and A, put down after it, does (%s)" % home_of.call(in_a))
+	farm.free()
+	GameState.reset()
 
 
 func test_spiral_tower_pick_up() -> void:

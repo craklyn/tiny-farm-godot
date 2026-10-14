@@ -4630,6 +4630,12 @@ func _crate_machine(machine_id: String, gs) -> String:
 # round is a resident; a mark-2's `home_x` is the middle of its patch, not an
 # address.
 #
+# **Which stall in the crate it belongs to.** Stalls in the crate are alike, and a
+# crate is a stack: the one put down is the one on top. `under` is how many stalls
+# were already in the crate beneath this one, so a stall bought or picked up empty
+# after it sits on top of it and is put down first, with no box. Without that, the
+# next stall put down anywhere would carry these robots' address off with it.
+#
 # A stall nobody lived in leaves nothing in the crate, as a robot that learned
 # nothing does. The robots themselves are not touched: they stand where they were,
 # and while their stall is in the crate the morning sends nobody out
@@ -4654,31 +4660,60 @@ func _box_stall_residents(cells: Array[Vector2i], gs) -> void:
 	if residents.is_empty():
 		return
 	var crate: Array = gs.boxed.get(STALL_ITEM, [])
-	crate.append({ "residents": residents })
+	crate.append({ "residents": residents, "under": int(gs.machines.get(STALL_ITEM, 0)) })
 	gs.boxed[STALL_ITEM] = crate
 
 
-# ...and back out when a stall is put down: the newest box first, the robots' rule.
-# Each resident still on the farm, and still at home in the bay it had, is given the
-# same bay in the stall just set down. One standing on that bay is home at once;
-# one elsewhere walks there at the end of its next round.
+# Is this resident still at home where the box says, so the box may still move it?
+func _resident_at_home(resident: Dictionary) -> bool:
+	var id := String(resident.get("id", ""))
+	var was: Array = resident.get("home", [])
+	if not actors.has(id) or was.size() != 2:
+		return false
+	var extra: Dictionary = actors[id]["extra"]
+	return int(extra.get("home_x", -1)) == int(was[0]) and int(extra.get("home_y", -1)) == int(was[1])
+
+
+# ...and back out when a stall is put down (called after the crate count has gone
+# down). **Its own box, if it has one.** A stall put down over robots standing in
+# their old bays is plainly theirs, whatever order the crate is in; otherwise it is
+# the stall on top of the crate, which has a box only if the newest box is the one
+# with exactly the stalls still in the crate beneath it. Each resident still on the
+# farm and still at home in the bay it had is given the same bay in the stall just
+# set down. One standing on that bay is home at once; one elsewhere walks there at
+# the end of its next round.
 func _unbox_stall_residents(cells: Array[Vector2i], gs) -> void:
 	var crate: Array = gs.boxed.get(STALL_ITEM, [])
 	if crate.is_empty():
 		return
-	var box: Dictionary = crate.pop_back()
+	var chosen := -1
+	for i in range(crate.size() - 1, -1, -1):
+		for raw in (crate[i] as Dictionary).get("residents", []):
+			var resident: Dictionary = raw
+			if _resident_at_home(resident) and actor_pos(String(resident["id"])) in cells:
+				chosen = i
+				break
+		if chosen >= 0:
+			break
+	var left := int(gs.machines.get(STALL_ITEM, 0))
+	if chosen < 0 and int((crate[-1] as Dictionary).get("under", -1)) == left:
+		chosen = crate.size() - 1
+	if chosen < 0:
+		return
+	var box: Dictionary = crate[chosen]
+	crate.remove_at(chosen)
+	# The stalls above it in the crate are one lower now.
+	var was_under := int(box.get("under", 0))
+	for other in crate:
+		if int((other as Dictionary).get("under", 0)) > was_under:
+			other["under"] = int(other["under"]) - 1
 	gs.boxed[STALL_ITEM] = crate
 	for raw in box.get("residents", []):
 		var resident: Dictionary = raw
-		var id := String(resident.get("id", ""))
 		var bay := int(resident.get("bay", -1))
-		if not actors.has(id) or bay < 0 or bay >= cells.size():
+		if not _resident_at_home(resident) or bay < 0 or bay >= cells.size():
 			continue
-		var extra: Dictionary = actors[id]["extra"]
-		var was: Array = resident.get("home", [])
-		if was.size() != 2 or int(extra.get("home_x", -1)) != int(was[0]) \
-				or int(extra.get("home_y", -1)) != int(was[1]):
-			continue
+		var extra: Dictionary = actors[String(resident["id"])]["extra"]
 		extra["home_x"] = cells[bay].x
 		extra["home_y"] = cells[bay].y
 

@@ -698,6 +698,12 @@ func _rebuild_options() -> void:
 						% [BotBrain.assigned_of(mextra).size(), BotBrain.ASSIGN_LIMIT], true)
 			machine_options.append({ "kind": "collect" })
 			_add_option(tr("Pick up"), true)
+			# **And the stall it is standing in** (2026-10-13). With a robot in each
+			# bay, every tap on the stall lands on a robot, so its panel is where the
+			# stall can be picked up from. The robot stays where it stands.
+			if farm.sim.is_stall_tile(farm.sim.actor_pos(machine_id)):
+				machine_options.append({ "kind": "collect_stall" })
+				_add_option(tr("Pick up stall"), true)
 			machine_options.append({ "kind": "close" })
 			_add_option("\u00d7", true, 28)
 			# **A wider card for the mark-3 only.** A fortnight of chart needs more
@@ -1724,6 +1730,15 @@ func _select_current_option() -> void:
 				var main_node := get_tree().get_first_node_in_group("Main")
 				if main_node != null and main_node.has_method("pick_up_machine"):
 					main_node.pick_up_machine(machine_id)
+			elif choice.kind == "collect_stall":
+				# The building's own "Pick up", reached through the robot: she walks
+				# up to the stall and it comes up, with `building` set so the robot
+				# standing in it is not what is lifted.
+				close_menu()
+				menu_action.emit("resume")
+				var stall_main := get_tree().get_first_node_in_group("Main")
+				if stall_main != null and stall_main.has_method("pick_up_building"):
+					stall_main.pick_up_building(mid_tile)
 
 		"inventory":
 			# Choosing an item directly (Q-119/S-23) — the alternative to
