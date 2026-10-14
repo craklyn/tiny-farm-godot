@@ -539,9 +539,13 @@ to be refused while a cow held a stall or there was milk or cheese inside. Now t
   picks each wheel up, as the coop's eggs do. Daniel: "Cheese and eggs come to me as items,
   with P1 they tumble to the ground to be picked up". She carries each one as a cheese, which
   the shipping bin buys for 20 gold. On the grass it is drawn as a small wheel in the barn's
-  own cheese colours.
+  own cheese colours. Cheese never counts toward the phase-one "crops shipped" proof, whether
+  it is sold from the barn's shelf or at the bin: the same wheel counts the same either way.
 - Milk still on the line (at the receiver or at any station) goes into the crate with the
   barn, paused. Daniel did not rule on it; this keeps it rather than losing it. Put down
   again, the barn has it back: a batch three seconds from done is three seconds from done,
-  and the line carries on.
+  and the line carries on. The crate keeps one box of milk for each barn picked up with milk
+  on its line, and the next barn put down takes the newest box, wherever it goes: the boxes
+  have no labels, as with robots. A barn picked up with nothing on its line leaves no box.
+  A save whose crate holds a malformed box is refused on load, as a malformed barn is.
 

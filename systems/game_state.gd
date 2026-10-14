@@ -530,7 +530,11 @@ func allocate_bin_delivery(crop_type: String, count: int) -> Dictionary:
 	var sold := count - reserved
 	var paid := sold * crop_price(crop_type)
 	gold += paid
-	total_shipped += sold
+	# The phase-one proof counts what the farm grows and lays. A cheese from a barn
+	# picked up does not count, at the bin as on the barn's shelf (`_collect_cheese`),
+	# which has never counted: the same wheel counts the same either way it is sold.
+	if crop_type != "cheese":
+		total_shipped += sold
 	if paid > 0:
 		gold_changed.emit(gold)
 	return { "ok": true, "reserved": reserved, "sold": sold, "gold": paid }

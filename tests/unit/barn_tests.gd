@@ -129,6 +129,7 @@ func test_barn_simulation() -> void:
 	test_barn_legacy_room_moves_people_out()
 	test_barn_card_counts_the_crate()
 	test_barn_pick_up()
+	test_barn_crate_boxes()
 	test_barn_animation_follows_sim_ticks()
 
 
@@ -687,6 +688,95 @@ func test_barn_pick_up() -> void:
 		"picking the busy barn up and putting it down replays to the same farm (%s)" % short_log.divergence)
 	direct_state.free()
 	replay_state.free()
+
+
+# **Two barns' lines in the crate** (review of #25, 2026-10-13). The crate keeps a
+# box for each barn picked up with milk on its line, and the next barn put down takes
+# the newest box (last in, first out, as robots do: the boxes have no labels). A barn
+# picked up idle leaves no box, so a busy barn picked up after it is the one whose line
+# the next barn gets. Boxes survive a save file, and a malformed one refuses the load.
+func test_barn_crate_boxes() -> void:
+	print("\n--- Industrial barn: two barns' lines in the crate ---")
+	GameState.reset()
+	SimRng.reseed(1731)
+	var world := SimWorld.new(); world.generate()
+	world.despawn_actor(SimWorld.ACTOR_CHICKEN)
+	for y in range(3, 19):
+		for x in range(1, 31):
+			world.set_tile_state(x, y, "cleared"); world.set_object(x, y, "")
+	GameState.gold = 1000
+	GameState.harvest_counts["egg"] = 10
+	var spots: Array[Vector2i] = [Vector2i(4, 6), Vector2i(18, 6)]
+	var ids: Array[String] = []
+	for spot in spots:
+		GameState.machines["industrial_barn"] = 1
+		var laid := world.apply_action({ "verb": "place", "target": spot, "item": "industrial_barn", "actor": "player" }, GameState)
+		ids.append(String(laid.get("room", "")))
+	_assert(world.barns.has(ids[0]) and world.barns.has(ids[1]), "two barns stand on the farm (%s)" % str(ids))
+	var t := world.clock.tick
+	world.barns[ids[0]].stations.press = { "batch_id": 7, "cow_id": "cow_1", "amount_milliunits": 1000,
+		"station": "press", "entry_tick": t - 10, "ready_tick": t + 40 }
+	world.barns[ids[0]].next_batch_id = 8
+	world.barns[ids[1]].receiver = [{ "batch_id": 3, "cow_id": "cow_1", "amount_milliunits": 1000,
+		"station": "receiver", "entry_tick": t, "ready_tick": t + 50 }]
+	world.barns[ids[1]].next_batch_id = 4
+	for spot in spots:
+		world.apply_action({ "verb": "collect", "target": spot, "actor": "player" }, GameState)
+	var boxes: Array = GameState.boxed.get("industrial_barn", [])
+	_assert(boxes.size() == 2 and int(GameState.machines.get("industrial_barn", 0)) == 2,
+		"picking both busy barns up leaves two barns and two boxes of milk in the crate")
+
+	# Through a save file before either goes back down.
+	var saved: Dictionary = JSON.parse_string(JSON.stringify(SaveGame.capture(world, GameState)))
+	var bad: Dictionary = saved.duplicate(true)
+	bad.state.boxed.industrial_barn[0].stations.press.ready_tick = -20
+	_assert(not SaveGame.restore(bad, SimWorld.new(), load("res://systems/game_state.gd").new()),
+		"a box whose batch is ready before it entered refuses the load, as a barn's would")
+	var reloaded := SimWorld.new()
+	var gs2 = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(saved, reloaded, gs2), "a farm with two barns in the crate loads")
+	var first := reloaded.apply_action({ "verb": "place", "target": spots[0], "item": "industrial_barn", "actor": "player" }, gs2)
+	var first_barn: Dictionary = reloaded.barns.get(String(first.get("room", "")), {})
+	_assert(not first_barn.is_empty() and (first_barn.receiver as Array).size() == 1
+		and int(first_barn.receiver[0].batch_id) == 3 and int(first_barn.receiver[0].ready_tick) == reloaded.clock.tick + 50,
+		"after the reload, the first barn put down gets the newest box: the milk at the receiver, fifty ticks from moving on")
+	var second := reloaded.apply_action({ "verb": "place", "target": spots[1], "item": "industrial_barn", "actor": "player" }, gs2)
+	var second_barn: Dictionary = reloaded.barns.get(String(second.get("room", "")), {})
+	_assert(not second_barn.is_empty() and second_barn.stations.press != null and int(second_barn.stations.press.batch_id) == 7
+		and int(second_barn.next_batch_id) == 8 and (gs2.boxed.get("industrial_barn", []) as Array).is_empty(),
+		"and the second gets the other: the batch on the press, and the crate is empty")
+	var saved_again := SaveGame.capture(reloaded, gs2)
+	_assert(SaveGame.restore(JSON.parse_string(JSON.stringify(saved_again)), SimWorld.new(), load("res://systems/game_state.gd").new()),
+		"and the farm with both barns down again saves and loads")
+	gs2.free()
+
+	# An idle barn picked up first leaves no box, so the busy one's line goes to whichever is put down next.
+	GameState.boxed = {}
+	for spot in spots:
+		GameState.machines["industrial_barn"] = 1
+		world.apply_action({ "verb": "place", "target": spot, "item": "industrial_barn", "actor": "player" }, GameState)
+	var down: Array = world.barns.keys()
+	down.sort()
+	var busy_id := String(world.room_of_anchor(spots[1]))
+	world.barns[busy_id].receiver = [{ "batch_id": 1, "cow_id": "cow_1", "amount_milliunits": 1000,
+		"station": "receiver", "entry_tick": world.clock.tick, "ready_tick": world.clock.tick + 50 }]
+	world.barns[busy_id].next_batch_id = 2
+	world.apply_action({ "verb": "collect", "target": spots[0], "actor": "player" }, GameState)
+	world.apply_action({ "verb": "collect", "target": spots[1], "actor": "player" }, GameState)
+	_assert((GameState.boxed.get("industrial_barn", []) as Array).size() == 1,
+		"an idle barn picked up leaves no box; the busy one leaves one")
+	var next := world.apply_action({ "verb": "place", "target": spots[0], "item": "industrial_barn", "actor": "player" }, GameState)
+	var next_barn: Dictionary = world.barns.get(String(next.get("room", "")), {})
+	_assert(not next_barn.is_empty() and (next_barn.receiver as Array).size() == 1,
+		"so the next barn put down, wherever it goes, carries on the busy barn's milk")
+
+	# Cheese sold at the bin is not counted as shipped, as on the shelf.
+	GameState.items["cheese"] = 2
+	var shipped := int(GameState.total_shipped)
+	var gold := int(GameState.gold)
+	GameState.sell_crops_to_bin()
+	_assert(int(GameState.gold) == gold + 2 * SimWorld.CHEESE_BATCH_VALUE and int(GameState.total_shipped) == shipped,
+		"two cheeses sell at the bin for 20 gold each, and like a shelf sale do not count as crops shipped")
 
 
 # **The barn's motion is a function of the saved tick** (INDUSTRIAL_BARN_ENGINEERING_PLAN,

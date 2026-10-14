@@ -79,7 +79,8 @@ ones inside are put out on the grass outside its doors (`SimWorld._let_go_of_bar
 finished cheese tumbles out onto the grass as `cheese` objects (`_hand_over_cheese`,
 `_tumble_out`); a tap collects one into her basket and the bin buys it at 20 gold. The batches still on the line and the batch count go into the crate with the
 barn, `gs.boxed["industrial_barn"]`, with their ticks paused (`_box_barn_line`), and come
-back when the barn is put down (`_unbox_barn_line`). The existing
+back when the barn is put down (`_unbox_barn_line`, newest box first). A box is validated on
+load by the batch rules a standing barn's line is (`SaveGame._valid_boxed_barns`). The existing
 rule that empties room fittings applies after that and cancels the barn's pending
 clock event.
 
