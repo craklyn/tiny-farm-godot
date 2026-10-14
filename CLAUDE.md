@@ -160,6 +160,13 @@ godot --path . --fixed-fps 60 res://tools/capture_robot_round_building.tscn
 # and sheepbuy shots; the 4th argument picks the coats, e.g. `... sheepline 540x540 0-1-2-3-4`
 godot --path . res://tools/capture_sheep.tscn
 
+# The sheep's art sheet: eight looks of five coats, four 32x28 frames each, written to
+# assets/sprites/generated/sheep.png with sheep.json beside it; --out=DIR --looks=all
+# writes every candidate look somewhere else instead. Then the look sheets under
+# docs/design/mockups/sheep/ that the candidates were chosen from (see each tool's --help)
+python3 tools/build_sheep_art.py
+python3 tools/compose_sheep_mockups.py lineup NAME=DIR/sheep.png ...
+
 # The training workbench's six plates as PNGs (tools/shot_workbench_0..5.png) on a fresh
 # Mark III — needs a display; saves to scratch so it never seeds the next suite run
 godot --path . res://tools/capture_workbench.tscn

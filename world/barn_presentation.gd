@@ -190,9 +190,11 @@ static func cow_pose(world: SimWorld, cow_id: String, tick: int) -> Dictionary:
 	var extra: Dictionary = e.get("extra", {})
 	var pose := { "pos": Vector2(at), "frame": 0, "facing_left": facing == "left" }
 	# A sheep in her extreme coat does not walk: she wiggles, happily, where she
-	# stopped (the bottom row of her sheet, design/18). A frame every 0.4 s of sim time.
+	# stopped (the bottom row of her look, design/18), a frame every
+	# `SheepArt.idle_frame_seconds()` of sim time.
 	if String(e.get("species", "")) == SpeciesDefs.SHEEP and String(extra.get("state", "")) == "content":
-		pose["frame"] = posmod(tick / 4, HOP_FRAMES)
+		var per_frame := maxf(0.01, SheepArt.idle_frame_seconds()) * float(SimClock.RATE)
+		pose["frame"] = posmod(int(floor(float(tick) / per_frame)), HOP_FRAMES)
 		return pose
 	if String(extra.get("state", "")) != "moving" or int(extra.get("step", 0)) < 1:
 		return pose

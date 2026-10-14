@@ -421,6 +421,19 @@ func test_sheep_sheet() -> void:
 	_assert(SheepArt.row_of(last_look, Wool.EXTREME) == last_look * 5 + 4
 		and SheepArt.cell_rect(Wool.FULL, 1, last_look) == Rect2(cell.x, (last_look * 5 + 2) * cell.y, cell.x, cell.y),
 		"a look's coats are five rows down the sheet, one look under another")
+	# The extreme coat's wiggle holds each frame as long as the sheet's notes say.
+	_assert(is_equal_approx(SheepArt.idle_seconds_from({ "idle_frame_seconds": 0.4 }), 0.4)
+		and is_equal_approx(SheepArt.idle_seconds_from({ "idle_frames": "rest, sway: holds best at about 0.25 s a frame" }), 0.25)
+		and is_equal_approx(SheepArt.idle_seconds_from({}), SheepArt.IDLE_FRAME_SECONDS)
+		and is_equal_approx(SheepArt.idle_frame_seconds(), 0.25),
+		"the wiggle's frame time is read from the sheet's notes, and the shipped sheet's is 0.25 s")
+	var world := SimWorld.new(); world.generate()
+	world.spawn_actor("sheep_1", SpeciesDefs.SHEEP, Vector2i(20, 10), { "coat": Wool.EXTREME, "state": "content" })
+	var frames: Array[int] = []
+	for tick in [0, 2, 3, 5, 8, 10]:
+		frames.append(int(BarnPresentation.cow_pose(world, "sheep_1", tick).get("frame", -1)))
+	_assert(frames == [0, 0, 1, 2, 3, 0],
+		"a stuck sheep's picture moves on a frame every quarter second of game time (%s)" % str(frames))
 
 
 # A save taken with one sheep part-way along her speed-up after the barn door and another
