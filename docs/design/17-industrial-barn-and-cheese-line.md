@@ -521,3 +521,26 @@ display). The art director's seven checks above have not been run on this room.
   add a save migration and canonical serialization for any cheese-shelf state that needs to
   persist. Those details must preserve the validation, payment, and replay behavior specified
   above.
+
+## Picking the barn up — 2026-10-13
+
+Daniel: "Let the barn be picked up. When picked up, living entities inside spill out." It used
+to be refused while a cow held a stall or there was milk or cheese inside. Now the barn's panel
+**Pick up** always works, as it does for the coop:
+
+- Every cow and sheep inside, whether in a stall, in the aisle, in the doorway or walking,
+  comes out through the doors onto the grass, each on the square a newly bought cow would
+  arrive on (never a crop bed, never the doorstep). A cow keeps her milk. A sheep stopped for
+  good in her extreme coat is carried out and stays content.
+- A cow or sheep outside on her way to the barn gives up the trip where she stands.
+- While the barn is in the crate its animals graze, and none of them looks for a stall. When
+  it is put down again they use it as before. Putting it down again brings no second cow.
+- The cheese on the shelf comes to her as items, as a coop's eggs do. Daniel: "Cheese and
+  eggs come to me as items, with P1 they tumble to the ground to be picked up". She carries
+  each wheel as one cheese, which the shipping bin buys for 20 gold. Tumbling onto the ground
+  instead is the next change.
+- Milk still on the line (at the receiver or at any station) goes into the crate with the
+  barn, paused. Daniel did not rule on it; this keeps it rather than losing it. Put down
+  again, the barn has it back: a batch three seconds from done is three seconds from done,
+  and the line carries on.
+
