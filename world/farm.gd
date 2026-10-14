@@ -281,6 +281,10 @@ const ACTOR_RENDERERS := {
 	# cow (design/17, "Original-game-art brief"). Nothing spawns a cow in the live
 	# game yet; this is so the Zoo and the integration suite can see her move.
 	SpeciesDefs.COW: "res://entities/grazer.gd",
+	# The sheep walks on the cow's script too, from her own five-coat sheet
+	# (`entities/sheep_art.gd`): the art session's when it lands, the cow's frames
+	# whitened and woolled until then.
+	SpeciesDefs.SHEEP: "res://entities/grazer.gd",
 	SpeciesDefs.SONGBIRD: "res://entities/songbird.gd",
 	# The mole draws one of three cells depending on whether it is under the farm,
 	# and the worm draws one cell per tile of itself — the first actor in the game

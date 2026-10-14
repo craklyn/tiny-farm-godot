@@ -154,6 +154,12 @@ godot --path . res://tools/capture_cow_grazing.tscn -- --save=<farm.json> --out=
 # under user://capture_robot_round_building/ or --out=<dir>) — needs a display
 godot --path . --fixed-fps 60 res://tools/capture_robot_round_building.tscn
 
+# Sheep in the real game (design/18): the five coats on the grass, the five in the barn,
+# and a sheep too fluffy to walk, as PNGs under docs/design/mockups/sheep/ — needs a display.
+# For video, `video/tools/record_shot.sh` has sheepline, sheepstalls, sheepdoor, sheepstuck
+# and sheepbuy shots; the 4th argument picks the coats, e.g. `... sheepline 540x540 0-1-2-3-4`
+godot --path . res://tools/capture_sheep.tscn
+
 # The training workbench's six plates as PNGs (tools/shot_workbench_0..5.png) on a fresh
 # Mark III — needs a display; saves to scratch so it never seeds the next suite run
 godot --path . res://tools/capture_workbench.tscn

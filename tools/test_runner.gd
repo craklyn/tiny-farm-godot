@@ -200,6 +200,7 @@ func _run_scenarios() -> void:
 	await _scenario_bq_a_tower_that_will_not_fit_buzzes()
 	await _scenario_br_a_walled_in_barn_buzzes()
 	await _scenario_bs_a_barn_over_a_bed_buzzes()
+	await _scenario_sh_a_sheep_is_bought_by_a_tap()
 
 
 func _scenario_ba_crow_spook_stops_at_room_wall() -> void:
@@ -10271,6 +10272,132 @@ func _bo_put_farm_back(before: Dictionary, rng_seed: int, rng_state: int, rng_re
 	farm.queue_redraw()
 	await get_tree().process_frame
 	_restore_session_paths(real_paths)
+
+
+# Sheep (docs/design/18-sheep.md, 2026-10-13): with a barn on the farm, the shop
+# shows a sheep's card beside the cow's, and a finger buys her. The seed box is
+# tapped through InputManager as a tablet touch and the card is pressed through
+# the root viewport, as Scenario BO does; nothing calls the gateway or a menu
+# method for the purchase. She arrives outside the barn's doors in her mid-growth
+# coat, with a picture on the farm drawn from that coat's row. Her coat then grows
+# to the extreme (three nights' wool, through the gateway), the picture follows it,
+# and once cows and sheep fill the barn's four places both cards go dark.
+func _scenario_sh_a_sheep_is_bought_by_a_tap() -> void:
+	print("\n--- Scenario SH: a sheep is bought by a tap on her card in the shop ---")
+	var real_paths := [GameState.save_path, GameState.replay_path, GameState.trace_path]
+	GameState.save_path = "user://sheep_taps_autosave.json"
+	GameState.replay_path = "user://sheep_taps_replay.json"
+	GameState.trace_path = "user://sheep_taps_trace.jsonl"
+	var menus = main_scene.menus
+	menus.close_menu()
+	main_scene.end_teaching()
+	await get_tree().process_frame
+	var before := SaveGame.capture(farm.sim, GameState)
+	var rng_seed := SimRng.current_seed()
+	var rng_state := SimRng.rng.state
+	var rng_revision := SimRng.stateless_revision
+	var replay_from: int = farm.replay.entries.size()
+
+	var start := Vector2i(8, 3)
+	player.init_position(start.x, start.y)
+	farm.sim.set_actor_pos(SimWorld.ACTOR_PLAYER, start)
+	player.path.clear()
+	player.pending_action = {}
+	InputManager.has_click = false
+	await get_tree().process_frame
+
+	# Before the barn there is no sheep on the shelf.
+	menus._build_shop_items()
+	var early := false
+	for item in menus.shop_items:
+		early = early or String(item.get("kind", "")) == "sheep"
+	_assert(farm.sim.barns.is_empty() and not early, "with no barn, the shop has no sheep card")
+
+	# The barn, put down through the gateway: what this scenario tests is the sheep.
+	_hold_sim_clock()
+	GameState.machines = { "industrial_barn": 1 }
+	var anchor := _bo_free_barn_spot()
+	if anchor.x >= 0:
+		_clear_ground_for_fixture(anchor, "industrial_barn")
+	var laid: Dictionary = farm.apply_action({ "verb": "place", "target": anchor,
+		"item": "industrial_barn", "actor": "player" }, GameState)
+	_release_sim_clock()
+	_assert(laid.get("ok", false), "a barn stands on the farm (%s at %s)" % [laid, anchor])
+	if not laid.get("ok", false):
+		await _bo_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
+		return
+	farm.sync_actors()
+	GameState.gold = SimWorld.SHEEP_PRICE
+
+	await _finger_tap(Vector2i(8, 1))
+	var shop_open := await _wait_until(func(): return menus.active_menu == "shop", 600)
+	_assert(shop_open, "a tap on the seed box opens the shop (%s)" % menus.active_menu)
+	if not shop_open:
+		await _bo_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
+		return
+	await get_tree().create_timer(0.3).timeout
+	var sheep_row := -1
+	var cow_row := -1
+	for i in menus.shop_items.size():
+		match String(menus.shop_items[i].get("kind", "")):
+			"sheep": sheep_row = i
+			"cow": cow_row = i
+	_assert(sheep_row == cow_row + 1 and cow_row >= 0
+		and bool(menus.shop_items[sheep_row].get("affordable", false))
+		and int(menus.shop_items[sheep_row].get("price", 0)) == 250
+		and menus.shop_items[sheep_row].get("icon") is Texture2D,
+		"the barn puts a 250-gold sheep card, with her picture, beside the cow's")
+	if sheep_row < 0:
+		await _bo_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
+		return
+	var buttons: Array = menus.options_container.find_children("*", "Button", true, false)
+	var card: Button = buttons[sheep_row]
+	var scroll: ScrollContainer = menus.options_container.find_child("shop_scroll", true, false)
+	if scroll != null and not scroll.get_global_rect().encloses(card.get_global_rect()):
+		scroll.ensure_control_visible(card)
+		await get_tree().process_frame
+		await get_tree().process_frame
+	await _gui_tap(card)
+	var bought := await _wait_until(func(): return farm.sim.has_actor("sheep_1"), 60)
+	_assert(bought and GameState.gold == 0 and farm.sim.species_of("sheep_1") == SpeciesDefs.SHEEP
+		and Wool.coat_of(farm.sim, "sheep_1") == Wool.MID_GROWTH,
+		"a tap on the card spends 250 gold and sheep_1 arrives, mid-growth (gold %d)" % GameState.gold)
+	menus.close_menu()
+	if not bought:
+		await _bo_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
+		return
+	await get_tree().process_frame
+	await get_tree().process_frame
+	var node = farm.actor_nodes.get("sheep_1", null)
+	_assert(node != null and bool(node.is_sheep) and int(node.coat_row) == Wool.MID_GROWTH,
+		"she has a picture on the farm, drawn from her mid-growth row")
+
+	# Three nights' wool, and the picture follows her coat to the extreme row.
+	for night in 3:
+		farm.apply_action({ "actor": "sheep_1", "verb": "grow_wool" }, GameState)
+	await get_tree().process_frame
+	await get_tree().process_frame
+	_assert(Wool.coat_of(farm.sim, "sheep_1") == Wool.EXTREME and node != null and int(node.coat_row) == Wool.EXTREME,
+		"three nights later she is in her extreme coat, and drawn in it")
+
+	# The four places: the barn's own cow, this sheep, and two more fill it.
+	GameState.gold = 10000
+	while farm.sim.barn_animal_count() < SimWorld.HERD_LIMIT:
+		farm.sim.spawn_actor(farm.sim.next_cow_id(), SpeciesDefs.COW, farm.sim.actor_pos("sheep_1"))
+	menus._build_shop_items()
+	var dark := 0
+	for item in menus.shop_items:
+		if String(item.get("kind", "")) in ["cow", "sheep"] and not bool(item.get("affordable", true)):
+			dark += 1
+	_assert(dark == 2, "with four animals in the barn's places, the cow and sheep cards both go dark")
+
+	var hers: Array = []
+	for i in range(replay_from, farm.replay.entries.size()):
+		var e: Dictionary = farm.replay.entries[i]
+		if String(e.get("verb", "")) == "buy_sheep":
+			hers.append(String(e.get("actor", "")))
+	_assert(hers == [SimWorld.ACTOR_PLAYER], "the replay records her one sheep purchase (%s)" % str(hers))
+	await _bo_put_farm_back(before, rng_seed, rng_state, rng_revision, real_paths)
 
 
 func _in_room_or_door(id: String, door: Vector2i) -> bool:

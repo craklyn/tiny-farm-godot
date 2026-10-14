@@ -188,9 +188,16 @@ static func cow_pose(world: SimWorld, cow_id: String, tick: int) -> Dictionary:
 	var facing := String(e.get("facing", ""))
 	var extra: Dictionary = e.get("extra", {})
 	var pose := { "pos": Vector2(at), "frame": 0, "facing_left": facing == "left" }
+	# A sheep in her extreme coat does not walk: she wiggles, happily, where she
+	# stopped (the bottom row of her sheet, design/18). A frame every 0.4 s of sim time.
+	if String(e.get("species", "")) == SpeciesDefs.SHEEP and String(extra.get("state", "")) == "content":
+		pose["frame"] = posmod(tick / 4, HOP_FRAMES)
+		return pose
 	if String(extra.get("state", "")) != "moving" or int(extra.get("step", 0)) < 1:
 		return pose
-	var per_tile := maxi(1, Movement.ticks_per_tile(SpeciesDefs.COW))
+	# Each step lasts as long as the sim made it: a cow's are all alike, and a
+	# sheep's coat stretches the ones through doors and gaps (`Wool.step_ticks`).
+	var per_tile := maxi(1, int(extra.get("step_ticks", Movement.ticks_per_tile(String(e.get("species", SpeciesDefs.COW))))))
 	var stepped := int(extra.get("wake", tick)) - per_tile
 	var since := tick - stepped
 	if since < 0 or since >= per_tile:

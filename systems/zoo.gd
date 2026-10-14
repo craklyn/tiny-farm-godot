@@ -160,6 +160,10 @@ const ICON_CELL := {
 	# Placeholder portrait: the rabbit sheet's standing cell, which is what the
 	# cow is drawn with until the barn art card lands (`entities/grazer.gd`).
 	SpeciesDefs.COW: Rect2(0, 0, 16, 16),
+	# Her sheet is made at first use (or is the art session's), so its cell size
+	# is the sheet's to say: `icon_of` asks `SheepArt` for the full coat's
+	# standing frame, and this entry only says she has a portrait.
+	SpeciesDefs.SHEEP: Rect2(),
 }
 
 
@@ -190,6 +194,8 @@ static func icon_of(species: String) -> Array:
 	var renderer: GDScript = load(path)
 	if renderer == null:
 		return []
+	if species == SpeciesDefs.SHEEP:
+		return [SheepArt.sheet(), SheepArt.cell_rect(Wool.FULL, 0)]
 	var sheet = renderer.get_script_constant_map().get("SPRITES", null)
 	# A script that renders several species (the ants, the grazers) holds one
 	# sheet per species; pick this one's.
@@ -355,6 +361,9 @@ static func spawn(world: SimWorld, gs, species: String, nth: int = 0) -> Array[S
 static func _blockers(species: String) -> Array[String]:
 	if species == SpeciesDefs.ANT_SCOUT or species == SpeciesDefs.ANT_FORAGER:
 		return [SpeciesDefs.ANT_SCOUT, SpeciesDefs.ANT_FORAGER]
+	# A sheep's own id counts up (`next_sheep_id`), so nobody need step aside.
+	if species == SpeciesDefs.SHEEP:
+		return []
 	return [species]
 
 
@@ -390,6 +399,15 @@ static func _invite(world: SimWorld, gs, species: String, nth: int) -> Array[Str
 				out.append_array(AntForagerBrain.raise_column(world, "", nest, world.clock.tick))
 		# **One machine, three settings** (M2.5 WI-9), so repeat taps cycle rather
 		# than pile up identical bots: follow, then circle, then shoo.
+		# **A coat a tap** (docs/design/18): repeat taps cycle her five coats,
+		# freshly sheared to extreme, so all five stand side by side in five taps —
+		# the way the bot's taps cycle its settings. In the game she arrives
+		# mid-growth from the shop (`buy_sheep`); here, as the coat asked for.
+		SpeciesDefs.SHEEP:
+			var sheep_id := world.next_sheep_id()
+			world.spawn_actor(sheep_id, SpeciesDefs.SHEEP, _near_farmer(world, nth),
+				{ "coat": nth % (Wool.EXTREME + 1) })
+			out.append(sheep_id)
 		SpeciesDefs.BOT:
 			var config: String = BotBrain.CONFIGS[nth % BotBrain.CONFIGS.size()]
 			BotBrain.deploy(world, SpeciesDefs.BOT, config, _near_farmer(world, nth))

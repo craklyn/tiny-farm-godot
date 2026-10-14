@@ -389,6 +389,12 @@
   "0a69cb9fdd2b0e92380b": {
    "verdict": "ok"
   },
+  "0a79db8047bf6b6de719": {
+   "instead": "Sheep in the simulation: bought after the barn, grow one coat each night, slow down in doors and gaps, and become permanently stuck once fully coated",
+   "quote": "stuck for good at the extreme coat",
+   "verdict": "decode",
+   "why": "It does not say plainly what happens to the sheep or what an “extreme coat” is."
+  },
   "0a8dd8cd42692675bddb": {
    "verdict": "ok"
   },
@@ -1966,6 +1972,9 @@
    "verdict": "ok"
   },
   "31fbbe8c1393227f7c57": {
+   "verdict": "ok"
+  },
+  "322d319c9f39ae0193fd": {
    "verdict": "ok"
   },
   "3232591e25fb0fb7444e": {

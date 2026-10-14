@@ -512,7 +512,7 @@ static func _a_seed(g: Game) -> String:
 	return String(held[g.rng.randi_range(0, held.size() - 1)])
 
 
-# The seed box: seeds, machines, a cow — and putting down whatever she holds.
+# The seed box: seeds, machines, a cow or a sheep — and putting down whatever she holds.
 static func _shop(g: Game) -> void:
 	var r := g.rng.randf()
 	if r < 0.25:
@@ -531,9 +531,16 @@ static func _shop(g: Game) -> void:
 				if not _owns(g, want):
 					key = want
 					break
-		g.apply_action({ "verb": "buy_machine", "item": key, "actor": "player" })
-	elif r < 0.62:
+		# The sheep is on the wishlist but not in the machine catalogue: she is
+		# bought with her own verb, as an added cow is (design/18).
+		if key == "sheep":
+			g.apply_action({ "verb": "buy_sheep", "actor": "player" })
+		else:
+			g.apply_action({ "verb": "buy_machine", "item": key, "actor": "player" })
+	elif r < 0.59:
 		g.apply_action({ "verb": "buy_cow", "actor": "player" })
+	elif r < 0.62:
+		g.apply_action({ "verb": "buy_sheep", "actor": "player" })
 	else:
 		_place_something(g)
 
@@ -564,12 +571,14 @@ static func _place_something(g: Game) -> void:
 			return
 
 
-const WISHLIST := ["stall", "bot_mk1", "coop", "industrial_barn", "bot_mk3", "workbench",
+const WISHLIST := ["stall", "bot_mk1", "coop", "industrial_barn", "sheep", "bot_mk3", "workbench",
 	"sprinkler", "nest_box"]
 
 
 # Whether she has one of these standing on the farm or in her hands.
 static func _owns(g: Game, key: String) -> bool:
+	if key == "sheep":
+		return g.world.sheep_count() > 0
 	if g.gs.held_count(key) > 0:
 		return true
 	if not _robots_by(g, key).is_empty():
