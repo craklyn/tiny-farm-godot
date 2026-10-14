@@ -4347,6 +4347,9 @@
    "verdict": "second-look",
    "why": "\"A seat\" is org vocabulary not introduced; the reader doesn't know this means a role."
   },
+  "725c787b47207deb6d4f": {
+   "verdict": "ok"
+  },
   "727eb76835a12d1a2382": {
    "verdict": "ok"
   },
@@ -8110,6 +8113,12 @@
   },
   "d3107b9098b38adccc4d": {
    "verdict": "ok"
+  },
+  "d3127f80f5b3023e04df": {
+   "instead": "A Mark I left in the crate overnight starts the next morning there, and a stall placed over a homeless Mark I makes that bay its home",
+   "quote": "gets a fresh morning",
+   "verdict": "second-look",
+   "why": "This poetic phrase makes the reader work out what changes for the Mark I after being left overnight."
   },
   "d36e627ca494984d8f73": {
    "instead": "The failed attempt used some of the available model text, but the amount is not shown.",

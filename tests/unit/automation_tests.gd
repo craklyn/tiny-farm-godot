@@ -2922,6 +2922,69 @@ func test_crate_keeps_a_taught_round() -> void:
 	_assert(from_disk != "" and str(BotBrain.orders_of(reloaded.actor(from_disk)["extra"])) == str(lesson),
 		"and set down on the reloaded farm it still knows her three squares")
 	gs_back.free()
+
+	# --- a night in the crate is still a night ----------------------------------
+	# The day turn resets a Mark I's round only for robots on the farm, so the box
+	# carries the day it went in, and a robot that comes out on a later day gets the
+	# morning it missed (review of this change, 2026-10-14).
+	var night_crate: Array = s.gs.boxed.get("bot_mk1", [])
+	_assert(night_crate.size() == 1 and bool((night_crate[-1] as Dictionary).get("ran_today", false)),
+		"the Mark I in the crate has already had today's round")
+	var night_snap = JSON.parse_string(JSON.stringify(SaveGame.capture(s.world, s.gs)))
+	var night_gs = load("res://systems/game_state.gd").new()
+	night_gs.reset()
+	var night_world := SimWorld.new()
+	_assert(SaveGame.restore(night_snap, night_world, night_gs),
+		"the farm saves and loads with it still in the crate")
+	night_world.apply_action({ "verb": "sleep", "actor": "world", "weather": "sunny" }, night_gs)
+	var after_load := String(night_world.apply_action({ "verb": "place", "target": open_ground,
+		"item": "bot_mk1", "actor": "player" }, night_gs).get("machine", ""))
+	_assert(after_load != "" and night_world.apply_action({ "verb": "activate",
+			"target": open_ground, "actor": "player" }, night_gs).get("ok", false),
+		"and after a night on the loaded farm it comes out ready to be sent again")
+	night_gs.free()
+
+	s.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	var mk1e := String(s.act({ "verb": "place", "target": open_ground, "item": "bot_mk1",
+		"actor": "player" }).get("machine", ""))
+	var morning: Dictionary = s.world.actor(mk1e)["extra"] if mk1e != "" else {}
+	_assert(not bool(morning.get("ran_today", true)) and not bool(morning.get("sent", true))
+			and int(morning.get("at_order", -1)) == 0,
+		"lifted after its round and put down next morning, it has a fresh day")
+	_assert(str(BotBrain.orders_of(morning)) == str(lesson), "with its round still in it")
+	_assert(s.act({ "verb": "activate", "target": open_ground, "actor": "player" }).get("ok", false),
+		"so she can send it out")
+	guard = 0
+	while int(s.world.actor(mk1e)["extra"].get("at_order", 0)) < 1 and guard < 400:
+		s.tick(SimClock.RATE)
+		guard += 1
+	_assert(int(s.world.actor(mk1e)["extra"].get("at_order", 0)) >= 1,
+		"and it is partway round when she lifts it again")
+	s.act({ "verb": "collect", "target": s.world.actor_pos(mk1e), "actor": "player" })
+	s.act({ "verb": "sleep", "actor": "world", "weather": "sunny" })
+	var mk1f := String(s.act({ "verb": "place", "target": stall, "item": "bot_mk1",
+		"actor": "player" }).get("machine", ""))
+	var fresh: Dictionary = s.world.actor(mk1f)["extra"] if mk1f != "" else {}
+	_assert(not bool(fresh.get("sent", true)) and int(fresh.get("at_order", -1)) == 0
+			and not bool(fresh.get("ran_today", true)),
+		"lifted mid-round and put down the next day, it does not finish yesterday's walk")
+	_assert(int(fresh.get("home_x", -1)) == stall.x and int(fresh.get("home_y", -1)) == stall.y,
+		"and set down in the stall's first bay it lives there")
+
+	# --- a stall put back over a Mark I with no home takes it in ----------------
+	var stall_up := s.act({ "verb": "collect", "target": stall, "actor": "player", "building": true })
+	_assert(stall_up.get("ok", false) and String(stall_up.get("collected", "")) == "stall",
+		"she picks the stall up, leaving the robot standing (%s)" % str(stall_up))
+	s.act({ "verb": "collect", "target": stall, "actor": "player" })
+	var mk1g := String(s.act({ "verb": "place", "target": stall, "item": "bot_mk1",
+		"actor": "player" }).get("machine", ""))
+	_assert(mk1g != "" and not s.world.actor(mk1g)["extra"].has("home_x"),
+		"she puts the robot down where the bay was, on bare ground, so it has no home")
+	var stall_back := s.act({ "verb": "place", "target": stall, "item": "stall", "actor": "player" })
+	var adopted: Dictionary = s.world.actor(mk1g)["extra"] if mk1g != "" else {}
+	_assert(stall_back.get("ok", false) and int(adopted.get("home_x", -1)) == stall.x
+			and int(adopted.get("home_y", -1)) == stall.y,
+		"and the stall put back over it gives it the bay it stands in (%s)" % str(stall_back))
 	var end_save = JSON.parse_string(JSON.stringify(SaveGame.capture(s.world, s.gs)))
 	var report := SaveGame.replay_report(s.log, end_save)
 	_assert(bool(report.get("matched", false)),

@@ -1675,6 +1675,10 @@ func close_room(anchor: Vector2i) -> void:
 # morning are hers, not an errand of the machine's, and a robot lifted halfway
 # through its round carries on from the square it had reached when she puts it
 # down. `ran_today` stays as well, so a pick-up never buys a second round in a day.
+# The day a machine went into the crate, written on its box by `_crate_machine` and
+# read by `place`. Kept on the box and never put back on the robot.
+const BOXED_ON_DAY := "boxed_on_day"
+
 const BOXED_FORGETS := [
 	"job", "job_x", "job_y", "job_target", "pending",
 	"state", "goal_x", "goal_y", "wake",
@@ -3887,6 +3891,8 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				# the robots' rule (below), so the box and the stall move together.
 				if item == STALL_ITEM and placer_charged:
 					_unbox_stall_residents(cells, gs)
+				if item == STALL_ITEM:
+					_adopt_homeless_in_bays(cells)
 				# **A structure's first use is being set down** (S-12). A bench
 				# has no job of its own to complete — it is a thing robots are
 				# worked on at — so the moment it stands on the farm is the
@@ -3975,11 +3981,20 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			# worked it out from the square she put it on, a stall bay or none. The
 			# list is asked again on the way out because a box packed by an older
 			# build, with a shorter list, may still hold a route or a home.
+			#
+			# **And a night in the crate is still a night.** The day turn resets a
+			# Mark I's round only for robots standing on the farm
+			# (`BotBrain.on_new_day`), so one boxed yesterday would come out still
+			# "sent today", refusing to go out, or finishing yesterday's walk. The
+			# box says which day it went in; a box from before the stamp existed is
+			# taken as today's, which is what every box was until it did.
 			if not was.is_empty():
 				var now: Dictionary = actors[machine_id]["extra"]
 				for key in was:
-					if not key in BOXED_FORGETS:
+					if not key in BOXED_FORGETS and key != BOXED_ON_DAY:
 						now[key] = was[key]
+				if int(was.get(BOXED_ON_DAY, gs.day)) != int(gs.day):
+					BotBrain.new_day_for_orders(now)
 			if placer_charged:
 				gs.machines[item] = int(gs.machines.get(item, 0)) - 1
 			return { "ok": true, "machine": machine_id, "config": config }
@@ -4669,6 +4684,9 @@ func _crate_machine(machine_id: String, gs) -> String:
 	for forgotten in BOXED_FORGETS:
 		kept.erase(forgotten)
 	if kept.size() > (1 if kept.has("model") else 0):
+		# The day it went in, so `place` can tell whether a night has passed while
+		# it was in the crate (`BOXED_ON_DAY`).
+		kept[BOXED_ON_DAY] = int(gs.day)
 		var crate: Array = gs.boxed.get(machine_key, [])
 		crate.append(kept)
 		gs.boxed[machine_key] = crate
@@ -4772,6 +4790,28 @@ func _unbox_stall_residents(cells: Array[Vector2i], gs) -> void:
 		var extra: Dictionary = actors[String(resident["id"])]["extra"]
 		extra["home_x"] = cells[bay].x
 		extra["home_y"] = cells[bay].y
+
+
+# **A Mark I standing in a bay with no home of its own moves in** (2026-10-14). A
+# stall put down over a robot that has no stall to go back to gives it the bay it is
+# standing in, as `deploy` does for one set down in a bay. That covers a Mark I she
+# put down on the old bay's square while its stall was in the crate (put down on
+# bare ground, it got no home), and one whose stall's record of it went stale when
+# she picked it up and set it down again. A home that is still a stall somewhere is
+# left alone: a robot passing through someone else's bay keeps its own.
+func _adopt_homeless_in_bays(cells: Array[Vector2i]) -> void:
+	for cell in cells:
+		var id := machine_at(cell)
+		if id == "" or String(actors[id].get("species", "")) != SpeciesDefs.BOT:
+			continue
+		var extra: Dictionary = actors[id]["extra"]
+		if String(extra.get("config", "")) != BotBrain.CONFIG_ORDERS:
+			continue
+		var home := Vector2i(int(extra.get("home_x", -1)), int(extra.get("home_y", -1)))
+		if home.x >= 0 and is_stall_tile(home):
+			continue
+		extra["home_x"] = cell.x
+		extra["home_y"] = cell.y
 
 
 # **Everything inside the buildings about to come up, handed back before their rooms

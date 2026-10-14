@@ -319,6 +319,17 @@ today, a pick-up never buys a second round in a day. The alternative, dropping t
 rest of the round as a Mark III drops its job, would lose her the rest of a morning's
 watering for moving it.
 
+**A night in the crate is still a night.** The box notes the day the robot went in. A
+Mark I that comes out on a later day has a fresh morning: not out, not yet sent, at the
+top of its list. Without that it would come out still "already sent today", or walk the
+rest of yesterday's round.
+
+**A stall put down over a Mark I with no home takes it in.** If she puts a Mark I down
+on a bare square and then puts a stall down over it, the bay it is standing in becomes
+its home, as if she had put it down in the bay. This also covers a Mark I she moved
+while its stall was in the crate. A Mark I whose home is a stall still standing
+somewhere else keeps that home.
+
 The crate keeps one box per robot, newest on top. Pick up two Mark Is and put two down,
 and each gets its own round back, the one picked up last coming out first. A robot she
 has just bought has no box and comes out as new.
