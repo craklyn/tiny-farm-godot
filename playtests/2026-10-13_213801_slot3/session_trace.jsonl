@@ -1,0 +1,7 @@
+{"continued":true,"gen_seed":0,"version":1}
+{"at":[16,5],"in":"tap","kind":"tap","out":"walk","t":2015,"tile":[10,4],"tool":3,"verb":""}
+{"at":[12,4],"in":"tap","kind":"tap","out":"walk","t":3633,"tile":[8,4],"tool":3,"verb":""}
+{"at":[8,4],"in":"tap","kind":"tap","out":"walk","t":10585066,"tile":[10,4],"tool":3,"verb":""}
+{"at":[10,4],"in":"tap","kind":"tap","out":"walk","t":10595837,"tile":[3,10],"tool":3,"verb":"clear_weed"}
+{"at":[10,5],"in":"tap","kind":"tap","out":"queued","t":10596209,"tile":[2,2],"tool":3,"verb":"use_door"}
+{"actor":"player","kind":"act","ok":true,"t":10599795,"tile":[2,2],"verb":"use_door"}
