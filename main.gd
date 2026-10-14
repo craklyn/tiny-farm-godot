@@ -1216,6 +1216,12 @@ func pick_up_machine(id: String) -> void:
 	player.pick_up_machine(id)
 
 
+## Walk her up to a building and pick it up, not what stands in it: the stall's row
+## on the panel of a robot parked in one (2026-10-13).
+func pick_up_building(at: Vector2i) -> void:
+	player.pick_up_building(at)
+
+
 ## Open the training workbench standing at `at` (Q-101, 2026-09-10).
 ##
 ## The same shape as the machine panel above it and as `open_shop`: the player

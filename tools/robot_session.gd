@@ -593,6 +593,13 @@ func _a_dial_turn_at_the_bench() -> void:
 	await _walk_beside(bench_spot)
 	InputManager.click_tile = bench_spot
 	InputManager.has_click = true
+	# Its panel first (2026-10-13), the coop's "Go inside" row as "Use bench".
+	var asked := await _wait_until(func(): return menus.active_menu == "structure", ACT_FRAMES)
+	_check(asked, "a tap on the bench opens its panel (%s)" % menus.active_menu)
+	if not asked:
+		return
+	menus.selected_option = 0
+	menus._select_current_option()
 	var opened := await _wait_until(func(): return menus.active_menu == "workbench", ACT_FRAMES)
 	_check(opened, "a tap on the bench opens it (%s)" % menus.active_menu)
 	if not opened:
