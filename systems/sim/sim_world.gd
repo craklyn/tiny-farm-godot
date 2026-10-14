@@ -1144,8 +1144,9 @@ func _let_go_of_barn(barn_id: String) -> void:
 
 
 # **What a barn's line was doing goes into the crate with it** (2026-10-13). The
-# batches at the receiver and on each station, the finished cheese on the shelf and
-# the next batch's number are kept in `gs.boxed["industrial_barn"]`, the crate memory
+# batches at the receiver and on each station and the next batch's number are kept in
+# `gs.boxed["industrial_barn"]` (the finished cheese has gone to her already,
+# `_hand_over_cheese`), the crate memory
 # a robot's practice rides in (Q-98: "pick up is just repositioning, it shouldn't
 # factory reset"), and `place` takes the newest one back out. A batch's two ticks are
 # kept as offsets from the moment it was boxed, so the line is paused in the crate:
@@ -1156,7 +1157,7 @@ func _box_barn_line(barn_id: String, gs) -> void:
 	if barn.is_empty() or gs == null:
 		return
 	var stations: Dictionary = barn.get("stations", {})
-	var busy := not (barn.get("receiver", []) as Array).is_empty() or int(barn.get("finished_cheese_count", 0)) > 0
+	var busy := not (barn.get("receiver", []) as Array).is_empty()
 	for station in BARN_STATIONS:
 		busy = busy or stations.get(station) != null
 	if not busy:
@@ -1164,7 +1165,6 @@ func _box_barn_line(barn_id: String, gs) -> void:
 	var kept := {
 		"receiver": [],
 		"stations": {},
-		"finished_cheese_count": int(barn.get("finished_cheese_count", 0)),
 		"next_batch_id": int(barn.get("next_batch_id", 1)),
 	}
 	for batch in barn.get("receiver", []):
@@ -1186,7 +1186,6 @@ func _unbox_barn_line(barn_id: String, gs) -> void:
 	var kept: Dictionary = crate.pop_back()
 	gs.boxed[BARN_ITEM] = crate
 	var barn: Dictionary = barns[barn_id]
-	barn["finished_cheese_count"] = mini(int(kept.get("finished_cheese_count", 0)), FINISHED_CHEESE_CAPACITY)
 	barn["next_batch_id"] = maxi(1, int(kept.get("next_batch_id", 1)))
 	var receiver: Array = []
 	for batch in kept.get("receiver", []):
@@ -1197,6 +1196,28 @@ func _unbox_barn_line(barn_id: String, gs) -> void:
 		var batch = kept_stations.get(station)
 		barn["stations"][station] = null if batch == null else _batch_shifted(batch, clock.tick)
 	_schedule_barn(barn_id, clock.tick + 1)
+
+
+# **The cheese on a barn's shelf comes to her as items** when the barn is picked up
+# (Daniel, 2026-10-13: "Cheese and eggs come to me as items"), the way a coop's eggs
+# go to her basket: one `cheese` a wheel, which the shipping bin buys at the shelf's
+# price (S-42). Returned as `{ item, cell }` pairs on the shelf's square, as
+# `_empty_rooms` lists what it hands over.
+func _hand_over_cheese(barn_id: String, gs) -> Array:
+	var out: Array = []
+	var barn: Dictionary = barns.get(barn_id, {})
+	var wheels := int(barn.get("finished_cheese_count", 0))
+	if wheels <= 0 or gs == null:
+		return out
+	barn["finished_cheese_count"] = 0
+	gs.items["cheese"] = int(gs.items.get("cheese", 0)) + wheels
+	var shelf := Vector2i(-1, -1)
+	if rooms.has(barn_id):
+		shelf = Vector2i(rooms[barn_id].get("origin", Vector2i.ZERO)) \
+			+ Vector2i(MachineDefs.room_of(BARN_ITEM).get("cheese_shelf", Vector2i.ZERO))
+	for i in wheels:
+		out.append({ "item": "cheese", "cell": shelf })
+	return out
 
 
 # A copy of a batch with its ticks moved by `by`, and its numbers whole again (a box
@@ -3523,13 +3544,14 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				# (Daniel, 2026-10-13: "Let the barn be picked up. When picked up,
 				# living entities inside spill out." It used to be refused while a cow
 				# held a stall or there was milk or cheese inside.) Its animals are let
-				# go of here — out of their stalls, off any trip to it — and the ones
-				# indoors are put out onto its squares below, as the coop's hen is. Its
-				# line is not living and is not lost: the batches, the cheese on the
-				# shelf and the batch count go into the crate with the barn and come
-				# back out when it is put down (`_box_barn_line`, as a robot's memory
-				# does, Q-98).
+				# go of here — out of their stalls, off any trip to it — and put
+				# outside its doors. Its finished cheese comes to her as items, as a
+				# coop's eggs do (Daniel, 2026-10-13: "Cheese and eggs come to me as
+				# items"). The milk still on its line is not lost: the batches and the
+				# batch count go into the crate with the barn and come back out when it
+				# is put down (`_box_barn_line`, as a robot's memory does, Q-98).
 				var barn_ids: Array[String] = []
+				var cheese_out: Array = []
 				for b in taken_up:
 					var barn_room := room_of_anchor(b["anchor"])
 					if barns.has(barn_room):
@@ -3539,13 +3561,14 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 						clock.cancel(int(_barn_events[barn_room]))
 						_barn_events.erase(barn_room)
 					_let_go_of_barn(barn_room)
+					cheese_out.append_array(_hand_over_cheese(barn_room, gs))
 					_box_barn_line(barn_room, gs)
 					barns.erase(barn_room)
 				# **And what is inside comes out first** (S-22, design/15 §9a).
 				# The slot is reused by the next room, so nothing may be left in
 				# it: every fitting, egg and machine goes to her as its own item,
 				# and the hen is walked out onto the grass.
-				var contents := _empty_rooms(taken_up, gs)
+				var contents := cheese_out + _empty_rooms(taken_up, gs)
 				for b in taken_up:
 					var b_item := String(b["item"])
 					close_room(b["anchor"])

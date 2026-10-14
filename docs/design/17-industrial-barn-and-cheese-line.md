@@ -535,7 +535,12 @@ to be refused while a cow held a stall or there was milk or cheese inside. Now t
 - A cow or sheep outside on her way to the barn gives up the trip where she stands.
 - While the barn is in the crate its animals graze, and none of them looks for a stall. When
   it is put down again they use it as before. Putting it down again brings no second cow.
-- The milk at the receiver, the batches on the line, the cheese on the shelf and the batch
-  count go into the crate with the barn, paused. Put down again, the barn has them back: a
-  batch three seconds from done is three seconds from done, and the line carries on.
+- The cheese on the shelf comes to her as items, as a coop's eggs do. Daniel: "Cheese and
+  eggs come to me as items, with P1 they tumble to the ground to be picked up". She carries
+  each wheel as one cheese, which the shipping bin buys for 20 gold. Tumbling onto the ground
+  instead is the next change.
+- Milk still on the line (at the receiver or at any station) goes into the crate with the
+  barn, paused. Daniel did not rule on it; this keeps it rather than losing it. Put down
+  again, the barn has it back: a batch three seconds from done is three seconds from done,
+  and the line carries on.
 

@@ -10426,6 +10426,7 @@ func _scenario_si_a_busy_barn_is_picked_up_by_a_tap() -> void:
 	_hold_sim_clock()
 	GameState.machines = { "industrial_barn": 1 }
 	GameState.boxed = {}
+	GameState.items["cheese"] = 0
 	var anchor := _bo_free_barn_spot()
 	if anchor.x >= 0:
 		_clear_ground_for_fixture(anchor, "industrial_barn")
@@ -10495,9 +10496,8 @@ func _scenario_si_a_busy_barn_is_picked_up_by_a_tap() -> void:
 		var node = farm.actor_nodes.get(id, null)
 		drawn = drawn and node != null and farm.sim.page_of(Vector2i((node.position / 16.0).floor())) == 0
 	_assert(drawn, "and both are drawn on the farm where they now stand")
-	var boxed: Array = GameState.boxed.get("industrial_barn", [])
-	_assert(boxed.size() == 1 and int(boxed[0].get("finished_cheese_count", 0)) == 1,
-		"the cheese on the shelf went into the crate with the barn")
+	_assert(int(GameState.items.get("cheese", 0)) == 1,
+		"the cheese on the shelf comes to her as an item, as a coop's eggs do")
 	var verbs: Array = []
 	for i in range(replay_from, farm.replay.entries.size()):
 		var e: Dictionary = farm.replay.entries[i]

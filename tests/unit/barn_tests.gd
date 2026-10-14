@@ -602,10 +602,13 @@ func test_barn_pick_up() -> void:
 		"the cow on her way in gives up the trip where she stands")
 	_assert(int(world.actor(cow_id).extra.milk_milliunits) == milk_before,
 		"the cow who was about to give keeps her milk")
+	_assert(int(GameState.items.get("cheese", 0)) == 2
+		and (taken.get("contents", []) as Array).filter(func(c): return String(c.item) == "cheese").size() == 2,
+		"the two cheeses on the shelf come to her as items, as a coop's eggs do (Daniel: \"Cheese and eggs come to me as items\")")
 	var boxed: Array = GameState.boxed.get("industrial_barn", [])
-	_assert(boxed.size() == 1 and int(boxed[0].finished_cheese_count) == 2
+	_assert(boxed.size() == 1 and not boxed[0].has("finished_cheese_count")
 		and int(boxed[0].stations.press.batch_id) == 50 and int(boxed[0].stations.press.ready_tick) == 30,
-		"the batch on the press and the two cheeses go into the crate with the barn, the press thirty ticks from done")
+		"the milk still on the line, a batch on the press, goes into the crate with the barn, thirty ticks from done")
 
 	# With the barn in the crate, the herd grazes and nobody looks for a stall.
 	var sheep_at := world.actor_pos("sheep_1")
@@ -629,12 +632,17 @@ func test_barn_pick_up() -> void:
 	var again_id := String(relaid.get("room", ""))
 	var again: Dictionary = world.barns.get(again_id, {})
 	_assert(relaid.get("ok", false) and String(relaid.get("cow", "")) == "" and not again.is_empty()
-		and int(again.finished_cheese_count) == 2 and again.stations.press != null
+		and int(again.finished_cheese_count) == 0 and again.stations.press != null
 		and int(again.stations.press.batch_id) == 50 and int(again.stations.press.ready_tick) == world.clock.tick + 30
 		and int(again.next_batch_id) == 51 and (GameState.boxed.get("industrial_barn", []) as Array).is_empty(),
-		"put down again, the barn has its two cheeses and its batch on the press, thirty ticks from done (%s)" % relaid)
-	var resumed := _barn_run_until(world, func(): return int(again.finished_cheese_count) >= 3, 600)
-	_assert(resumed, "and the line carries on: the pressed batch becomes a third cheese")
+		"put down again, the barn has its batch on the press back, thirty ticks from done (%s)" % relaid)
+	var resumed := _barn_run_until(world, func(): return int(again.finished_cheese_count) >= 1, 600)
+	_assert(resumed, "and the line carries on: the pressed batch becomes a cheese on the new shelf")
+	var gold_before := int(GameState.gold)
+	var sold: Dictionary = GameState.sell_crops_to_bin()
+	_assert(int(GameState.items.get("cheese", 0)) == 0 and int(GameState.gold) - gold_before >= 2 * SimWorld.CHEESE_BATCH_VALUE
+		and int(sold.sold.get("cheese", 0)) == 2,
+		"the two cheeses she carried sell at the shipping bin for 20 gold each")
 	var back_in := _barn_run_until(world, func():
 		for stall in again.stalls:
 			if String(stall.cow_id).begins_with("cow_"):

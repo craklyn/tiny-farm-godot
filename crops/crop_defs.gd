@@ -57,6 +57,13 @@ static var TYPES: Dictionary = {
 		"name": "Egg",
 		"sell_price": 10,
 	},
+	# A wheel of the creamery's cheese, carried like an egg (Daniel, 2026-10-13:
+	# "Cheese and eggs come to me as items"). She gets one when she picks up a barn
+	# with cheese on its shelf. The bin pays what the shelf pays for it (S-42).
+	"cheese": {
+		"name": "Cheese",
+		"sell_price": 20,
+	},
 	"scarecrow": {
 		"name": "Scarecrow",
 		"seed_price": 50,
