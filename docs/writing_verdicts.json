@@ -5186,6 +5186,9 @@
   "8759792d393218f00b22": {
    "verdict": "ok"
   },
+  "876852855869bbdf5e65": {
+   "verdict": "ok"
+  },
   "879be41cac6d131dec25": {
    "verdict": "ok"
   },
@@ -8730,6 +8733,12 @@
    "verdict": "decode",
    "why": "Undefined what a cost band is—cost range, category, or threshold."
   },
+  "e3847dce8329593bef32": {
+   "instead": "The robot stall and workbench can be picked up like every other building",
+   "quote": "pick up like every other building",
+   "verdict": "second-look",
+   "why": "The phrase makes the reader pause to work out whether the buildings can be picked up or simply behave like other buildings."
+  },
   "e3a3d93082321dc0e831": {
    "verdict": "ok"
   },
@@ -9689,6 +9698,9 @@
    "quote": "The window metaphor made literal",
    "verdict": "second-look",
    "why": "Observation language about what the visual communicates, not what the player actually sees."
+  },
+  "ff2499f2c3c9ede17b93": {
+   "verdict": "ok"
   },
   "ff37d599b91fed64eb7e": {
    "verdict": "ok"
