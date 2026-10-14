@@ -7009,6 +7009,9 @@
    "verdict": "second-look",
    "why": "“Held” can mean either paused or physically retained, so the title makes the reader stop to determine which meaning applies."
   },
+  "b77f96c978f4e51c60a5": {
+   "verdict": "ok"
+  },
   "b798094b925671e1070f": {
    "verdict": "ok"
   },
