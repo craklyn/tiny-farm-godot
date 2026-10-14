@@ -2573,6 +2573,9 @@
   "4563a80bfa1ed945e38e": {
    "verdict": "ok"
   },
+  "4580bf284baca8717f19": {
+   "verdict": "ok"
+  },
   "45cd8befab9d6764ae50": {
    "verdict": "ok"
   },
@@ -5603,6 +5606,12 @@
    "verdict": "decode",
    "why": "It names an internal check instead of saying what the reader can now see on the desktop version."
   },
+  "923a7bd4e790f0d31de1": {
+   "instead": "Writing checks now cover moving a robot without losing its settings",
+   "quote": "Writing checks recorded",
+   "verdict": "second-look",
+   "why": "The reader has to work out whether this means prose checks were added, run, or merely logged."
+  },
   "923f92114c1cf766da54": {
    "verdict": "ok"
   },
@@ -5734,6 +5743,12 @@
   },
   "94ef3a10f02aea25f467": {
    "verdict": "ok"
+  },
+  "94fe6b81af06fcf5f7db": {
+   "instead": "Writing checks recorded for the robot code commit",
+   "quote": "robot crate",
+   "verdict": "decode",
+   "why": "“Robot crate” is internal engineering shorthand, so a cold reader cannot tell what part of the project it names."
   },
   "9521090f91260dd5636e": {
    "verdict": "ok"
@@ -7041,6 +7056,12 @@
    "quote": "record it",
    "verdict": "second-look",
    "why": "The sentence does not say whether “it” means the web build or the play session."
+  },
+  "b84cccc9b5e9227e253e": {
+   "instead": "A picked-up Mark I keeps the round the player taught it, and a Mark II keeps its job",
+   "quote": "she",
+   "verdict": "decode",
+   "why": "The sentence does not say who taught the Mark I the round."
   },
   "b8cc67e303e7956c12b2": {
    "verdict": "ok"
