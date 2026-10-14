@@ -19,6 +19,15 @@ before the first public build ships.*
   were generated as a rival look for $0.12 and are kept with their service metadata at
   `assets/raw/2026-10-13-sheep-extreme-rival/`; they lost their faces at play size, so no
   generated pixels ship.
+- **A stuck sheep's gags** (2026-10-13; `docs/design/18-sheep.md`, "Stuck for good") —
+  a neck-stretch row for each of the sheep's eight looks on `sheep.png` (reach,
+  stretch, strain, smug; the sheet's cells widened to 56×28 so her head has room), and
+  `assets/sprites/generated/sheep_gags.png`: the stubble and bare-earth discs of her
+  grazed ring, the tuft she strains for, and a heart. Original local pixel art by Daniel
+  Blackburn, drawn by `tools/build_sheep_art.py` from colours the game already ships.
+  The stubble disc is the field's own grass sheet (`terrain_field.png`) with its three
+  greens remapped to the wheat's yellows through `tools/spritesmith.py`. The bird that
+  perches on her is the songbird's existing sheet. No generation was spent.
 - **Industrial Barn cheese-sale feedback** (`assets/sprites/generated/industrial_barn_sale_feedback.png`, 2026-10-09) — a 4×4 sheet of original local pixel art for the empty and growing cheese shelf, four-frame brass coin pulse, empty and loaded handcart, and four-frame coin flight. The shelf states, cart, and flight are intentionally wordless and use only the Industrial Barn palette with hard transparent edges. One Retro Diffusion Plus reference generation, $0.06, was made from the prompt “a low open wooden cheese shelf beside a tiny handcart, holding one large round golden cheese wheel and a small brass coin disc,” and is retained with the service metadata at `assets/raw/2026-10-09-w74ed6630029-industrial-barn-cheese-sale-feedback/`. No generated pixels ship: the exact grid layout and every shipped pixel are original local work in `tools/build_industrial_barn_sale_art.py`, which checks the dimensions, binary alpha, palette membership, and growing shelf silhouette. Output rights for the reference follow the Retro Diffusion terms verified below.
 - **Happy dairy cow** (`assets/sprites/generated/cow.png`, 2026-10-08) — four calm
   16px walking frames drawn locally in `tools/build_cow_art.py`, using the Industrial

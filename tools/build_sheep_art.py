@@ -29,8 +29,16 @@ from PIL import Image
 
 ROOT = Path(__file__).resolve().parents[1]
 CELL = (32, 28)
+# Every coat is drawn in the 32x28 frame above, then set in the middle of a wider
+# sheet cell: PAD transparent columns either side, so the neck stretch (below) has
+# room to reach forward. The game centres the cell on her square, so the padding
+# moves nothing she was already drawn as.
+PAD = 12
+SHEET_CELL = (CELL[0] + 2 * PAD, CELL[1])
 FRAMES = 4
 ROWS = ["sheared", "mid", "full", "extra_full", "extreme"]
+# Rows after every look's five coats: one row a look each, in look order.
+EXTRA_ROWS = ["stretch"]
 
 
 def rgb(h):
@@ -88,7 +96,7 @@ class Canvas:
         self.px = {}
 
     def put(self, x, y, c):
-        if 0 <= x < CELL[0] and 0 <= y < CELL[1]:
+        if -PAD <= x < CELL[0] + PAD and 0 <= y < CELL[1]:
             self.px[(x, y)] = c
 
     def get(self, x, y):
@@ -192,11 +200,30 @@ ePPPFFFFEFEFFF
 }
 
 
-def head(cv, hx, hy, kind, tuft=None):
+# The big face's expressions for the neck stretch, as changes to its happy one: each
+# maps (column, row) in HEADS["big"] to what is drawn there instead ("." for nothing).
+# "open": a wide eye on the grass. "squeeze": the eye screwed shut with effort, the
+# smile gone to a pursed mouth and her tongue out after the grass. "smug": eyelids
+# half down and a smirk curled up at the corner.
+EXPRESSIONS = {
+    "happy": {},
+    "open": {(8, 4): "F", (10, 4): "F", (9, 4): "E"},
+    "squeeze": {(9, 3): "F", (10, 4): "F", (8, 3): "E", (9, 4): "E", (8, 5): "E",
+                (11, 7): "F", (12, 7): "M", (13, 7): "M", (14, 7): "P", (15, 7): "P", (15, 8): "P"},
+    "smug": {(9, 3): "F", (8, 4): "E", (9, 4): "E", (10, 4): "E",
+             (10, 7): "M", (13, 6): "M"},
+}
+
+
+def head(cv, hx, hy, kind, tuft=None, expression="happy"):
     """The face with its top-left corner at (hx, hy), then any topknot of wool."""
     dark = FACES[LOOK["face"]][1] is None
     face = {"F": "F", "E": "E", "P": "P", "N": "M", "M": "M", "e": "R"}
-    rows = HEADS[kind].strip("\n").split("\n")
+    rows = [list(r) for r in HEADS[kind].strip("\n").split("\n")]
+    for (x, y), c in EXPRESSIONS[expression].items():
+        while len(rows[y]) <= x:
+            rows[y].append(".")
+        rows[y][x] = c
     shape = set()
     for y, row in enumerate(rows):
         for x, c in enumerate(row):
@@ -394,12 +421,32 @@ IDLE = ((0, 0, 0), (1, 0, 0), (0, 1, 0), (0, 0, 1))
 
 def extreme(f):
     swell, sway, paddle = IDLE[f]
+    return extreme_pose(swell, sway, paddle)
+
+
+# The neck stretch (Daniel, 2026-10-13): once she has grazed bare everything she can
+# reach, now and then she strains her neck toward a tuft just past it, gets nowhere,
+# and settles back looking smug. Her fleece and hooves stay put: only her head and
+# neck move. Frames: her head pokes out of the wool, eyes on the grass; her neck at
+# full stretch, eyes screwed shut, tongue out; the same with her whole fleece leant
+# a pixel after it (the game shakes between those two); and her head home again,
+# eyelids half down, smirking. Each is (head forward, head down, lean, expression).
+STRETCH = ((5, 3, 0, "open"), (11, 6, 0, "squeeze"), (12, 6, 1, "squeeze"), (0, -1, 0, "smug"))
+
+
+def stretch(f):
+    reach, drop, lean, expression = STRETCH[f]
+    return extreme_pose(0, 0, 0, reach=reach, drop=drop, expression=expression, lean=lean)
+
+
+def extreme_pose(swell, sway, paddle, reach=0, drop=0, expression="happy", lean=0):
     cv = Canvas()
     floor = CELL[1] - 1
     # The fleece sits almost on the ground: all four hooves only just poke out under
     # it, less than the extra full coat's legs do, the front pair splayed forward and
     # the hind pair back (Daniel, 2026-10-13). The paddle frame lifts the front hoof.
-    cx, cy = 15.6 + sway * 0.5, floor - 11.8 - swell * 0.3
+    # `lean` tips the whole fleece forward after her neck; her hooves stay planted.
+    cx, cy = 15.6 + sway * 0.5 + lean, floor - 11.8 - swell * 0.3
     a, b = 11.9 + swell * 0.4, 9.4 + swell * 0.3
     puffs, curls = ellipse_puffs(cx, cy, a, b, 5.8, 8, 1.2, start=0.3)
     wool_cloud(cv, puffs, round(cy + b * 0.6), curls)
@@ -416,59 +463,189 @@ def extreme(f):
         for px in (x, x + out) + ((x + 2 * out,) if kick else ()):
             if cv.get(px, floor) is None:
                 cv.put(px, floor, "K")
-    # The face, sunk into the front of the fleece, wool down to her eyes.
-    hx, hy = 15 + sway, floor - 15 - swell
-    head(cv, hx, hy, "big", [(hx + 7.0, hy - 1.4, 3.0), (hx + 10.0, hy - 0.9, 2.4), (hx + 4.5, hy - 0.2, 2.6)])
+    # The face, sunk into the front of the fleece, wool down to her eyes. Stretching,
+    # it comes out of the wool on a neck: face-coloured throat rows from the fleece's
+    # front to the back of her jaw, drawn only into the open air in front of her.
+    hx, hy = 15 + sway + reach, floor - 15 - swell + drop
+    if reach:
+        for y in range(hy + 4, hy + 8):
+            for x in range(15 + sway, hx + 6):
+                if cv.get(x, y) is None:
+                    cv.put(x, y, "F")
+        if FACES[LOOK["face"]][1] is not None:
+            for y in (hy + 3, hy + 8):
+                for x in range(15 + sway, hx + 6):
+                    if cv.get(x, y) is None:
+                        cv.put(x, y, "B")
+    # Out on her neck, her head leaves the wool that swallows the back of it behind.
+    tuft = [(hx + 7.0, hy - 1.4, 3.0), (hx + 10.0, hy - 0.9, 2.4), (hx + 4.5, hy - 0.2, 2.6)]
+    if reach:
+        tuft = [(hx + 7.5, hy - 0.6, 2.2)]
+    head(cv, hx, hy, "big", tuft, expression)
     return cv
 
 
 BUILDERS = [sheared, mid, full, extra_full, extreme]
+EXTRA_BUILDERS = [stretch]
 
 
 def shipped_colours():
     """Opaque colours in every other checked-in sprite sheet."""
     seen = set()
     for path in sorted((ROOT / "assets/sprites").rglob("*.png")):
-        if path.name != "sheep.png":
+        if path.name not in ("sheep.png", "sheep_gags.png"):
             seen.update(p[:3] for p in Image.open(path).convert("RGBA").get_flattened_data() if p[3] == 255)
     return seen
 
 
 def build(looks):
-    sheet = Image.new("RGBA", (CELL[0] * FRAMES, CELL[1] * len(ROWS) * len(looks)), (0, 0, 0, 0))
+    rows = len(ROWS) * len(looks) + len(EXTRA_ROWS) * len(looks)
+    W, H = SHEET_CELL
+    sheet = Image.new("RGBA", (W * FRAMES, H * rows), (0, 0, 0, 0))
     sizes = {}
-    for li, look in enumerate(looks):
+    # Every look's five coats first, then each extra row once a look (EXTRA_ROWS).
+    jobs = [(li, li * len(ROWS) + ri, ROWS[ri], fn) for li in range(len(looks)) for ri, fn in enumerate(BUILDERS)]
+    jobs += [(li, len(ROWS) * len(looks) + ei * len(looks) + li, EXTRA_ROWS[ei], fn)
+             for ei, fn in enumerate(EXTRA_BUILDERS) for li in range(len(looks))]
+    for li, row, name, fn in jobs:
+        look = looks[li]
         LOOK.clear()
         LOOK.update(look)
         pal = {k: rgb(v) for k, v in palette(look).items()}
         edges = {pal[k] for k in ("O", "K", "B", "R", "h")}
-        for ri, fn in enumerate(BUILDERS):
-            row = li * len(ROWS) + ri
-            boxes = []
-            for f in range(FRAMES):
-                cv = fn(f)
-                for (x, y), c in cv.px.items():
-                    if c is not None:
-                        sheet.putpixel((f * CELL[0] + x, row * CELL[1] + y), pal[c] + (255,))
-                cell = sheet.crop((f * CELL[0], row * CELL[1], (f + 1) * CELL[0], (row + 1) * CELL[1]))
-                box = cell.getbbox()
-                # She stands on the cell's floor in every frame, never floating off her square.
-                assert box[3] == CELL[1], (look["name"], ROWS[ri], f, box)
-                # Nothing is cut off by the cell's edge: only an outline or a hoof touches it.
-                edge = [(x, y) for x in range(CELL[0]) for y in range(CELL[1])
-                        if x in (0, CELL[0] - 1) or y == 0]
-                assert all(cell.getpixel(p)[3] == 0 or cell.getpixel(p)[:3] in edges for p in edge), \
-                    (look["name"], ROWS[ri], f, "drawing clipped by the cell")
-                boxes.append(box)
-            if li == 0:
-                sizes[ROWS[ri]] = {"w": max(b[2] for b in boxes) - min(b[0] for b in boxes),
-                                   "h": CELL[1] - min(b[1] for b in boxes)}
+        boxes = []
+        for f in range(FRAMES):
+            cv = fn(f)
+            for (x, y), c in cv.px.items():
+                if c is not None:
+                    sheet.putpixel((f * W + PAD + x, row * H + y), pal[c] + (255,))
+            cell = sheet.crop((f * W, row * H, (f + 1) * W, (row + 1) * H))
+            box = cell.getbbox()
+            # She stands on the cell's floor in every frame, never floating off her square.
+            assert box[3] == H, (look["name"], name, f, box)
+            # Nothing is cut off by the cell's edge: only an outline or a hoof touches it.
+            edge = [(x, y) for x in range(W) for y in range(H) if x in (0, W - 1) or y == 0]
+            assert all(cell.getpixel(p)[3] == 0 or cell.getpixel(p)[:3] in edges for p in edge), \
+                (look["name"], name, f, "drawing clipped by the cell")
+            boxes.append(box)
+        if li == 0:
+            sizes[name] = {"w": max(b[2] for b in boxes) - min(b[0] for b in boxes),
+                           "h": H - min(b[1] for b in boxes)}
     pixels = sheet.get_flattened_data()
     assert all(p[3] in (0, 255) for p in pixels)
     # No colour the game does not already ship.
     stray = {p[:3] for p in pixels if p[3]} - shipped_colours()
     assert not stray, ["#%02x%02x%02x" % c for c in stray]
     return sheet, sizes
+
+
+# --- the gags' ground: the bald ring, the tuft she cannot reach, a heart -----------
+# (docs/design/18-sheep.md, "Stuck for good"). One sheet beside the sheep's, every
+# piece cut from pixels the game already ships:
+#   * the ring is a 48px disc over her square and the eight round it, which the game
+#     cuts square by square: stubble is the field's own grass sheet with its three
+#     greens remapped to the wheat's yellows (`spritesmith.remap_ramp`), bare earth is
+#     the soil's dry browns, and both edges are ragged so the circle reads as grazed
+#     rather than stamped;
+#   * the tuft is a clump of the hedge's and the weed's greens, standing taller than
+#     the field round it, on the square she strains toward;
+#   * the heart is the cheeks' pink, for when a bird lands on her.
+GAG_DISC = 48
+FIELD_GREENS = [(120, 161, 88, 255), (164, 194, 99, 255), (192, 212, 112, 255)]
+STUBBLE_RAMP = [(191, 212, 112, 255), (233, 225, 120, 255), (141, 177, 93, 255)]
+EARTH = {"base": (201, 160, 107, 255), "light": (220, 185, 138, 255), "dark": (139, 124, 99, 255),
+         "deep": (138, 106, 82, 255)}
+TUFT = """
+.......d........
+..d...dld...d...
+.dld..dld..dld..
+.dld.dlGd.dld...
+..dGddlGddlGd.d.
+..dGdlGGdlGdd.ld
+...dGlGGGlGdddGd
+..dGGlGGGGGGdGd.
+..dGGGlGGlGGGGd.
+...dGGGGGGGGGd..
+...ddGGGGGGGdd..
+.....ddddddd....
+"""
+TUFT_COLOURS = {"G": (141, 177, 93, 255), "l": (233, 225, 120, 255), "d": (78, 110, 58, 255)}
+HEART = """
+.PP.PP.
+PWPPPPP
+PPPPPPP
+.PPPPP.
+..PPP..
+...P...
+"""
+HEART_COLOURS = {"P": rgb(PINK) + (255,), "W": rgb("#f8f4e6") + (255,)}
+
+
+def _noise(x, y, salt=0):
+    """A fixed pixel hash: the same speckle every build."""
+    h = (x * 374761393 + y * 668265263 + salt * 2246822519) & 0xFFFFFFFF
+    h = ((h ^ (h >> 13)) * 1274126177) & 0xFFFFFFFF
+    return (h ^ (h >> 16)) & 0xFFFF
+
+
+def _disc_radius(x, y):
+    """The disc's edge at this pixel's angle: lumpy, between about 21 and 23.5 px."""
+    a = math.atan2(y + 0.5 - GAG_DISC / 2, x + 0.5 - GAG_DISC / 2)
+    return 22.3 + 0.8 * math.sin(a * 5 + 0.7) + 0.5 * math.sin(a * 9 + 2.1) + 0.4 * ((_noise(round(a * 40), 0, 3) % 3) - 1)
+
+
+def build_gags():
+    import importlib.util
+    spec = importlib.util.spec_from_file_location("spritesmith", ROOT / "tools/spritesmith.py")
+    smith = importlib.util.module_from_spec(spec)
+    sys.modules["spritesmith"] = smith
+    spec.loader.exec_module(smith)
+    field = Image.open(ROOT / "assets/sprites/generated/terrain_field.png").convert("RGBA")
+    assert field.size == (GAG_DISC, GAG_DISC), field.size
+    stubble = smith.remap_ramp(field, source="grass", target="stubble",
+                               ramps={"grass": FIELD_GREENS, "stubble": STUBBLE_RAMP})
+    sheet = Image.new("RGBA", (GAG_DISC * 2 + 16, GAG_DISC), (0, 0, 0, 0))
+    c = GAG_DISC / 2
+    for y in range(GAG_DISC):
+        for x in range(GAG_DISC):
+            d = math.hypot(x + 0.5 - c, y + 0.5 - c)
+            r = _disc_radius(x, y)
+            if d > r:
+                continue
+            # Stubble: the remapped field, its outermost pixel a scatter of the field's
+            # own green so the cut fades into the grass round it.
+            px = stubble.getpixel((x, y))
+            if d > r - 1.2 and _noise(x, y, 1) % 2:
+                px = field.getpixel((x, y))
+            sheet.putpixel((x, y), px)
+            # Bare earth: the soil's dry brown, lighter and darker specks, pebbles; a
+            # rim of stubble two pixels wide where the bare ground meets the grass.
+            if d > r - 2.2:
+                px = stubble.getpixel((x, y))
+            else:
+                n = _noise(x, y, 2) % 100
+                px = EARTH["light"] if n < 14 else EARTH["dark"] if n < 20 else EARTH["base"]
+                if n >= 98 and y + 1 < GAG_DISC:
+                    px = EARTH["deep"]
+            sheet.putpixel((GAG_DISC + x, y), px)
+    for y, row in enumerate(TUFT.strip("\n").split("\n")):
+        for x, ch in enumerate(row):
+            if ch != ".":
+                sheet.putpixel((GAG_DISC * 2 + x, 16 - len(TUFT.strip().split()) + y), TUFT_COLOURS[ch])
+    for y, row in enumerate(HEART.strip("\n").split("\n")):
+        for x, ch in enumerate(row):
+            if ch != ".":
+                sheet.putpixel((GAG_DISC * 2 + 4 + x, 18 + y), HEART_COLOURS[ch])
+    pixels = sheet.get_flattened_data()
+    stray = {p[:3] for p in pixels if p[3]} - shipped_colours()
+    assert not stray, ["#%02x%02x%02x" % c for c in stray]
+    rects = {
+        "stubble": [0, 0, GAG_DISC, GAG_DISC],
+        "bare": [GAG_DISC, 0, GAG_DISC, GAG_DISC],
+        "tuft": [GAG_DISC * 2, 0, 16, 16],
+        "heart": [GAG_DISC * 2 + 4, 18, 7, 6],
+    }
+    return sheet, rects
 
 
 def main():
@@ -483,8 +660,10 @@ def main():
     out.mkdir(parents=True, exist_ok=True)
     sheet, sizes = build(looks)
     sheet.save(out / "sheep.png")
+    gags, gag_rects = build_gags()
+    gags.save(out / "sheep_gags.png")
     meta = {
-        "cell_w": CELL[0], "cell_h": CELL[1], "rows": len(ROWS), "frames": FRAMES,
+        "cell_w": SHEET_CELL[0], "cell_h": SHEET_CELL[1], "rows": len(ROWS), "frames": FRAMES,
         "looks": names,
         "row_of": "look index x rows + coat index",
         "row_names": ROWS,
@@ -493,6 +672,20 @@ def main():
         "anchor": "feet on the cell's bottom row, body centred: stand it like the cow",
         "facing": "right",
         "idle_frames": "rest, breathe in, sway, paddle a hoof: holds best at about 0.25 s a frame",
+        # Rows after every look's coats, one row a look each (the gags, design/18).
+        "extra_rows": {
+            name: {
+                "first_row": len(ROWS) * len(names) + i * len(names),
+                "row_of": "first_row + look index",
+                "frames": ["reach", "stretch", "strain", "smug"],
+                "note": "the extreme coat's neck stretch toward grass she cannot reach: the head pokes "
+                        "out of the wool, the neck at full stretch, the same straining (shake between "
+                        "the two), then home again looking smug. Fleece and hooves never move.",
+            } for i, name in enumerate(EXTRA_ROWS)
+        },
+        # sheep_gags.png: the stuck sheep's ground and her heart, as [x, y, w, h].
+        # stubble and bare are 48px discs centred on her square, cut square by square.
+        "gags": {"sheet": "sheep_gags.png", **gag_rects},
     }
     (out / "sheep.json").write_text(json.dumps(meta, indent=2) + "\n")
     print(out / "sheep.png", len(looks), "looks")

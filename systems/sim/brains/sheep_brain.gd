@@ -122,7 +122,21 @@ func _settle(world: SimWorld, actor_id: String, extra: Dictionary, tick: int, he
 	extra.erase("squeeze_tries")
 	extra["state"] = "content"
 	extra["wake"] = tick + ticks(CONTENT_SECONDS)
+	# When she stopped, and how many nights she has stood here since: the two facts
+	# the picture of the grass she grazes bare round her is drawn from (design/18,
+	# "Stuck for good"). Written here and at the day turn, never read by the sim.
+	extra["content_since"] = tick
+	extra["nights_content"] = 0
 	return {}
+
+
+# Another night where she stopped (design/18, "Stuck for good"): by morning she has
+# grazed everything she can reach down to bare earth. Counted at the day turn, which
+# a replay re-applies, so a replay and the screen agree.
+func on_new_day(world: SimWorld, actor_id: String) -> void:
+	var extra: Dictionary = world.actor(actor_id).get("extra", {})
+	if String(extra.get("state", "")) == "content":
+		extra["nights_content"] = int(extra.get("nights_content", 0)) + 1
 
 
 # Walk to the nearest square she may settle on. Rings out from where she stands,

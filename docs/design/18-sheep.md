@@ -154,3 +154,96 @@ art landed.
 ## What is left for later
 
 - **Shears**, on purpose. Removing wool, wool as an item and selling it are all the follow-up.
+
+## Stuck for good
+
+*Added 2026-10-13. Daniel picked these three gags the same evening to make "she is stuck
+there for good" obvious at a glance. For the video, Daniel plays the developer who never
+thinks of shears. He says he built them because "it felt like there wasn't anything to do
+with the sheep once its fleece got too long". So none of them softens her stop, and none of
+them hints at shears.*
+
+![Two stuck sheep a night on: their bald rings joined, a tuft just past each](mockups/sheep/gags_bare_two.png)
+
+### Her bald ring
+
+A stuck sheep keeps grazing everything she can reach. Her own square goes to stubble as
+soon as she stops, and the eight squares round her follow one at a time, 25 seconds
+apart. The whole ring is stubble about four minutes into her first day stuck. After her
+first night stuck it is all bare earth: a bald circle with a giant fluffball in the
+middle.
+
+- **Only field grass is grazed.** A crop bed, the yard, a weed, a fence, a building, or
+  anything else standing on a square is left alone. A weed in her reach leaves a gap in
+  her ring.
+- **Two rings that overlap join into one bald patch.** Each square is cut from a round
+  patch centred on its sheep, and the barer of two overlapping patches is drawn on top.
+- **Only out on the farm.** A sheep who stopped in a stall grazes nothing: the barn floor
+  isn't grass.
+- **What the game keeps.** Her brain writes down the tick she stopped
+  (`content_since`). At each day turn it counts the nights she has stood there
+  (`nights_content`). The sim never reads either number; the picture is drawn from them.
+  A farm saved before this change loads with any stuck sheep's ring already bare, since
+  she has been there a while.
+- **What it costs.** The picture is drawn after the farm's ground, square by square, but
+  only on the nine squares round each stuck sheep. A farm without one pays for one pass
+  over its animals and nothing more.
+
+![Her ring on her first day, grazed to stubble](mockups/sheep/gags_stubble_two.png)
+
+### The neck stretch
+
+Once her ring is bare, every 14 seconds or so her happy wiggle gives way to a beat. She
+strains her neck toward a tuft of grass just past her ring and gets nowhere. Then she
+settles back, looking smug. The tuft is real: the grass square two out on the side she
+faces, drawn a little taller so it reads as the thing she wants. If there is no grass
+there, she turns to the other side. If there is none on either side, she has nothing to
+strain for and only wiggles.
+
+The beat is four new frames for each of the eight looks, a row per look on `sheep.png`:
+reach (her head comes out of the wool, eyes on the grass), stretch (neck out, eyes
+screwed shut, tongue out), strain (the same with her fleece tipped after it; the game
+shakes between the two), and smug (head home, eyelids half down, a smirk). Her fleece
+and hooves never move. The sheet's cells are now 56 pixels wide instead of 32, so her
+head has room to reach. The game centres every cell on her square, so nothing she was
+already drawn as moves.
+
+![Her neck at full stretch toward the tuft](mockups/sheep/gags_stretch.png)
+![Back where she started, smug](mockups/sheep/gags_smug.png)
+
+### Birds sit on her
+
+Every 40 seconds or so a songbird drops in, sits on her back for 12 to 22 seconds as if
+she were a cloud, and flies off. When it lands she gets a little heart. These are
+cosmetic birds, drawn with the songbird's own picture. They are not the crows, which are
+pests a sheep would not welcome, and not the sim's songbird, which never visits a live
+farm. Because they are only a picture, nothing about them is saved or replayed.
+
+![A bird just landed on her](mockups/sheep/gags_bird.png)
+
+### Timing, and staging them for the video
+
+Every beat is worked out from the sim clock and her name, never from the screen. A
+paused game holds still, the same tick always shows the same moment, and two stuck
+sheep never strain or get visited in step. The video tools can cue a beat on demand.
+The game itself never does.
+
+- **Video shot** `sheepgags` (`tools/record_video_shots.gd`). The fourth argument is
+  `<ring>-<sheep>`. The ring is `grazing` (she has just stopped; a four-minute shot of
+  the ring appearing, to speed up in the edit), `stubble` or `bare`, and the count is one
+  sheep or two side by side. With a bare ring she strains at 1.5 s and 15.5 s, and a
+  bird lands at 5 s.
+
+      video/tools/record_shot.sh video/<video> sheepgags 540x540 bare-2
+
+- **Stills**: `godot --path . res://tools/capture_sheep_gags.tscn` writes the pictures
+  in this section under [`mockups/sheep/`](mockups/sheep/).
+
+| Number | Value | Where |
+|---|---|---|
+| Time between squares of her first day's grazing | 25 seconds | `SheepGags.GRAZE_SECONDS` |
+| Nights before her ring is bare | 1 | `SheepGags.ring_is_bare` |
+| How often she strains for the tuft | every 14 seconds | `SheepGags.STRETCH_EVERY_SECONDS` |
+| The strain itself | about 3 seconds, half of it smug | `SheepGags.STRETCH_BEAT` |
+| How often a bird visits | every 40 seconds | `SheepGags.BIRD_EVERY_SECONDS` |
+| How long it sits | 12 to 22 seconds | `SheepGags.BIRD_PERCH_SECONDS` |

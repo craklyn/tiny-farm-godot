@@ -1223,9 +1223,17 @@ static func _restore_actors(raw: Dictionary) -> Dictionary:
 					restored_extra[key] = _whole_ints(restored_extra[key])
 		# ...and a sheep's coat, stall and the step counts her pace is drawn from.
 		elif species == SpeciesDefs.SHEEP:
-			for key in ["coat", "stall_index", "clear_steps", "step_ticks", "rest_until", "squeeze_tries"]:
+			for key in ["coat", "stall_index", "clear_steps", "step_ticks", "rest_until", "squeeze_tries",
+					"content_since", "nights_content"]:
 				if restored_extra.has(key):
 					restored_extra[key] = _whole_ints(restored_extra[key])
+			# A sheep who stopped for good on a build from before her bald ring was drawn
+			# (design/18, "Stuck for good") has no record of when. She has been there a
+			# while, so she loads as stopped at the start of time and a night ago: her
+			# ring bare. Nothing in the sim reads either number.
+			if String(restored_extra.get("state", "")) == "content" and not restored_extra.has("content_since"):
+				restored_extra["content_since"] = 0
+				restored_extra["nights_content"] = 1
 		out[String(id)] = {
 			"species": species,
 			"pos": Vector2i(int(a.get("x", -1)), int(a.get("y", -1))),

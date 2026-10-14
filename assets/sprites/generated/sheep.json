@@ -1,5 +1,5 @@
 {
-  "cell_w": 32,
+  "cell_w": 56,
   "cell_h": 28,
   "rows": 5,
   "frames": 4,
@@ -48,9 +48,53 @@
     "extreme": {
       "w": 32,
       "h": 26
+    },
+    "stretch": {
+      "w": 43,
+      "h": 25
     }
   },
   "anchor": "feet on the cell's bottom row, body centred: stand it like the cow",
   "facing": "right",
-  "idle_frames": "rest, breathe in, sway, paddle a hoof: holds best at about 0.25 s a frame"
+  "idle_frames": "rest, breathe in, sway, paddle a hoof: holds best at about 0.25 s a frame",
+  "extra_rows": {
+    "stretch": {
+      "first_row": 40,
+      "row_of": "first_row + look index",
+      "frames": [
+        "reach",
+        "stretch",
+        "strain",
+        "smug"
+      ],
+      "note": "the extreme coat's neck stretch toward grass she cannot reach: the head pokes out of the wool, the neck at full stretch, the same straining (shake between the two), then home again looking smug. Fleece and hooves never move."
+    }
+  },
+  "gags": {
+    "sheet": "sheep_gags.png",
+    "stubble": [
+      0,
+      0,
+      48,
+      48
+    ],
+    "bare": [
+      48,
+      0,
+      48,
+      48
+    ],
+    "tuft": [
+      96,
+      0,
+      16,
+      16
+    ],
+    "heart": [
+      100,
+      18,
+      7,
+      6
+    ]
+  }
 }

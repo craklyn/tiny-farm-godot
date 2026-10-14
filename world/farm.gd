@@ -1639,6 +1639,31 @@ static func room_exit_edge(room: Dictionary) -> String:
 	return "south"
 
 
+# **The grass a stuck sheep has grazed bare** (design/18, "Stuck for good";
+# `SheepGags`). Drawn on the ground after the walk over the squares, before anything
+# standing is, and only over the nine squares round each sheep stopped for good —
+# a farm without one pays a walk over its actors and nothing else. Each square is cut
+# from a 48px disc centred on her, stubble pieces first and bare ones over them, so two
+# rings that overlap join into one bald patch. Then the tuft she strains toward, once
+# hers is bare.
+func _draw_sheep_rings(canvas: CanvasItem) -> void:
+	var sheet := SheepArt.gag_sheet()
+	if sim == null or sheet == null:
+		return
+	var tick: int = sim.clock.tick
+	for piece in SheepGags.ring_pieces(sim, tick):
+		var disc := SheepArt.gag_rect(String(SheepGags.STAGE_NAMES[int(piece["stage"])]))
+		var cell: Vector2i = piece["cell"]
+		var off: Vector2i = cell - Vector2i(piece["centre"]) + Vector2i.ONE
+		canvas.draw_texture_rect_region(sheet, Rect2(cell * TILE_SIZE, Vector2(TILE_SIZE, TILE_SIZE)),
+			Rect2(disc.position + Vector2(off * TILE_SIZE), Vector2(TILE_SIZE, TILE_SIZE)))
+	var tuft := SheepArt.gag_rect("tuft")
+	for id in SheepGags.stuck_sheep(sim):
+		var target := SheepGags.stretch_target(sim, id)
+		if not target.is_empty():
+			canvas.draw_texture_rect_region(sheet, Rect2(Vector2(target["cell"]) * TILE_SIZE, tuft.size), tuft)
+
+
 # **The Industrial Barn's inside, once per barn rather than once per square**
 # (design/17; INDUSTRIAL_BARN_ENGINEERING_PLAN, "Building and interior" and
 # "Performance"). The walk over the squares has already laid the floor; here the
@@ -2050,6 +2075,8 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 	# the `_profiling`-gated block that used to be the only reader of this
 	# count.
 	var walk_len := render_queue.size()
+	if y0 == 0:
+		_draw_sheep_rings(canvas)
 	_draw_barn_rooms(canvas, y0, y1)
 	_queue_edge_room_walls(render_queue, canvas)
 
