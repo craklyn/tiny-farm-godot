@@ -7657,6 +7657,12 @@
    "verdict": "decode",
    "why": "The sentence is missing its main verb and structure, forcing the reader to work out what is meant."
   },
+  "c8719bcded68177408b5": {
+   "instead": "Cheese on a picked-up barn's shelf becomes items the farmer can sell at the bin; milk still on the line goes into the crate",
+   "quote": "comes to the farmer as items she can sell at the bin",
+   "verdict": "second-look",
+   "why": "The sentence makes the reader infer that the cheese becomes sellable inventory rather than stating that directly."
+  },
   "c8795c32b32f9a3b1496": {
    "verdict": "ok"
   },
