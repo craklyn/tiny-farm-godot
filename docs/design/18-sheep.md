@@ -2,8 +2,8 @@
 
 *Status: drafted and built (2026-10-13). Daniel's rulings are below in his words; the parts he
 did not specify are a strawman, built as written, with every number in the table at the end
-so he can retune it. The sheep art is a placeholder made from the cow's picture until the art
-session's sheet lands (see [Art](#art)).*
+so he can retune it. The sheep art landed the same evening: eight looks of five coats (see
+[Art](#art)).*
 
 ## Why sheep, and why there are no shears
 
@@ -110,10 +110,13 @@ keep as many as he likes. Which look a sheep wears is picked from her name (`she
 `sheep_2`, …): the same sheep always looks the same, and the pick is only part of the picture,
 so nothing about it is saved or replayed.
 
-Until then the game makes a placeholder when it starts, from the cow's own four frames: her
-white body turned the cream of wool, her face and legs a soft grey, and a coat of wool grown
-round her body a pixel thicker each stage, until at the extreme coat her legs are lost in it.
-Nothing new is shipped for it (`entities/sheep_art.gd`).
+The extreme coat's wiggle holds each frame for a quarter of a second, the timing the art session
+found reads best (`sheep.json`'s `idle_frames` note; the walk's frames follow her steps).
+
+If the sheet is ever missing, the game draws a stand-in made from the cow's own four frames:
+her white body turned the cream of wool, her face and legs a soft grey, and wool grown round
+her a pixel thicker each coat (`entities/sheep_art.gd`). That is what the game drew before the
+art landed.
 
 ## For the video
 
@@ -145,9 +148,9 @@ Nothing new is shipped for it (`entities/sheep_art.gd`).
 | Her own pace | 1.25 squares a second (the cow's) | `SpeciesDefs` sheep row |
 | Chance she goes in to rest, each time she picks a grazing spot | 20% | `SheepBrain.REST_CHANCE_PERCENT` |
 | How long she rests in a stall | 20 to 40 seconds | `SheepBrain.REST_SECONDS` |
+| How long each frame of the extreme coat's wiggle holds | 0.25 seconds | `sheep.json`, else `SheepArt.IDLE_FRAME_SECONDS` |
 | How far a stuck sheep looks for somewhere to stop, and how often she tries | 4 squares, 5 tries | `SheepBrain.SETTLE_SEARCH`, `SQUEEZE_TRIES` |
 
 ## What is left for later
 
 - **Shears**, on purpose. Removing wool, wool as an item and selling it are all the follow-up.
-- The real sheep art (the art session's sheet; see above).

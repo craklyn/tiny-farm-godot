@@ -18,8 +18,9 @@
 # every machine and after every load, and nothing about it is saved or replayed —
 # it is a picture, not a fact about the farm.
 #
-# **Until then, a placeholder made from the cow** (no art generation: the brief
-# reserves that for the art session). Built once, at first use, from the cow's own
+# **A placeholder made from the cow, only if the sheet is missing.** The art session's
+# sheet shipped on 2026-10-13; this stand-in was what the game drew before it, and is
+# kept as the fallback so a checkout without the sheet still draws a sheep. Built once, at first use, from the cow's own
 # four frames: her white body turned the cream of wool, her dark patches a soft grey,
 # and a coat of wool grown around her body a pixel thicker each stage, until at the
 # extreme coat even her legs are lost in it. Nothing new is shipped for it, so
@@ -45,6 +46,11 @@ const FACE := Color8(92, 86, 84)
 static var _sheet: Texture2D = null
 static var _cell := Vector2i.ZERO
 static var _looks := 1
+# [Tunable] How long each frame of the extreme coat's happy wiggle holds. The art
+# session found 0.25 s reads best (the walk's frames are timed by her steps); a
+# sheet's JSON may say otherwise, as `idle_frame_seconds` or in its `idle_frames` note.
+const IDLE_FRAME_SECONDS := 0.25
+static var _idle_seconds := IDLE_FRAME_SECONDS
 
 
 ## The sheet her renderer draws from: the delivered one, or the placeholder.
@@ -58,6 +64,13 @@ static func cell_size() -> Vector2i:
 	if _sheet == null:
 		_load()
 	return _cell
+
+
+## How long one frame of the extreme coat's idle wiggle lasts, in seconds.
+static func idle_frame_seconds() -> float:
+	if _sheet == null:
+		_load()
+	return _idle_seconds
 
 
 ## How many looks the sheet holds (one for the placeholder).
@@ -99,6 +112,8 @@ static func _load() -> void:
 				_cell = Vector2i(int(meta["cell_w"]), int(meta["cell_h"]))
 			if meta is Dictionary and meta.get("looks") is Array and not meta["looks"].is_empty():
 				_looks = meta["looks"].size()
+			if meta is Dictionary:
+				_idle_seconds = idle_seconds_from(meta)
 		# Never more looks than the sheet has rows for.
 		_looks = clampi(_looks, 1, maxi(1, _sheet.get_height() / (_cell.y * ROWS)))
 		return
@@ -106,6 +121,18 @@ static func _load() -> void:
 	_sheet = ImageTexture.create_from_image(image)
 	_cell = PLACEHOLDER_CELL
 	_looks = 1
+
+
+## The idle frame time a sheet's JSON gives: `idle_frame_seconds` if it has one, else
+## the first "N s" in its `idle_frames` note ("... holds best at about 0.25 s a frame"),
+## else the default.
+static func idle_seconds_from(meta: Dictionary) -> float:
+	var seconds := float(meta.get("idle_frame_seconds", 0.0))
+	if seconds <= 0.0 and meta.get("idle_frames") is String:
+		var found := RegEx.create_from_string("([0-9]*\\.?[0-9]+)\\s*s\\b").search(String(meta["idle_frames"]))
+		if found != null:
+			seconds = found.get_string(1).to_float()
+	return seconds if seconds > 0.0 else IDLE_FRAME_SECONDS
 
 
 ## The stand-in sheet as an image: five coats of four frames, from the cow's frames.
