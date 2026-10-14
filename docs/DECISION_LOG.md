@@ -1125,6 +1125,14 @@ hand-taught list; what changed hands is a chore, not a judgement. A loose mark-1
 open ground still needs its daily tap, so the stall is itself a small rung — housing
 is what buys routine.
 
+**Status note (2026-10-13, picking buildings up).** The stall's row said it "cannot be
+picked back up, moved, upgraded or extended" as part of being a weak first version.
+Daniel asked that picking up buildings be one consistent experience, so the stall (and the
+workbench) now pick up through the same panel as the coop, the Spiral Tower and the barn
+(`design/03`, "Every building picks up the same way"). Moving a building is not a
+capability a later tier should earn: it is repositioning, which never resets anything
+(Q-98). The rest of the stall's limits (two bays, no upgrade, no extension) stand.
+
 **Adjustment conditions:** the rule bends where a limit would make the first version
 *pointless* rather than merely modest — a machine nobody would buy teaches nothing. It
 is not a licence to ship broken v1s: a mark-1 must do its small job completely and

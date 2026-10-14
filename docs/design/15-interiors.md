@@ -558,6 +558,15 @@ chose the model below over built-in fittings (b) and decoration only (c).
   with contents and replay, and by `test_spiral_tower_pick_up` for the tower. Scenario BC
   in the integration suite puts a nest box down with a tap from inside a coop and picks it
   back up with another tap.
+- **The buildings with no inside pick up the same way** (Daniel, 2026-10-13: picking up
+  buildings should be one consistent experience). The robot stall and the workbench have no
+  room, so there is nothing to empty, but they open the same building panel and "Pick up"
+  is the same `collect`. The panel's "Pick up" says it means the building (`building: true`
+  on the Action), so a robot standing in the tapped bay is never crated by mistake. P-17's
+  rule holds for machines too: a Mark I parked in the stall stays on the farm where it
+  stood. The one thing the stall holds, which robots live in which bay, goes into the crate
+  with it and comes back when it is put down (`design/03`, "Every building picks up the
+  same way"). Proved by `test_stall_and_workbench_pick_up` and Scenario BT.
 
 The rest of this section is the model as ruled. A later tier builds on it.
 

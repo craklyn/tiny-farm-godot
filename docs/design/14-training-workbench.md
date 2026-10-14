@@ -18,8 +18,9 @@ work item, and its §9 status log.*
 
 A **workbench** is a thing on the farm. She buys it from the shop (P-12) — it appears there
 once a mark-2 of hers has done its job once (S-12, 2026-09-10) — sets it down in
-the yard, and taps it. It opens as one full-screen bench with five plates along the top,
-each a physical part of a bench rather than a tab bar: the **dials**, the **eyes**, the
+the yard, taps it, and chooses "Use bench" on its panel. It opens as one full-screen
+bench with five plates along the top, each a physical part of a bench rather than a tab
+bar: the **dials**, the **eyes**, the
 **plate**, the **ledger**, the **mosaic**. It shows the robot she last tapped, or the
 nearest one; a strip of robot portraits at the top switches between them.
 
@@ -167,6 +168,15 @@ later tier may let her *paint* a cell, which is the "show it" rung arriving as a
 - **A thing, not a menu.** The bench is bought, placed, tapped; a robot standing beside it
   is the one on the bench. That is the game's grammar for everything (P-12, T-28's
   stations).
+- **It picks up like every other building** (Daniel, 2026-10-13). A tap on the bench opens
+  the building panel the coop, the Spiral Tower and the barn share: **Use bench** opens the
+  five plates, **Pick up** puts the bench back in the crate to be set down somewhere else.
+  Nothing is lost by moving it, because the bench holds nothing of its own: the dials, the
+  plate, the ledger and every card bought on its shelf belong to the robot (§1's rule:
+  every number is read from the robot's own saved state). The Mark III stays on the shop
+  shelf while the bench is in the crate, since a rung once earned is kept (S-12). Buying
+  from the shelf needs a bench standing on the farm, so nothing can be bought while it is
+  in the crate.
 - **Plates, not tabs.** Five brass plates along a wooden bench top, one lit. Touch targets
   are the HUD's corner-card size; the dials' buttons are thumb-sized.
 - **The chart language is one language.** The scorecard on the robot's panel and the

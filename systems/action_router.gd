@@ -90,12 +90,13 @@ const SPECIAL_OBJECTS := {
 	# written out like every other entry so the table reads as a table.
 	"house_door":   "use_door",
 	"home_doorway": "use_door",
-	# The training workbench (Q-101, 2026-09-10). She walks up to it and it opens,
-	# exactly as the seed box does — and like `open_shop` beside it, what comes
-	# back is **not a verb**: opening the bench changes nothing in the world, so
-	# nothing about it belongs in a replay. What she then does at the bench (turn a
-	# dial) is a `tune` Action through the gateway like everything else.
-	"workbench":    "open_workbench",
+	# The training workbench (Q-101, 2026-09-10). She walks up to it and its panel
+	# opens: use the bench, or pick it up (2026-10-13, every building picks up the
+	# same way). Like `open_shop`, what comes back is **not a verb**: opening a
+	# panel or the bench changes nothing in the world, so nothing about it belongs
+	# in a replay. What she then does at the bench (turn a dial) is a `tune` Action
+	# through the gateway like everything else.
+	"workbench":    "open_structure",
 	# The room fittings (S-22). A tap on one picks it up, as a tap on her own
 	# scarecrow does: it goes back in the crate, to be set down somewhere else.
 	# Rearranging a room is pick-up-and-put-down, with no panel in between.
@@ -199,10 +200,21 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 			"walk_to": false, "seed_type": "", "machine": teaching_machine,
 		})
 
+	# **A stall in her hands goes down over the robot parked where it stood**
+	# (2026-10-13). A bay is where a robot stands, so `placeable_at` takes a stall
+	# over one, and a tap there is the placement rather than the robot's panel.
+	# Asked only when the held thing fits, so holding anything that does not, a
+	# tap on a robot still opens it.
+	var places_over_machine: bool = gs != null and gs.has_method("holding_machine") \
+		and gs.holding_machine() and teach_world != null \
+		and teach_world.machine_at(tap_t) != "" \
+		and not MachineDefs.spawns_actor(String(gs.selected_seed_type)) \
+		and teach_world.placeable_at(tap_t, gs.selected_seed_type)
+
 	# A moving machine may have left the touched square between the input event
 	# and this frame. A captured actor id keeps that single tap attached to what
 	# the finger hit; a machine already picked up cannot answer it.
-	if not is_drag and tapped_machine_id != "" and teach_world != null \
+	if not is_drag and not places_over_machine and tapped_machine_id != "" and teach_world != null \
 			and teach_world.has_actor(tapped_machine_id):
 		var machine_tile: Vector2i = teach_world.actor_pos(tapped_machine_id)
 		if teach_world.machine_at(machine_tile) == tapped_machine_id:
@@ -265,7 +277,7 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 	# Resolves to `open_machine`, which is UI navigation and not a verb: nothing
 	# about opening a panel belongs in a replay (CLAUDE.md). What the panel does
 	# afterwards is `configure` and `collect`, both ordinary Actions.
-	if world != null and world.machine_at(tap_t) != "":
+	if world != null and world.machine_at(tap_t) != "" and not places_over_machine:
 		# **At any distance, because opening a panel is not work.** It used to
 		# demand she stand beside the machine first, borrowed from the grammar of
 		# a workable tile — and that is the rule for a tile, which cannot walk.
@@ -413,6 +425,16 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 	# ground's states, so a tap on the floor is what a tap on the yard is: she walks
 	# over and stands on it. A Mark III's scan asks the same question
 	# (`BotBrain._legal_at`), which is what keeps the two agreeing.
+	#
+	# The stall is the one floor that answers (2026-10-13): a tap on an empty bay
+	# opens its panel, so it can be picked up like every other building. Asked
+	# after the machine check, so a robot parked in the bay still opens its own
+	# panel, and after placement, so a robot in her hands still goes into the bay.
+	if world != null and world.is_stall_tile(tap_t):
+		return check_result.call({
+			"action": "open_structure", "tool_idx": 0, "target_t": tap_t,
+			"walk_to": true, "seed_type": "",
+		})
 	if world != null and world.is_structure_floor(tap_t):
 		return {}
 
@@ -677,7 +699,10 @@ func is_workable(farm: Node2D, tap_t: Vector2i, gs: Node = null) -> bool:
 	var tile: Dictionary = farm.get_tile(tap_t.x, tap_t.y)
 	if tile.is_empty():
 		return false
-	# A building's floor is walked onto, not worked (resolve()'s 2-i).
+	# A building's floor is walked onto, not worked (resolve()'s 2-i), except a
+	# stall's bays, whose tap opens the stall's panel: she walks up to it.
+	if w != null and w.is_stall_tile(tap_t):
+		return true
 	if w != null and w.is_structure_floor(tap_t):
 		return false
 	return String(tile.get("state", "")) in [

@@ -334,15 +334,27 @@ var _structure_enter_pending := false
 ## offer "Pick up", because the sim takes up any building with a room the same way
 ## (`SimWorld._room_building_at`): its inside comes back as items and whoever was
 ## indoors is left standing outside.
+##
+## **And the buildings with no inside** (Daniel, 2026-10-13: picking up buildings is
+## one consistent experience). The robot stall and the workbench open the same
+## panel: the bench's first row opens the bench where a coop's goes inside, and the
+## stall has only "Pick up", since there is nothing to do to an empty shed but move
+## it. A robot standing in a bay still answers a tap on itself first.
 func open_structure_menu(at: Vector2i) -> void:
 	# A second tap in the short beat after Go inside cannot open the same
 	# prompt again and schedule a second door action after she has gone through.
 	if _structure_enter_pending:
 		return
-	if farm == null or farm.sim.room_door_at(at).is_empty():
+	if farm == null:
 		return
+	# The bench is two squares tall in the picture, so a tap on its rack names the
+	# square above the one it stands on; the panel wants the bench's own square.
+	at = farm.sim.object_tile(at)
 	structure_item = _structure_item_at(at)
 	if structure_item == "":
+		return
+	if not MachineDefs.room_of(structure_item).is_empty() \
+			and farm.sim.room_door_at(at).is_empty():
 		return
 	structure_tile = at
 	open_menu("structure")
@@ -351,9 +363,11 @@ func open_structure_menu(at: Vector2i) -> void:
 func _structure_item_at(at: Vector2i) -> String:
 	var obj: String = farm.get_object(at.x, at.y)
 	for key in MachineDefs.ORDER:
-		if MachineDefs.room_of(key).is_empty():
+		if MachineDefs.spawns_actor(key) or MachineDefs.is_fitting(key):
 			continue
 		var def: Dictionary = MachineDefs.TYPES.get(key, {})
+		if String(def.get("object", "")) == "":
+			continue
 		if obj == String(def.get("object", "")) or obj == String(def.get("part", "")):
 			return key
 	return ""
@@ -704,8 +718,12 @@ func _rebuild_options() -> void:
 			shop_title_icon.visible = false
 			gold_icon.visible = false
 			structure_options = []
-			structure_options.append({ "kind": "enter" })
-			_add_option(tr("Go inside"), true)
+			if not MachineDefs.room_of(structure_item).is_empty():
+				structure_options.append({ "kind": "enter" })
+				_add_option(tr("Go inside"), true)
+			elif MachineDefs.object_of(structure_item) == WorldLayout.WORKBENCH:
+				structure_options.append({ "kind": "open_workbench" })
+				_add_option(tr("Use bench"), true)
 			structure_options.append({ "kind": "collect" })
 			_add_option(tr("Pick up"), true)
 			structure_options.append({ "kind": "close" })
@@ -1604,6 +1622,14 @@ func _select_current_option() -> void:
 				close_menu()
 				menu_action.emit("resume")
 				return
+			# The bench's own screen, in place of this panel: not a verb, for the
+			# reason a tap on the bench never was one (opening it changes nothing).
+			# The world stays held, so no resume.
+			if String(pick.get("kind", "")) == "open_workbench":
+				var bench_at := structure_tile
+				close_menu()
+				open_workbench(bench_at)
+				return
 			# Both are sim Actions through the one gateway (P-9): the panel decides
 			# nothing, it asks and shows what came back. Going in is the same
 			# `use_door` the front door uses; picking up is the same `collect` an
@@ -1633,9 +1659,12 @@ func _select_current_option() -> void:
 				return
 			if String(pick.kind) == "collect":
 				if farm.apply_action({ "verb": "collect", "target": structure_tile,
-						"actor": "player" }, GameState).get("ok", false):
+						"building": true, "actor": "player" }, GameState).get("ok", false):
 					AudioManager.play_sfx("jingle")
 					menu_action.emit("collected_structure")
+				else:
+					# A refusal is heard, as the shop's is, never a silent close.
+					AudioManager.play_sfx("nope")
 				return
 
 		"machine":

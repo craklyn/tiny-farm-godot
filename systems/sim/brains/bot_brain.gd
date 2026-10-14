@@ -2291,7 +2291,7 @@ func day_actions(world: SimWorld, actor_id: String, _gs = null) -> Array[Diction
 		return []
 	# A home, and it has to be a stall: `home_x`/`home_y` is also the middle of a
 	# shoo bot's patch, and a patch is not an employer. Read off the grid, so a
-	# stall she picked up (which v1 cannot do) or a save from before it existed
+	# stall she has picked up (it waits in the crate) or a save from before it existed
 	# leaves the machine on the manual routine rather than in a routine with no
 	# building behind it.
 	var home := _home(extra)

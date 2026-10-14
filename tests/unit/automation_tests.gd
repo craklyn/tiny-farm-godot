@@ -2801,9 +2801,10 @@ func test_workbench_place() -> void:
 	_assert(MachineDefs.part_of("workbench") == "" and MachineDefs.footprint_of("workbench") == Vector2i(1, 1),
 		"the bench stands on the one square she tapped, so it needs no second object")
 
-	# **A tap on it opens a screen, and opening a screen is not a verb** (P-9).
-	_assert(ActionRouter.SPECIAL_OBJECTS.get(WorldLayout.WORKBENCH, "") == "open_workbench",
-		"a tap on the bench resolves to opening it, the way a tap on the seed box opens the shop")
+	# **A tap on it opens a panel, and opening a panel is not a verb** (P-9). Its
+	# panel offers the bench and "Pick up", like every building's (2026-10-13).
+	_assert(ActionRouter.SPECIAL_OBJECTS.get(WorldLayout.WORKBENCH, "") == "open_structure",
+		"a tap on the bench resolves to its panel, the way a tap on a coop does")
 
 	# --- bought, and put down on the yard --------------------------------------
 	#
