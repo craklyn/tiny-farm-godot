@@ -131,7 +131,9 @@ art landed.
   - `sheepdoor` — close on the doors: a full-coat sheep walks in at her own pace, then an
     extra-full one squeezes through at a quarter of it (default `2-3`);
   - `sheepstuck` — an extreme sheep, content where she stopped, the farmer walking past;
-  - `sheepbuy` — the shop, the sheep's card, and her arrival.
+  - `sheepbuy` — the shop scrolled down to the sheep's card, a tap, and her arrival; `sheepbuy … full`
+    has four sheep in the barn already, both cards' prices red and a tap on the cow refused;
+  - `sheepgrow` — one sheep through three of the game's own nights, mid-growth to extreme.
 - **Stills** (`godot --path . res://tools/capture_sheep.tscn`) write the pictures under
   [`mockups/sheep/`](mockups/sheep/): the five coats on the grass, the five coats in the barn,
   and a stopped sheep.
