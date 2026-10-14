@@ -747,6 +747,28 @@ func pick_up_machine(machine_id: String) -> void:
 	_chase_machine(true)
 
 
+# **A building picked up from a robot's panel** (2026-10-13): the stall a robot is
+# parked in. A building does not move, so this is an ordinary walk-up: beside it
+# already, it comes up at once; otherwise she walks beside it and `collect` goes on
+# arrival, with `building` set so the robot in the bay stays where it is.
+func pick_up_building(at: Vector2i) -> void:
+	if farm == null:
+		return
+	tap_indicator = {}
+	var pa := { "action": "collect", "tool_idx": 0, "walk_to": true, "seed_type": "",
+		"target_t": at, "building": true }
+	var here := get_tile_pos()
+	if absi(here.x - at.x) + absi(here.y - at.y) <= 1:
+		path = []
+		pending_action = {}
+		approach_target = Vector2i(-1, -1)
+		_execute_resolved_action(pa)
+		return
+	approach_target = at
+	path = Pathfinding.find_path_toward(farm, here, at)
+	pending_action = pa if not path.is_empty() else {}
+
+
 # One look at the machine she is going to pick up: lift it if she is beside it,
 # otherwise (re)plan the walk toward where it stands now. Returns true when it has
 # taken over this frame — she picked it up, gave up, or set off on a new route.
@@ -953,21 +975,6 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 		if farm != null:
 			farm.queue_redraw()
 		return
-	# **A tap on the workbench opens it** (Q-101, 2026-09-10). The seed box's beat,
-	# on the bench: she has walked up to it by the time this runs, and what happens
-	# next is a screen, not a change to the farm. It has to be caught *here*,
-	# above the fallthrough below, or "open_workbench" would be handed to the
-	# gateway as a verb and come back `unknown_verb`.
-	#
-	# The tile is normalised on the way through. The bench is two tiles tall in the
-	# picture, so a tap on the rack above it reports the bench (`get_object`) and
-	# `target_t` is then the square above the one the object stands on — and the
-	# panel wants the object's own square, because that is what it looks the robots
-	# up from.
-	if action == "open_workbench":
-		get_tree().get_first_node_in_group("Main").call_deferred(
-			"trigger_workbench", farm.sim.object_tile(target_t))
-		return
 	# **A tap on a window is a look out of it** (2026-09-11). The bench's beat,
 	# at the wall: she has walked up to the sill by the time this runs, and what
 	# happens next is a screen (`ui/window_view.gd`), not a change to the farm.
@@ -991,6 +998,8 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 		act["item"] = pa["item"]
 	if String(pa.get("barn_id", "")) != "":
 		act["barn_id"] = pa["barn_id"]
+	if bool(pa.get("building", false)):
+		act["building"] = true
 	var result: Dictionary = farm.apply_action(act, gs)
 	if not result.get("ok", false):
 		return

@@ -826,9 +826,15 @@ static func waiting_for_player(world: SimWorld) -> bool:
 # It stays `sent` for the walk home, deliberately: it *is* still out, the menu says
 # "Out working…" while it crosses the yard, and a player who sends it and watches
 # it come back sees one errand rather than two.
+#
+# **Only while the stall is there** (2026-10-13). A stall she has picked up is in the
+# crate, and a robot sent by hand meanwhile has no shed to go back to: it stops
+# where it finishes, like a robot on open ground, rather than walking to a bare
+# square (or into whatever she has put there since). The address is kept, so the
+# stall put back moves it (`SimWorld._unbox_stall_residents`).
 func _round_done(world: SimWorld, actor_id: String, extra: Dictionary, tick: int) -> Dictionary:
 	var home := _home(extra)
-	if home.x >= 0 and world.actor_pos(actor_id) != home:
+	if home.x >= 0 and world.is_stall_tile(home) and world.actor_pos(actor_id) != home:
 		return _walk_home(world, actor_id, extra, tick, home)
 	return _park(world, actor_id, extra, tick)
 
@@ -2291,7 +2297,7 @@ func day_actions(world: SimWorld, actor_id: String, _gs = null) -> Array[Diction
 		return []
 	# A home, and it has to be a stall: `home_x`/`home_y` is also the middle of a
 	# shoo bot's patch, and a patch is not an employer. Read off the grid, so a
-	# stall she picked up (which v1 cannot do) or a save from before it existed
+	# stall she has picked up (it waits in the crate) or a save from before it existed
 	# leaves the machine on the manual routine rather than in a routine with no
 	# building behind it.
 	var home := _home(extra)

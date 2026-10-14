@@ -281,10 +281,11 @@ static var TYPES: Dictionary = {
 	# to be told. (It was cheaper than the sprinkler at launch; S-25 dropped the
 	# sprinkler to 50g, so that ordering no longer holds — it was never the point.)
 	#
-	# **Deliberately weak first version** (P-13). Two bays, fixed, side by side; it
-	# cannot be picked back up, moved, upgraded or extended. Every one of those is a
-	# thing a later tier can be, and a first version that already did them would
-	# leave the tier above it with nothing to be.
+	# **Deliberately weak first version** (P-13). Two bays, side by side; it cannot
+	# be upgraded or extended. Each of those is a thing a later tier can be, and a
+	# first version that already did them would leave the tier above it with nothing
+	# to be. It can be picked up and moved since 2026-10-13, like every building:
+	# moving a thing is repositioning, not a capability (P-13's status note).
 	"stall": {
 		"name": "Robot Stall",
 		"price": 80,

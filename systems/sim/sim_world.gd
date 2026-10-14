@@ -2517,7 +2517,12 @@ func barn_room_free() -> bool:
 
 # Whether the thing itself fits on its block: `placeable_at` without a barn's
 # question about the ground beyond its doors.
-func _block_fits(t: Vector2i, item: String) -> bool:
+#
+# `bots_welcome` is the stall's (2026-10-13): a stall goes down over a robot standing
+# on its ground, because a bay is where a robot stands. That is what lets her pick a
+# stall up with its Mark I parked in it and put it straight back where it was.
+func _block_fits(t: Vector2i, item: String, bots_welcome: bool = false) -> bool:
+	bots_welcome = bots_welcome or item == STALL_ITEM
 	if not is_walkable(t.x, t.y):
 		return false
 	# A bay is for robots. A second stall, a sprinkler or a bare `placeable_at`
@@ -2552,7 +2557,7 @@ func _block_fits(t: Vector2i, item: String) -> bool:
 	# `is_walkable`'s answer, reached through the recursion below.
 	else:
 		for cell in MachineDefs.footprint_cells(item, t):
-			if cell != t and not placeable_at(cell):
+			if cell != t and not _block_fits(cell, "", bots_welcome):
 				return false
 	# **A structure needs bare ground under every cell** (2026-10-08, found by
 	# putting the barn down by tap). `place` writes the structure's own object onto
@@ -2570,6 +2575,8 @@ func _block_fits(t: Vector2i, item: String) -> bool:
 	for raw in actors:
 		var id := String(raw)
 		if id == ACTOR_PLAYER:
+			continue
+		if bots_welcome and String(actors[id].get("species", "")) == SpeciesDefs.BOT:
 			continue
 		if t in Movement.occupied_tiles(self, id):
 			return false
@@ -2626,7 +2633,7 @@ func footprint_blockers(t: Vector2i, item: String) -> Array[Vector2i]:
 				and String(get_tile(cell.x, cell.y).get("state", "")) == WorldLayout.FLOOR \
 				and objects[cell.y][cell.x] == ""
 		else:
-			free = placeable_at(cell)
+			free = _block_fits(cell, "", item == STALL_ITEM)
 		if free and writes_objects and (get_object(cell.x, cell.y) != "" or _crop_under_structure(cell)):
 			free = false
 		if not free:
@@ -2745,13 +2752,31 @@ func _building_nest(building: Dictionary) -> Array:
 # is inside *its* block, so two buildings set side by side never answer for each
 # other.
 func _room_building_at(t: Vector2i) -> Dictionary:
+	return _structure_block_at(t, true)
+
+
+# **Which building with no inside stands on this square** (2026-10-13): the robot
+# stall and the workbench, the two structures that are bought, set down and stood
+# beside rather than gone into. The same `{ item, anchor }` answer, asked the same
+# way, so "Pick up" finds them exactly as it finds a coop. A fitting is not one of
+# them (it lives indoors and a tap picks it up with no panel), and nor is anything
+# that spawns an actor.
+func _roomless_building_at(t: Vector2i) -> Dictionary:
+	return _structure_block_at(t, false)
+
+
+func _structure_block_at(t: Vector2i, with_room: bool) -> Dictionary:
 	if t.y < 0 or t.y >= MAP_HEIGHT or t.x < 0 or t.x >= MAP_WIDTH:
 		return {}
 	var here: String = objects[t.y][t.x]
 	for key in MachineDefs.ORDER:
-		if MachineDefs.room_of(key).is_empty():
+		if MachineDefs.room_of(key).is_empty() == with_room:
+			continue
+		if MachineDefs.spawns_actor(key) or MachineDefs.is_fitting(key):
 			continue
 		var obj := MachineDefs.object_of(key)
+		if obj == "":
+			continue
 		if here != obj and here != MachineDefs.part_of(key):
 			continue
 		var size := MachineDefs.footprint_of(key)
@@ -3453,7 +3478,14 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			return { "ok": true, "sheep": sheep_id, "price": SHEEP_PRICE }
 		"collect":
 			if gs == null: return _fail("no_state")
-			var obj := get_object(target.x, target.y)
+			# **"Pick up" on a building's panel means the building** (2026-10-13).
+			# A tap on a square picks up what stands on it first, on purpose (an
+			# egg before the stall it was laid in, a robot before its bay), so the
+			# panel says which it means: everything before the buildings is
+			# skipped. Without this, "Pick up" on a stall with a robot parked in
+			# the tapped bay would crate the robot.
+			var for_building := bool(action.get("building", false))
+			var obj := "" if for_building else get_object(target.x, target.y)
 			if obj == "egg":
 				set_object(target.x, target.y, "")
 				gs.items["egg"] = gs.items.get("egg", 0) + 1
@@ -3502,7 +3534,7 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			#
 			# Asked after the objects, because an egg laid at a sprinkler's feet is
 			# the smaller, more perishable thing and is what a tap plainly means.
-			var machine_id := machine_at(target)
+			var machine_id := "" if for_building else machine_at(target)
 			if machine_id != "":
 				var machine_key := machine_key_of(machine_id)
 				# **And it goes into the crate with everything it had learned**
@@ -3588,6 +3620,30 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 				_tumble_out(contents, building, gs)
 				return { "ok": true, "collected": item, "anchor": anchor,
 					"count": taken_up.size(), "contents": contents }
+			# **And so do the buildings with no inside** (Daniel, 2026-10-13: picking
+			# up buildings should be one consistent experience). The robot stall and
+			# the workbench were set down for good: the stall was the deliberately
+			# weak first version (P-13), and the bench simply never had a panel to
+			# offer it. Neither holds anything of its own to lose. Every number the
+			# bench shows lives on the robot it is showing (design/14 §1), and a
+			# robot in a bay is a machine standing on the farm: it stays where it
+			# stands, never pocketed. What the stall does hold is an address. A Mark I
+			# that lives in it goes out on its own each morning and walks back to its
+			# bay, so who lived in which bay goes into the crate with the stall and
+			# moves with it when it is put down (`_box_stall_residents`).
+			var roomless := _roomless_building_at(target)
+			if not roomless.is_empty():
+				var r_item := String(roomless["item"])
+				var r_anchor: Vector2i = roomless["anchor"]
+				var r_cells := MachineDefs.footprint_cells(r_item, r_anchor)
+				if r_item == STALL_ITEM:
+					_box_stall_residents(r_cells, gs)
+				for cell in r_cells:
+					set_object(cell.x, cell.y, "")
+				gs.machines[r_item] = int(gs.machines.get(r_item, 0)) + 1
+				return { "ok": true, "collected": r_item, "anchor": r_anchor }
+			if for_building:
+				return _fail("no_building_here")
 			# **And her fences come back up** (Q-92). A post she built is always
 			# hers; the starting fence becomes hers on her first fence purchase. Before
 			# then it remains the cold open's first lock. Hedges are never fencing
@@ -3808,6 +3864,11 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 						set_object(cell.x, cell.y, part)
 				if placer_charged:
 					gs.machines[item] = int(gs.machines.get(item, 0)) - 1
+				# **A stall that comes out of the crate brings its robots' address
+				# with it** (2026-10-13). Under the condition that spends the crate,
+				# the robots' rule (below), so the box and the stall move together.
+				if item == STALL_ITEM and placer_charged:
+					_unbox_stall_residents(cells, gs)
 				# **A structure's first use is being set down** (S-12). A bench
 				# has no job of its own to complete — it is a thing robots are
 				# worked on at — so the moment it stands on the farm is the
@@ -4569,6 +4630,103 @@ func _crate_machine(machine_id: String, gs) -> String:
 	despawn_actor(machine_id)
 	gs.machines[machine_key] = int(gs.machines.get(machine_key, 0)) + 1
 	return machine_key
+
+
+# **Who lived in a stall goes into the crate with it** (2026-10-13). A Mark I set
+# down in a bay has the bay as its home (`BotBrain.deploy`, `home_x`/`home_y`): it
+# is sent out on its own each morning and walks back there. The stall's two bays
+# are the only thing it holds, so they are what the box remembers: each resident by
+# id, the bay it had (0 is the anchor's, 1 the second) and the square that was its
+# home, so a robot she has re-homed since is left alone. Only a robot on its taught
+# round is a resident; a mark-2's `home_x` is the middle of its patch, not an
+# address.
+#
+# **Which stall in the crate it belongs to.** Stalls in the crate are alike, and a
+# crate is a stack: the one put down is the one on top. `under` is how many stalls
+# were already in the crate beneath this one, so a stall bought or picked up empty
+# after it sits on top of it and is put down first, with no box. Without that, the
+# next stall put down anywhere would carry these robots' address off with it.
+#
+# A stall nobody lived in leaves nothing in the crate, as a robot that learned
+# nothing does. The robots themselves are not touched: they stand where they were,
+# and while their stall is in the crate the morning sends nobody out
+# (`BotBrain.day_actions` asks the grid whether home is still a stall).
+func _box_stall_residents(cells: Array[Vector2i], gs) -> void:
+	var residents: Array = []
+	var ids: Array = actors.keys()
+	ids.sort()
+	for raw in ids:
+		var id := String(raw)
+		var e: Dictionary = actors[id]
+		if String(e.get("species", "")) != SpeciesDefs.BOT:
+			continue
+		var extra: Dictionary = e.get("extra", {})
+		if String(extra.get("config", "")) != BotBrain.CONFIG_ORDERS:
+			continue
+		var home := Vector2i(int(extra.get("home_x", -1)), int(extra.get("home_y", -1)))
+		var bay := cells.find(home)
+		if bay < 0:
+			continue
+		residents.append({ "id": id, "bay": bay, "home": [home.x, home.y] })
+	if residents.is_empty():
+		return
+	var crate: Array = gs.boxed.get(STALL_ITEM, [])
+	crate.append({ "residents": residents, "under": int(gs.machines.get(STALL_ITEM, 0)) })
+	gs.boxed[STALL_ITEM] = crate
+
+
+# Is this resident still at home where the box says, so the box may still move it?
+func _resident_at_home(resident: Dictionary) -> bool:
+	var id := String(resident.get("id", ""))
+	var was: Array = resident.get("home", [])
+	if not actors.has(id) or was.size() != 2:
+		return false
+	var extra: Dictionary = actors[id]["extra"]
+	return int(extra.get("home_x", -1)) == int(was[0]) and int(extra.get("home_y", -1)) == int(was[1])
+
+
+# ...and back out when a stall is put down (called after the crate count has gone
+# down). **Its own box, if it has one.** A stall put down over robots standing in
+# their old bays is plainly theirs, whatever order the crate is in; otherwise it is
+# the stall on top of the crate, which has a box only if the newest box is the one
+# with exactly the stalls still in the crate beneath it. Each resident still on the
+# farm and still at home in the bay it had is given the same bay in the stall just
+# set down. One standing on that bay is home at once; one elsewhere walks there at
+# the end of its next round.
+func _unbox_stall_residents(cells: Array[Vector2i], gs) -> void:
+	var crate: Array = gs.boxed.get(STALL_ITEM, [])
+	if crate.is_empty():
+		return
+	var chosen := -1
+	for i in range(crate.size() - 1, -1, -1):
+		for raw in (crate[i] as Dictionary).get("residents", []):
+			var resident: Dictionary = raw
+			if _resident_at_home(resident) and actor_pos(String(resident["id"])) in cells:
+				chosen = i
+				break
+		if chosen >= 0:
+			break
+	var left := int(gs.machines.get(STALL_ITEM, 0))
+	if chosen < 0 and int((crate[-1] as Dictionary).get("under", -1)) == left:
+		chosen = crate.size() - 1
+	if chosen < 0:
+		return
+	var box: Dictionary = crate[chosen]
+	crate.remove_at(chosen)
+	# The stalls above it in the crate are one lower now.
+	var was_under := int(box.get("under", 0))
+	for other in crate:
+		if int((other as Dictionary).get("under", 0)) > was_under:
+			other["under"] = int(other["under"]) - 1
+	gs.boxed[STALL_ITEM] = crate
+	for raw in box.get("residents", []):
+		var resident: Dictionary = raw
+		var bay := int(resident.get("bay", -1))
+		if not _resident_at_home(resident) or bay < 0 or bay >= cells.size():
+			continue
+		var extra: Dictionary = actors[String(resident["id"])]["extra"]
+		extra["home_x"] = cells[bay].x
+		extra["home_y"] = cells[bay].y
 
 
 # **Everything inside the buildings about to come up, handed back before their rooms

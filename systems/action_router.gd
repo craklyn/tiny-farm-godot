@@ -92,12 +92,13 @@ const SPECIAL_OBJECTS := {
 	# written out like every other entry so the table reads as a table.
 	"house_door":   "use_door",
 	"home_doorway": "use_door",
-	# The training workbench (Q-101, 2026-09-10). She walks up to it and it opens,
-	# exactly as the seed box does — and like `open_shop` beside it, what comes
-	# back is **not a verb**: opening the bench changes nothing in the world, so
-	# nothing about it belongs in a replay. What she then does at the bench (turn a
-	# dial) is a `tune` Action through the gateway like everything else.
-	"workbench":    "open_workbench",
+	# The training workbench (Q-101, 2026-09-10). She walks up to it and its panel
+	# opens: use the bench, or pick it up (2026-10-13, every building picks up the
+	# same way). Like `open_shop`, what comes back is **not a verb**: opening a
+	# panel or the bench changes nothing in the world, so nothing about it belongs
+	# in a replay. What she then does at the bench (turn a dial) is a `tune` Action
+	# through the gateway like everything else.
+	"workbench":    "open_structure",
 	# The room fittings (S-22). A tap on one picks it up, as a tap on her own
 	# scarecrow does: it goes back in the crate, to be set down somewhere else.
 	# Rearranging a room is pick-up-and-put-down, with no panel in between.
@@ -199,6 +200,23 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 		return check_result.call({
 			"action": "teach", "tool_idx": 0, "target_t": tap_t,
 			"walk_to": false, "seed_type": "", "machine": teaching_machine,
+		})
+
+	# **A stall in her hands goes back down over a robot that lived in it**
+	# (2026-10-13). She picked the stall up with a Mark I parked in it, and the
+	# robot is still standing in its old bay. A tap on that robot, holding the
+	# stall, puts the stall back where it stood, anchored so the robot is in its
+	# own bay again, rather than opening the robot's panel. Only such a robot:
+	# every other tap on a robot still opens it.
+	var stall_back := Vector2i(-1, -1) if is_drag else stall_return_anchor(teach_world, gs, tap_t)
+	if stall_back.x >= 0:
+		if player_t != null:
+			var pts: Vector2i = player_t
+			if absi(pts.x - tx) + absi(pts.y - ty) > 1:
+				return {}   # a far tap is a walk (Q-30); the tap from beside places
+		return check_result.call({
+			"action": "place", "tool_idx": 0, "target_t": stall_back,
+			"walk_to": true, "seed_type": "", "item": gs.selected_seed_type,
 		})
 
 	# A moving machine may have left the touched square between the input event
@@ -415,6 +433,16 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 	# ground's states, so a tap on the floor is what a tap on the yard is: she walks
 	# over and stands on it. A Mark III's scan asks the same question
 	# (`BotBrain._legal_at`), which is what keeps the two agreeing.
+	#
+	# The stall is the one floor that answers (2026-10-13): a tap on an empty bay
+	# opens its panel, so it can be picked up like every other building. Asked
+	# after the machine check, so a robot parked in the bay still opens its own
+	# panel, and after placement, so a robot in her hands still goes into the bay.
+	if world != null and world.is_stall_tile(tap_t):
+		return check_result.call({
+			"action": "open_structure", "tool_idx": 0, "target_t": tap_t,
+			"walk_to": true, "seed_type": "",
+		})
 	if world != null and world.is_structure_floor(tap_t):
 		return {}
 
@@ -679,7 +707,10 @@ func is_workable(farm: Node2D, tap_t: Vector2i, gs: Node = null) -> bool:
 	var tile: Dictionary = farm.get_tile(tap_t.x, tap_t.y)
 	if tile.is_empty():
 		return false
-	# A building's floor is walked onto, not worked (resolve()'s 2-i).
+	# A building's floor is walked onto, not worked (resolve()'s 2-i), except a
+	# stall's bays, whose tap opens the stall's panel: she walks up to it.
+	if w != null and w.is_stall_tile(tap_t):
+		return true
 	if w != null and w.is_structure_floor(tap_t):
 		return false
 	return String(tile.get("state", "")) in [
@@ -711,3 +742,34 @@ func get_cursor_color(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, 
 	if state == "border" or state.begins_with("obstacle"):
 		return Color(0.9, 0.3, 0.2, 0.6)  # Red — blocked
 	return Color(0.9, 0.85, 0.3, 0.6)     # Yellow — neutral
+
+
+## Where a held stall goes down if the robot on `tap_t` lived in it (2026-10-13):
+## the anchor that puts that robot back in its own bay, or (-1, -1). Read off the
+## crate's memory of the stall (`gs.boxed["stall"]`), and only for a robot still
+## standing on the square that was its home, so a robot that has walked off, or
+## was never in a stall, opens its own panel as before.
+static func stall_return_anchor(world, gs, tap_t: Vector2i) -> Vector2i:
+	var none := Vector2i(-1, -1)
+	if world == null or gs == null or not gs.has_method("holding_machine") \
+			or not gs.holding_machine() or String(gs.selected_seed_type) != SimWorld.STALL_ITEM:
+		return none
+	var id: String = world.machine_at(tap_t)
+	if id == "":
+		return none
+	var extra: Dictionary = world.actor(id).get("extra", {})
+	if Vector2i(int(extra.get("home_x", -1)), int(extra.get("home_y", -1))) != tap_t:
+		return none
+	var bays := MachineDefs.footprint_cells(SimWorld.STALL_ITEM, Vector2i.ZERO)
+	for box in gs.boxed.get(SimWorld.STALL_ITEM, []):
+		for raw in (box as Dictionary).get("residents", []):
+			var resident: Dictionary = raw
+			var was: Array = resident.get("home", [])
+			var bay := int(resident.get("bay", -1))
+			if String(resident.get("id", "")) != id or was.size() != 2 \
+					or Vector2i(int(was[0]), int(was[1])) != tap_t or bay < 0 or bay >= bays.size():
+				continue
+			var anchor := tap_t - bays[bay]
+			if world.placeable_at(anchor, SimWorld.STALL_ITEM):
+				return anchor
+	return none

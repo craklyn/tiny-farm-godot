@@ -575,9 +575,8 @@ chose the model below over built-in fittings (b) and decoration only (c).
   the memory a robot's practice uses (Q-98), with their timers paused. When the barn is put
   down again they come back and the line carries on.
 - **The coop, the Spiral Tower and the barn read the same way:** a tap on the building opens
-  its panel with Go inside and Pick up, and Pick up always works. The robot stall and the
-  workbench are the gap. They have no room, so they have no panel, and a tap on either
-  cannot pick it up at all (`collect` answers "nothing to collect").
+  its panel with Go inside and Pick up, and Pick up always works. Since 2026-10-13 the
+  robot stall and the workbench do too, through the same panel (the last point below).
 - **Nothing in the save or replay format changed.** A fitting is an object string on the
   grid, and fittings in the crate use the crate's existing counts. Old farms load unchanged,
   and the rescue for nested buildings still returns every one it finds.
@@ -585,6 +584,15 @@ chose the model below over built-in fittings (b) and decoration only (c).
   with contents and replay, and by `test_spiral_tower_pick_up` for the tower. Scenario BC
   in the integration suite puts a nest box down with a tap from inside a coop and picks it
   back up with another tap.
+- **The buildings with no inside pick up the same way** (Daniel, 2026-10-13: picking up
+  buildings should be one consistent experience). The robot stall and the workbench have no
+  room, so there is nothing to empty, but they open the same building panel and "Pick up"
+  is the same `collect`. The panel's "Pick up" says it means the building (`building: true`
+  on the Action), so a robot standing in the tapped bay is never crated by mistake. P-17's
+  rule holds for machines too: a Mark I parked in the stall stays on the farm where it
+  stood. The one thing the stall holds, which robots live in which bay, goes into the crate
+  with it and comes back when it is put down (`design/03`, "Every building picks up the
+  same way"). Proved by `test_stall_and_workbench_pick_up` and Scenario BT.
 
 The rest of this section is the model as ruled. A later tier builds on it.
 
