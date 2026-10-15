@@ -1,0 +1,39 @@
+# The sheep TikTok's voice: take 0045 (2026-10-14, 4K landscape, grey hoodie), Daniel's read of script v1 with his
+# own ad-libs. Takes 0046 (two starts of the hook) and 0047 (a loose two-minute ad-lib, the last recorded) are not
+# used in v1; see decisions.md. Hand-trimmed from autocut's pass (auto-0045.yaml):
+# - the hook's first try ("…and I'm making a game.") is cut; its last take is used;
+# - "And she loves it." ends at 38.24, before a click at 38.26;
+# - "It was, it felt like…": the false start "It was" is cut at the loudness dip at 41.61, and the stray "It" that
+#   small.en heard at 38.3 is only room noise;
+# - small.en placed "So" at 44.4, but the audio is silent there: it is the "So" at 46.9. The pause before "So I
+#   gave them things to do" is kept at about half a second (autocut's 0.3 s rule would make it 0.25 s): the beat
+#   is the joke;
+# - the pauses inside "they graze … the grass … birds … can come and hang out with them" are cut to autocut's.
+version: 1
+fps: 30000/1001
+sections:
+  - title: hook
+    segments:
+      - {clip: "footage/raw/DJI_20000413204152_0045_D.MP4", in: 7.307, out: 10.611, says: "What's up, TikTok? It's your boy, Buddy-O Vlogs."}
+      - {clip: "footage/raw/DJI_20000413204152_0045_D.MP4", in: 11.211, out: 15.249, says: "I'm making a game for my four-year-old daughter, and I add features from your comments."}
+  - title: you asked
+    segments:
+      - {clip: "footage/raw/DJI_20000413204152_0045_D.MP4", in: 15.682, out: 17.751, says: "You asked, are there sheep?"}
+      - {clip: "footage/raw/DJI_20000413204152_0045_D.MP4", in: 18.585, out: 19.553, says: "Now there are."}
+  - title: the wool
+    segments:
+      - {clip: "footage/raw/DJI_20000413204152_0045_D.MP4", in: 20.754, out: 23.423, says: "Every night, their wool grows."}
+      - {clip: "footage/raw/DJI_20000413204152_0045_D.MP4", in: 24.091, out: 25.125, says: "Full coat,"}
+      - {clip: "footage/raw/DJI_20000413204152_0045_D.MP4", in: 25.692, out: 27.361, says: "extra full coat."}
+      - {clip: "footage/raw/DJI_20000413204152_0045_D.MP4", in: 28.028, out: 31.932, says: "At extra full, they squeeze through doors at quarter speed."}
+      - {clip: "footage/raw/DJI_20000413204152_0045_D.MP4", in: 33.000, out: 36.403, says: "And at the extreme coat, she can't take another step."}
+      - {clip: "footage/raw/DJI_20000413204152_0045_D.MP4", in: 37.070, out: 38.240, says: "And she loves it."}
+  - title: things to do
+    segments:
+      - {clip: "footage/raw/DJI_20000413204152_0045_D.MP4", in: 41.610, out: 45.000, says: "it felt like there wasn't much for them to do when they got to that point."}
+      - {clip: "footage/raw/DJI_20000413204152_0045_D.MP4", in: 46.914, out: 49.683, says: "So I gave them things to do. They graze"}
+      - {clip: "footage/raw/DJI_20000413204152_0045_D.MP4", in: 50.517, out: 51.718, says: "the grass,"}
+      - {clip: "footage/raw/DJI_20000413204152_0045_D.MP4", in: 53.987, out: 55.722, says: "birds can come and hang out with them."}
+  - title: ask
+    segments:
+      - {clip: "footage/raw/DJI_20000413204152_0045_D.MP4", in: 57.157, out: 58.458, says: "What should I build next?"}

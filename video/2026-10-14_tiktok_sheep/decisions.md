@@ -103,3 +103,48 @@ What the first recordings showed, and what changed in `tools/record_video_shots.
 
 No game code changed. The two still-picture tools built on this script (`tools/capture_sheep.gd`,
 `tools/capture_sheep_gags.gd`) use only helpers this change left alone.
+
+## Footage (2026-10-14)
+
+Daniel recorded on the DJI Osmo Pocket 4, 4K landscape this time (3840×2160 HEVC 10-bit, 29.97 fps), grey hoodie.
+The orchestrator copied every clip newer than the creamery's (0042) to `footage/raw/` (read-only). All five
+were transcribed:
+
+- **0045** (61 s): the read of script v1, with his own ad-libs in the last section. **Used for v1.**
+- **0046** (81 s): two starts of the hook only, with a new line: "As you know, I'm making a game a little bit
+  every day until it's not bad."
+- **0047** (133 s, the last recorded): a loose ad-lib of the whole thing, closer to a design chat ("Okay, so for
+  sheep, this is what I'm thinking…"). It has good in-character lines ("I didn't want to have sheep milk and cow
+  milk… but I want to have wool. So we're going to start with wool on the sheep"), but it also says "maybe
+  they've been recently sheared", which the joke rules out, and it runs over two minutes.
+- 0043 and 0044 are two unrelated takes, not used.
+
+0047 was recorded last, and Daniel's rule is that the last take wins for a repeated line. But 0047 isn't a
+retake of the script: it's a different, much longer version. So v1 is cut from 0045, the script read. 0046's
+hook line and 0047's wool line are offered for v2.
+
+## v1 (2026-10-15)
+
+- **Voice** (`edit/edl-v1.yaml`): take 0045 only, 34.6 s. The hook's first try is cut (its last take is used),
+  and so is the false start "It was" before "it felt like…". The pause before "So I gave them things to do" is
+  kept at about half a second rather than autocut's quarter second, because that beat is the joke. Other pauses
+  are cut as autocut cut them.
+- **His ad-libs, all kept:** "It felt like there wasn't much for them to do when they got to that point. So I
+  gave them things to do. They graze the grass, birds can come and hang out with them. What should I build
+  next?" He skipped the script's stretch line, so the stretch shot plays under "They graze the grass".
+- **Captions** (`edit/captions-v1.txt`): hand-phrased, as the creamery's. "Now there are" is drawn big with
+  the gold sparkles (the creamery's "Cows" treatment). small.en hears "extra fold"; the caption says "extra full".
+- **Face**: `video/tools/compose.py` crop for 0045 (centre x 2200, top 600, height 1700): eyes near 67% of the
+  screen, mouth near 72%, clear of TikTok's bottom quarter. He moves about in this take, so the crop is loose.
+- **Gameplay** (`edit/gameplay-v1.yaml`): the shots from "Shots v1", each starting on its caption phrase. The
+  coat growth is split into two pieces (the first night at 1.5×, the second at 2×) so "Full coat" and "Extra full
+  coat" each land on their own coat. The bald ring plays at 100× (four minutes in two seconds).
+- **Sound**: as the first two videos: the game's sound effects at −19 dB, "Wholesome" by Kevin MacLeod
+  (CC BY 4.0) at −24 dB, loudness-normalised (−16.0 LUFS integrated). Post description credit: "Music:
+  Wholesome by Kevin MacLeod (incompetech.com), licensed under CC BY 4.0."
+- **End card**: the series' "SPROUT & SPROCKET" card (`assets/titlecard/card-v1.mp4`, not committed). 36.8 s in all.
+- **Checks**: no black frames; a frame at every beat read; the finished mix transcribed with medium.en reads back
+  the whole script (it hears "quarter speed" as "corridor speed" under the music, which small.en hears right; the
+  voice alone has "things to do" intact).
+- Set up on this desktop for the first time: `video/.venv` made with `uv` (the system Python has no `venv`
+  module). The skill's `frames.py sheet` needs a macOS font and fails here, so the sheets were made with ffmpeg.

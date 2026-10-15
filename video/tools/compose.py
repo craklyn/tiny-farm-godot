@@ -38,7 +38,10 @@ CROPS = {"0023": (1800, 400, 1600), "0020": (1950, 400, 1600), "0019": (1880, 40
          "0025": (1824, 477, 1655),
          # the creamery read (2026-10-12) was filmed portrait, 1728 x 3072: a fourth value gives the source
          # width; the crop nearly fills it, eyes near 1500 px and mouth near 1840
-         "0042": (864, 1030, 1530, 1728)}
+         "0042": (864, 1030, 1530, 1728),
+         # the sheep read (2026-10-14, 4K landscape, grey hoodie) sits right of centre and moves about: a looser
+         # crop, eyes near 67% of the screen and mouth near 72%
+         "0045": (2200, 600, 1700)}
 # TikTok's like/comment/share column covers about the right 14% of the screen between a quarter and 60% of
 # its height, which is where the seam captions sit: centre them in the width left of it.
 CAPTION_W = 940
