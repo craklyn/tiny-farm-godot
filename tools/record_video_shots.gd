@@ -81,6 +81,7 @@ func _ready() -> void:
 		"sheepdoor": await _sheep_door()
 		"sheepstuck": await _sheep_stuck()
 		"sheepbuy": await _sheep_buy()
+		"sheepgrow": await _sheep_grow()
 		# What a stuck sheep does with forever (design/18, "Stuck for good"). The
 		# variant is `<ring>-<sheep>`: grazing, stubble or bare, and 1 or 2 sheep.
 		"sheepgags": await _sheep_gags()
@@ -940,13 +941,7 @@ func _sheep_stalls() -> void:
 	var coats := _sheep_coats([1, 2, 3, 4])
 	var stalls: Array = farm.sim.barns[barn_id]["stalls"]
 	for i in mini(coats.size(), stalls.size()):
-		var cell := _v(stalls[i]["cell"])
-		var id := _put_sheep(cell, coats[i])
-		farm.apply_action({ "actor": id, "verb": "reserve_milk_stall", "barn_id": barn_id, "stall_index": i }, GameState)
-		farm.apply_action({ "actor": id, "verb": "enter_milk_stall", "barn_id": barn_id, "stall_index": i }, GameState)
-		# Resting for the whole shot: her brain sets this on a real visit.
-		farm.sim.actor(id)["extra"]["rest_until"] = farm.sim.clock.tick + 100000
-		print("  sheep ", id, " coat ", coats[i], " in stall ", i)
+		print("  sheep ", _stall_sheep(barn_id, i, coats[i]), " coat ", coats[i], " in stall ", i)
 	farm.sim.schedule_all_brains()
 	await _go_inside_barn(barn_id)
 	await _seconds(2.0)
@@ -967,10 +962,21 @@ func _sheep_door() -> void:
 	var doorstep: Vector2i = _barn_doors(barn_id)[0]
 	var ids: Array[String] = []
 	for i in coats.size():
-		var id := _put_sheep(doorstep + Vector2i(-2 + i * 4, 4), coats[i])
+		# On the staged farm the doors are reached only from the right, along the row
+		# in front of the barn (a hedge runs under them), so each starts on the grass
+		# to the right and walks straight in along that row.
+		var at := doorstep + Vector2i(-2 + i * 4, 4)
+		for off in [Vector2i(5 + i, 2 * i), Vector2i(4 + 2 * i, 0), Vector2i(6, i)]:
+			var t: Vector2i = doorstep + off
+			if farm.sim.placeable_at(t) and farm.sim.is_walkable_sparing_beds(t.x, t.y):
+				at = t
+				break
+		var id := _put_sheep(at, coats[i])
+		print("  ", id, " coat ", coats[i], " at ", at, ", doorstep ", doorstep)
 		ids.append(id)
 	_place_player(doorstep + Vector2i(9, 4))
-	_free_camera(_px(doorstep) + Vector2(0, 24), 3.0)
+	# Close enough on the doorway that the squeeze reads on a phone (the third TikTok).
+	_on_page_camera(_px(doorstep) + Vector2(40, -12), 4.0)
 	await _seconds(0.6)
 	_mark("walkin")
 	for i in ids.size():
@@ -985,36 +991,121 @@ func _sheep_door() -> void:
 # farmer walks up to her and past her.
 func _sheep_stuck() -> void:
 	var barn_id := await _sheep_farm()
-	var spot: Vector2i = _sheep_row(barn_id, 1)[0]
+	# Open grass with room either side, so the farmer starts on the farm, not past
+	# its edge, and the camera stays on the page.
+	var spot := _open_grass_for(barn_id, 1)
 	print("  sheep ", _put_sheep(spot, Wool.EXTREME), " at ", spot)
-	_place_player(spot + Vector2i(-5, 0))
-	_free_camera(_px(spot), 3.0)
+	_place_player(spot + Vector2i(-4, 1))
+	InputManager.current_mode = InputManager.Mode.TOUCH
+	_on_page_camera(_px(spot), 4.0)
 	await _seconds(1.0)
 	_mark("stuck")
 	await _walk_to(spot + Vector2i(4, 1))
 	await _seconds(4.0)
 
 
-# "Are there sheep?": the shop open, the sheep's card beside the cow's; a tap buys her
-# and she arrives outside the barn's doors, mid-growth.
+# "Are there sheep?": the shop open and scrolled down to the sheep's card beside the
+# cow's; a tap buys her and she arrives outside the barn's doors, mid-growth.
+# Variant `full`: the barn's four places already hold sheep, stopped for good in its
+# stalls, so both cards are dark (a red price) and a tap on the cow's is refused.
 func _sheep_buy() -> void:
 	var barn_id := await _sheep_farm()
+	var args := OS.get_cmdline_user_args()
+	var full := args.size() > 1 and String(args[1]) == "full"
+	if full:
+		var stalls: Array = farm.sim.barns[barn_id]["stalls"]
+		for i in stalls.size():
+			_stall_sheep(barn_id, i, Wool.EXTREME)
+		farm.sim.schedule_all_brains()
 	var doorstep: Vector2i = _barn_doors(barn_id)[0]
 	_place_player(doorstep + Vector2i(-3, 2))
 	_free_camera(_px(doorstep) + Vector2(0, 16), 3.0)
 	await _seconds(0.5)
 	_mark("shop")
+	var card := await _shop_at_card("cow" if full else "sheep")
+	await _seconds(0.8)
+	_mark("tap")
+	var gold_before: int = GameState.gold
+	if card != null:
+		await _click(card.get_global_rect().get_center())
+	await _frames(3)
+	print("  gold ", gold_before, " -> ", GameState.gold, ", sheep ", farm.sim.sheep_count(), ", cows ", farm.sim.cow_count())
+	await _seconds(1.5 if full else 0.7)
+	main.menus.close_menu()
+	_mark("closed" if full else "arrives")
+	await _seconds(3.0 if full else 5.0)
+
+
+# Opens the shop and scrolls its shelf down to the card of `kind` ("cow", "sheep"),
+# the way a finger would over about a second. Returns the card, to tap.
+func _shop_at_card(kind: String) -> Control:
 	var menus = main.menus
 	menus.open_menu("shop")
 	await _frames(2)
+	var index := -1
 	for i in menus.shop_items.size():
-		if String(menus.shop_items[i].get("kind", "")) == "sheep":
-			menus.selected_option = i
-	await _seconds(1.2)
-	menus._select_current_option()
+		if String(menus.shop_items[i].get("kind", "")) == kind:
+			index = i
+	var scroll: ScrollContainer = menus.options_container.find_child("shop_scroll", true, false)
+	if index < 0 or scroll == null:
+		push_error("no %s card in the shop" % kind)
+		return null
+	# The shelf's cards in the order the shop lists them.
+	var cards: Array[Control] = []
+	for n in scroll.find_children("*", "PanelContainer", true, false):
+		if is_equal_approx((n as Control).custom_minimum_size.y, menus.SHOP_CARD_H):
+			cards.append(n)
+	var card: Control = cards[index] if index < cards.size() else null
+	await _seconds(0.6)
+	var target := scroll.get_v_scroll_bar().max_value - scroll.size.y
+	if card != null:   # the shelf is still at its top, so this is the card's depth in it
+		target = minf(target, card.global_position.y - scroll.global_position.y)
+	var frames := 30
+	for f in frames + 1:
+		scroll.scroll_vertical = int(round(target * ease(float(f) / frames, -2.0)))
+		await get_tree().process_frame
+	return card
+
+
+# A sheep in `coat` resting in a barn's stall `i`, there for the whole shot.
+func _stall_sheep(barn_id: String, i: int, coat: int) -> String:
+	var stalls: Array = farm.sim.barns[barn_id]["stalls"]
+	var id := _put_sheep(_v(stalls[i]["cell"]), coat)
+	farm.apply_action({ "actor": id, "verb": "reserve_milk_stall", "barn_id": barn_id, "stall_index": i }, GameState)
+	farm.apply_action({ "actor": id, "verb": "enter_milk_stall", "barn_id": barn_id, "stall_index": i }, GameState)
+	# Resting for the whole shot: her brain sets this on a real visit.
+	farm.sim.actor(id)["extra"]["rest_until"] = farm.sim.clock.tick + 100000
+	return id
+
+
+# "Every night her wool grows": one sheep, the camera following her as she grazes,
+# and three real nights. Each is the game's own sleep: the day turn through the
+# gateway (which grows her coat, `grow_wool`) and the screen's fade to the next
+# morning. She goes mid-growth, full, extra full, and stops at the extreme coat.
+func _sheep_grow() -> void:
+	var barn_id := await _sheep_farm()
+	var spot := _open_grass_for(barn_id, 1)
+	var id := _put_sheep(spot, Wool.MID_GROWTH)
+	farm.sim.schedule_all_brains()
+	_place_player(spot + Vector2i(-6, 2))
+	InputManager.current_mode = InputManager.Mode.TOUCH
+	_on_page_camera(_px(spot), 5.0)
+	follow = _sprite_of(id)
 	await _seconds(0.5)
-	menus.close_menu()
-	_mark("arrives")
+	_mark("coat%d" % Wool.coat_of(farm.sim, id))
+	for night in 3:
+		await _seconds(3.0)
+		var res: Dictionary = farm.apply_action({ "verb": "sleep", "actor": "world" }, GameState)
+		if not res.get("ok", false):
+			push_error("sleep refused: %s" % str(res))
+		# The shot is about her coat, not the weather the morning rolled.
+		GameState.weather = "sunny"
+		GameState.weather_changed.emit(GameState.weather)
+		_mark("night%d" % (night + 1))
+		main.day_cycle.set_day_display(GameState.day)
+		main.day_cycle.start_sleep(Callable(), false)
+		await _wait_until(func(): return not main.day_cycle.is_active(), 600)
+		_mark("coat%d" % Wool.coat_of(farm.sim, id))
 	await _seconds(5.0)
 
 
