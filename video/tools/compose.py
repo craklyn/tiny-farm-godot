@@ -184,6 +184,8 @@ def main():
     ap.add_argument("--music", type=Path, default=None, help="a music bed under everything")
     ap.add_argument("--music-gain", type=float, default=-22.0)
     ap.add_argument("--card", type=Path, default=None, help="a full-frame end card (video with its own sound)")
+    ap.add_argument("--no-face", action="store_true",
+                    help="voice-over only: no camera picture at all, the gameplay video fills the frame (W x H)")
     args = ap.parse_args()
 
     edl = yaml.safe_load(args.edl.read_text())
@@ -200,16 +202,18 @@ def main():
 
     # Voice
     re_.cut_audio(items, fps, work / "voice.wav", work.parent)
-    # Face: one part per segment (each clip has its own crop), joined without re-encoding
+    # Face: one part per segment (each clip has its own crop), joined without re-encoding. With --no-face the
+    # camera's picture is never decoded; input 0 is the gameplay again, and unused.
     parts = []
-    for i, it in enumerate(items):
+    for i, it in enumerate([] if args.no_face else items):
         dest = work / f"face{i:02d}.mp4"
         re_.cut_video([dict(it)], fps, lambda c: c, crop_vf(it["clip"], panel_h), dest, (W, panel_h),
                       hw=sys.platform == "darwin")   # VideoToolbox decoding is macOS-only
         parts.append(dest)
-    (work / "face.txt").write_text("".join(f"file '{p.name}'\n" for p in parts))
-    re_.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0", "-i", work / "face.txt",
-             "-c", "copy", work / "face.mp4"])
+    if not args.no_face:
+        (work / "face.txt").write_text("".join(f"file '{p.name}'\n" for p in parts))
+        re_.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0", "-i",
+                 work / "face.txt", "-c", "copy", work / "face.mp4"])
 
     # Captions
     chunks = phrase_chunks(args.captions, items, fps) if args.captions else word_chunks(edl, items, fps)
@@ -243,9 +247,14 @@ def main():
         card_sec = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0",
                                          str(args.card)], capture_output=True, text=True).stdout.strip())
     whole = total + card_sec
-    vgraph = (f"[1:v]trim=duration={total:.4f},setpts=PTS-STARTPTS,scale={W}:{args.game_h}:flags=lanczos,"
-              f"fps={re_.rate(fps)},{re_.TAGS},format=yuv420p[g];"
-              f"[0:v]{re_.TAGS},format=yuv420p[f];[g][f]vstack=inputs=2[s];"
+    if args.no_face:
+        stack = (f"[1:v]trim=duration={total:.4f},setpts=PTS-STARTPTS,scale={W}:{H}:flags=neighbor,"
+                 f"fps={re_.rate(fps)},{re_.TAGS},format=yuv420p[s];")
+    else:
+        stack = (f"[1:v]trim=duration={total:.4f},setpts=PTS-STARTPTS,scale={W}:{args.game_h}:flags=lanczos,"
+                 f"fps={re_.rate(fps)},{re_.TAGS},format=yuv420p[g];"
+                 f"[0:v]{re_.TAGS},format=yuv420p[f];[g][f]vstack=inputs=2[s];")
+    vgraph = (stack +
               f"[3:v]format=rgba[o];[s][o]overlay=eof_action=pass:format=auto,format=yuv420p,"
               f"trim=duration={total:.4f}[main]")
     if args.card:   # the card goes after the last word, full frame, with its own sound
@@ -275,7 +284,7 @@ def main():
         nxt += 1
     agraph += f";{''.join(beds)}amix=inputs={len(beds)}:duration=first:normalize=0,loudnorm=I=-14:TP=-1.5:LRA=11[a]"
     re_.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-reinit_filter", "0",
-             "-i", work / "face.mp4", "-i", args.game, "-i", work / "voice.wav", "-f", "concat", "-safe", "0", "-i", track,
+             "-i", args.game if args.no_face else work / "face.mp4", "-i", args.game, "-i", work / "voice.wav", "-f", "concat", "-safe", "0", "-i", track,
              *extra_in,
              "-filter_complex", vgraph + agraph, "-map", "[v]", "-map", "[a]", "-t", f"{whole:.4f}",
              "-c:v", "libx264", "-preset", "medium", "-crf", "18", *re_.ENC_TAGS,

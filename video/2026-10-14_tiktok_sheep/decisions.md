@@ -148,3 +148,22 @@ hook line and 0047's wool line are offered for v2.
   voice alone has "things to do" intact).
 - Set up on this desktop for the first time: `video/.venv` made with `uv` (the system Python has no `venv`
   module). The skill's `frames.py sheet` needs a macOS font and fails here, so the sheets were made with ffmpeg.
+
+## v2 (2026-10-15): no face, Daniel's call
+
+Daniel on v1: "I thought for this video we'd try not showing my face. Therefore, I didn't face towards the
+camera. Can we try that this time?" So for this video there is no camera picture of him anywhere: his voice
+from take 0045 over gameplay filling the 9:16 frame. This is his ruling for this video, not yet a rule for the
+series.
+
+- **Same as v1:** the voice cut (`edit/edl-v1.yaml`), the captions (`edit/captions-v1.txt`, with the "Now there
+  are" sparkle), the shots and their timing, the night cards, the game's sound, the music and the end card.
+- **Layout** (`edit/gameplay-v2.yaml`, a new `framed` look in `video/tools/build_gameplay.py`): each shot's
+  540×480 window, doubled to 1080×960 with crisp pixels, sits from y 360 to 1320, over a blurred, darkened copy
+  of the same shot filling the frame. The captions sit below it, centred at y 1500, so they never cover a sheep,
+  and above TikTok's description text. The shop shot takes its window from the top of the recording, because
+  below its row 486 the camera shows the dark past the farm's edge (v1 showed a strip of it for half a second).
+- **No face anywhere:** `video/tools/compose.py --no-face` never decodes the camera's picture; the only video in
+  the frame is the gameplay, the captions and the end card. Every frame of the render was checked (all 1,104),
+  including the first, which TikTok offers as the cover.
+- Checks: no black frames; 36.8 s, as v1.
