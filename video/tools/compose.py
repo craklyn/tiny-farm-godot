@@ -38,7 +38,10 @@ CROPS = {"0023": (1800, 400, 1600), "0020": (1950, 400, 1600), "0019": (1880, 40
          "0025": (1824, 477, 1655),
          # the creamery read (2026-10-12) was filmed portrait, 1728 x 3072: a fourth value gives the source
          # width; the crop nearly fills it, eyes near 1500 px and mouth near 1840
-         "0042": (864, 1030, 1530, 1728)}
+         "0042": (864, 1030, 1530, 1728),
+         # the sheep read (2026-10-14, 4K landscape, grey hoodie) sits right of centre and moves about: a looser
+         # crop, eyes near 67% of the screen and mouth near 72%
+         "0045": (2200, 600, 1700)}
 # TikTok's like/comment/share column covers about the right 14% of the screen between a quarter and 60% of
 # its height, which is where the seam captions sit: centre them in the width left of it.
 CAPTION_W = 940
@@ -57,21 +60,44 @@ def left_caption(img, **kw):
     img.alpha_composite(part, (0, 0))
 
 
-def sparkles(img, *, y_center, phase, seed=7, count=14, spread=(360, 150)):
-    """Twinkling four-pointed stars around a caption centred in CAPTION_W at y_center. phase runs 0..1 over the
-    caption's life; each star has its own offset, so they flash in turn rather than together."""
+def sparkles(img, *, box, phase, seed=7, count=14, gap=48, arc=(0, 360)):
+    """Twinkling four-pointed stars orbiting a caption whose drawn pixels fill `box` (left, top, right, bottom).
+    phase runs 0..1 over the caption's life; each star has its own offset, so they flash in turn rather than
+    together. Each star sits on an ellipse round the box and is pushed outward until even at its largest it
+    clears the box by `gap` pixels, so no star ever crosses the words (Daniel, sheep TikTok v2: the orbit was
+    too small and the stars overlapped the caption). `arc` (degrees, clockwise from the right, 90 = straight down)
+    limits where they go: in the full-screen voice-over the caption sits just under the gameplay, so the stars stay
+    beside and below it rather than over the game."""
     import math
     import random
     from PIL import ImageDraw
     rnd = random.Random(seed)
     d = ImageDraw.Draw(img)
-    cx = CAPTION_W / 2
+    l, t, r_, b = box
+    cx, cy = (l + r_) / 2, (t + b) / 2
+    hw, hh = (r_ - l) / 2 + gap, (b - t) / 2 + gap
     for k in range(count):
-        ang = 2 * math.pi * k / count + rnd.uniform(-0.3, 0.3)
-        x = cx + math.cos(ang) * spread[0] * rnd.uniform(0.75, 1.05)
-        y = y_center + math.sin(ang) * spread[1] * rnd.uniform(0.7, 1.15)
+        span = arc[1] - arc[0]
+        step = span / count if span >= 360 else span / max(count - 1, 1)
+        ang = math.radians(arc[0] + step * k) + rnd.uniform(-0.12, 0.12) * (1 if span >= 360 else 0)
+        spread = rnd.uniform(1.1, 1.35)
+        size = rnd.uniform(0.6, 1.0)
+        dx, dy = math.cos(ang), math.sin(ang)
+        # On the ellipse that passes outside the box's corners, then outward until the star, at its largest over
+        # its twinkle, clears the box. A star that would then leave the frame is drawn smaller instead.
+        while True:
+            rmax = 14 + 42 * size
+            rho = math.hypot(hw * dx, hh * dy) * spread
+            while abs(rho * dx) < hw + rmax and abs(rho * dy) < hh + rmax:
+                rho += 4
+            x, y = cx + rho * dx, cy + rho * dy
+            if (rmax <= x <= img.width - rmax and rmax <= y <= img.height - rmax) or size <= 0.15:
+                break
+            size -= 0.05
+        if not (rmax <= x <= img.width - rmax):
+            continue
         tw = max(0.0, math.sin(math.pi * 2 * (phase * 1.6 + k / count)))   # 0 (gone) .. 1 (full)
-        r = 14 + 42 * tw * rnd.uniform(0.6, 1.0)
+        r = 14 + 42 * tw * size
         if r < 18:
             continue
         for rr, col in ((r, (255, 214, 64, 255)), (r * 0.55, (255, 250, 220, 255))):
@@ -181,6 +207,8 @@ def main():
     ap.add_argument("--music", type=Path, default=None, help="a music bed under everything")
     ap.add_argument("--music-gain", type=float, default=-22.0)
     ap.add_argument("--card", type=Path, default=None, help="a full-frame end card (video with its own sound)")
+    ap.add_argument("--no-face", action="store_true",
+                    help="voice-over only: no camera picture at all, the gameplay video fills the frame (W x H)")
     args = ap.parse_args()
 
     edl = yaml.safe_load(args.edl.read_text())
@@ -197,16 +225,18 @@ def main():
 
     # Voice
     re_.cut_audio(items, fps, work / "voice.wav", work.parent)
-    # Face: one part per segment (each clip has its own crop), joined without re-encoding
+    # Face: one part per segment (each clip has its own crop), joined without re-encoding. With --no-face the
+    # camera's picture is never decoded; input 0 is the gameplay again, and unused.
     parts = []
-    for i, it in enumerate(items):
+    for i, it in enumerate([] if args.no_face else items):
         dest = work / f"face{i:02d}.mp4"
         re_.cut_video([dict(it)], fps, lambda c: c, crop_vf(it["clip"], panel_h), dest, (W, panel_h),
                       hw=sys.platform == "darwin")   # VideoToolbox decoding is macOS-only
         parts.append(dest)
-    (work / "face.txt").write_text("".join(f"file '{p.name}'\n" for p in parts))
-    re_.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0", "-i", work / "face.txt",
-             "-c", "copy", work / "face.mp4"])
+    if not args.no_face:
+        (work / "face.txt").write_text("".join(f"file '{p.name}'\n" for p in parts))
+        re_.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-f", "concat", "-safe", "0", "-i",
+                 work / "face.txt", "-c", "copy", work / "face.mp4"])
 
     # Captions
     chunks = phrase_chunks(args.captions, items, fps) if args.captions else word_chunks(edl, items, fps)
@@ -225,8 +255,11 @@ def main():
             ta, tb = a + (b - a) * k / n, a + (b - a) * (k + 1) / n
             pop = (0.8, 1.12, 1.0)[min(k, 2)]   # a little bounce as the word lands
             def draw(img, t=t, st=st, pop=pop, ph=k / n):
-                left_caption(img, text=t, **dict(st, size=int(st["size"] * pop)))
-                sparkles(img, y_center=st["y_center"], phase=ph)
+                from PIL import Image
+                words = Image.new("RGBA", img.size, (0, 0, 0, 0))
+                left_caption(words, text=t, **dict(st, size=int(st["size"] * pop)))
+                img.alpha_composite(words)
+                sparkles(img, box=words.getbbox(), phase=ph, arc=(-15, 195) if args.no_face else (0, 360))
             layers.append((ta, tb, 3, draw))
     track = ov.build_track(layers, total, (W, H), work / "track", fps=fps)
     ov.write_srt([c[:3] for c in chunks], args.out.with_name(args.out.stem + ".en.srt"))
@@ -240,9 +273,14 @@ def main():
         card_sec = float(subprocess.run(["ffprobe", "-v", "error", "-show_entries", "format=duration", "-of", "csv=p=0",
                                          str(args.card)], capture_output=True, text=True).stdout.strip())
     whole = total + card_sec
-    vgraph = (f"[1:v]trim=duration={total:.4f},setpts=PTS-STARTPTS,scale={W}:{args.game_h}:flags=lanczos,"
-              f"fps={re_.rate(fps)},{re_.TAGS},format=yuv420p[g];"
-              f"[0:v]{re_.TAGS},format=yuv420p[f];[g][f]vstack=inputs=2[s];"
+    if args.no_face:
+        stack = (f"[1:v]trim=duration={total:.4f},setpts=PTS-STARTPTS,scale={W}:{H}:flags=neighbor,"
+                 f"fps={re_.rate(fps)},{re_.TAGS},format=yuv420p[s];")
+    else:
+        stack = (f"[1:v]trim=duration={total:.4f},setpts=PTS-STARTPTS,scale={W}:{args.game_h}:flags=lanczos,"
+                 f"fps={re_.rate(fps)},{re_.TAGS},format=yuv420p[g];"
+                 f"[0:v]{re_.TAGS},format=yuv420p[f];[g][f]vstack=inputs=2[s];")
+    vgraph = (stack +
               f"[3:v]format=rgba[o];[s][o]overlay=eof_action=pass:format=auto,format=yuv420p,"
               f"trim=duration={total:.4f}[main]")
     if args.card:   # the card goes after the last word, full frame, with its own sound
@@ -272,7 +310,7 @@ def main():
         nxt += 1
     agraph += f";{''.join(beds)}amix=inputs={len(beds)}:duration=first:normalize=0,loudnorm=I=-14:TP=-1.5:LRA=11[a]"
     re_.run(["ffmpeg", "-hide_banner", "-loglevel", "error", "-y", "-reinit_filter", "0",
-             "-i", work / "face.mp4", "-i", args.game, "-i", work / "voice.wav", "-f", "concat", "-safe", "0", "-i", track,
+             "-i", args.game if args.no_face else work / "face.mp4", "-i", args.game, "-i", work / "voice.wav", "-f", "concat", "-safe", "0", "-i", track,
              *extra_in,
              "-filter_complex", vgraph + agraph, "-map", "[v]", "-map", "[a]", "-t", f"{whole:.4f}",
              "-c:v", "libx264", "-preset", "medium", "-crf", "18", *re_.ENC_TAGS,

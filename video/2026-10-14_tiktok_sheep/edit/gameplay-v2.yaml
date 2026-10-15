@@ -1,0 +1,18 @@
+# Gameplay v2 (1080 x 1920, full screen): Daniel's call on v1 was a voice-over with no camera picture of him, so
+# the gameplay fills the frame. Same shots, in-points and times as gameplay-v1.yaml; each 540 x 540 recording is
+# cropped to the same 540 x 480 window as v1 and doubled to 1080 x 960 (crisp pixels), its top at y 360, over a blurred copy of itself, and the captions sit in
+# the band below it (compose.py --caption-y 1500), off the sheep. The shop shot takes its window from the top (yoff 0): below row
+# 486 its camera shows the dark past the farm's edge.
+#   ../.venv/bin/python ../tools/build_gameplay.py edit/gameplay-v2.yaml --size 1080x1920 --total 34.635 \
+#       --out gameplay/timeline-v2.mp4
+- {look: framed, at: 0.00, src: gameplay/raw/sheepstuck.mp4, in: 1.00, note: "an extreme-coat sheep stopped on the grass, the farmer walking past; a bird lands on her (What's up TikTok … from your comments)"}
+- {look: framed, yoff: 0, at: 7.57, src: gameplay/raw/sheepbuy.mp4, in: 1.30, note: "the shop scrolls to the sheep's card, the tap at ~10.0 s buys her, she arrives by the barn (You asked, are there sheep? Now there are)"}
+- {look: framed, at: 11.00, src: gameplay/raw/sheepgrow.mp4, in: 3.20, speed: 1.5, note: "one sheep, the first night (Day 63): mid-growth to full coat (Every night, their wool grows. Full coat)"}
+- {look: framed, at: 14.00, src: gameplay/raw/sheepgrow.mp4, in: 8.60, speed: 2, note: "the second night (Day 64): full to extra full (Extra full coat)"}
+- {look: framed, at: 15.82, src: gameplay/raw/sheepdoor-2-3.mp4, in: 13.50, note: "the extra-full sheep creeping into the barn's doorway (At extra full, they squeeze through doors at quarter speed)"}
+- {look: framed, at: 19.67, src: gameplay/raw/sheepgrow.mp4, in: 13.20, note: "the third night (Day 65): the extreme coat, stopped, wiggling (And at the extreme coat, she can't take another step. And she loves it)"}
+- {look: framed, at: 24.22, src: gameplay/raw/sheepgags-grazing-1.mp4, in: 1.30, note: "she has just stopped; nothing happens (It felt like there wasn't much for them to do when they got to that point)"}
+- {look: framed, at: 27.04, src: gameplay/raw/sheepgags-grazing-1.mp4, in: 4.30, speed: 100, note: "her bald ring grazed square by square, about four minutes in two seconds (So I gave them things to do)"}
+- {look: framed, at: 29.27, src: gameplay/raw/sheepgags-bare-1.mp4, in: 2.40, note: "the bare ring; she strains her neck for the tuft past it, then smug (They graze the grass)"}
+- {look: framed, at: 31.04, src: gameplay/raw/sheepgags-bare-2.mp4, in: 5.20, note: "two stuck sheep, rings joined; a songbird flies in and lands on one, a heart (birds can come and hang out with them)"}
+- {look: framed, at: 33.33, src: gameplay/raw/sheepgags-bare-2.mp4, in: 9.00, note: "the two fluffballs, the bird sitting (What should I build next?)"}
