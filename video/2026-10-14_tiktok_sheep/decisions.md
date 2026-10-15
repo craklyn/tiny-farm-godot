@@ -167,3 +167,14 @@ series.
   the frame is the gameplay, the captions and the end card. Every frame of the render was checked (all 1,104),
   including the first, which TikTok offers as the cover.
 - Checks: no black frames; 36.8 s, as v1.
+
+## v3 (2026-10-15): the sparkles' orbit
+
+Daniel on v2: "'now there are''s particle effects have too small a radius, causing them to overlap the
+captions. Need to move the orbit radius larger". The gold stars round "Now there are" (`video/tools/compose.py`,
+`sparkles`) now orbit the caption's drawn pixels rather than a fixed ellipse: each star sits on an ellipse
+outside the caption's box and is pushed out until, even at its largest, it clears the words by 48 px. A star
+that would then leave the frame is drawn smaller. In this full-screen layout the stars stay beside and below
+the caption (from 15° above the right side, round under it, to 15° above the left side), so none goes over
+the gameplay, and the sheep card in the shop above stays clear. Every frame of the beat (9.55–10.54 s) was
+checked. Nothing else changed: the rest of the video is identical to v2.
