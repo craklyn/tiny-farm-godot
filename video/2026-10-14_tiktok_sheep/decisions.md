@@ -185,3 +185,26 @@ Daniel: the channel name is written "Buddyo Vlogs" (one word), not "Buddy-O Vlog
 videos' captions had it. The hook's caption now reads "Buddyo Vlogs" (`edit/captions-v4.txt`); the script, the
 voice cut's notes and `video/tools/compose.py`'s caption fix (which spells the transcriber's "buddy o") use the
 same spelling. Nothing else changed: v4 is v3 with that one caption.
+
+## v5 (2026-10-21): she stops dead, and no neck stretch
+
+Daniel on v4: under "At the extreme coat, she can't take another step" the sheep "is still sliding around as
+though it's able to move". She was: the third night fell while she stood in the one-square-wide row in front of
+the barn, where a sheep may not stop, so she first squeezed along it to a square she may stop on (design/18),
+drawn with the extreme coat's on-the-spot wiggle because that coat has no walking frames.
+
+- `sheepgrow` (`tools/record_video_shots.gd`) was re-recorded. Each night now falls only when she is within 2.5
+  pixels of resting on a square she may stop on, outdoors; and the barn's four stalls hold resting sheep, out of
+  sight, so she never walks in to rest (the camera followed her inside once, and a night there would have left
+  her in a stall for good). On the third night she stops exactly where she stands. She keeps her look (she is
+  still `sheep_1`).
+- Daniel also asked whether the neck stretch reads as suffering. It can: in its middle two frames her head lies
+  flat on the ground, eyes screwed shut, tongue out, with a shake. Until those frames are redrawn (eyes open on
+  the tuft, head reaching forward, tongue out at the grass, no shake; proposed to Daniel as a separate piece of
+  game work), the stretch is out of the video: under "They graze the grass" her first-day grazed ring plays
+  instead (`sheepgags-stubble-1`), with no stretch and no bird yet. No other shot in the cut shows the stretch.
+- Inputs: `edit/gameplay-v5.yaml` (gameplay-v2 re-timed for the new recording, the stretch swapped out),
+  `edit/captions-v4.txt`, `edit/edl-v1.yaml`. 36.8 s. No black frames.
+
+The game itself still draws a sheep squeezing out of a gap at the extreme coat with her on-the-spot wiggle, so
+she slides there in play too. That is a game fix, noted for the orchestrator, not part of this video.

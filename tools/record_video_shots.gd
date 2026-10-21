@@ -1085,7 +1085,12 @@ func _stall_sheep(barn_id: String, i: int, coat: int) -> String:
 func _sheep_grow() -> void:
 	var barn_id := await _sheep_farm()
 	var spot := _open_grass_for(barn_id, 1)
-	var id := _put_sheep(spot, Wool.MID_GROWTH)
+	var id := _put_sheep(spot, Wool.MID_GROWTH)   # first, so she is sheep_1 and keeps her look
+	# The barn's four stalls hold resting sheep, out of sight inside, so she never walks
+	# in to rest: the camera would follow her into the room, and a night falling while
+	# she rests there would leave her in the stall for good.
+	for i in farm.sim.barns[barn_id]["stalls"].size():
+		_stall_sheep(barn_id, i, Wool.MID_GROWTH)
 	farm.sim.schedule_all_brains()
 	_place_player(spot + Vector2i(-6, 2))
 	InputManager.current_mode = InputManager.Mode.TOUCH
@@ -1095,6 +1100,12 @@ func _sheep_grow() -> void:
 	_mark("coat%d" % Wool.coat_of(farm.sim, id))
 	for night in 3:
 		await _seconds(3.0)
+		# Each night falls while she stands still on a square she may stop on. Otherwise
+		# the last night can catch her mid-walk or in a one-square gap (the row in front of
+		# this farm's barn is one), and at the extreme coat she first squeezes on to a
+		# square she may stop on, drawn with the coat's on-the-spot wiggle, so she seems to
+		# slide under "she can't take another step".
+		await _wait_until(func(): return _standing_where_she_may_stop(id), 600)
 		var res: Dictionary = farm.apply_action({ "verb": "sleep", "actor": "world" }, GameState)
 		if not res.get("ok", false):
 			push_error("sleep refused: %s" % str(res))
@@ -1107,6 +1118,20 @@ func _sheep_grow() -> void:
 		await _wait_until(func(): return not main.day_cycle.is_active(), 600)
 		_mark("coat%d" % Wool.coat_of(farm.sim, id))
 	await _seconds(5.0)
+
+
+# Whether a sheep is all but at rest on a square where an extreme coat would stop her at
+# once (not a doorway, a doorstep, a one-square gap or a bed: `Wool.may_settle`). She
+# grazes at a slow walk and her square changes as a step begins, so a coat that stops her
+# mid-step leaves her picture to glide the rest of the way: within 2.5 pixels of her
+# square (a sprite stands at its square's corner) that glide cannot be seen.
+func _standing_where_she_may_stop(id: String) -> bool:
+	var at: Vector2i = farm.sim.actor_pos(id)
+	var sprite := _sprite_of(id)
+	if sprite == null or sprite.global_position.distance_to(Vector2(at * 16)) > 2.5 \
+			or farm.sim.room_of_cell(at) != "":
+		return false
+	return Wool.may_settle(farm.sim, id, at)
 
 
 # --- what a stuck sheep does with forever (design/18, "Stuck for good") ------------
