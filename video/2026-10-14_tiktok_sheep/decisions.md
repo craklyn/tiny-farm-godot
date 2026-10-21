@@ -25,7 +25,7 @@ ever reaches it again).
 
 ## Script v1 (written 2026-10-14, about 1–4 a.m., `edit/script-v1.md`)
 
-Same length and voice as the first two (about 30 s, short lines, the "it's your boy Buddy-O Vlogs" hook). Hook →
+Same length and voice as the first two (about 30 s, short lines, the "it's your boy Buddyo Vlogs" hook). Hook →
 "You asked: are there sheep?" → "Now there are!" → the wool growing night by night, coats named proudly → the
 squeeze through the door → the extreme coat, stuck and happy → "so I gave them things to do": the bald spot, the
 stretch, the birds (the awkward beat) → the ask, "So what should I build next?", which begs for "shears".
@@ -178,3 +178,10 @@ that would then leave the frame is drawn smaller. In this full-screen layout the
 the caption (from 15° above the right side, round under it, to 15° above the left side), so none goes over
 the gameplay, and the sheep card in the shop above stays clear. Every frame of the beat (9.55–10.54 s) was
 checked. Nothing else changed: the rest of the video is identical to v2.
+
+## v4 (2026-10-21): "Buddyo Vlogs"
+
+Daniel: the channel name is written "Buddyo Vlogs" (one word), not "Buddy-O Vlogs" as v1–v3 and the earlier
+videos' captions had it. The hook's caption now reads "Buddyo Vlogs" (`edit/captions-v4.txt`); the script, the
+voice cut's notes and `video/tools/compose.py`'s caption fix (which spells the transcriber's "buddy o") use the
+same spelling. Nothing else changed: v4 is v3 with that one caption.

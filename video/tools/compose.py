@@ -48,7 +48,7 @@ CAPTION_W = 940
 # Bundled with these tools (SIL Open Font License, see ../fonts/) so captions look the same on the Mac and the
 # Linux desktop; v1-v4 of the first TikTok used Avenir Next Heavy, a macOS system font.
 CAPTION_FONT = Path(__file__).resolve().parent.parent / "fonts" / "Figtree-Variable.ttf"
-FIXES = [(r"(?i)\bbuddy[- ]?o\b", "Buddy-O"), (r"\b4 year old\b", "4-year-old"), (r"(?i)\bAI\b", "AI"),
+FIXES = [(r"(?i)\bbuddy[- ]?o\b", "Buddyo"), (r"\b4 year old\b", "4-year-old"), (r"(?i)\bAI\b", "AI"),
          (r"(?i)\bpre-?\s*-?programmed", "pre-programmed")]
 
 

@@ -14,7 +14,7 @@ fps: 30000/1001
 sections:
   - title: hook
     segments:
-      - {clip: "footage/raw/DJI_20000413204152_0045_D.MP4", in: 7.307, out: 10.611, says: "What's up, TikTok? It's your boy, Buddy-O Vlogs."}
+      - {clip: "footage/raw/DJI_20000413204152_0045_D.MP4", in: 7.307, out: 10.611, says: "What's up, TikTok? It's your boy, Buddyo Vlogs."}
       - {clip: "footage/raw/DJI_20000413204152_0045_D.MP4", in: 11.211, out: 15.249, says: "I'm making a game for my four-year-old daughter, and I add features from your comments."}
   - title: you asked
     segments:
