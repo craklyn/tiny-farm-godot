@@ -34,11 +34,15 @@ Do not assume a folder's date is its posting date. Do not use a thumbnail from a
 
 Lead with the real, seekable vertical video and the next decision. Show the current version by default, with earlier cuts available in a selector. “Add note at 00:12” captures the current playback time; clicking a note seeks the player. Explicit general notes are allowed when no cut exists.
 
-Beside the player, show the editable content brief and review notes. Show the existing script and decisions in a folded source section as read-only source material. The brief is direction for the next production pass, not a silent rewrite of the recorded script.
+Beside the player, show the editable content brief and review notes. The brief includes an editable script/outline and planned shots, so an idea can be designed before footage exists. For a new idea these lead the detail page, with “Develop with Jordan” and “Send production brief”. Show any existing recorded script and decisions in a folded source section as read-only source material. Editing the planning outline is direction for the next production pass, not a silent rewrite of the recorded script.
 
 “Send revision brief” saves a concrete production request containing the project, exact cut, open notes and saved brief into HQ's existing work system. Its existing intake assigns the chief of staff; include Jordan's production responsibility in the brief and label the result “Filed for routing to Jordan”. Link the returned work card and actual owner. Repeated submissions of the same request must not duplicate work.
 
 “Approve this cut” records approval only for the current hash and only when the current cut has no unresolved review notes. Notes can be explicitly marked addressed; retain their record. Earlier-cut notes remain discoverable on that cut. A new cut does not inherit approval or silently resolve notes.
+
+When a newer cut arrives after a revision request, display “You asked for these changes” beside it, using the submitted request snapshot. Let Daniel explicitly mark an earlier request addressed or carry it forward as a linked note on the new cut. Preserve its original version and timestamp. This avoids making him reconstruct the review by switching between old cuts.
+
+The primary action follows actual responsibility: before handoff, send the brief; after handoff, show the linked task, actual owner and current state; when a different cut arrives, review the new cut; after approval, prepare the post. A queued revision is not still an untouched request for Daniel to review the same cut.
 
 After approval, offer posting preparation: an editable post caption, the source comment/reply context, a download of that exact approved file, and “Record published post”. Recording publication requires a valid HTTPS post URL and the current approved render hash. This records an event; it does not upload or post. Snapshot the approved hash, caption and version. Later changes cannot alter that publication. Missing or modified files must never be served as the published copy.
 
@@ -152,3 +156,4 @@ Worker completion: commit explicit feature/test/doc paths on `codex/social-video
 
 - 2026-10-22: Read the HQ and video workflows, role records and seat notes. Confirmed three projects and publication evidence. Created an isolated worktree. Read-only integration survey complete and incorporated above. Design is a first reviewable proposal; Daniel has not approved a new ongoing cadence, content strategy or external publication.
 - Pre-build review found four gaps, now incorporated: displayed render hash is required independently of record revision; social writes need their own origin/JSON/body-size guard; complete request snapshots must fit through a concise 4000-character intake request; new ideas need a reserved production output folder and a tested path back into review. Public branch push is blocked pending Daniel's permission; all implementation and QA remain local.
+- Product review identified three refinements for the review pass: an editable pre-footage script/outline and planned shots; the previous revision request beside a newly arrived cut with explicit addressed/carry-forward actions; and a primary action that changes as responsibility moves from Daniel to production and back. These are requirements to check in the implementation review.
