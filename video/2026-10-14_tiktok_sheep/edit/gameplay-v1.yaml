@@ -1,19 +1,19 @@
-# Gameplay panel v1 (1080 x 960) for script v1 (edit/script-v1.md), one shot per beat. The `at` times are
-# ESTIMATES from the script read at about 2.6 words a second; once Daniel's read is cut (edl-v1.yaml), each
-# `at` moves to the start of the caption phrase it illustrates. All shots recorded from the game on main
-# (e9a5fc3a + this branch's staging) on 2026-10-14 with tools/record_video_shots.gd, on the creamery video's
-# staged barn farm with its cows led away. Recording commands are in decisions.md ("Shots v1").
-# `in` is seconds into the recording; each shot's MARK lines are in gameplay/raw/<shot>.log (frame / 30).
-- {at: 0.00, src: gameplay/raw/sheepstuck.mp4, in: 1.00, note: "an extreme-coat sheep stopped on the grass, the farmer walking past; a bird lands on her at ~3 s (What's up TikTok … from your comments)"}
-- {at: 7.50, src: gameplay/raw/sheepbuy.mp4, in: 1.30, note: "the shop scrolls down to the sheep's card beside the cow's, a tap buys her (4750 gold), she arrives by the barn (You asked: are there sheep? Now there are!)"}
-- {at: 11.50, src: gameplay/raw/sheepgrow.mp4, in: 4.00, speed: 1.5, note: "one sheep, two real nights (Day 63, Day 64 cards): mid-growth to full to extra full (Every night, their wool grows. Full coat. Extra full coat.)"}
-- {at: 16.00, src: gameplay/raw/sheepdoor-2-3.mp4, in: 13.50, note: "the extra-full sheep creeping into the barn's doorway at a quarter of her pace (At extra full, they squeeze through doors at quarter speed)"}
-- {at: 19.50, src: gameplay/raw/sheepgrow.mp4, in: 13.20, note: "the third night (Day 65) and she's at the extreme coat: stopped, wiggling (And at the extreme coat, she can't take another step. And she loves it.)"}
-- {at: 23.50, src: gameplay/raw/sheepgags-grazing-1.mp4, in: 1.30, note: "she's just stopped; nothing happening (It felt like there wasn't much for them to do after that.)"}
-- {at: 26.50, src: gameplay/raw/sheepgags-grazing-1.mp4, in: 4.30, speed: 55, note: "her bald ring appearing square by square, four minutes in four seconds (So I gave them things to do. They graze a little bald spot.)"}
-- {at: 30.50, src: gameplay/raw/sheepgags-bare-1.mp4, in: 2.40, note: "the neck stretch toward the tuft past her ring, then smug (They stretch for the grass.)"}
-- {at: 32.50, src: gameplay/raw/sheepgags-bare-2.mp4, in: 5.40, note: "two stuck sheep, rings joined; a songbird flies in and lands on one, a heart (And birds come sit on them.)"}
-- {at: 34.50, src: gameplay/raw/sheepgags-bare-2.mp4, in: 9.00, note: "the two fluffballs, the bird sitting (So what should I build next?)"}
+# Gameplay panel v1 (1080 x 960), cut to the voice of edl-v1.yaml (take 0045) and captions-v1.txt: each shot
+# starts on the caption phrase it illustrates (the times compose.py gives those phrases). All shots recorded from
+# the game on main on 2026-10-14 with tools/record_video_shots.gd, on the creamery video's staged barn farm with
+# its cows led away; recording commands are in decisions.md ("Shots v1"). `in` is seconds into the recording;
+# each shot's MARK lines are in gameplay/raw/<shot>.log (frame / 30).
+- {at: 0.00, src: gameplay/raw/sheepstuck.mp4, in: 1.00, note: "an extreme-coat sheep stopped on the grass, the farmer walking past; a bird lands on her (What's up TikTok … from your comments)"}
+- {at: 7.57, src: gameplay/raw/sheepbuy.mp4, in: 1.30, note: "the shop scrolls to the sheep's card, the tap at ~10.0 s buys her, she arrives by the barn (You asked, are there sheep? Now there are)"}
+- {at: 11.00, src: gameplay/raw/sheepgrow.mp4, in: 3.20, speed: 1.5, note: "one sheep, the first night (Day 63): mid-growth to full coat (Every night, their wool grows. Full coat)"}
+- {at: 14.00, src: gameplay/raw/sheepgrow.mp4, in: 8.60, speed: 2, note: "the second night (Day 64): full to extra full (Extra full coat)"}
+- {at: 15.82, src: gameplay/raw/sheepdoor-2-3.mp4, in: 13.50, note: "the extra-full sheep creeping into the barn's doorway (At extra full, they squeeze through doors at quarter speed)"}
+- {at: 19.67, src: gameplay/raw/sheepgrow.mp4, in: 13.20, note: "the third night (Day 65): the extreme coat, stopped, wiggling (And at the extreme coat, she can't take another step. And she loves it)"}
+- {at: 24.22, src: gameplay/raw/sheepgags-grazing-1.mp4, in: 1.30, note: "she has just stopped; nothing happens (It felt like there wasn't much for them to do when they got to that point)"}
+- {at: 27.04, src: gameplay/raw/sheepgags-grazing-1.mp4, in: 4.30, speed: 100, note: "her bald ring grazed square by square, about four minutes in two seconds (So I gave them things to do)"}
+- {at: 29.27, src: gameplay/raw/sheepgags-bare-1.mp4, in: 2.40, note: "the bare ring; she strains her neck for the tuft past it, then smug (They graze the grass)"}
+- {at: 31.04, src: gameplay/raw/sheepgags-bare-2.mp4, in: 5.20, note: "two stuck sheep, rings joined; a songbird flies in and lands on one, a heart (birds can come and hang out with them)"}
+- {at: 33.33, src: gameplay/raw/sheepgags-bare-2.mp4, in: 9.00, note: "the two fluffballs, the bird sitting (What should I build next?)"}
 # Spare shots for the longer cut (not in the panel above):
 #   sheepdoor-2-3     in 3.8: a full-coat sheep walks in at her own pace (gone by ~5.5 s), then the extra-full one
 #                     takes from ~6 s to ~19 s to get through the same door

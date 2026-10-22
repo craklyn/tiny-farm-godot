@@ -12,6 +12,10 @@ the caption chunk it illustrates) and running until the next shot's `at` (the la
     crop    the `box` [x, y, w, h] of an 800 x 600 recording, scaled to fill (nearest when the factor is whole)
     fit     the 800 x 600 frame (or its `box`) scaled to 1080 wide, the rows above and below filled with
             `pad` (the story nights and the bench, whose backgrounds are a flat colour)
+    framed  for a full-screen 1080 x 1920 voice-over (--size 1080x1920): the same 540 x 480 window as `square`
+            (the full 540 rows would show the dark past the farm's edge in some shots), doubled with
+            nearest-neighbour scaling to 1080 x 960, its top at `top` (default 360), over a blurred, darkened
+            copy of the same shot filling the frame
 `hold` freezes the shot's first frame for that many seconds before it plays; `speed` plays it faster.
 """
 import argparse
@@ -26,9 +30,14 @@ S = 1080   # panel width
 PH = 960   # panel height: a 540 x 480 window of the game at exactly 2x
 
 
-def vf_for(shot):
+def vf_for(shot, i=0):
     look = shot.get("look", "square")
-    if look == "square":
+    if look == "framed":
+        top, y = int(shot.get("top", 360)), int(shot.get("yoff", 30))
+        v = (f"crop=540:480:0:{y},split[bgi{i}][fgi{i}];"
+             f"[bgi{i}]scale=-2:{PH},crop={S}:{PH},boxblur=24:2,eq=brightness=-0.12:saturation=0.8[bg{i}];"
+             f"[fgi{i}]scale=1080:960:flags=neighbor[fg{i}];[bg{i}][fg{i}]overlay=0:{top}")
+    elif look == "square":
         y = int(shot.get("yoff", 30))
         v = f"crop=540:480:0:{y},scale={S}:{PH}:flags=neighbor"
     elif look == "crop":
@@ -48,11 +57,14 @@ def vf_for(shot):
 
 
 def main():
+    global S, PH
     ap = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     ap.add_argument("plan", type=Path)
     ap.add_argument("--total", type=float, required=True)
     ap.add_argument("--out", type=Path, required=True)
+    ap.add_argument("--size", default=f"{S}x{PH}", help="panel size; 1080x1920 for a full-screen voice-over")
     args = ap.parse_args()
+    S, PH = (int(x) for x in args.size.split("x"))
     root = args.plan.resolve().parent.parent   # video/<video>; `src` paths are relative to it
     shots = yaml.safe_load(args.plan.read_text())
     ins, graph, labels = [], [], []
@@ -67,7 +79,7 @@ def main():
         span = (dur - hold) * speed
         tpad = f"tpad=start_mode=clone:start_duration={hold:.4f}," if hold else ""
         graph.append(f"[{i}:v]trim=start={sh['in']:.4f}:duration={span:.4f},setpts=(PTS-STARTPTS)/{speed},"
-                     f"{vf_for(sh)},{tpad}trim=duration={dur:.4f}[v{i}]")
+                     f"{vf_for(sh, i)},{tpad}trim=duration={dur:.4f}[v{i}]")
         tempo = f",atempo={speed}" if speed != 1.0 else ""
         adelay = f",adelay={int(hold * 1000)}:all=1" if hold else ""
         graph.append(f"[{i}:a]atrim=start={sh['in']:.4f}:duration={span:.4f},asetpts=PTS-STARTPTS{tempo}{adelay},"

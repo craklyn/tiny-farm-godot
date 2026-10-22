@@ -8,7 +8,7 @@ sheared"), and nothing you say hints at a way to take the wool off.
 
 # Hook
 
-What's up TikTok? It's your boy Buddy-O Vlogs. I'm making a game for my four-year-old daughter, and I add features from your comments.
+What's up TikTok? It's your boy Buddyo Vlogs. I'm making a game for my four-year-old daughter, and I add features from your comments.
 
 # You asked
 
