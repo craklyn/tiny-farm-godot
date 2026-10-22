@@ -21,6 +21,7 @@ func test_sheep() -> void:
 	test_sheep_save_round_trip()
 	test_sheep_save_v7_migration()
 	test_sheep_sheet()
+	test_sheep_squeeze_picture()
 	test_sheep_save_and_play_on()
 	test_sheep_frozen_on_the_barn_floor()
 	test_sheep_never_stop_on_a_bed()
@@ -545,3 +546,34 @@ func test_sheep_boxed_in_stop_where_they_are() -> void:
 	yard.advance_ticks(3000, GameState)
 	_assert(String(yard.barns["barn_1"].stalls[2].cow_id) == "" and String(yard.actor("sheep_1").extra.state) == "content",
 		"a boxed-in sheep on her way to a stall gives it back")
+
+
+# A real squeeze, not a hand-authored moving record: the picture must waddle
+# while her position changes, then switch back to the idle row when she stops.
+func test_sheep_squeeze_picture() -> void:
+	var world := _gap_yard(1809)
+	world.spawn_actor("sheep_1", SpeciesDefs.SHEEP, Vector2i(20, 16), { "coat": Wool.EXTREME })
+	world.schedule_all_brains()
+	var frames := {}
+	var moved := false
+	var before := Vector2(20, 16)
+	for i in 100:
+		world.advance_ticks(1, GameState)
+		var tick := world.clock.tick
+		var snapshot := SaveGame.capture_canonical(world, GameState)
+		var pose := BarnPresentation.cow_pose(world, "sheep_1", tick)
+		_assert_quiet(pose == BarnPresentation.cow_pose(world, "sheep_1", tick)
+			and snapshot == SaveGame.capture_canonical(world, GameState),
+			"reading a squeeze pose twice neither changes the world nor advances its picture")
+		if bool(pose.get("waddling", false)):
+			frames[int(pose.frame)] = true
+			moved = moved or pose.pos != before
+			before = pose.pos
+		if String(world.actor("sheep_1").extra.state) == "content":
+			_assert(not bool(pose.get("waddling", false)) and pose.pos == Vector2(world.actor_pos("sheep_1")),
+				"on the first square past the gap she stops waddling and stands where she settled")
+			break
+	_assert(moved and frames.size() == 4,
+		"an extreme sheep squeezing through a gap moves through all four waddle poses (%s)" % str(frames.keys()))
+	_assert(SheepArt.has_waddle() and SheepArt.waddle_rect(SheepArt.looks() - 1, 3).end.y <= SheepArt.sheet().get_height(),
+		"the last sheep look has a complete waddle row on the shipped sheet")

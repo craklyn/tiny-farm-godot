@@ -54,7 +54,9 @@ game and its replay agree on where she is at every moment.
 When her coat reaches the extreme, a sheep stops on the spot and stays there for good,
 wiggling happily. There is one exception: **she never stops in a doorway, on a doorstep or in
 a one-square gap.** If she is in one, she finishes squeezing through first and stops on the
-first square past it.
+first square past it. While she is moving through that final squeeze, she visibly
+waddles: alternate hooves, a little weight shift and a one-pixel body bob. As soon as
+she stops, her ordinary happy idle wiggle returns (2026-10-22).
 
 - She never stops on a crop bed either: no animal stands on one (2026-10-11). A sheep whose
   coat goes extreme while she is crossing a bed walks off it first, and a strip of grass one
@@ -100,9 +102,10 @@ together when the barns' places are full.
 
 The art session delivers `assets/sprites/generated/sheep.png` with `sheep.json` beside it: five
 rows in coat order (freshly sheared at the top, extreme at the bottom), four frames a row
-facing right (mirrored for left, like the cow). The extreme row is a happy idle wiggle rather
-than a walk. The game reads the cell size from `sheep.json` (`cell_w`, `cell_h`), so dropping
-the two files in needs no change to the code.
+facing right (mirrored for left, like the cow). The extreme row is a happy idle wiggle.
+A separate four-frame waddle row per look covers her final steps out of a doorway or gap; it follows her simulated step, so
+it holds still when paused and never plays on a stopped sheep. The game reads the cell
+size and extra rows from `sheep.json`, keeping the idle and waddle pictures separate.
 
 **Every sheep looks a little different** (Daniel, 2026-10-13: different face and fleece
 colours and shapes). The sheet stacks its looks one under another, five coat rows each, and
@@ -197,19 +200,24 @@ middle.
 ### The neck stretch
 
 Once her ring is bare, every 14 seconds or so her happy wiggle gives way to a beat. She
-strains her neck toward a tuft of grass just past her ring and gets nowhere. Then she
+reaches her neck toward a tuft of grass just past her ring and gets nowhere. Then she
 settles back, looking smug. The tuft is real: the grass square two out on the side she
 faces, drawn a little taller so it reads as the thing she wants. If there is no grass
 there, she turns to the other side. If there is none on either side, she has nothing to
-strain for and only wiggles.
+reach for and only wiggles.
 
-The beat is four new frames for each of the eight looks, a row per look on `sheep.png`:
-reach (her head comes out of the wool, eyes on the grass), stretch (neck out, eyes
-screwed shut, tongue out), strain (the same with her fleece tipped after it; the game
-shakes between the two), and smug (head home, eyelids half down, a smirk). Her fleece
-and hooves never move. The sheet's cells are now 56 pixels wide instead of 32, so her
-head has room to reach. The game centres every cell on her square, so nothing she was
-already drawn as moves.
+Daniel's correction (2026-10-21, built 2026-10-22): the reach must look happy and
+cheeky, with no discomfort. The four frames for each of the eight looks are reach
+(eyes open on the grass), stretch (head forward at mouth height, tongue toward the
+grass), lick (a little farther forward, eyes still open), and smug (head home,
+eyelids half down, the original smirk). The stretch and lick hold in turn; they never
+shake back and forth. She draws her head back before the smug hold, then returns to
+her happy wiggle. Her fleece and hooves stay planted throughout the reach.
+
+The sheet's cells are 56 pixels wide so her head has room to reach. The game centres
+every cell on her square, keeping her body in the same place. Both the corrected
+stretch and the waddle are presentation only: simulation, saves and replays are
+unchanged.
 
 ![Her neck at full stretch toward the tuft](mockups/sheep/gags_stretch.png)
 ![Back where she started, smug](mockups/sheep/gags_smug.png)
@@ -228,13 +236,13 @@ farm. Because they are only a picture, nothing about them is saved or replayed.
 
 Every beat is worked out from the sim clock and her name, never from the screen. A
 paused game holds still, the same tick always shows the same moment, and two stuck
-sheep never strain or get visited in step. The video tools can cue a beat on demand.
+sheep never reach or get visited in step. The video tools can cue a beat on demand.
 The game itself never does.
 
 - **Video shot** `sheepgags` (`tools/record_video_shots.gd`). The fourth argument is
   `<ring>-<sheep>`. The ring is `grazing` (she has just stopped; a four-minute shot of
   the ring appearing, to speed up in the edit), `stubble` or `bare`, and the count is one
-  sheep or two side by side. With a bare ring she strains at 1.5 s and 15.5 s, and a
+  sheep or two side by side. With a bare ring she reaches at 1.5 s and 15.5 s, and a
   bird lands at 5 s.
 
       video/tools/record_shot.sh video/<video> sheepgags 540x540 bare-2
@@ -246,7 +254,34 @@ The game itself never does.
 |---|---|---|
 | Time between squares of her first day's grazing | 25 seconds | `SheepGags.GRAZE_SECONDS` |
 | Nights before her ring is bare | 1 | `SheepGags.ring_is_bare` |
-| How often she strains for the tuft | every 14 seconds | `SheepGags.STRETCH_EVERY_SECONDS` |
-| The strain itself | about 3 seconds, half of it smug | `SheepGags.STRETCH_BEAT` |
+| How often she reaches for the tuft | every 14 seconds | `SheepGags.STRETCH_EVERY_SECONDS` |
+| The reach itself | about 3 seconds, half of it smug | `SheepGags.STRETCH_BEAT` |
 | How often a bird visits | every 40 seconds | `SheepGags.BIRD_EVERY_SECONDS` |
 | How long it sits | 12 to 22 seconds | `SheepGags.BIRD_PERCH_SECONDS` |
+
+### Reviewing the stretch and squeeze
+
+The [eight-look comparison](mockups/sheep/gags_all_eight_before_after.png) pairs the
+old effort pose with the corrected reach, using the same real-game scene and clock
+for each look. The [native-size comparison](mockups/sheep/gags_all_eight_native.png)
+shows one image pixel per game-art pixel. The [whole beat](mockups/sheep/gags_stretch_frames.png)
+and [moving preview](mockups/sheep/gags_all_eight_moving.gif) include the unchanged
+smug ending. These show the candidate for Daniel's visual approval; they do not
+record approval.
+
+`tools/capture_sheep_review.tscn` uses the real main scene and animal renderer. Pass
+an absolute output folder after `--` to capture every look at exact clock ticks.
+Use a 540×540 window at 30 fixed frames a second. `tools/compose_sheep_review.py`
+places the matching before and after captures beside each other and makes the
+native-size sheet and moving preview. The before pictures were captured at
+`40805374` with the same capture tool.
+
+For a movie, pass `squeeze` after the output folder and use Godot's `--write-movie`.
+Godot takes the movie size from the project settings: temporarily set viewport width
+and height to 540 in this checkout's `override.cfg` for a square movie, as the existing
+video wrapper does; restore the file after recording. A 540×540 window alone is not
+enough to change the movie size.
+It stages an extreme sheep on the barn's doorstep, then another in a one-square gap
+between rocks. Their own brains move and stop them. Each must show all four waddle
+poses while moving and return to idle after settling; the capture exits with an
+error if either fails. It writes only scratch saves, never a player's farm.

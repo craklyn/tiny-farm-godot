@@ -13,7 +13,7 @@
 #     the three-by-three, cut square by square (`ring_pieces`), so where two rings
 #     overlap the two discs simply join.
 #   * **The neck stretch.** Once her ring is bare, every `STRETCH_EVERY_SECONDS` or
-#     so her happy wiggle gives way to a strain toward a tuft just past it (a real
+#     so her happy wiggle gives way to a happy reach toward a tuft just past it (a real
 #     grass square two out, `stretch_target`), which gets her nowhere, and she
 #     settles back looking smug (`stretch_frame`).
 #   * **Birds perch on her.** A songbird drops in now and then, sits on her fleece a
@@ -37,16 +37,13 @@ const TILE_SIZE := 16
 # first, then round the ring from a side picked by her id, so all nine are stubble
 # about four minutes after she stops.
 const GRAZE_SECONDS := 25.0
-# [Tunable] How often, roughly, she strains for the tuft once her ring is bare, and
-# the beat itself: [frame, seconds] in order. She reaches, stretches, shakes with the
-# effort, gives up, and holds her smug face a while before the wiggle comes back.
+# [Tunable] A happy reach for the tuft, a forward lick, then a small settling
+# wiggle and the unchanged smug hold. Each reach is held; nothing shakes.
 const STRETCH_EVERY_SECONDS := 14.0
 const STRETCH_BEAT := [
 	[SheepArt.STRETCH_REACH, 0.3], [SheepArt.STRETCH_FULL, 0.4],
-	[SheepArt.STRETCH_STRAIN, 0.1], [SheepArt.STRETCH_FULL, 0.1],
-	[SheepArt.STRETCH_STRAIN, 0.1], [SheepArt.STRETCH_FULL, 0.1],
-	[SheepArt.STRETCH_STRAIN, 0.1], [SheepArt.STRETCH_FULL, 0.3],
-	[SheepArt.STRETCH_REACH, 0.2], [SheepArt.STRETCH_SMUG, 1.5],
+	[SheepArt.STRETCH_LICK, 0.8], [SheepArt.STRETCH_REACH, 0.2],
+	[SheepArt.STRETCH_SMUG, 1.5],
 ]
 # [Tunable] Birds: a visit comes round every `BIRD_EVERY_SECONDS` a sheep, flies in
 # and out over `BIRD_FLY_SECONDS`, and sits for between the two `BIRD_PERCH_SECONDS`.

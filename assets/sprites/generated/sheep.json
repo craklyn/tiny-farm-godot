@@ -52,6 +52,10 @@
     "stretch": {
       "w": 43,
       "h": 25
+    },
+    "waddle": {
+      "w": 32,
+      "h": 26
     }
   },
   "anchor": "feet on the cell's bottom row, body centred: stand it like the cow",
@@ -64,10 +68,21 @@
       "frames": [
         "reach",
         "stretch",
-        "strain",
+        "lick",
         "smug"
       ],
-      "note": "the extreme coat's neck stretch toward grass she cannot reach: the head pokes out of the wool, the neck at full stretch, the same straining (shake between the two), then home again looking smug. Fleece and hooves never move."
+      "note": "A happy reach at mouth height, eyes open and tongue toward the grass, then home looking smug. Fleece and hooves stay planted."
+    },
+    "waddle": {
+      "first_row": 48,
+      "row_of": "first_row + look index",
+      "frames": [
+        "left_plant",
+        "left_push",
+        "right_plant",
+        "right_push"
+      ],
+      "note": "Only while actually squeezing: alternate hooves and shift her weight, with a one-pixel bob. Frames follow her step, not idle time."
     }
   },
   "gags": {

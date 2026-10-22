@@ -3,7 +3,7 @@
 # Presentation only. The sheet is five rows in coat order (freshly sheared at the
 # top, extreme at the bottom) of four frames each, every frame facing right and
 # mirrored for left as the cow's are. The first four rows are her walk; the extreme
-# row is a happy idle wiggle, because at that coat she does not walk.
+# row is a happy idle wiggle. A separate waddle row covers her final squeeze.
 #
 # **The art session's sheet, when it is there.** `assets/sprites/generated/sheep.png`
 # with `sheep.json` beside it (`cell_w`, `cell_h`, `looks`) is drawn as delivered:
@@ -55,16 +55,17 @@ const IDLE_FRAME_SECONDS := 0.25
 static var _idle_seconds := IDLE_FRAME_SECONDS
 # **The gags' pictures** (design/18, "Stuck for good"). The neck stretch is a row a look
 # after every look's five coats (`sheep.json`'s `extra_rows.stretch`, four frames:
-# reach, stretch, strain, smug); the ground she grazes bare, the tuft she strains at
+# reach, stretch, lick, smug); the ground she grazes bare, the tuft she reaches for
 # and her heart are on `sheep_gags.png`, at the rects `sheep.json`'s `gags` names. The
 # cow-made placeholder has none of them, and the game then plays no stretch and draws
 # no ring: the gags wait for the art.
 const GAGS_PATH := "res://assets/sprites/generated/sheep_gags.png"
 const STRETCH_REACH := 0
 const STRETCH_FULL := 1
-const STRETCH_STRAIN := 2
+const STRETCH_LICK := 2
 const STRETCH_SMUG := 3
 static var _stretch_first := -1
+static var _waddle_first := -1
 static var _gag_rects := {}
 static var _gag_sheet: Texture2D = null
 
@@ -163,6 +164,19 @@ static func stretch_rect(look: int, frame: int) -> Rect2:
 		cell.x, cell.y)
 
 
+## A separate step-driven row while an extreme sheep squeezes clear of a gap.
+static func has_waddle() -> bool:
+	if _sheet == null:
+		_load()
+	return _waddle_first >= 0
+
+
+static func waddle_rect(look: int, frame: int) -> Rect2:
+	var cell := cell_size()
+	return Rect2(posmod(frame, FRAMES) * cell.x, (_waddle_first + clampi(look, 0, looks() - 1)) * cell.y,
+		cell.x, cell.y)
+
+
 ## The gags' sheet (`sheep_gags.png`), or null when there is none.
 static func gag_sheet() -> Texture2D:
 	if _sheet == null:
@@ -179,6 +193,7 @@ static func gag_rect(name: String) -> Rect2:
 
 static func _load_gags(meta: Dictionary) -> void:
 	_stretch_first = -1
+	_waddle_first = -1
 	_gag_rects = {}
 	_gag_sheet = null
 	var extra_rows = meta.get("extra_rows", {})
@@ -186,6 +201,10 @@ static func _load_gags(meta: Dictionary) -> void:
 		var first := int(extra_rows["stretch"].get("first_row", -1))
 		if first >= 0 and (first + _looks) * _cell.y <= _sheet.get_height():
 			_stretch_first = first
+	if extra_rows is Dictionary and extra_rows.get("waddle") is Dictionary:
+		var first := int(extra_rows["waddle"].get("first_row", -1))
+		if first >= 0 and (first + _looks) * _cell.y <= _sheet.get_height():
+			_waddle_first = first
 	var gags = meta.get("gags", {})
 	if gags is Dictionary and ResourceLoader.exists(GAGS_PATH):
 		_gag_sheet = load(GAGS_PATH)

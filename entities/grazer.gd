@@ -57,6 +57,7 @@ var is_cow: bool = false
 # A sheep is drawn as a cow is, from the sim clock, from her own sheet: the row is
 # her look and her coat (`SheepArt`, docs/design/18-sheep.md).
 var is_sheep: bool = false
+var waddling: bool = false
 # A sheep stopped for good does more than wiggle (design/18, "Stuck for good";
 # `SheepGags`): the neck stretch frame she shows instead (-1 for none) and which way
 # she strains, and the bird on her back ({} for none). Read off the sim tick.
@@ -111,12 +112,14 @@ func _process(delta: float) -> void:
 		var frame := int(pose.get("frame", 0))
 		var left := bool(pose.get("facing_left", false))
 		var row := SheepArt.row_of(SheepArt.look_of(actor_id), Wool.coat_of(farm.sim, actor_id)) if is_sheep else 0
+		var waddle := is_sheep and bool(pose.get("waddling", false))
 		var gags_changed := is_sheep and _read_gags(farm.sim.clock.tick)
-		if at != position or frame != hop_frame or left != facing_left or row != coat_row or gags_changed:
+		if at != position or frame != hop_frame or left != facing_left or row != coat_row or waddle != waddling or gags_changed:
 			position = at
 			hop_frame = frame
 			facing_left = left
 			coat_row = row
+			waddling = waddle
 			queue_redraw()
 		return
 
@@ -168,6 +171,9 @@ func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
 			if stretch_frame >= 0:
 				canvas.draw_texture_rect_region(sprites, cell_dest(sprites, position, stretch_left, rows),
 					SheepArt.stretch_rect(SheepArt.look_of(actor_id), stretch_frame))
+			elif waddling and SheepArt.has_waddle():
+				canvas.draw_texture_rect_region(sprites, cell_dest(sprites, position, facing_left, rows),
+					SheepArt.waddle_rect(SheepArt.look_of(actor_id), hop_frame))
 			else:
 				canvas.draw_texture_rect_region(sprites, cell_dest(sprites, position, facing_left, rows),
 					Rect2(hop_frame * cell.x, coat_row * cell.y, cell.x, cell.y))

@@ -5348,6 +5348,9 @@
   "8b26b79dc5a750c645bf": {
    "verdict": "ok"
   },
+  "8b2a229ac10a0fd294a3": {
+   "verdict": "ok"
+  },
   "8b3a420dc8fb9f8e2a9b": {
    "verdict": "ok"
   },
@@ -6597,6 +6600,12 @@
    "quote": "The nameplate and the likes-and-dislikes grid",
    "verdict": "decode",
    "why": "This names two components but states no action—as a work item, it does not say what is being done with them."
+  },
+  "a99f6466f085cd010f88": {
+   "instead": "Make sheep stretch comfortably and waddle through tight gaps",
+   "quote": "Make sheep reach happily",
+   "verdict": "decode",
+   "why": "“Reach happily” does not tell the reader what movement or behavior the sheep should have."
   },
   "a9a79586edba1ae0e7c4": {
    "verdict": "ok"
