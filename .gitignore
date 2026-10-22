@@ -120,3 +120,6 @@ video/*/assets/**/*.mp4
 video/*/edit/auto-*
 # video/tools/record_shot.sh writes this for the length of a square recording
 /override.cfg
+
+# Private social-video briefs, review decisions and publications (HQ store).
+/hq/data/social/

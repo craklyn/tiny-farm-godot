@@ -57,7 +57,7 @@ function surfaceParkedPage(entry) {
     <div class="card parked-card">
       <p>${esc(reason)}</p>
       <p class="small muted">${esc(close)}</p>
-    </div>${itch}`;
+    </div>${entry.key === "/pillar/marketing" ? `<div class="card"><h2>Social videos</h2><p><a href="#/social">Review the next cut and revisit published videos</a></p></div>` : ""}${itch}`;
 }
 
 async function surfaceItchReading(root) {

@@ -1,0 +1,166 @@
+{
+  "projects": [
+    {
+      "id": "feature-tour",
+      "folder": "2026-10-06_tiktok_feature-tour",
+      "render_prefix": "2026-10-06_tiktok_feature-tour",
+      "brief": {
+        "title": "A farm built from your comments",
+        "promise": "Introduce the farm and invite viewers to choose the next feature.",
+        "hook": "Every day I add a feature from your comments.",
+        "ask": "What should I add next?",
+        "script": "",
+        "shots": "",
+        "source_comment": "",
+        "source_url": "",
+        "caption": ""
+      },
+      "sources": [
+        "video/2026-10-06_tiktok_feature-tour/decisions.md",
+        "video/2026-10-06_tiktok_feature-tour/edit/script-v2.md"
+      ],
+      "evidence": [
+        {
+          "path": "video/2026-10-06_tiktok_feature-tour/decisions.md",
+          "quote": "a re-render today would look slightly different from the posted v4."
+        },
+        {
+          "path": "Daniel’s request, 2026-10-22",
+          "quote": "We've already published two videos, and we're almost done with a third."
+        }
+      ],
+      "owner": "jordan",
+      "artwork": "assets/titlecard/card-v5.png",
+      "publication": {
+        "version": "v4",
+        "sha256": null,
+        "date": "",
+        "url": "",
+        "caption": null,
+        "platform": "TikTok",
+        "brief": {
+          "title": "A farm built from your comments",
+          "promise": "Introduce the farm and invite viewers to choose the next feature.",
+          "hook": "Every day I add a feature from your comments.",
+          "ask": "What should I add next?",
+          "script": "",
+          "shots": "",
+          "source_comment": "",
+          "source_url": "",
+          "caption": ""
+        },
+        "imported": true
+      }
+    },
+    {
+      "id": "creamery",
+      "folder": "2026-10-12_tiktok_creamery",
+      "render_prefix": "2026-10-12_tiktok_creamery",
+      "brief": {
+        "title": "You asked for a creamery",
+        "promise": "Show how milk becomes cheese and ask what the farm needs next.",
+        "hook": "Today’s feature: the creamery.",
+        "ask": "Leave your comments where they go.",
+        "script": "",
+        "shots": "",
+        "source_comment": "",
+        "source_url": "",
+        "caption": ""
+      },
+      "sources": [
+        "video/2026-10-12_tiktok_creamery/decisions.md",
+        "video/2026-10-12_tiktok_creamery/edit/script-v1.md"
+      ],
+      "evidence": [
+        {
+          "path": "video/2026-10-12_tiktok_creamery/decisions.md",
+          "quote": "Daniel posted v2 on TikTok (\"Great work\"), with the music credit in the description. v2 is the final version."
+        }
+      ],
+      "owner": "jordan",
+      "artwork": "assets/titlecard/card-v1.png",
+      "publication": {
+        "version": "v2",
+        "sha256": null,
+        "date": "2026-10-12",
+        "url": "",
+        "caption": null,
+        "platform": "TikTok",
+        "brief": {
+          "title": "You asked for a creamery",
+          "promise": "Show how milk becomes cheese and ask what the farm needs next.",
+          "hook": "Today’s feature: the creamery.",
+          "ask": "Leave your comments where they go.",
+          "script": "",
+          "shots": "",
+          "source_comment": "",
+          "source_url": "",
+          "caption": ""
+        },
+        "imported": true
+      },
+      "source_project": "feature-tour",
+      "observations": [
+        {
+          "id": "import-sheep-comment",
+          "text": "A. A. Nahi: “Ar ethere sheep 🐑?”",
+          "url": "",
+          "created_at": "",
+          "evidence": "video/2026-10-14_tiktok_sheep/decisions.md",
+          "followup": "sheep"
+        }
+      ]
+    },
+    {
+      "id": "sheep",
+      "folder": "2026-10-14_tiktok_sheep",
+      "render_prefix": "2026-10-14_tiktok_sheep",
+      "brief": {
+        "title": "You asked: are there sheep?",
+        "promise": "Answer a viewer with sheep whose wool keeps growing until they cannot move.",
+        "hook": "Buddyo Vlogs. You asked: are there sheep? Now there are!",
+        "ask": "So what should I build next?",
+        "script": "",
+        "shots": "Wool growing night by night; the door squeeze; stuck and happy; the bald grazing spot and birds. The neck stretch was removed from v5.",
+        "source_comment": "A. A. Nahi: “Ar ethere sheep 🐑?”",
+        "source_url": "",
+        "caption": ""
+      },
+      "sources": [
+        "video/2026-10-14_tiktok_sheep/decisions.md",
+        "video/2026-10-14_tiktok_sheep/edit/script-v1.md"
+      ],
+      "evidence": [
+        {
+          "path": "video/2026-10-14_tiktok_sheep/decisions.md",
+          "quote": "Under the creamery video A. A. Nahi commented \"Ar ethere sheep 🐑?\"."
+        },
+        {
+          "path": "Sheep editing proposal, recorded 2026-10-22",
+          "quote": "Voice-over only (no face); v5 removes the neck stretch and re-stages wool growth.",
+          "url": "https://github.com/craklyn/tiny-farm-godot/blob/c8fee07b84aa1dbbee8376a31db5a22a8bdebb22/video/2026-10-14_tiktok_sheep/decisions.md#L152"
+        }
+      ],
+      "owner": "jordan",
+      "source_project": "creamery",
+      "production_note": "The current edit uses voice-over, with no face on screen. The editing proposal holds the v5 inputs; its generated gameplay and end card need rebuilding.",
+      "editing_source": {
+        "url": "https://github.com/craklyn/tiny-farm-godot/pull/31",
+        "head": "c8fee07b84aa1dbbee8376a31db5a22a8bdebb22",
+        "branch": "claude/sheep-tiktok-edit",
+        "recorded_at": "2026-10-22",
+        "summary": "v5 uses voice-over only, with no face; spells “Buddyo Vlogs”; re-stages growth so the sheep stops; removes the neck stretch.",
+        "decisions_url": "https://github.com/craklyn/tiny-farm-godot/blob/c8fee07b84aa1dbbee8376a31db5a22a8bdebb22/video/2026-10-14_tiktok_sheep/decisions.md#L152",
+        "inputs": [
+          "edit/edl-v1.yaml",
+          "edit/captions-v4.txt",
+          "edit/gameplay-v5.yaml"
+        ],
+        "missing_intermediates": [
+          "gameplay/timeline-v5.mp4",
+          "assets/titlecard/card-v1.mp4"
+        ]
+      }
+    }
+  ]
+}

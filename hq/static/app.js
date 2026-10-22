@@ -385,6 +385,7 @@ const routes = {
 let routeSeq = 0, routeActive = 0;
 function navSection(hash) {
   const path = hash.split("?")[0];
+  if (path === "/social" || path.startsWith("/social/")) return "social";
   if (path === "/request" || path.startsWith("/request/")) return "request";
   if (path === "/work-status" || path === "/chat/bullpen" || path === "/work/queue") return "work";
   if (path === "/work" || path === "/inbox" || path.startsWith("/inbox/")) return "decisions";
@@ -476,6 +477,7 @@ async function route() {
     // Work parses its own card ID and action query from the address.
     else if (hash.startsWith("/work/")) await renderWork();
     else if (hash.startsWith("/inbox/")) await renderWork();
+    else if (hash.startsWith("/social/") && typeof Social !== "undefined") await Social.detail(hash.slice("/social/".length));
     else if (hash.startsWith("/request/")) await renderRequest(hash.slice("/request/".length));
     // Guarded: on a direct page-load design.js hasn't registered yet; it
     // re-routes itself once loaded (same dance as its /design route).

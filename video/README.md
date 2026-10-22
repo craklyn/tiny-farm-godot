@@ -41,6 +41,14 @@ tools/record_video_shots.gd  (in the game's tools/) the scripted gameplay shots,
 Patterns: every video is `video/2*_*_*/`; one platform's are `video/*_tiktok_*/`; every version ever sent is
 `video/*/renders/*_v[0-9]*.mp4`; a video's latest version is its highest `_vN`.
 
+## Ideas planned in HQ
+
+[Social videos](http://localhost:8642/#/social) reserves `video/drafts/<generated-id>/` for a new idea.
+Its cuts are `renders/<generated-id>_vN.mp4`, with increasing numeric versions. Saving an idea creates only
+an HQ record; a production session creates the folder and its source files. Keep earlier renders and
+record each new cut’s inputs in `decisions.md`. HQ discovers these cuts when the page refreshes. Recording-date
+folders above remain the locations for the three existing videos.
+
 ## Making one
 
 From the video's folder (`cd video/<video>`), with `PY=../.venv/bin/python`, `T=../tools` and
