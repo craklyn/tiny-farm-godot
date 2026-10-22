@@ -118,3 +118,6 @@
 .social-unavailable img { height:56%; min-height:0; object-fit:contain; flex:0 1 auto; }
 .social-unavailable>span { margin-bottom:18px; }
 @media(max-width:720px) { .social-back + .social-heading { display:block; } .social-back + .social-heading>button { margin-top:14px; } }
+
+.social-card-copy,.social-heading>div { min-width:0; overflow-wrap:anywhere; }
+.social-shell p,.social-shell code { overflow-wrap:anywhere; }

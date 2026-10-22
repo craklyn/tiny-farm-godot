@@ -38,8 +38,9 @@ tools/record_video_shots.gd  (in the game's tools/) the scripted gameplay shots,
 - **Inputs carry the version number of the render they first fed** where they changed (`edl-v2.yaml`,
   `gameplay-v3.yaml`, `card-v5.mp4`); `decisions.md` says which inputs each version used.
 
-Patterns: every video is `video/2*_*_*/`; one platform's are `video/*_tiktok_*/`; every version ever sent is
-`video/*/renders/*_v[0-9]*.mp4`; a video's latest version is its highest `_vN`.
+Recording-date folders are `video/2*_*_*/`; one platform’s are `video/*_tiktok_*/`. HQ’s planned
+projects use `video/drafts/<generated-id>/`. Both layouts keep cuts in their own `renders/` folder;
+a video’s latest version is its highest numeric `_vN`.
 
 ## Ideas planned in HQ
 
