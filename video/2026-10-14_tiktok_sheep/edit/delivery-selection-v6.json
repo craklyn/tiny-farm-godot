@@ -1,0 +1,147 @@
+{
+  "duration": 35.702333333333335,
+  "segments": [
+    {
+      "line": "opening",
+      "take": "0047",
+      "source_in": 3.54,
+      "source_out": 6.44,
+      "output_in": 0.0,
+      "output_out": 2.9029000000000003,
+      "text": "What's up TikTok? It's your boy Buddyo Vlogs"
+    },
+    {
+      "line": "project",
+      "take": "0047",
+      "source_in": 10.86,
+      "source_out": 15.45,
+      "output_in": 2.9029000000000003,
+      "output_out": 7.5075,
+      "text": "We're building a game and we're adding one idea at a time until the game is not bad"
+    },
+    {
+      "line": "question",
+      "take": "0046",
+      "source_in": 19.84,
+      "source_out": 24.04,
+      "output_in": 7.5075,
+      "output_out": 11.678333333333335,
+      "text": "You asked are there sheep? The answer is yes Now there are"
+    },
+    {
+      "line": "wool",
+      "take": "0047",
+      "source_in": 34.74,
+      "source_out": 36.96,
+      "output_in": 11.678333333333333,
+      "output_out": 13.9139,
+      "text": "Every night their wool grows"
+    },
+    {
+      "line": "full",
+      "take": "0047",
+      "source_in": 40.54,
+      "source_out": 41.29,
+      "output_in": 13.9139,
+      "output_out": 14.647966666666667,
+      "text": "Full coat"
+    },
+    {
+      "line": "extra",
+      "take": "0047",
+      "source_in": 41.36,
+      "source_out": 42.52,
+      "output_in": 14.647966666666667,
+      "output_out": 15.782433333333334,
+      "text": "Extra full coat"
+    },
+    {
+      "line": "door",
+      "take": "0047",
+      "source_in": 43.03,
+      "source_out": 47.08,
+      "output_in": 15.782433333333334,
+      "output_out": 19.8198,
+      "text": "At extra full they squeeze through doors at quarter speed"
+    },
+    {
+      "line": "stuck",
+      "take": "0047",
+      "source_in": 97.96,
+      "source_out": 101.15,
+      "output_in": 19.8198,
+      "output_out": 22.989633333333334,
+      "text": "And by the time they reach extremely full they can't walk anymore"
+    },
+    {
+      "line": "content",
+      "take": "0045",
+      "source_in": 37.07,
+      "source_out": 38.24,
+      "output_in": 22.989633333333334,
+      "output_out": 24.157466666666668,
+      "text": "And she loves it"
+    },
+    {
+      "line": "problem",
+      "take": "0045",
+      "source_in": 41.56,
+      "source_out": 44.86,
+      "output_in": 24.157466666666668,
+      "output_out": 27.427400000000002,
+      "text": "It felt like there wasn't much for them to do when they got to that point"
+    },
+    {
+      "line": "solution",
+      "take": "0045",
+      "source_in": 46.914,
+      "source_out": 48.47,
+      "output_in": 27.427400000000002,
+      "output_out": 28.995633333333334,
+      "text": "So I gave them things to do"
+    },
+    {
+      "line": "grass",
+      "take": "0047",
+      "source_in": 111.1,
+      "source_out": 113.6,
+      "output_in": 28.995633333333334,
+      "output_out": 31.498133333333335,
+      "text": "They're going to eat the grass in a circle around them"
+    },
+    {
+      "line": "bird-start",
+      "take": "0047",
+      "source_in": 113.66,
+      "source_out": 114.96,
+      "output_in": 31.498133333333335,
+      "output_out": 32.79943333333333,
+      "text": "and they can have a"
+    },
+    {
+      "line": "bird",
+      "take": "0047",
+      "source_in": 115.61,
+      "source_out": 117.1,
+      "output_in": 32.79943333333333,
+      "output_out": 34.26756666666667,
+      "text": "friendly bird land on them"
+    },
+    {
+      "line": "ask",
+      "take": "0045",
+      "source_in": 57.0,
+      "source_out": 58.44,
+      "output_in": 34.26756666666667,
+      "output_out": 35.702333333333335,
+      "text": "What should I build next?"
+    }
+  ],
+  "exceptions": [
+    "0045 supplies the unrepeated contentment and things-to-do lines and concise final question.",
+    "0047 43.03\u201347.08 supplies the correct extra-full doorway explanation; its later repeat incorrectly says quarter full.",
+    "0047 40.54\u201342.52 uses coat terminology; its later expansion changes that to patch.",
+    "The shearing aside and the bird false start are removed."
+  ],
+  "audio": "Voice: 70 Hz high-pass and loudnorm to -16 LUFS / -2 dBTP before mixing. Music -30 dB; game -23 dB."
+}

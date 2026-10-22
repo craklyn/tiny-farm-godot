@@ -208,3 +208,12 @@ drawn with the extreme coat's on-the-spot wiggle because that coat has no walkin
 
 The game itself still draws a sheep squeezing out of a gap at the extreme coat with her on-the-spot wiggle, so
 she slides there in play too. That is a game fix, noted for the orchestrator, not part of this video.
+
+
+## v6 (2026-10-22): later deliveries
+
+Daniel disliked the delivery in v5 and asked whether the last repeats had been used. The audit found that v5 used 0045 throughout. He requested an improved v6 and a copy on his laptop.
+
+V6 uses the later recordings for most narration, including the final viewer-question repeat in 0046 and the usable lines from 0047. Take 0045 supplies the unrepeated lines and the concise closing question. The voice is levelled before mixing; background music and game sound are quieter. The gameplay, captions and wide sparkle orbit follow the revised voice. No camera picture or neck-stretch shot appears. It runs 37.9 seconds including the end card.
+
+Exact choices, exceptions, verification and the successful Tailscale delivery to the MacBook are recorded in `edit/notes-v6.md`; `edit/delivery-selection-v6.json` records source and output times. The new EDL, timed captions, gameplay plan and render recipe are saved alongside them. V6 awaits Daniel's review. PR 31 remains held for his approval.
