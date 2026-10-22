@@ -350,13 +350,10 @@ trace mislabelled its own categories and where the crow schedule desynced replay
   survive that. **Enforced by the release workflow** (`.github/workflows/release.yml`,
   "Guard: public build turns the playtest readout off") — a tag fails before export if
   the Web preset loses the feature or `ui/hud.gd` stops consulting it.
-- [ ] **Settle the cot look before a public release.** T-27 box 5 ships *three*
-      treatments at once so the designer can A/B them on the tablet (`Cot Look` on the
-      title screen, `Cot look:` in the pause menu — both `OS.is_debug_build()`-gated, so
-      neither switch appears in a release build and nothing has to be turned off). What
-      does need doing is the ruling: a release quietly ships treatment A, the default. If
-      that is not the intent, pick first and delete the other two
-      (`systems/cot_presentation.gd`).
+- **The cot look is settled.** Daniel chose the dusk glow on 2026-09-01
+      (Q-68 in `docs/DESIGNER_QUEUE.md`). `systems/cot_presentation.gd` ships
+      only that treatment; the old comparison switches were removed. No new
+      cot approval is required for v0.2.1.
 - [ ] Page copy and settings: `ITCH_PAGE.md`.
       When this file changed since the previous release tag, the release checks the
       public description after the butler upload. The normal check only reads the public
