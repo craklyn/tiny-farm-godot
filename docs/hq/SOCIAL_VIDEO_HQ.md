@@ -58,7 +58,7 @@ Allow adding the missing post URL/date as a new record without changing historic
 
 New ideas are real persisted projects, with safe generated identifiers. Reserve their working artifact location as `video/drafts/<generated-id>/`, with renders named `renders/<generated-id>_vN.mp4`. This is a planned working folder, separate from the recording-date folders of the three existing videos; creation of an idea need not create media files. Include that exact output path in every production brief and discover numerically versioned files there on refresh, so a newly planned video can receive its first real cut. Document this additional planning layout in `video/README.md`.
 
-A saved brief can be sent into the existing production queue. The page must show the returned task, actual owner and honest request state. No renderer is offered until a complete reproducible recipe is available: the sheep folder currently lacks its composition EDL and captions despite containing v1–v5 renders.
+A saved brief can be sent into the existing production queue. The page must show the returned task, actual owner and honest request state. No renderer is offered in this first version. Main's sheep folder lacks composition inputs, while the open editing PR contains them and still needs generated intermediates rebuilt on its matching tool version.
 
 Production briefs should include the video-editing workflow and source paths so an executing session can make the next cut. Every build must retain earlier renders, document the new inputs and return a version for review. A source comment is creative context, not permission to change the game design or publish publicly.
 
@@ -68,9 +68,13 @@ Production briefs should include the video-editing workflow and source paths so 
 |---|---|---|
 | Feature tour | Published; v4 is the posted version; posting URL/date not yet recorded; final MP4 absent locally | Daniel's request; `video/2026-10-06_tiktok_feature-tour/decisions.md`, “v4” and “After v4” |
 | Creamery | Published; v2 posted 2026-10-12; posting URL not yet recorded; final MP4 absent locally | `video/2026-10-12_tiktok_creamery/decisions.md`, “Posted” |
-| Sheep | In production; available cuts v1–v5; current cut needs Daniel's review; no recorded approval/publication | Daniel's request; actual `renders/` files in the main checkout; `video/2026-10-14_tiktok_sheep/decisions.md` |
+| Sheep | In production; available cuts v1–v5; current cut needs Daniel's review; no recorded approval/publication | Daniel's request; actual `renders/` files in the main checkout; open editing [PR #31](https://github.com/craklyn/tiny-farm-godot/pull/31), head `c8fee07b84aa1dbbee8376a31db5a22a8bdebb22` |
 
 The sheep response came from A. A. Nahi's creamery comment, “Ar ethere sheep 🐑?”. The proposed delivery is a TikTok video reply; that remains a recommendation, not a settled instruction. Historical open questions inside published videos' decisions files are historical, not new blockers.
+
+The newer sheep source is on the open edit branch `claude/sheep-tiktok-edit`. Its [version-pinned decisions](https://github.com/craklyn/tiny-farm-godot/blob/c8fee07b84aa1dbbee8376a31db5a22a8bdebb22/video/2026-10-14_tiktok_sheep/decisions.md#L152) record Daniel's voice-over-only direction (no face), and lines 182–207 record v4/v5: “Buddyo Vlogs” spelling; re-staged growth so the sheep stops; neck stretch removed. Link the real editing PR on the draft and distinguish its source from main's older notes. Do not merge it as part of building HQ.
+
+The actual v5 MP4 is 36.8368 seconds at 1080×1920 (measured by ffprobe). The `.plan.json` total 34.635 covers only voice/gameplay, excluding the end card. Do not treat that value as the full movie duration; browser media metadata is authoritative for playback and duration. PR inputs are `edl-v1.yaml`, `captions-v4.txt`, `gameplay-v5.yaml`; all required raw sources are present, but generated `timeline-v5.mp4` and `card-v1.mp4` are absent. This is an unmerged production recipe, not a missing recipe everywhere.
 
 ## Ground rules for implementation
 
@@ -157,3 +161,4 @@ Worker completion: commit explicit feature/test/doc paths on `codex/social-video
 - 2026-10-22: Read the HQ and video workflows, role records and seat notes. Confirmed three projects and publication evidence. Created an isolated worktree. Read-only integration survey complete and incorporated above. Design is a first reviewable proposal; Daniel has not approved a new ongoing cadence, content strategy or external publication.
 - Pre-build review found four gaps, now incorporated: displayed render hash is required independently of record revision; social writes need their own origin/JSON/body-size guard; complete request snapshots must fit through a concise 4000-character intake request; new ideas need a reserved production output folder and a tested path back into review. Public branch push is blocked pending Daniel's permission; all implementation and QA remain local.
 - Product review identified three refinements for the review pass: an editable pre-footage script/outline and planned shots; the previous revision request beside a newly arrived cut with explicit addressed/carry-forward actions; and a primary action that changes as responsibility moves from Daniel to production and back. These are requirements to check in the implementation review.
+- Additional source review found the open sheep edit PR and v5 changes documented above. Verify that seed copy links it, describes voice-over rather than talking head, and uses actual movie metadata for duration. This changes the initial “no recipe” finding to “recipe is on the unmerged editing branch”.
