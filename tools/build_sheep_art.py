@@ -439,10 +439,9 @@ STRETCH = ((5, 0, 0, "open"), (10, 0, 0, "lick"), (11, 0, 0, "lick"), (0, -1, 0,
 
 
 def waddle(f):
-    # Only while squeezing: alternating planted and lifted hooves, the weight
-    # shifting a pixel each side with one pixel of lift on the passing frames.
-    sway, lift, stride = ((-1, 0, -1), (0, 1, -1), (1, 0, 1), (0, 1, 1))[f]
-    return extreme_pose(0, sway, 0, lift=lift, stride=stride)
+    # Legs are drawn separately at world-ground contact points. A translated
+    # sprite sheet cannot keep a planted hoof fixed while the body passes it.
+    return extreme_pose(0, 0, 0, hide_legs=True)
 
 
 def stretch(f):
@@ -450,14 +449,14 @@ def stretch(f):
     return extreme_pose(0, 0, 0, reach=reach, drop=drop, expression=expression, lean=lean)
 
 
-def extreme_pose(swell, sway, paddle, reach=0, drop=0, expression="happy", lean=0, lift=0, stride=0):
+def extreme_pose(swell, sway, paddle, reach=0, drop=0, expression="happy", lean=0, hide_legs=False):
     cv = Canvas()
     floor = CELL[1] - 1
     # The fleece sits almost on the ground: all four hooves only just poke out under
     # it, less than the extra full coat's legs do, the front pair splayed forward and
     # the hind pair back (Daniel, 2026-10-13). The paddle frame lifts the front hoof.
     # `lean` tips the whole fleece forward after her neck; her hooves stay planted.
-    cx, cy = 15.6 + sway * 0.5 + lean, floor - 11.8 - swell * 0.3 - lift
+    cx, cy = 15.6 + sway * 0.5 + lean, floor - 11.8 - swell * 0.3
     a, b = 11.9 + swell * 0.4, 9.4 + swell * 0.3
     puffs, curls = ellipse_puffs(cx, cy, a, b, 5.8, 8, 1.2, start=0.3)
     wool_cloud(cv, puffs, round(cy + b * 0.6), curls)
@@ -466,22 +465,19 @@ def extreme_pose(swell, sway, paddle, reach=0, drop=0, expression="happy", lean=
     # Each leg is hidden in the wool; only its hoof shows on the floor, two pixels
     # pointing the way it splays. On the paddle frame the front hoof kicks a pixel
     # further forward.
-    for i, (x, out, kick) in enumerate(((7, -1, False), (11, -1, False), (20, 1, False), (24, 1, paddle))):
-        x += round(sway * 0.5)
-        hoof_floor = floor
-        if stride:
-            x += stride if i % 2 == 0 else -stride
-            hoof_floor -= int(lift and ((i % 2 == 0) == (stride > 0)))
-        for y in range(floor - 6, hoof_floor):
-            if cv.get(x, y) is None:
-                cv.put(x, y, "K")
-        for px in (x, x + out) + ((x + 2 * out,) if kick else ()):
-            if cv.get(px, hoof_floor) is None:
-                cv.put(px, hoof_floor, "K")
+    if not hide_legs:
+        for x, out, kick in ((7, -1, False), (11, -1, False), (20, 1, False), (24, 1, paddle)):
+            x += round(sway * 0.5)
+            for y in range(floor - 6, floor):
+                if cv.get(x, y) is None:
+                    cv.put(x, y, "K")
+            for px in (x, x + out) + ((x + 2 * out,) if kick else ()):
+                if cv.get(px, floor) is None:
+                    cv.put(px, floor, "K")
     # The face, sunk into the front of the fleece, wool down to her eyes. Stretching,
     # it comes out of the wool on a neck: face-coloured throat rows from the fleece's
     # front to the back of her jaw, drawn only into the open air in front of her.
-    hx, hy = 15 + sway + reach, floor - 15 - swell + drop - lift
+    hx, hy = 15 + sway + reach, floor - 15 - swell + drop
     if reach:
         for y in range(hy + 4, hy + 8):
             for x in range(15 + sway, hx + 6):
@@ -536,8 +532,9 @@ def build(looks):
                     sheet.putpixel((f * W + PAD + x, row * H + y), pal[c] + (255,))
             cell = sheet.crop((f * W, row * H, (f + 1) * W, (row + 1) * H))
             box = cell.getbbox()
-            # She stands on the cell's floor in every frame, never floating off her square.
-            assert box[3] == H, (look["name"], name, f, box)
+            # Idle and reach feet stay on the floor. The waddle row is body-only;
+            # SheepGait supplies its ground contacts separately.
+            assert name == "waddle" or box[3] == H, (look["name"], name, f, box)
             # Nothing is cut off by the cell's edge: only an outline or a hoof touches it.
             edge = [(x, y) for x in range(W) for y in range(H) if x in (0, W - 1) or y == 0]
             assert all(cell.getpixel(p)[3] == 0 or cell.getpixel(p)[:3] in edges for p in edge), \
@@ -693,12 +690,12 @@ def main():
                 "first_row": len(ROWS) * len(names) + i * len(names),
                 "row_of": "first_row + look index",
                 "frames": (["reach", "stretch", "lick", "smug"] if name == "stretch"
-                           else ["left_plant", "left_push", "right_plant", "right_push"]),
+                           else ["body", "body", "body", "body"]),
                 "note": ("A happy reach at mouth height, eyes open and tongue toward the grass, "
                          "then home looking smug. Fleece and hooves stay planted."
                          if name == "stretch" else
-                         "Only while actually squeezing: alternate hooves and shift her weight, "
-                         "with a one-pixel bob. Frames follow her step, not idle time."),
+                         "Body only, with no painted hooves. SheepGait draws exactly four legs "
+                         "from travel distance, holding stance hooves fixed against the ground."),
             } for i, name in enumerate(EXTRA_ROWS)
         },
         # sheep_gags.png: the stuck sheep's ground and her heart, as [x, y, w, h].

@@ -4561,6 +4561,12 @@
   "77d61f423364c1f2260e": {
    "verdict": "ok"
   },
+  "77ffa2144159efc8849c": {
+   "instead": "Keep the sheep standing in place on the grass",
+   "quote": "Keep sheep's planted hooves fixed on the grass",
+   "verdict": "second-look",
+   "why": "The phrasing makes the reader translate a stylized description into the simple instruction that the sheep should not move."
+  },
   "780ee42e21d393f4715a": {
    "instead": "the risk list for upcoming releases",
    "quote": "the release train's risk list",
@@ -6867,6 +6873,9 @@
    "why": "This is a clever observation rather than a plain direction."
   },
   "afecd6a46261002708b6": {
+   "verdict": "ok"
+  },
+  "aff46e0d28e27ca020cb": {
    "verdict": "ok"
   },
   "aff73330033b9e2ca9c5": {

@@ -29,7 +29,9 @@ before the first public build ships.*
   greens remapped to the wheat's yellows through `tools/spritesmith.py`. The bird that
   perches on her is the songbird's existing sheet. No generation was spent.
   The 2026-10-22 correction reuses this same local recipe and shipped palette for
-  the open-eyed, level reach and eight separate waddle rows. No generation service
+  the open-eyed, level reach and eight body-only waddle rows. The four walking
+  limbs are drawn locally by `entities/sheep_gait.gd` from the same shipped ink
+  colours, with planted ground contacts rather than painted sliding hooves. No generation service
   was used; the original coat and smug pixels are unchanged.
 
 - **Industrial Barn cheese-sale feedback** (`assets/sprites/generated/industrial_barn_sale_feedback.png`, 2026-10-09) — a 4×4 sheet of original local pixel art for the empty and growing cheese shelf, four-frame brass coin pulse, empty and loaded handcart, and four-frame coin flight. The shelf states, cart, and flight are intentionally wordless and use only the Industrial Barn palette with hard transparent edges. One Retro Diffusion Plus reference generation, $0.06, was made from the prompt “a low open wooden cheese shelf beside a tiny handcart, holding one large round golden cheese wheel and a small brass coin disc,” and is retained with the service metadata at `assets/raw/2026-10-09-w74ed6630029-industrial-barn-cheese-sale-feedback/`. No generated pixels ship: the exact grid layout and every shipped pixel are original local work in `tools/build_industrial_barn_sale_art.py`, which checks the dimensions, binary alpha, palette membership, and growing shelf silhouette. Output rights for the reference follow the Retro Diffusion terms verified below.

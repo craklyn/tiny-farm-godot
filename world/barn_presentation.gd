@@ -188,7 +188,7 @@ static func cow_pose(world: SimWorld, cow_id: String, tick: int) -> Dictionary:
 	var at := world.actor_pos(cow_id)
 	var facing := String(e.get("facing", ""))
 	var extra: Dictionary = e.get("extra", {})
-	var pose := { "pos": Vector2(at), "frame": 0, "facing_left": facing == "left", "waddling": false }
+	var pose := { "pos": Vector2(at), "frame": 0, "facing_left": facing == "left", "waddling": false, "gait": {} }
 	# A sheep in her extreme coat does not walk: she wiggles, happily, where she
 	# stopped (the bottom row of her look, design/18), a frame every
 	# `SheepArt.idle_frame_seconds()` of sim time.
@@ -220,6 +220,8 @@ static func cow_pose(world: SimWorld, cow_id: String, tick: int) -> Dictionary:
 	if String(e.get("species", "")) == SpeciesDefs.SHEEP and Wool.is_stuck_coat(Wool.coat_of(world, cow_id)):
 		pose["waddling"] = true
 		pose["frame"] = since * HOP_FRAMES / per_tile
+		var distance := (float(int(extra["step"]) - 1) + t) * TILE
+		pose["gait"] = SheepGait.pose(pose["pos"] * TILE, Vector2(came), distance, facing == "left")
 	return pose
 
 

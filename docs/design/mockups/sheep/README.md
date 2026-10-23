@@ -40,5 +40,11 @@ The ordinary `gags_*.png` scenes were refreshed with the corrected sheet. The ol
 `tools/capture_sheep_review.tscn` makes the matched viewport captures;
 `tools/compose_sheep_review.py BEFORE AFTER --out DIR` assembles the comparisons.
 The `squeeze` capture mode records the real sheep brains finishing a doorway and a
-one-square rock gap, then returning to idle. The mode checks all four waddle poses
+one-square rock gap, then returning to idle. The mode checks all four limbs, measures planted contact against the ground,
 and fails if a sheep keeps waddling once stopped. See design/18 for the capture setup.
+
+The first waddle was rejected for sliding feet on 2026-10-22. Its four painted hoof
+frames have been replaced by a body-only fleece layer and four separate limbs.
+The matching close-up before/after footage leaves the grass visible; use the
+`squeeze closeup` capture mode. The whole reach candidate remains pixel-identical
+and its eight-look comparisons above still apply.

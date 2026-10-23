@@ -55,7 +55,9 @@ When her coat reaches the extreme, a sheep stops on the spot and stays there for
 wiggling happily. There is one exception: **she never stops in a doorway, on a doorstep or in
 a one-square gap.** If she is in one, she finishes squeezing through first and stops on the
 first square past it. While she is moving through that final squeeze, she visibly
-waddles: alternate hooves, a little weight shift and a one-pixel body bob. As soon as
+waddles: four legs under her hips and shoulders, planted hooves that hold the grass,
+and lifted hooves that swing forward. Her fleece rises a little to let her take those
+last steps. As soon as
 she stops, her ordinary happy idle wiggle returns (2026-10-22).
 
 - She never stops on a crop bed either: no animal stands on one (2026-10-11). A sheep whose
@@ -103,9 +105,21 @@ together when the barns' places are full.
 The art session delivers `assets/sprites/generated/sheep.png` with `sheep.json` beside it: five
 rows in coat order (freshly sheared at the top, extreme at the bottom), four frames a row
 facing right (mirrored for left, like the cow). The extreme row is a happy idle wiggle.
-A separate four-frame waddle row per look covers her final steps out of a doorway or gap; it follows her simulated step, so
-it holds still when paused and never plays on a stopped sheep. The game reads the cell
-size and extra rows from `sheep.json`, keeping the idle and waddle pictures separate.
+A separate body-only row per look covers her final steps out of a doorway or gap.
+`SheepGait` draws exactly four legs behind that fleece, grouped into a pair at her
+hips and a pair at her shoulders. The far legs sit behind the near ones; they are
+not four evenly spaced shins along her belly. During ground contact a hoof stays
+fixed against the grass as the body passes over it. A lifted hoof moves forward
+before planting again.
+
+The walk follows right hind, right fore, left hind, left fore, with each hoof on
+the ground for two thirds of its cycle. This follows the lateral-sequence walk and
+approximately two-thirds stance described in [Silva and colleagues' sheep gait
+study](https://www.frontiersin.org/journals/bioengineering-and-biotechnology/articles/10.3389/fbioe.2024.1370101/full).
+The short visible joints are a pixel-art approximation beneath the wool, rather
+than a claim to a full anatomical model. The cycle follows distance travelled,
+so slower movement gives slower steps and a paused game holds every hoof still.
+The original idle and all eight reach candidates remain unchanged.
 
 **Every sheep looks a little different** (Daniel, 2026-10-13: different face and fleece
 colours and shapes). The sheet stacks its looks one under another, five coat rows each, and
@@ -282,6 +296,29 @@ and height to 540 in this checkout's `override.cfg` for a square movie, as the e
 video wrapper does; restore the file after recording. A 540×540 window alone is not
 enough to change the movie size.
 It stages an extreme sheep on the barn's doorstep, then another in a one-square gap
-between rocks. Their own brains move and stop them. Each must show all four waddle
-poses while moving and return to idle after settling; the capture exits with an
-error if either fails. It writes only scratch saves, never a player's farm.
+between rocks. Their own brains move and stop them. Each must lift all four hooves while moving and return to idle after settling.
+The capture also measures the planted hooves' world positions and samples the
+actual rendered near-hoof pixels against the fixed grass. It fails on drift,
+missing contact pixels or failure to return to idle. It writes only scratch saves, never a player's farm.
+
+
+Daniel's first review found sliding feet in the initial waddle (2026-10-22). That
+version only changed painted hoof frames while moving the whole sprite. Checking
+that the frames changed did not establish ground contact. The corrected version
+uses the separate legs above; the doorway and gap captures measured 132 visible
+planted-hoof samples with no missing hoof pixels and zero ground-pixel drift.
+Use `squeeze closeup` to capture the same real-game scenes at six times the art's
+native size, with grass left visible for comparison. The capture writes contact
+coordinates and visibility checks to `doorway_contacts.json` and `gap_contacts.json`
+in its output folder. These checks support the contact behavior; Daniel's visual
+approval is still pending.
+
+
+![The same planted hind hoof holds its grass pixel while the fleece passes over it](mockups/sheep/gait_planted_hoof_strip.png)
+
+This strip contains five successive real-game viewport captures, one tenth of a
+second apart. Every crop uses the same patch of grass. The hind hoof remains at
+screen x = 197 pixels throughout; the fleece and lifted feet move. The original
+sliding gait and this correction are also paired in the private close-up movie
+handed over with the PR. Both clips show the barn doorway and the rock gap at the
+same camera position and scale.

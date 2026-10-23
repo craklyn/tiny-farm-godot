@@ -54,8 +54,8 @@
       "h": 25
     },
     "waddle": {
-      "w": 32,
-      "h": 26
+      "w": 30,
+      "h": 25
     }
   },
   "anchor": "feet on the cell's bottom row, body centred: stand it like the cow",
@@ -77,12 +77,12 @@
       "first_row": 48,
       "row_of": "first_row + look index",
       "frames": [
-        "left_plant",
-        "left_push",
-        "right_plant",
-        "right_push"
+        "body",
+        "body",
+        "body",
+        "body"
       ],
-      "note": "Only while actually squeezing: alternate hooves and shift her weight, with a one-pixel bob. Frames follow her step, not idle time."
+      "note": "Body only, with no painted hooves. SheepGait draws exactly four legs from travel distance, holding stance hooves fixed against the ground."
     }
   },
   "gags": {

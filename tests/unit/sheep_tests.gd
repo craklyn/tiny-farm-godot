@@ -22,6 +22,7 @@ func test_sheep() -> void:
 	test_sheep_save_v7_migration()
 	test_sheep_sheet()
 	test_sheep_squeeze_picture()
+	test_sheep_hooves_hold_the_ground()
 	test_sheep_save_and_play_on()
 	test_sheep_frozen_on_the_barn_floor()
 	test_sheep_never_stop_on_a_bed()
@@ -577,3 +578,41 @@ func test_sheep_squeeze_picture() -> void:
 		"an extreme sheep squeezing through a gap moves through all four waddle poses (%s)" % str(frames.keys()))
 	_assert(SheepArt.has_waddle() and SheepArt.waddle_rect(SheepArt.looks() - 1, 3).end.y <= SheepArt.sheet().get_height(),
 		"the last sheep look has a complete waddle row on the shipped sheet")
+
+
+# Measure actual world contacts, not whether an animation frame changed. A
+# stance hoof must not translate with the body, on either axis or across tiles.
+func test_sheep_hooves_hold_the_ground() -> void:
+	var worst := 0.0
+	var contacts := 0
+	var swing_seen := {}
+	var touchdowns: Array[String] = []
+	for direction in [Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN]:
+		var previous := {}
+		for sample in 129:
+			var distance := float(sample) / 8.0
+			var at: Vector2 = Vector2(160, 160) + direction * distance
+			var gait := SheepGait.pose(at, direction, distance, direction.x < 0.0)
+			_assert_quiet(gait == SheepGait.pose(at, direction, distance, direction.x < 0.0),
+				"the same paused gait has identical contacts")
+			var support := 0
+			var names := {}
+			for leg in gait.legs:
+				var name := String(leg.name)
+				names[name] = true
+				if bool(leg.planted):
+					support += 1
+					if previous.has(name) and bool(previous[name].planted):
+						worst = maxf(worst, leg.hoof.distance_to(previous[name].hoof))
+						contacts += 1
+					elif previous.has(name) and direction == Vector2.RIGHT:
+						touchdowns.append(name)
+				else:
+					swing_seen[name] = true
+				previous[name] = leg
+			_assert_quiet(names.size() == 4 and support >= 2 and support <= 3,
+				"exactly four legs, with two or three supporting the sheep during a slow walk")
+	_assert(contacts > 500 and worst < 0.0001,
+		"planted hooves stay fixed as the body moves in all four directions: %.6f px worst drift over %d contacts" % [worst, contacts])
+	_assert(swing_seen.size() == 4 and touchdowns.slice(0, 4) == ["right_fore", "left_hind", "left_fore", "right_hind"],
+		"all four hooves swing, in a sheep's hind-then-fore lateral sequence (%s)" % str(touchdowns.slice(0, 4)))
