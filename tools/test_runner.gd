@@ -11456,10 +11456,10 @@ func _scenario_sg_a_stuck_sheep_grazes_a_ring_and_is_perched_on() -> void:
 
 	var node = farm.actor_nodes.get(id, null)
 	SheepGags.cue(id, "stretch", farm.sim.clock.tick)
-	var strained := await _wait_until(func(): return node != null and int(node.stretch_frame) == SheepArt.STRETCH_STRAIN, 120)
+	var licked := await _wait_until(func(): return node != null and int(node.stretch_frame) == SheepArt.STRETCH_LICK, 120)
 	var smug := await _wait_until(func(): return node != null and int(node.stretch_frame) == SheepArt.STRETCH_SMUG, 120)
 	var back := await _wait_until(func(): return node != null and int(node.stretch_frame) == -1, 120)
-	_assert(strained and smug and back, "her sprite strains for it, settles back smug, and goes back to her wiggle")
+	_assert(licked and smug and back, "her sprite reaches and licks for it, settles back smug, and goes back to her wiggle")
 	SheepGags.cue(id, "bird", farm.sim.clock.tick)
 	var landed := await _wait_until(func(): return node != null and not node.bird.is_empty() and not bool(node.bird.flying), 120)
 	_assert(landed and float(node.bird.heart) >= 0.0, "a bird flies in and sits on her, and her heart shows")

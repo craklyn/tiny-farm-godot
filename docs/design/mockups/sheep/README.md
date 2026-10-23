@@ -28,3 +28,23 @@ so she now sits low in her fleece on four hooves that poke out less than the ext
 coat's legs (`round3_*`). The spotted fleece's patches looked like a growth; in the final
 sheet she has the same four oval spots at every coat, each growing with her and never
 changing shape, covering about a quarter of her wool at every size.
+
+**Happy reach and squeeze correction, 2026-10-22 (awaiting Daniel's visual approval).**
+`gags_all_eight_before_after.png` pairs every old effort pose with its replacement,
+using matched real-game captures. `gags_all_eight_native.png` reduces those captures
+to one image pixel per game-art pixel. `gags_stretch_frames.png` shows every look's
+whole corrected beat; `gags_all_eight_moving.gif` plays it through the real renderer.
+The ordinary `gags_*.png` scenes were refreshed with the corrected sheet. The older
+`gags_in_game.gif` remains the original October 13 recording.
+
+`tools/capture_sheep_review.tscn` makes the matched viewport captures;
+`tools/compose_sheep_review.py BEFORE AFTER --out DIR` assembles the comparisons.
+The `squeeze` capture mode records the real sheep brains finishing a doorway and a
+one-square rock gap, then returning to idle. The mode checks all four limbs, measures planted contact against the ground,
+and fails if a sheep keeps waddling once stopped. See design/18 for the capture setup.
+
+The first waddle was rejected for sliding feet on 2026-10-22. Its four painted hoof
+frames have been replaced by a body-only fleece layer and four separate limbs.
+The matching close-up before/after footage leaves the grass visible; use the
+`squeeze closeup` capture mode. The whole reach candidate remains pixel-identical
+and its eight-look comparisons above still apply.

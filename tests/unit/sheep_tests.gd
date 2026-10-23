@@ -21,6 +21,8 @@ func test_sheep() -> void:
 	test_sheep_save_round_trip()
 	test_sheep_save_v7_migration()
 	test_sheep_sheet()
+	test_sheep_squeeze_picture()
+	test_sheep_hooves_hold_the_ground()
 	test_sheep_save_and_play_on()
 	test_sheep_frozen_on_the_barn_floor()
 	test_sheep_never_stop_on_a_bed()
@@ -545,3 +547,72 @@ func test_sheep_boxed_in_stop_where_they_are() -> void:
 	yard.advance_ticks(3000, GameState)
 	_assert(String(yard.barns["barn_1"].stalls[2].cow_id) == "" and String(yard.actor("sheep_1").extra.state) == "content",
 		"a boxed-in sheep on her way to a stall gives it back")
+
+
+# A real squeeze, not a hand-authored moving record: the picture must waddle
+# while her position changes, then switch back to the idle row when she stops.
+func test_sheep_squeeze_picture() -> void:
+	var world := _gap_yard(1809)
+	world.spawn_actor("sheep_1", SpeciesDefs.SHEEP, Vector2i(20, 16), { "coat": Wool.EXTREME })
+	world.schedule_all_brains()
+	var frames := {}
+	var moved := false
+	var before := Vector2(20, 16)
+	for i in 100:
+		world.advance_ticks(1, GameState)
+		var tick := world.clock.tick
+		var snapshot := SaveGame.capture_canonical(world, GameState)
+		var pose := BarnPresentation.cow_pose(world, "sheep_1", tick)
+		_assert_quiet(pose == BarnPresentation.cow_pose(world, "sheep_1", tick)
+			and snapshot == SaveGame.capture_canonical(world, GameState),
+			"reading a squeeze pose twice neither changes the world nor advances its picture")
+		if bool(pose.get("waddling", false)):
+			frames[int(pose.frame)] = true
+			moved = moved or pose.pos != before
+			before = pose.pos
+		if String(world.actor("sheep_1").extra.state) == "content":
+			_assert(not bool(pose.get("waddling", false)) and pose.pos == Vector2(world.actor_pos("sheep_1")),
+				"on the first square past the gap she stops waddling and stands where she settled")
+			break
+	_assert(moved and frames.size() == 4,
+		"an extreme sheep squeezing through a gap moves through all four waddle poses (%s)" % str(frames.keys()))
+	_assert(SheepArt.has_waddle() and SheepArt.waddle_rect(SheepArt.looks() - 1, 3).end.y <= SheepArt.sheet().get_height(),
+		"the last sheep look has a complete waddle row on the shipped sheet")
+
+
+# Measure actual world contacts, not whether an animation frame changed. A
+# stance hoof must not translate with the body, on either axis or across tiles.
+func test_sheep_hooves_hold_the_ground() -> void:
+	var worst := 0.0
+	var contacts := 0
+	var swing_seen := {}
+	var touchdowns: Array[String] = []
+	for direction in [Vector2.RIGHT, Vector2.LEFT, Vector2.UP, Vector2.DOWN]:
+		var previous := {}
+		for sample in 129:
+			var distance := float(sample) / 8.0
+			var at: Vector2 = Vector2(160, 160) + direction * distance
+			var gait := SheepGait.pose(at, direction, distance, direction.x < 0.0)
+			_assert_quiet(gait == SheepGait.pose(at, direction, distance, direction.x < 0.0),
+				"the same paused gait has identical contacts")
+			var support := 0
+			var names := {}
+			for leg in gait.legs:
+				var name := String(leg.name)
+				names[name] = true
+				if bool(leg.planted):
+					support += 1
+					if previous.has(name) and bool(previous[name].planted):
+						worst = maxf(worst, leg.hoof.distance_to(previous[name].hoof))
+						contacts += 1
+					elif previous.has(name) and direction == Vector2.RIGHT:
+						touchdowns.append(name)
+				else:
+					swing_seen[name] = true
+				previous[name] = leg
+			_assert_quiet(names.size() == 4 and support >= 2 and support <= 3,
+				"exactly four legs, with two or three supporting the sheep during a slow walk")
+	_assert(contacts > 500 and worst < 0.0001,
+		"planted hooves stay fixed as the body moves in all four directions: %.6f px worst drift over %d contacts" % [worst, contacts])
+	_assert(swing_seen.size() == 4 and touchdowns.slice(0, 4) == ["right_fore", "left_hind", "left_fore", "right_hind"],
+		"all four hooves swing, in a sheep's hind-then-fore lateral sequence (%s)" % str(touchdowns.slice(0, 4)))

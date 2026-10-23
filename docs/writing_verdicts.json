@@ -4561,6 +4561,12 @@
   "77d61f423364c1f2260e": {
    "verdict": "ok"
   },
+  "77ffa2144159efc8849c": {
+   "instead": "Keep the sheep standing in place on the grass",
+   "quote": "Keep sheep's planted hooves fixed on the grass",
+   "verdict": "second-look",
+   "why": "The phrasing makes the reader translate a stylized description into the simple instruction that the sheep should not move."
+  },
   "780ee42e21d393f4715a": {
    "instead": "the risk list for upcoming releases",
    "quote": "the release train's risk list",
@@ -5346,6 +5352,9 @@
    "verdict": "ok"
   },
   "8b26b79dc5a750c645bf": {
+   "verdict": "ok"
+  },
+  "8b2a229ac10a0fd294a3": {
    "verdict": "ok"
   },
   "8b3a420dc8fb9f8e2a9b": {
@@ -6598,6 +6607,12 @@
    "verdict": "decode",
    "why": "This names two components but states no action—as a work item, it does not say what is being done with them."
   },
+  "a99f6466f085cd010f88": {
+   "instead": "Make sheep stretch comfortably and waddle through tight gaps",
+   "quote": "Make sheep reach happily",
+   "verdict": "decode",
+   "why": "“Reach happily” does not tell the reader what movement or behavior the sheep should have."
+  },
   "a9a79586edba1ae0e7c4": {
    "verdict": "ok"
   },
@@ -6858,6 +6873,9 @@
    "why": "This is a clever observation rather than a plain direction."
   },
   "afecd6a46261002708b6": {
+   "verdict": "ok"
+  },
+  "aff46e0d28e27ca020cb": {
    "verdict": "ok"
   },
   "aff73330033b9e2ca9c5": {
