@@ -51,6 +51,8 @@ import anim  # sibling module: the Animation Lab (see its docstring)
 import closing  # sibling module: closing a card with evidence, outside claims (Q-125)
 import roots  # one set of code, data, user-workspace and authoritative-main roots
 import store  # the live store's own history, one commit per burst of writes (Q-125)
+import social_proxy  # optional isolated social preview; other routes remain live
+import social  # private social-video review and publication records
 import studio  # sibling module: the ledger of hand edits to sprites
 import work  # sibling module: how work originates (see its docstring)
 
@@ -7250,6 +7252,19 @@ class Handler(BaseHTTPRequestHandler):
         parts = urlparse(self.path)
         path, query = parts.path, parse_qs(parts.query)
         try:
+            if social_proxy.forward(self, path):
+                return
+            if path == "/api/social":
+                return self._send(200, social.list_content())
+            if path.startswith("/api/social/"):
+                return self._send(200, social.content_detail(path[len("/api/social/"):]))
+            if path.startswith("/social-media/"):
+                match = re.fullmatch(r"/social-media/([a-z][a-z0-9-]{0,63})/(v[1-9][0-9]{0,5})/(video|subtitles)", path)
+                if not match:
+                    return self._send(404, {"error": "No such video file."})
+                return social.serve_media(self, *match.groups(), query.get("sha256", [""])[0])
+            if path.startswith("/social-art/"):
+                return social.serve_artwork(self, path[len("/social-art/"):])
             if path in ("/", "/index.html"):
                 return self._send_file(STATIC, "index.html")
             if path.startswith("/static/"):
@@ -7428,11 +7443,30 @@ class Handler(BaseHTTPRequestHandler):
                                                   "user_workspace": USER_WORKSPACE,
                                                   "main": REPO}})
             return self._send(404, {"error": "not found"})
+        except social.SocialError as e:
+            return self._send(e.status, {"error": str(e), "code": e.code})
         except Exception as e:  # keep the service alive whatever happens
             return self._send(500, {"error": str(e)[:300]})
 
     def do_POST(self):
         path = self.path.split("?")[0]
+        try:
+            if social_proxy.forward(self, path):
+                return
+        except social.SocialError as e:
+            return self._send(e.status, {"error": str(e), "code": e.code})
+        if path.startswith("/api/social/"):
+            try:
+                length = social.guard_write(self)
+                payload = json.loads(self.rfile.read(length))
+                result = social.mutate(path[len("/api/social/"):], payload)
+                return self._send(200, result)
+            except social.SocialError as e:
+                return self._send(e.status, {"error": str(e), "code": e.code})
+            except (ValueError, UnicodeError):
+                return self._send(400, {"error": "Invalid JSON."})
+            except Exception:
+                return self._send(500, {"error": "The social change could not be saved. Your text is still on the page."})
         try:
             length = int(self.headers.get("Content-Length") or 0)
             payload = json.loads(self.rfile.read(length) or b"{}")
@@ -7659,6 +7693,7 @@ def main():
                   + ", ".join(filed), flush=True)
     except Exception as e:  # never keep HQ from starting over it
         print(f"[rulings] could not file work for waiting rulings: {e}", flush=True)
+    social.bind(sys.modules[__name__])
     studio.bind(sys.modules[__name__])
     anim.bind(sys.modules[__name__])
     if not canary:

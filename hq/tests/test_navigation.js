@@ -10,7 +10,7 @@ const surface = JSON.parse(fs.readFileSync(path.join(__dirname, '../data/surface
 const primary = [...html.matchAll(/<a [^>]*href="([^"]+)" data-section="([^"]+)"/g)];
 assert.deepEqual(primary.map(([, href, section]) => [section, href]), [
   ['overview', '#/'], ['decisions', '#/work'], ['work', '#/work-status'],
-  ['studio', '#/design'], ['request', '#/request'],
+  ['studio', '#/design'], ['social', '#/social'], ['request', '#/request'],
 ]);
 for (const route of ['/org', '/program', '/maps', '/chat']) {
   assert.ok(html.includes(`data-route="${route}"`));

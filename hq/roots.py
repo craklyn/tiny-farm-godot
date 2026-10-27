@@ -28,7 +28,7 @@ REPO_OWNED = (
     "org.json", "seats.json", "pillars.json", "platforms.json", "surface.json",
     "entities.json", "releases.json", "work_policy.json", "spend.json",
     "completion_reconciliation.json", "process_completion_reconciliation.json",
-    "schedules.json",
+    "schedules.json", "social_catalog.json",
     "card_state_migration.json", "landed_commit_backfill.json",
     "decisions", "projects", "looks",
 )
@@ -37,7 +37,7 @@ REPO_OWNED = (
 # fails the build if a commit adds one back.
 LIVE_RECORDS = (
     "work", "rulings", "goals", "staff", "sprite_edits", "anim_asks", "anim_runs",
-    "maps", "release_plan.json", "attestations.json", "art_generations",
+    "maps", "social", "release_plan.json", "attestations.json", "art_generations",
 )
 # Tracked as the seed for a new store and for tools that run without a store
 # (the pre-commit writing check, CI, a fresh clone); the running HQ reads and

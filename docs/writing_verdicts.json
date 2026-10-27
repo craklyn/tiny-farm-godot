@@ -46,6 +46,9 @@
   "011bfd92c79d9a3310d7": {
    "verdict": "ok"
   },
+  "0126569a8b48074ddfcf": {
+   "verdict": "ok"
+  },
   "012b3930731244164465": {
    "instead": "The four cows can make at most 2.8 finished cheese batches",
    "quote": "They can make at most 2.8 finished cheese batches",
@@ -83,6 +86,9 @@
    "verdict": "ok"
   },
   "01fcf04d7daf82034cbd": {
+   "verdict": "ok"
+  },
+  "0222d6768b8488b93bb7": {
    "verdict": "ok"
   },
   "024510a54199bf243a1b": {
@@ -529,6 +535,9 @@
   "0cfe040f04c7d118768e": {
    "verdict": "ok"
   },
+  "0d0a64f80b6fe884c5c9": {
+   "verdict": "ok"
+  },
   "0d1ced1edf1b3b300bea": {
    "verdict": "ok"
   },
@@ -748,6 +757,9 @@
    "verdict": "decode",
    "why": "Multiple problems: the opening repeats itself, \"ships as once\" is awkward, \"sitting\" is unclear (or a typo), and the final fragment \"of steps done\" does not connect to anything."
   },
+  "1301fb25b2a58fbe4abd": {
+   "verdict": "ok"
+  },
   "13147ef182116b8f12d1": {
    "verdict": "ok"
   },
@@ -843,6 +855,9 @@
    "why": "“An earlier walk is in the way” makes the reader work out that a previous movement is blocking the test."
   },
   "14b468815817b869fe6f": {
+   "verdict": "ok"
+  },
+  "14c9bddbf975bd83c263": {
    "verdict": "ok"
   },
   "14cdff47e0b6f9ace44a": {
@@ -953,6 +968,9 @@
   "177b4c15ba88b925d220": {
    "verdict": "ok"
   },
+  "17947a6c2cef305af82c": {
+   "verdict": "ok"
+  },
   "179c7481de82f1154eb4": {
    "verdict": "ok"
   },
@@ -1026,6 +1044,9 @@
   "190e74f165096eb6032f": {
    "verdict": "ok"
   },
+  "1918399ebd1d15570b03": {
+   "verdict": "ok"
+  },
   "1962dfee061f8ced255a": {
    "verdict": "ok"
   },
@@ -1052,6 +1073,12 @@
    "quote": "let the drain push what it lands",
    "verdict": "decode",
    "why": "“The drain” and “what it lands” are internal or figurative terms, so a reader cannot tell what system is acting or what it should push."
+  },
+  "19c19f498887054e4eff": {
+   "instead": "The production team has not confirmed a task for this request. · Retry saved request",
+   "quote": "Intake has not confirmed a work card.",
+   "verdict": "decode",
+   "why": "“Intake” and “work card” describe internal process steps instead of telling the reader what has not been confirmed."
   },
   "19dc1daff45c835321a3": {
    "verdict": "ok"
@@ -1135,6 +1162,9 @@
    "verdict": "ok"
   },
   "1b8bb021cc6bdb7e5030": {
+   "verdict": "ok"
+  },
+  "1b9c28604ce893bf7f98": {
    "verdict": "ok"
   },
   "1ba904ba82173f9ed2f5": {
@@ -1457,6 +1487,9 @@
   "24f664737c3c56fae37c": {
    "verdict": "ok"
   },
+  "25072e4df1b3719c15a6": {
+   "verdict": "ok"
+  },
   "2519bb592a09eb56ad05": {
    "instead": "cheese line",
    "quote": "steel line",
@@ -1491,6 +1524,9 @@
    "verdict": "ok"
   },
   "25a96c50555e67c959ca": {
+   "verdict": "ok"
+  },
+  "25b43e2ee8e567218ae5": {
    "verdict": "ok"
   },
   "25c6ef637410538a141e": {
@@ -1575,6 +1611,9 @@
   "2768245a1fc8f473f8af": {
    "verdict": "ok"
   },
+  "277782d9f3dcce26ba99": {
+   "verdict": "ok"
+  },
   "278ad77e46ff4e433ef5": {
    "verdict": "ok"
   },
@@ -1590,10 +1629,16 @@
   "27ebcedd2b29bc26a569": {
    "verdict": "ok"
   },
+  "27f05c6f36a8c73b067c": {
+   "verdict": "ok"
+  },
   "2823400c3c0bce0f1884": {
    "verdict": "ok"
   },
   "28497eaba31be7ab0b35": {
+   "verdict": "ok"
+  },
+  "2888d0ad8ac9927f4970": {
    "verdict": "ok"
   },
   "289e592c420160860033": {
@@ -1833,6 +1878,9 @@
   "2d52d0c8e1af607aa7df": {
    "verdict": "ok"
   },
+  "2d58a95d0269cf879171": {
+   "verdict": "ok"
+  },
   "2d6515b60d826026fecc": {
    "verdict": "ok"
   },
@@ -1841,6 +1889,12 @@
    "quote": "Hold the whole feature until fencing has a job worth doing",
    "verdict": "decode",
    "why": "“Hold” can mean either delay the feature or keep it in place, so the title is ambiguous on its own."
+  },
+  "2d772f9c5b61f03776f5": {
+   "instead": "The editing proposal still uses the inputs from version 5.",
+   "quote": "holds the v5 inputs",
+   "verdict": "decode",
+   "why": "“v5 inputs” is internal production shorthand with no meaning for a cold reader."
   },
   "2d822de10361af9901fa": {
    "verdict": "ok"
@@ -1971,10 +2025,19 @@
   "314160fd223aeacf013d": {
    "verdict": "ok"
   },
+  "316142d462d9e0f33a45": {
+   "verdict": "ok"
+  },
+  "3187d4ce12fdef3e5d29": {
+   "verdict": "ok"
+  },
   "31981f22e9a436b86278": {
    "verdict": "ok"
   },
   "31afd6682d8af98c8d40": {
+   "verdict": "ok"
+  },
+  "31b09047acebb933244c": {
    "verdict": "ok"
   },
   "31cf704be3b0787e53f1": {
@@ -2119,6 +2182,9 @@
   "3560fd62ce7705810d6c": {
    "verdict": "ok"
   },
+  "3561b146f9cb0246977a": {
+   "verdict": "ok"
+  },
   "3561ef110332bfdd0a64": {
    "verdict": "ok"
   },
@@ -2145,6 +2211,9 @@
    "quote": "make its own practice ground",
    "verdict": "second-look",
    "why": "“Practice ground” is a figurative description of soil the robot tills and plants for itself."
+  },
+  "362fde54d4d47ad4ccd7": {
+   "verdict": "ok"
   },
   "36307d0d76e02184a8a0": {
    "verdict": "ok"
@@ -2212,6 +2281,12 @@
    "quote": "The randomness currently buys nothing",
    "verdict": "second-look",
    "why": "“Buys nothing” is a metaphor for providing no benefit."
+  },
+  "372db3ed000488e45f6e": {
+   "verdict": "ok"
+  },
+  "37328b6d4e4b61296cd8": {
+   "verdict": "ok"
   },
   "373448c7610d6d530e53": {
    "verdict": "ok"
@@ -2298,7 +2373,13 @@
    "verdict": "decode",
    "why": "The reader has to know that this means replacing the placeholder art."
   },
+  "3901845c9c17a12a3cc7": {
+   "verdict": "ok"
+  },
   "39067cbe33fe75d5ad77": {
+   "verdict": "ok"
+  },
+  "390e032f084e2a8a6add": {
    "verdict": "ok"
   },
   "39175b6cfb4598bf71bb": {
@@ -2391,6 +2472,9 @@
    "verdict": "second-look",
    "why": "“Lands” is internal shorthand for work being added to the main version."
   },
+  "3ba1b924a2b21c52f0da": {
+   "verdict": "ok"
+  },
   "3ba43cb9d3f4e637c825": {
    "verdict": "ok"
   },
@@ -2434,6 +2518,9 @@
   "3ce8cc0071b633b3b409": {
    "verdict": "ok"
   },
+  "3ce8ed6b0d512720f5c7": {
+   "verdict": "ok"
+  },
   "3d5c4584a23e7b602199": {
    "verdict": "ok"
   },
@@ -2444,6 +2531,9 @@
    "verdict": "ok"
   },
   "3e1fca60097d3c672ddf": {
+   "verdict": "ok"
+  },
+  "3e2c0812a6b02dbe23e6": {
    "verdict": "ok"
   },
   "3e74436b467cda70d1f1": {
@@ -2521,6 +2611,9 @@
   "4280469f1c724f8b7316": {
    "verdict": "ok"
   },
+  "429beeac88ac63814d8f": {
+   "verdict": "ok"
+  },
   "42ad1bce8f9d965bb9d1": {
    "verdict": "ok"
   },
@@ -2591,6 +2684,12 @@
   "4580bf284baca8717f19": {
    "verdict": "ok"
   },
+  "458fc1e2c41018c89fd7": {
+   "instead": "Clarify which video edit this is and how a new video idea gets reviewed",
+   "quote": "Clarify cut identity and the path from a new video idea to review",
+   "verdict": "decode",
+   "why": "“Cut identity” does not plainly say which video edit is meant, so the reader has to work out the intended meaning."
+  },
   "45cd8befab9d6764ae50": {
    "verdict": "ok"
   },
@@ -2603,10 +2702,16 @@
    "verdict": "decode",
    "why": "The reader has to work out whether “it” means the robot or the act of starting over."
   },
+  "45e98b8c8d056592fa22": {
+   "verdict": "ok"
+  },
   "4614b88fbdf0489e12a8": {
    "verdict": "ok"
   },
   "462305a3ff86c0d597ee": {
+   "verdict": "ok"
+  },
+  "462c54a444dcc55df513": {
    "verdict": "ok"
   },
   "462d432860f3cfd00dce": {
@@ -2628,6 +2733,9 @@
    "verdict": "ok"
   },
   "469c80a4f4a85b9d1271": {
+   "verdict": "ok"
+  },
+  "46afbe701d7615d9ac62": {
    "verdict": "ok"
   },
   "46b0d15cd32b7f89a82d": {
@@ -2751,6 +2859,9 @@
   "49229677a4241d827299": {
    "verdict": "ok"
   },
+  "492d0269f66a22eeebff": {
+   "verdict": "ok"
+  },
   "49396e9bb43c928aa981": {
    "verdict": "ok"
   },
@@ -2859,6 +2970,9 @@
    "verdict": "second-look",
    "why": "The wording makes the reader infer that the view should zoom out while pointing at squares."
   },
+  "4b9fd1a498ed00c28def": {
+   "verdict": "ok"
+  },
   "4baaa39458e4d9fe27f5": {
    "instead": "the reply overstated what had actually been completed",
    "quote": "the reply claimed more than it had done",
@@ -2890,6 +3004,9 @@
    "why": "The reader cannot tell what “it” is, and “ripe squares” names the location rather than the crop to harvest."
   },
   "4c2a7ef4630c8fe66a29": {
+   "verdict": "ok"
+  },
+  "4c33e03524e2b18c475f": {
    "verdict": "ok"
   },
   "4c68b336f38cedf45de6": {
@@ -2968,6 +3085,9 @@
    "why": "The reader must reconcile outdated calculations with the newly ruled 50g price."
   },
   "4e5ccc3ef678e6b18b9d": {
+   "verdict": "ok"
+  },
+  "4e797ca7d108423ecb60": {
    "verdict": "ok"
   },
   "4e81ab85bae620d7b616": {
@@ -3138,7 +3258,13 @@
   "528449530bb5b48898b6": {
    "verdict": "ok"
   },
+  "528e92012f8e73fd87b3": {
+   "verdict": "ok"
+  },
   "52a6246b6f531c32018d": {
+   "verdict": "ok"
+  },
+  "52a8c5b3769914517b8e": {
    "verdict": "ok"
   },
   "52d404fad379acb9edcb": {
@@ -3251,6 +3377,9 @@
    "verdict": "second-look",
    "why": "“Git history” is internal version-control language; a cold reader may need to work out that the original files remain recoverable."
   },
+  "54f0ef50aa1fe498fbbb": {
+   "verdict": "ok"
+  },
   "5535d8aa3acbc9605f67": {
    "instead": "Eight machines running at once, and the tablet still draws smoothly",
    "quote": "the tablet's busiest frame spends 3.45 ms of its 16.7 ms",
@@ -3272,6 +3401,9 @@
   "559e514e67a7a116ce47": {
    "verdict": "ok"
   },
+  "55a2761209d7924e7997": {
+   "verdict": "ok"
+  },
   "55d3dd9dd5229d81f564": {
    "verdict": "ok"
   },
@@ -3291,6 +3423,9 @@
    "why": "The reader must infer what “their work” is and which impossible step is being avoided."
   },
   "5642f0725d3269384f04": {
+   "verdict": "ok"
+  },
+  "564ac7ed2b0ac6e0f944": {
    "verdict": "ok"
   },
   "566f9fd5cc1cc257e8b7": {
@@ -3375,6 +3510,9 @@
    "verdict": "decode",
    "why": "The sentence makes the reader work out whether the cow or the test sends the newcomer, and how the clauses fit together."
   },
+  "58a2508c163adda94685": {
+   "verdict": "ok"
+  },
   "58a3aeee4282d39d34a2": {
    "verdict": "ok"
   },
@@ -3451,6 +3589,9 @@
    "why": "The sentence uses a pronoun without saying who it refers to, so a cold reader must look elsewhere to identify her."
   },
   "59e27bdfbd392549bcb8": {
+   "verdict": "ok"
+  },
+  "5a103650572bec796eda": {
    "verdict": "ok"
   },
   "5a2f046150ad62cd9c56": {
@@ -3639,6 +3780,9 @@
   "5e0b2487dc47964e269c": {
    "verdict": "ok"
   },
+  "5e15a4316e46f299a698": {
+   "verdict": "ok"
+  },
   "5e3844d21780479d673b": {
    "verdict": "ok"
   },
@@ -3685,6 +3829,9 @@
    "verdict": "ok"
   },
   "5f40e1bfefcee5e73870": {
+   "verdict": "ok"
+  },
+  "5f4a727817f769e51b19": {
    "verdict": "ok"
   },
   "5f506eaf7582dd152e37": {
@@ -3862,6 +4009,9 @@
    "verdict": "decode",
    "why": "It is unclear whether this means the crop totals are visible, or that the totals are displayed as images."
   },
+  "64201e6642591b562fd0": {
+   "verdict": "ok"
+  },
   "6421c8f40da9c308a534": {
    "verdict": "ok"
   },
@@ -3973,6 +4123,9 @@
    "quote": "on main",
    "verdict": "decode",
    "why": "“Main” is engineering shorthand for the project's main code branch, which a cold reader may not know."
+  },
+  "6694e115b82d1ca54894": {
+   "verdict": "ok"
   },
   "669bf936db720a9840fc": {
    "instead": "HQ automatically runs this, and you don't need to do anything",
@@ -4087,6 +4240,12 @@
   "69ace6adfea2cc5c5e1c": {
    "verdict": "ok"
   },
+  "69e34805566a7b6ec027": {
+   "instead": "The linked production task is unavailable",
+   "quote": "Linked work card unavailable",
+   "verdict": "decode",
+   "why": "“Work card” is an internal process term, so a new reader cannot tell what record is unavailable."
+  },
   "69f0c0e6b3532813c250": {
    "verdict": "ok"
   },
@@ -4156,6 +4315,9 @@
   "6c8806bfbd4d8e5d0869": {
    "verdict": "ok"
   },
+  "6cbf035d6e6865116d47": {
+   "verdict": "ok"
+  },
   "6cdfb172a026cae21ec8": {
    "baselined": "2026-09-25",
    "instead": "Use movement as the rule, not whether something is a machine.",
@@ -4170,6 +4332,9 @@
    "why": "\"It\" has no referent — what is being stopped?"
   },
   "6cf1302a1c70aff408e5": {
+   "verdict": "ok"
+  },
+  "6d606f357e66ebf50a6f": {
    "verdict": "ok"
   },
   "6d64893f2a6050ce9be3": {
@@ -4340,6 +4505,9 @@
   "71377628569df43f3b5f": {
    "verdict": "ok"
   },
+  "714757390e25aabe8e51": {
+   "verdict": "ok"
+  },
   "715d0ac1b9dc8efd4578": {
    "verdict": "ok"
   },
@@ -4352,6 +4520,9 @@
    "quote": "Let a seat keep what it learns while working, not only while chatting",
    "verdict": "second-look",
    "why": "\"A seat\" is org vocabulary not introduced; the reader doesn't know this means a role."
+  },
+  "724b119d342406f4dd48": {
+   "verdict": "ok"
   },
   "725c787b47207deb6d4f": {
    "verdict": "ok"
@@ -4443,6 +4614,9 @@
    "verdict": "decode",
    "why": "“Model routing” is internal engineering shorthand for deciding which model HQ uses."
   },
+  "74e54078a24dd9c945b4": {
+   "verdict": "ok"
+  },
   "74f6bc544f37f22ad5f0": {
    "instead": "inventory pop-up",
    "quote": "inventory modal",
@@ -4510,6 +4684,9 @@
   "7652c71a6bffeeb0bb57": {
    "verdict": "ok"
   },
+  "76580ad69ea017e137c7": {
+   "verdict": "ok"
+  },
   "76695f2ce68c7140e6e7": {
    "instead": "Fix background removal so it also removes background colour enclosed within the artwork",
    "quote": "catch color boxed in by the art itself",
@@ -4567,6 +4744,9 @@
    "verdict": "second-look",
    "why": "The phrasing makes the reader translate a stylized description into the simple instruction that the sheep should not move."
   },
+  "7803d8d45558beb99ad0": {
+   "verdict": "ok"
+  },
   "780ee42e21d393f4715a": {
    "instead": "the risk list for upcoming releases",
    "quote": "the release train's risk list",
@@ -4595,6 +4775,9 @@
    "why": "The phrase makes the reader translate a window into the allowance available during that period."
   },
   "7861d36d5a8af30ae07e": {
+   "verdict": "ok"
+  },
+  "78784ccd02877d3fb07a": {
    "verdict": "ok"
   },
   "78a0ee5860ff19c1abc0": {
@@ -4836,6 +5019,9 @@
   "7de1a46604958f18bba0": {
    "verdict": "ok"
   },
+  "7dedaf4a33937367985a": {
+   "verdict": "ok"
+  },
   "7e302981a72a5efe040b": {
    "verdict": "ok"
   },
@@ -4850,6 +5036,9 @@
    "quote": "It would learn in a day",
    "verdict": "decode",
    "why": "The sentence does not state what “it” refers to."
+  },
+  "7e7f6848854dee743601": {
+   "verdict": "ok"
   },
   "7e9c5f0c43bb82474352": {
    "verdict": "ok"
@@ -4904,6 +5093,9 @@
    "verdict": "decode",
    "why": "“Landed commit” is engineering shorthand for a commit that was merged."
   },
+  "807e8aec8bef29b4ceba": {
+   "verdict": "ok"
+  },
   "8081d4318cf78c39bdeb": {
    "verdict": "ok"
   },
@@ -4938,6 +5130,12 @@
    "verdict": "ok"
   },
   "80f8a6b080902518f38c": {
+   "verdict": "ok"
+  },
+  "8109400807397f77b15c": {
+   "verdict": "ok"
+  },
+  "81203f475c91bd1c1483": {
    "verdict": "ok"
   },
   "8142ce847dc8207d3fcd": {
@@ -5122,6 +5320,9 @@
   "8508aef2ce5d2017c17a": {
    "verdict": "ok"
   },
+  "85316fd32342b88914f8": {
+   "verdict": "ok"
+  },
   "857f8fda309a8d8a849f": {
    "verdict": "ok"
   },
@@ -5184,6 +5385,9 @@
    "why": "The reader has to infer what kind of run began."
   },
   "86d40a4484923d33c665": {
+   "verdict": "ok"
+  },
+  "86d794897eb0037ead08": {
    "verdict": "ok"
   },
   "86dffa30dda5f3b8a6b2": {
@@ -5288,6 +5492,9 @@
   "8903b5577f0fdbdf0b8c": {
    "verdict": "ok"
   },
+  "890803e93ddd8c385e8c": {
+   "verdict": "ok"
+  },
   "891b1595f530acf8197a": {
    "instead": "The call is small, has been waiting for days, and blocks no other work — it will take thirty seconds.",
    "quote": "Small, but it's been open for days and it gates nothing — a thirty-second call.",
@@ -5355,6 +5562,9 @@
    "verdict": "ok"
   },
   "8b2a229ac10a0fd294a3": {
+   "verdict": "ok"
+  },
+  "8b30f59b186b23a18566": {
    "verdict": "ok"
   },
   "8b3a420dc8fb9f8e2a9b": {
@@ -5483,6 +5693,9 @@
    "verdict": "decode",
    "why": "The reader has to know that “main” is the primary version and that these terms describe moving changes between versions and work cards."
   },
+  "8e5f468ac73582dce238": {
+   "verdict": "ok"
+  },
   "8e7a94b0d219bf0b9b22": {
    "instead": "a period with no income",
    "quote": "a dead stretch",
@@ -5558,6 +5771,9 @@
    "verdict": "decode",
    "why": "“Worker” is an internal system term here, so the reader has to work out whether it means a person, agent, or process."
   },
+  "8fe00a3747d03abc0629": {
+   "verdict": "ok"
+  },
   "8fe11165cd394f9d460d": {
    "verdict": "ok"
   },
@@ -5577,6 +5793,9 @@
    "verdict": "ok"
   },
   "906a794e6e83c4285b9b": {
+   "verdict": "ok"
+  },
+  "90712ef6ac3cdc08d50b": {
    "verdict": "ok"
   },
   "9071ad25fc1b7022eb3b": {
@@ -5708,6 +5927,9 @@
   "9343d6a27ac79043c629": {
    "verdict": "ok"
   },
+  "93709274a257a4e83674": {
+   "verdict": "ok"
+  },
   "937810d002038a6aae0b": {
    "instead": "This goal is late. The studio is responsible for completing it.",
    "quote": "owns the next step",
@@ -5816,6 +6038,9 @@
   "956fec063938a09c4372": {
    "verdict": "ok"
   },
+  "958108ee6a2b12295379": {
+   "verdict": "ok"
+  },
   "958866b249edcf9d6597": {
    "instead": "Write down which replay actions still work after the pouch changes",
    "quote": "which replay verbs survive the pouch change",
@@ -5900,6 +6125,9 @@
   "97c68196fa26b45a43db": {
    "verdict": "ok"
   },
+  "97d5087aa12e60d50fda": {
+   "verdict": "ok"
+  },
   "97f051518ee6085552c6": {
    "verdict": "ok"
   },
@@ -5910,6 +6138,9 @@
    "verdict": "ok"
   },
   "98160cafeca6990177c4": {
+   "verdict": "ok"
+  },
+  "981a686cd563352c2108": {
    "verdict": "ok"
   },
   "9845b0a0908ef22b66f1": {
@@ -6143,6 +6374,12 @@
    "verdict": "second-look",
    "why": "“Nod” makes the reader work out that the plants sway to show they are ripe."
   },
+  "9ec9b3610faa4234acb7": {
+   "instead": "Install the FFmpeg video tool so dashboard tests can create sample videos",
+   "quote": "FFmpeg",
+   "verdict": "second-look",
+   "why": "The tool name is unexplained, so a cold reader has to work out what it is."
+  },
   "9ed2ae01edd542e4f54d": {
    "instead": "Three CC0 recordings from Freesound meet the requirement for a short, dry, mechanical click.",
    "quote": "clear the bar",
@@ -6289,6 +6526,9 @@
    "verdict": "decode",
    "why": "The reader cannot tell what “it” refers to from this sentence alone."
   },
+  "a22f37babb2e7bb311d0": {
+   "verdict": "ok"
+  },
   "a24288516b3c560e7d74": {
    "verdict": "ok"
   },
@@ -6385,6 +6625,9 @@
   "a478baaebecc6f61549d": {
    "verdict": "ok"
   },
+  "a48aedfae72d9eb40e5f": {
+   "verdict": "ok"
+  },
   "a4935454f57ebd8038fa": {
    "verdict": "ok"
   },
@@ -6425,6 +6668,9 @@
    "verdict": "ok"
   },
   "a50e5e7323b3a74e32b5": {
+   "verdict": "ok"
+  },
+  "a51f7e4f88046eb8c356": {
    "verdict": "ok"
   },
   "a5240c1795a5c40b598c": {
@@ -6553,6 +6799,9 @@
    "verdict": "ok"
   },
   "a82b03802e1b6b0a8fad": {
+   "verdict": "ok"
+  },
+  "a8321d0f9b2d962fb9dd": {
    "verdict": "ok"
   },
   "a8389ad72cbdcfbe0628": {
@@ -6721,6 +6970,9 @@
   "ac08dfe229f005d27720": {
    "verdict": "ok"
   },
+  "ac14398cb12e926a8a96": {
+   "verdict": "ok"
+  },
   "ac1b4c357c0cc7b46381": {
    "verdict": "ok"
   },
@@ -6759,6 +7011,9 @@
    "quote": "instead of buying the card it starts on",
    "verdict": "second-look",
    "why": "The reader has to pause to work out what “it” refers to and how the drag relates to the card."
+  },
+  "ad3654ec1827eb23e06f": {
+   "verdict": "ok"
   },
   "ad39ccf20d152b18af0a": {
    "verdict": "ok"
@@ -6871,6 +7126,9 @@
    "quote": "so they read without a decoder",
    "verdict": "second-look",
    "why": "This is a clever observation rather than a plain direction."
+  },
+  "af80f0028873d0facd90": {
+   "verdict": "ok"
   },
   "afecd6a46261002708b6": {
    "verdict": "ok"
@@ -7002,6 +7260,9 @@
   "b42373d0a1efeb03abe9": {
    "verdict": "ok"
   },
+  "b43379b1e31ed19496e4": {
+   "verdict": "ok"
+  },
   "b449661b5686cbc7ec97": {
    "verdict": "ok"
   },
@@ -7057,6 +7318,9 @@
    "verdict": "second-look",
    "why": "“Pick up” is a metaphor for assignment, so the reader has to translate it into the actual status."
   },
+  "b696f5de6e62238a4ccc": {
+   "verdict": "ok"
+  },
   "b6b8df2c76e1431686f1": {
    "verdict": "ok"
   },
@@ -7064,6 +7328,9 @@
    "verdict": "ok"
   },
   "b7288494106cb39c5257": {
+   "verdict": "ok"
+  },
+  "b753e890d46257ea371c": {
    "verdict": "ok"
   },
   "b775f7f916a2590064cb": {
@@ -7180,6 +7447,12 @@
    "verdict": "decode",
    "why": "The reader must translate “tablet numbers” and “costs the tablet its frame rate” into the visible result: the tablet stutters."
   },
+  "baa847898da58fb80bde": {
+   "instead": "Add Social videos and a tool for reading scripts while recording to HQ",
+   "quote": "a recording script reader",
+   "verdict": "second-look",
+   "why": "It is not immediately clear that this means a tool for reading a script while recording."
+  },
   "bac3aaecc31e6abbc388": {
    "verdict": "ok"
   },
@@ -7211,6 +7484,9 @@
    "why": "“Robot ladder” is a metaphor for an upgrade path where the plain fact would be clearer."
   },
   "bb4f582bce554ca0f692": {
+   "verdict": "ok"
+  },
+  "bb8b1190cecfb14e18cb": {
    "verdict": "ok"
   },
   "bb93594a4efccb7deb39": {
@@ -7271,6 +7547,9 @@
    "why": "“Token budget” is internal technical shorthand, so the reader must work out that these cards contain requests that are too long."
   },
   "bcbe8561b6647684bcce": {
+   "verdict": "ok"
+  },
+  "bd0c3b07a755d6e94fac": {
    "verdict": "ok"
   },
   "bd52a35426cee86d7add": {
@@ -7506,6 +7785,9 @@
   "c2bd2da400b76f0995ef": {
    "verdict": "ok"
   },
+  "c2c9fd34013edb629425": {
+   "verdict": "ok"
+  },
   "c2d3a3d55d4f5ef1246f": {
    "verdict": "ok"
   },
@@ -7561,6 +7843,9 @@
    "quote": "the phase gate",
    "verdict": "decode",
    "why": "This internal milestone term is unexplained on first contact."
+  },
+  "c40ec535cd91b4aec527": {
+   "verdict": "ok"
   },
   "c42935c07e3d7c64a9b5": {
    "verdict": "ok"
@@ -7692,6 +7977,9 @@
   "c6b760767a28ea6f62f8": {
    "verdict": "ok"
   },
+  "c71111903411a450186a": {
+   "verdict": "ok"
+  },
   "c732ddab6e09d1e54ea5": {
    "verdict": "ok"
   },
@@ -7699,6 +7987,9 @@
    "verdict": "ok"
   },
   "c75bc8074ec54d4db1e9": {
+   "verdict": "ok"
+  },
+  "c763b79c6f4ba3cc49b2": {
    "verdict": "ok"
   },
   "c796f3b223a68a10b2ef": {
@@ -7769,6 +8060,9 @@
    "why": "The referenced option is not named here, so the reader must look elsewhere to know what this choice includes."
   },
   "c8f9601553ae102e798b": {
+   "verdict": "ok"
+  },
+  "c938a2f9bbefc6669dac": {
    "verdict": "ok"
   },
   "c943200ba715deeec085": {
@@ -7864,6 +8158,9 @@
    "why": "“The last one” has no referent in the sentence, so the reader must infer that it means the last run."
   },
   "cb811c4681baae83f29a": {
+   "verdict": "ok"
+  },
+  "cb891f2b77d26d949ac1": {
    "verdict": "ok"
   },
   "cbb8b323fcc104ce6735": {
@@ -8183,6 +8480,9 @@
    "verdict": "decode",
    "why": "This internal label does not tell a cold reader what is doing the comparison."
   },
+  "d416ca1c9a4e514b15cb": {
+   "verdict": "ok"
+  },
   "d426d6c79c5bdc58c991": {
    "verdict": "ok"
   },
@@ -8265,6 +8565,9 @@
   "d55474ca41d67594e647": {
    "verdict": "ok"
   },
+  "d5a445e89cd5fa08f66c": {
+   "verdict": "ok"
+  },
   "d5aa160833fec025f0a4": {
    "verdict": "ok"
   },
@@ -8278,6 +8581,9 @@
    "why": "“Landing” is engineering shorthand for merging a change."
   },
   "d5d06a5f24986e0d3c7c": {
+   "verdict": "ok"
+  },
+  "d5d59943fd0aa648d595": {
    "verdict": "ok"
   },
   "d62cdfeb483891967665": {
@@ -8456,6 +8762,9 @@
    "why": "“Stories” is internal work shorthand, so a stranger cannot tell whether it means narrative content or pieces of work."
   },
   "da71ae6e0f203fab378b": {
+   "verdict": "ok"
+  },
+  "da8f219d842cff9a7999": {
    "verdict": "ok"
   },
   "daba77778c9e074d5184": {
@@ -8678,6 +8987,9 @@
   "df81857a0e8b714200cf": {
    "verdict": "ok"
   },
+  "df898504cb24dd7599cf": {
+   "verdict": "ok"
+  },
   "dfb3a59571300a31bb52": {
    "instead": "Each card names what is blocking it and who owns its next action. A recovery action may be ready even while the original action remains blocked.",
    "quote": "the original candidate",
@@ -8688,6 +9000,9 @@
    "verdict": "ok"
   },
   "dfe629888602b3cfc4e0": {
+   "verdict": "ok"
+  },
+  "dff125e88afe4dc30d73": {
    "verdict": "ok"
   },
   "dff3cdadfbeb0ebf29ad": {
@@ -8759,6 +9074,9 @@
   "e0fdc1c14eed35b22a2e": {
    "verdict": "ok"
   },
+  "e10c0c3da6e85356e53c": {
+   "verdict": "ok"
+  },
   "e1568494f52e3efe34d5": {
    "verdict": "ok"
   },
@@ -8772,6 +9090,9 @@
    "verdict": "ok"
   },
   "e1ffb6ec9d0d7ab51c56": {
+   "verdict": "ok"
+  },
+  "e20126028e21710d4dd3": {
    "verdict": "ok"
   },
   "e21a8e3eda2ba3c66c4e": {
@@ -8841,6 +9162,9 @@
   "e3b3ad0fad8efdb5bdb0": {
    "verdict": "ok"
   },
+  "e3e081d0bd5567c82865": {
+   "verdict": "ok"
+  },
   "e3f0e39f458a63c98f1c": {
    "verdict": "ok"
   },
@@ -8850,11 +9174,17 @@
   "e4150772aa28b412cfb9": {
    "verdict": "ok"
   },
+  "e42db2be9dec2e22714c": {
+   "verdict": "ok"
+  },
   "e4797344f999572542d9": {
    "instead": "Where should the single shared copy of the cards live?",
    "quote": "Which home should the cards have?",
    "verdict": "second-look",
    "why": "“Home” is a metaphor where the decision asks where the cards' single shared copy should live."
+  },
+  "e48400969ca1abc9e82d": {
+   "verdict": "ok"
   },
   "e4a01a91daee10447244": {
    "verdict": "ok"
@@ -9017,6 +9347,9 @@
   "e8c093b03d059ec8b611": {
    "verdict": "ok"
   },
+  "e8cfbb9d8a040f8903a7": {
+   "verdict": "ok"
+  },
   "e8fedc3d30692e2e3d0f": {
    "verdict": "ok"
   },
@@ -9144,6 +9477,12 @@
    "verdict": "decode",
    "why": "The phrase is figurative and does not say what happens to the barn or what the player must do."
   },
+  "ede7669d38bde02fbd16": {
+   "verdict": "ok"
+  },
+  "ee072bc9919bc119da08": {
+   "verdict": "ok"
+  },
   "ee07ce06baf3f9a0ee6e": {
    "verdict": "ok"
   },
@@ -9252,6 +9591,9 @@
    "verdict": "ok"
   },
   "f123dfd34c5b2b4fb66c": {
+   "verdict": "ok"
+  },
+  "f13487f7916478633ebc": {
    "verdict": "ok"
   },
   "f13c0c236dddf54ce698": {
@@ -9368,6 +9710,12 @@
    "verdict": "decode",
    "why": "A cold reader has to work out what the sessions are, what “lost” means, and how commits can replay them."
   },
+  "f44a41298afcab8373aa": {
+   "instead": "Leave your comments below.",
+   "quote": "Leave your comments where they go.",
+   "verdict": "second-look",
+   "why": "The wording makes the reader pause to work out where comments should be left."
+  },
   "f44f2a87f511694a147c": {
    "instead": "Stop the work queue's game tests from stalling for fourteen minutes on every work item that only changes documents",
    "quote": "every card that only changes documents",
@@ -9475,7 +9823,13 @@
   "f740d8acbd81afe1a9a5": {
    "verdict": "ok"
   },
+  "f758bd1a3fb1e1210c5b": {
+   "verdict": "ok"
+  },
   "f77a60d6e2d9ef672f71": {
+   "verdict": "ok"
+  },
+  "f7ab3a0feec8fd1227ec": {
    "verdict": "ok"
   },
   "f7c5646da6f155452810": {

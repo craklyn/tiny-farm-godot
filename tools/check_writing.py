@@ -96,6 +96,8 @@ CALL_TIMEOUT = 180
 # Every field here is rendered to Daniel. The path is a dotted walk; `[]` means
 # "every item in this list". Adding a field is how a new surface joins the check.
 DATA_SOURCES = [
+    ("hq/data/social_catalog.json", ["projects[].brief.title", "projects[].brief.promise", "projects[].brief.hook",
+                                       "projects[].brief.ask", "projects[].production_note", "projects[].posting_notes[]"], "social video"),
     ("hq/data/work/*.json", ["title"], "work card"),
     ("hq/data/goals/*.json", ["goals[].statement", "goals[].statement_short",
                               "goals[].why_it_matters",
@@ -111,7 +113,7 @@ DATA_SOURCES = [
 ]
 CODE_SOURCES = ["hq/static/app.js", "hq/static/work.js", "hq/static/pillars.js",
                 "hq/static/design.js", "hq/static/playtests.js", "hq/static/map.js",
-                "hq/static/sprite.js"]
+                "hq/static/sprite.js", "hq/static/social.js"]
 
 # Work cards that are finished are the company's record of what it did. Rewriting
 # history to satisfy a rule written later would be dishonest, so the check reads

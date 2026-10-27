@@ -1,6 +1,6 @@
 # Tiny Farm videos
 
-Marketing and devlog videos: Daniel's talking head over gameplay recorded from the game itself. The tools here
+Marketing and devlog videos: Daniel’s recorded voice or talking head over gameplay recorded from the game itself. The tools here
 build on the **video-editing skill** (transcription, the auto-cutter, the render helpers and Daniel's video
 preferences), which lives in its own private repo and is cloned to `~/.claude/skills/video-editing` on each
 machine (see "A new machine" below).
@@ -38,28 +38,50 @@ tools/record_video_shots.gd  (in the game's tools/) the scripted gameplay shots,
 - **Inputs carry the version number of the render they first fed** where they changed (`edl-v2.yaml`,
   `gameplay-v3.yaml`, `card-v5.mp4`); `decisions.md` says which inputs each version used.
 
-Patterns: every video is `video/2*_*_*/`; one platform's are `video/*_tiktok_*/`; every version ever sent is
-`video/*/renders/*_v[0-9]*.mp4`; a video's latest version is its highest `_vN`.
+Recording-date folders are `video/2*_*_*/`; one platform’s are `video/*_tiktok_*/`. HQ’s planned
+projects use `video/drafts/<generated-id>/`. Both layouts keep cuts in their own `renders/` folder;
+a video’s latest version is its highest numeric `_vN`. To find cuts in both layouts from the repository root:
+
+```bash
+find video -type f -path '*/renders/*_v[0-9]*.mp4'
+```
+
+Tools that support recursive globs can use `video/**/renders/*_v[0-9]*.mp4`.
+
+## Ideas planned in HQ
+
+[Social videos](http://localhost:8642/#/social) reserves `video/drafts/<generated-id>/` for a new idea.
+Its cuts are `renders/<generated-id>_vN.mp4`, with increasing numeric versions. Saving an idea creates only
+an HQ record; a production session creates the folder and its source files. Keep earlier renders and
+record each new cut’s inputs in `decisions.md`. HQ discovers these cuts when the page refreshes. Recording-date
+folders above remain the locations for the three existing videos.
 
 ## Making one
 
-From the video's folder (`cd video/<video>`), with `PY=../.venv/bin/python`, `T=../tools` and
-`S=~/.claude/skills/video-editing/scripts`:
+Run from the video’s folder, either `video/<recording-date-folder>/` or
+`video/drafts/<generated-id>/`. Resolve shared helpers from the repository root; paths such as
+`../tools` depend on the folder depth and do not work for both layouts.
 
 ```bash
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+PY="$REPO_ROOT/video/.venv/bin/python"
+T="$REPO_ROOT/video/tools"
+S="$HOME/.claude/skills/video-editing/scripts"
+MUSIC="$REPO_ROOT/assets/audio/music/bgm_wholesome.ogg"
+VIDEO_ID="$(basename "$PWD")"
 # 1. Copy the takes off the camera into footage/raw/ (read-only), then transcribe
-$PY $S/transcribe.py footage/raw/*.MP4 --out footage/transcripts --prompt "Tiny Farm, Buddy-O Vlogs"
+"$PY" "$S/transcribe.py" footage/raw/*.MP4 --out footage/transcripts --prompt "Tiny Farm, Buddy-O Vlogs"
 # 2. Cut the voice: autocut each take, then hand-trim into edit/edl-vN.yaml; phrase captions in edit/captions-vN.txt
-$PY $S/autocut.py footage/transcripts/<take>.json --out edit/auto-<take>.yaml
+"$PY" "$S/autocut.py" "footage/transcripts/<take>.json" --out "edit/auto-<take>.yaml"
 # 3. Record game shots (pull the game first; the shots are written in tools/record_video_shots.gd)
-$T/record_shot.sh . harvest
-$T/record_shot.sh . bench 800x600 dials
+"$T/record_shot.sh" . harvest
+"$T/record_shot.sh" . bench 800x600 dials
 # 4. Assemble the gameplay panel from the shot list, make the end card, compose
-$PY $T/build_gameplay.py edit/gameplay-v3.yaml --total 27.628 --out gameplay/timeline-v3.mp4
-$PY $T/titlecard.py --title "SPROUT &|SPROCKET" --out assets/titlecard/card-v6.mp4
-$PY $T/compose.py edit/edl-v2.yaml --game gameplay/timeline-v3.mp4 --captions edit/captions-v2.txt \
-    --music ../../assets/audio/music/bgm_wholesome.ogg --game-gain -19 --music-gain -24 \
-    --card assets/titlecard/card-v6.mp4 --out renders/<video>_v5.mp4
+"$PY" "$T/build_gameplay.py" edit/gameplay-v3.yaml --total 27.628 --out gameplay/timeline-v3.mp4
+"$PY" "$T/titlecard.py" --title "SPROUT &|SPROCKET" --out assets/titlecard/card-v6.mp4
+"$PY" "$T/compose.py" edit/edl-v2.yaml --game gameplay/timeline-v3.mp4 --captions edit/captions-v2.txt \
+    --music "$MUSIC" --game-gain -19 --music-gain -24 \
+    --card assets/titlecard/card-v6.mp4 --out "renders/${VIDEO_ID}_v5.mp4"
 ```
 
 Each tool's docstring has the details (`--help`). The skill's `SKILL.md` covers checking a render before
