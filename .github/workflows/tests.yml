@@ -67,6 +67,12 @@ jobs:
           mkdir -p "$RUNNER_TEMP/bin" && tar xzf "$RUNNER_TEMP/gitleaks.tar.gz" -C "$RUNNER_TEMP/bin" gitleaks
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
 
+      # The Social browser regression creates a real H.264 fixture and seeks it.
+      - name: Install FFmpeg for the video browser tests
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends ffmpeg
+
       - name: Every HQ process regression
         run: python3 hq/run_tests.py
 

@@ -6374,6 +6374,12 @@
    "verdict": "second-look",
    "why": "“Nod” makes the reader work out that the plants sway to show they are ripe."
   },
+  "9ec9b3610faa4234acb7": {
+   "instead": "Install the FFmpeg video tool so dashboard tests can create sample videos",
+   "quote": "FFmpeg",
+   "verdict": "second-look",
+   "why": "The tool name is unexplained, so a cold reader has to work out what it is."
+  },
   "9ed2ae01edd542e4f54d": {
    "instead": "Three CC0 recordings from Freesound meet the requirement for a short, dry, mechanical click.",
    "quote": "clear the bar",
