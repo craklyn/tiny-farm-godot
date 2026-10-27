@@ -6,6 +6,7 @@ import json
 import os
 from pathlib import Path
 import sys
+import subprocess
 import tempfile
 import types
 import unittest
@@ -63,6 +64,30 @@ class SocialTests(unittest.TestCase):
         with self.assertRaises(social.SocialError) as e:
             fn()
         self.assertEqual(e.exception.status, status)
+
+    def test_recording_reader_exact_current_source_and_saved_precedence(self):
+        rel = "video/2026-10-14_tiktok_sheep/edit/script-v2.md"
+        expected = (HQ.parent / rel).read_text().split("\n\n", 1)[1].strip().split("\n\n")
+        reader = self.detail()["recording_script"]
+        self.assertEqual(reader, {"origin":"source", "paragraphs":expected})
+        self.assertEqual(len(expected), 14)
+        saved = "<img src=x onerror=alert(1)>\n\nMy own closing line."
+        self.mutate("save", brief={"script":saved})
+        self.assertEqual(self.detail()["recording_script"],
+                         {"origin":"saved", "paragraphs":saved.split("\n\n")})
+        self.assertEqual(social._load("sheep")["brief"]["script"], saved)
+
+    def test_recording_reader_missing_and_changed_source_are_honest(self):
+        record = social._load("sheep")
+        with patch.object(social, "_inside", return_value=self.base / "missing.md"):
+            self.assertEqual(social._recording_script(record), {"origin":None,"paragraphs":[]})
+        source = self.base / "script.md"
+        source.write_text("# Not spoken\n\nFirst exact line.\n\nSecond exact line.")
+        with patch.object(social, "_inside", return_value=source):
+            self.assertEqual(social._recording_script(record)["paragraphs"], ["First exact line.","Second exact line."])
+            source.write_text("# Not spoken\n\nChanged at request time.")
+            self.assertEqual(social._recording_script(record)["paragraphs"], ["Changed at request time."])
+        self.assertEqual(self.detail("creamery")["recording_script"], {"origin":None,"paragraphs":[]})
 
     def test_seed_is_two_publications_and_one_draft_with_evidence(self):
         listing = social.list_content()["projects"]
@@ -221,7 +246,8 @@ class SocialTests(unittest.TestCase):
         first=self.mutate("note",text="Hold the bird shot.",seconds=8)
         original=first["notes"][0].copy()
         sent=self.mutate("request",submission_id="returned-cut")
-        self.assertEqual(sent["status"],"Revision requested")
+        self.assertEqual(sent["production"]["mode"],"active")
+        self.assertEqual(sent["production"]["owner"],"claude")
         self.file(version="v2",content=b"returned movie")
         carried=self.mutate("resolve",note_id=original["id"],disposition="carry_forward")
         self.assertEqual(carried["notes"][0],original)
@@ -247,6 +273,102 @@ class SocialTests(unittest.TestCase):
         self.assertEqual(result["publication"],before)
         self.assertEqual(result["posting_details"][-1]["date"],"2026-10-07")
         self.assertEqual(result["posting_details"][-1]["url"],"")
+
+    def test_primary_action_tracks_live_work_transitions_with_and_without_cut(self):
+        for with_cut in (False, True):
+            ident = social.mutate("idea", {"brief":{"title":"A production idea"}})["id"]
+            if with_cut:
+                self.file(ident)
+            sent = self.mutate("request", ident, submission_id="primary-action-" + str(with_cut))
+            self.assertFalse(sent["production"]["can_request"])
+            self.assertEqual(sent["production"]["mode"], "active")
+            item = work.load_item(sent["requests"][0]["work_id"])
+            item.update(owner="sam")
+            work.save_item(item)
+            d = self.detail(ident)
+            self.assertIn("Sam Ortega", d["status"])
+            self.assertEqual(d["production"]["owner"], "sam")
+            for state, mode in (("dropped","dropped"),("accepted","completed"),("landed","completed")):
+                item = work.load_item(item["id"])
+                item["state"] = state
+                work.save_item(item)
+                d = self.detail(ident)
+                self.assertEqual(d["production"]["mode"],mode)
+                self.assertFalse(d["production"]["can_request"])
+                self.assertNotIn("assigned", d["status"])
+                self.assertIn("request",d["next_action"].lower())
+            Path(work._item_path(item["id"])).unlink()
+            d=self.detail(ident)
+            self.assertEqual(d["production"]["mode"],"missing")
+            self.assertFalse(d["production"]["can_request"])
+            changed=self.mutate("save",ident,brief={"script":"A genuinely revised script."})
+            self.assertTrue(changed["production"]["can_request"])
+
+    def test_blank_optional_fields_and_file_touch_do_not_duplicate_request(self):
+        ident=social.mutate("idea",{"brief":{"title":"One idea"}})["id"]
+        movie=self.file(ident)
+        first=self.mutate("request",ident,submission_id="first-normalized")
+        self.mutate("save",ident,brief={"script":"","shots":"","caption":""})
+        os.utime(movie,None)
+        self.assertFalse(self.detail(ident)["production"]["can_request"])
+        again=self.mutate("request",ident,submission_id="second-normalized")
+        self.assertEqual(len(again["requests"]),1)
+        self.assertEqual(again["requests"][0]["work_id"],first["requests"][0]["work_id"])
+        self.assertEqual(len(work.items()),1)
+
+    def test_request_level_disposition_without_notes_is_durable_and_linked(self):
+        self.file(version="v5")
+        self.mutate("save",brief={"script":"A revised ending.","shots":"Close on the birds."})
+        sent=self.mutate("request",submission_id="brief-only-request")
+        request=sent["requests"][0]
+        original=json.loads(json.dumps(request["snapshot"]))
+        self.file(version="v6",content=b"new cut")
+        carried=self.mutate("resolve",request_id=request["request_id"],disposition="carry_forward")
+        self.assertEqual(carried["requests"][0]["snapshot"],original)
+        self.assertEqual(carried["notes"][0]["carried_request_id"],request["request_id"])
+        self.assertEqual(carried["notes"][0]["version"],"v6")
+        self.assertIsNone(carried["notes"][0]["seconds"])
+        self.assertEqual(carried["request_reviews"][0]["disposition"],"carry_forward")
+        self.assertError(409,lambda:self.mutate("approve"))
+        self.mutate("resolve",note_id=carried["notes"][0]["id"])
+        self.file(version="v7",content=b"another cut")
+        addressed=self.mutate("resolve",request_id=request["request_id"],disposition="addressed")
+        self.assertEqual(addressed["request_reviews"][-1]["version"],"v7")
+        social.bind(self.host)
+        self.assertEqual(self.detail()["request_reviews"],addressed["request_reviews"])
+        self.assertTrue(self.mutate("approve")["approved"])
+
+    def test_returned_decisions_reject_earlier_and_non_latest_cuts(self):
+        self.file(version="v4")
+        self.file(version="v5")
+        self.mutate("note",text="Change the ending.",seconds=1)
+        sent=self.mutate("request",submission_id="strict-newer-cut")
+        request=sent["requests"][0]
+        self.file(version="v6")
+        self.file(version="v7")
+        d=self.detail()
+        for version in ("v4","v5","v6"):
+            c=next(c for c in d["cuts"] if c["version"]==version)
+            for args in ({"request_id":request["request_id"]},{"request_id":request["request_id"],"note_id":d["notes"][0]["id"]}):
+                self.assertError(409,lambda:self.mutate("resolve",version=c["version"],sha256=c["sha256"],disposition="addressed",**args))
+        self.mutate("resolve",request_id=request["request_id"],disposition="addressed")
+
+    def test_corrected_posting_date_is_identical_in_collection_and_detail(self):
+        before=self.detail("creamery")["publication"].copy()
+        d=self.mutate("publication","creamery",date="2026-10-13",url="")
+        card=next(p for p in social.list_content()["projects"] if p["id"]=="creamery")
+        self.assertEqual(card["posting_record"],d["posting_record"])
+        self.assertEqual(card["posting_record"]["date"],"2026-10-13")
+        self.assertEqual(card["publication"],before)
+
+    def test_nested_private_production_artifacts_are_ignored_but_sources_trackable(self):
+        for folder in ("video/2026-10-14_tiktok_sheep","video/drafts/idea-0123456789abcdef"):
+            for name in ("footage/raw/take.MP4","footage/transcripts/take.json","gameplay/raw/sheep.mp4","gameplay/timeline-v1.mp4","renders/video_v1.mp4","renders/video_v1.plan.json","work/frame.png","assets/titlecard/card-v1.mp4","assets/card-v1.mp4","edit/auto-take.yaml"):
+                result=subprocess.run(["git","check-ignore","--no-index","-q",folder+"/"+name],cwd=HQ.parent)
+                self.assertEqual(result.returncode,0,folder+"/"+name)
+            for name in ("edit/script-v1.md","edit/edl-v1.yaml","edit/gameplay-v1.yaml","edit/captions-v1.txt","decisions.md"):
+                result=subprocess.run(["git","check-ignore","--no-index","-q",folder+"/"+name],cwd=HQ.parent)
+                self.assertEqual(result.returncode,1,folder+"/"+name)
 
     def test_invalid_payloads_dates_urls_and_ids(self):
         for ident in ("../sheep", "sheep/", "%2e%2e", "a"*65):

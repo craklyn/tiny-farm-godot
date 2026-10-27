@@ -143,7 +143,7 @@
       ],
       "owner": "jordan",
       "source_project": "creamery",
-      "production_note": "The current edit uses voice-over, with no face on screen. The editing proposal holds the v5 inputs; its generated gameplay and end card need rebuilding.",
+      "production_note": "The current edit uses voice-over, with no face on screen. The editing proposal and source notes are linked below.",
       "editing_source": {
         "url": "https://github.com/craklyn/tiny-farm-godot/pull/31",
         "head": "c8fee07b84aa1dbbee8376a31db5a22a8bdebb22",
@@ -160,7 +160,11 @@
           "gameplay/timeline-v5.mp4",
           "assets/titlecard/card-v1.mp4"
         ]
-      }
+      },
+      "posting_notes": [
+        "Music: Wholesome by Kevin MacLeod (incompetech.com), licensed under CC BY 4.0."
+      ],
+      "recording_script_source": "video/2026-10-14_tiktok_sheep/edit/script-v2.md"
     }
   ]
 }

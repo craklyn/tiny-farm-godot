@@ -52,6 +52,10 @@
     "stretch": {
       "w": 43,
       "h": 25
+    },
+    "waddle": {
+      "w": 30,
+      "h": 25
     }
   },
   "anchor": "feet on the cell's bottom row, body centred: stand it like the cow",
@@ -64,10 +68,21 @@
       "frames": [
         "reach",
         "stretch",
-        "strain",
+        "lick",
         "smug"
       ],
-      "note": "the extreme coat's neck stretch toward grass she cannot reach: the head pokes out of the wool, the neck at full stretch, the same straining (shake between the two), then home again looking smug. Fleece and hooves never move."
+      "note": "A happy reach at mouth height, eyes open and tongue toward the grass, then home looking smug. Fleece and hooves stay planted."
+    },
+    "waddle": {
+      "first_row": 48,
+      "row_of": "first_row + look index",
+      "frames": [
+        "body",
+        "body",
+        "body",
+        "body"
+      ],
+      "note": "Body only, with no painted hooves. SheepGait draws exactly four legs from travel distance, holding stance hooves fixed against the ground."
     }
   },
   "gags": {

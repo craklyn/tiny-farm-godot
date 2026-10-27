@@ -213,8 +213,8 @@ func test_neck_stretch_beat() -> void:
 	for b in SheepGags.STRETCH_BEAT:
 		expected += SheepGags.ticks(float(b[1]))
 	_assert(seen.has(-1) and seen.has(SheepArt.STRETCH_REACH) and seen.has(SheepArt.STRETCH_FULL)
-		and seen.has(SheepArt.STRETCH_STRAIN) and seen.has(SheepArt.STRETCH_SMUG) and beat == expected,
-		"once a cycle she reaches, stretches, strains and settles back smug, for %d ticks of it" % beat)
+		and seen.has(SheepArt.STRETCH_LICK) and seen.has(SheepArt.STRETCH_SMUG) and beat == expected,
+		"once a cycle she reaches, stretches, licks and settles back smug, for %d ticks of it" % beat)
 	_assert(SheepGags.stretch_frame("sheep_1", 777) == SheepGags.stretch_frame("sheep_1", 777 + period),
 		"the beat comes round on the sim clock, the same at the same tick")
 	SheepGags.cue("sheep_9", "stretch", 400)

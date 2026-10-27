@@ -477,7 +477,13 @@ async function route() {
     // Work parses its own card ID and action query from the address.
     else if (hash.startsWith("/work/")) await renderWork();
     else if (hash.startsWith("/inbox/")) await renderWork();
-    else if (hash.startsWith("/social/") && typeof Social !== "undefined") await Social.detail(hash.slice("/social/".length));
+    else if (hash === "/social" || hash.startsWith("/social/")) {
+      // social.js registers after app.js and re-routes a direct load when ready.
+      if (typeof Social !== "undefined") {
+        if (hash === "/social") await Social.library();
+        else await Social.detail(hash.slice("/social/".length));
+      }
+    }
     else if (hash.startsWith("/request/")) await renderRequest(hash.slice("/request/".length));
     // Guarded: on a direct page-load design.js hasn't registered yet; it
     // re-routes itself once loaded (same dance as its /design route).

@@ -121,3 +121,19 @@
 
 .social-card-copy,.social-heading>div { min-width:0; overflow-wrap:anywhere; }
 .social-shell p,.social-shell code { overflow-wrap:anywhere; }
+
+.social-preserve-lines { white-space:pre-wrap; }
+.social-returned-review h3 { font-size:13px; margin:16px 0 8px; }
+
+.social-review-decision { flex-wrap:wrap; }
+.social-review-decision>div:first-child { flex:1 1 180px; }
+
+/* A manually scrolled, read-only narration sheet. */
+.social-reader { max-width:900px; }
+.social-reader .social-heading { margin-bottom:16px; }
+.social-reader-tools { display:flex; align-items:center; flex-wrap:wrap; gap:12px; position:sticky; top:0; padding:12px 0; background:var(--bg); z-index:2; border-bottom:1px solid var(--line); }
+.social-reader-tools output { min-width:44px; font-variant-numeric:tabular-nums; color:var(--muted); }
+.social-script-body { max-width:32ch; margin:36px auto 0; font-size:32px; }
+.social-script-body p { line-height:1.65; margin:0 0 1.35em; white-space:pre-wrap; overflow-wrap:anywhere; }
+.social-reader:fullscreen { box-sizing:border-box; background:var(--bg); color:var(--text); max-width:none; overflow-y:auto; padding:28px max(24px,calc((100vw - 900px)/2)); }
+@media(max-width:720px) { .social-reader .social-heading h1 { font-size:28px; } .social-script-body { margin-top:24px; } .social-reader:fullscreen { padding:20px; } }

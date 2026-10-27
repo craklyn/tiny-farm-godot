@@ -51,6 +51,7 @@ import anim  # sibling module: the Animation Lab (see its docstring)
 import closing  # sibling module: closing a card with evidence, outside claims (Q-125)
 import roots  # one set of code, data, user-workspace and authoritative-main roots
 import store  # the live store's own history, one commit per burst of writes (Q-125)
+import social_proxy  # optional isolated social preview; other routes remain live
 import social  # private social-video review and publication records
 import studio  # sibling module: the ledger of hand edits to sprites
 import work  # sibling module: how work originates (see its docstring)
@@ -7251,6 +7252,8 @@ class Handler(BaseHTTPRequestHandler):
         parts = urlparse(self.path)
         path, query = parts.path, parse_qs(parts.query)
         try:
+            if social_proxy.forward(self, path):
+                return
             if path == "/api/social":
                 return self._send(200, social.list_content())
             if path.startswith("/api/social/"):
@@ -7447,6 +7450,11 @@ class Handler(BaseHTTPRequestHandler):
 
     def do_POST(self):
         path = self.path.split("?")[0]
+        try:
+            if social_proxy.forward(self, path):
+                return
+        except social.SocialError as e:
+            return self._send(e.status, {"error": str(e), "code": e.code})
         if path.startswith("/api/social/"):
             try:
                 length = social.guard_write(self)

@@ -5,6 +5,15 @@ the text posted as the itch.io devlog for that tag — written for someone who a
 with no context (`docs/WRITING.md`), so no internal names, no ticket IDs. The store
 page copy lives in `ITCH_PAGE.md`; these are the per-update announcements.*
 
+## v0.2.1 — candidate, not published
+
+The draft announcement is [Tiny Farm v0.2.1](releases/v0.2.1.md). It includes the
+Mark III and training workbench, the red dairy barn, and proposed notes for the
+sheep and building moves already merged to main. Daniel's barn decision is settled;
+the choice of the final release commit remains open. The
+[readiness record](releases/v0.2.1-readiness.md) lists the checked build, remaining
+human gates and evidence. No release date or completed playthrough is claimed here.
+
 ## v0.2.0 — Update 1 · 2026-09-08
 
 The farm got its first machines — and a home.

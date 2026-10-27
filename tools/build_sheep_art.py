@@ -38,7 +38,7 @@ SHEET_CELL = (CELL[0] + 2 * PAD, CELL[1])
 FRAMES = 4
 ROWS = ["sheared", "mid", "full", "extra_full", "extreme"]
 # Rows after every look's five coats: one row a look each, in look order.
-EXTRA_ROWS = ["stretch"]
+EXTRA_ROWS = ["stretch", "waddle"]
 
 
 def rgb(h):
@@ -87,7 +87,7 @@ def palette(look):
     return {
         "W": w[0], "S": w[1], "D": w[2], "O": w[3],
         "F": f[0], "B": f[1] or f[0], "E": f[2], "M": f[3], "R": f[4],
-        "P": PINK, "K": INK, "H": HORN[0], "h": HORN[1], "X": SPOTS[0], "Y": SPOTS[1],
+        "P": PINK, "K": INK, "I": "#f8f4e6", "H": HORN[0], "h": HORN[1], "X": SPOTS[0], "Y": SPOTS[1],
     }
 
 
@@ -210,14 +210,14 @@ ePPPFFFFEFEFFF
 
 # The big face's expressions for the neck stretch, as changes to its happy one: each
 # maps (column, row) in HEADS["big"] to what is drawn there instead ("." for nothing).
-# "open": a wide eye on the grass. "squeeze": the eye screwed shut with effort, the
-# smile gone to a pursed mouth and her tongue out after the grass. "smug": eyelids
+# "open": a bright eye fixed on the grass. "lick": the same open eye and a
+# tongue pointing forward after the grass. "smug": eyelids
 # half down and a smirk curled up at the corner.
 EXPRESSIONS = {
     "happy": {},
-    "open": {(8, 4): "F", (10, 4): "F", (9, 4): "E"},
-    "squeeze": {(9, 3): "F", (10, 4): "F", (8, 3): "E", (9, 4): "E", (8, 5): "E",
-                (11, 7): "F", (12, 7): "M", (13, 7): "M", (14, 7): "P", (15, 7): "P", (15, 8): "P"},
+    "open": {(9, 3): "I", (10, 3): "E", (8, 4): "F", (9, 4): "E", (10, 4): "K"},
+    "lick": {(9, 3): "I", (10, 3): "E", (8, 4): "F", (9, 4): "E", (10, 4): "K",
+             (11, 7): "F", (12, 7): "M", (13, 7): "M", (14, 7): "P", (15, 7): "P", (16, 7): "P"},
     "smug": {(9, 3): "F", (8, 4): "E", (9, 4): "E", (10, 4): "E",
              (10, 7): "M", (13, 6): "M"},
 }
@@ -226,7 +226,7 @@ EXPRESSIONS = {
 def head(cv, hx, hy, kind, tuft=None, expression="happy"):
     """The face with its top-left corner at (hx, hy), then any topknot of wool."""
     dark = FACES[LOOK["face"]][1] is None
-    face = {"F": "F", "E": "E", "P": "P", "N": "M", "M": "M", "e": "R"}
+    face = {"F": "F", "E": "E", "P": "P", "N": "M", "M": "M", "e": "R", "K": "K", "I": "I"}
     rows = [list(r) for r in HEADS[kind].strip("\n").split("\n")]
     for (x, y), c in EXPRESSIONS[expression].items():
         while len(rows[y]) <= x:
@@ -432,14 +432,16 @@ def extreme(f):
     return extreme_pose(swell, sway, paddle)
 
 
-# The neck stretch (Daniel, 2026-10-13): once she has grazed bare everything she can
-# reach, now and then she strains her neck toward a tuft just past it, gets nowhere,
-# and settles back looking smug. Her fleece and hooves stay put: only her head and
-# neck move. Frames: her head pokes out of the wool, eyes on the grass; her neck at
-# full stretch, eyes screwed shut, tongue out; the same with her whole fleece leant
-# a pixel after it (the game shakes between those two); and her head home again,
-# eyelids half down, smirking. Each is (head forward, head down, lean, expression).
-STRETCH = ((5, 3, 0, "open"), (11, 6, 0, "squeeze"), (12, 6, 1, "squeeze"), (0, -1, 0, "smug"))
+# Daniel's 2026-10-21 correction: a cheeky reach for grass, without discomfort.
+# Her jaw stays at its ordinary height, her eye stays open, and her tongue points
+# forward. No fleece lean or alternating effort poses; smug stays pixel-identical.
+STRETCH = ((5, 0, 0, "open"), (10, 0, 0, "lick"), (11, 0, 0, "lick"), (0, -1, 0, "smug"))
+
+
+def waddle(f):
+    # Legs are drawn separately at world-ground contact points. A translated
+    # sprite sheet cannot keep a planted hoof fixed while the body passes it.
+    return extreme_pose(0, 0, 0, hide_legs=True)
 
 
 def stretch(f):
@@ -447,7 +449,7 @@ def stretch(f):
     return extreme_pose(0, 0, 0, reach=reach, drop=drop, expression=expression, lean=lean)
 
 
-def extreme_pose(swell, sway, paddle, reach=0, drop=0, expression="happy", lean=0):
+def extreme_pose(swell, sway, paddle, reach=0, drop=0, expression="happy", lean=0, hide_legs=False):
     cv = Canvas()
     floor = CELL[1] - 1
     # The fleece sits almost on the ground: all four hooves only just poke out under
@@ -463,14 +465,15 @@ def extreme_pose(swell, sway, paddle, reach=0, drop=0, expression="happy", lean=
     # Each leg is hidden in the wool; only its hoof shows on the floor, two pixels
     # pointing the way it splays. On the paddle frame the front hoof kicks a pixel
     # further forward.
-    for x, out, kick in ((7, -1, False), (11, -1, False), (20, 1, False), (24, 1, paddle)):
-        x += round(sway * 0.5)
-        for y in range(floor - 6, floor):
-            if cv.get(x, y) is None:
-                cv.put(x, y, "K")
-        for px in (x, x + out) + ((x + 2 * out,) if kick else ()):
-            if cv.get(px, floor) is None:
-                cv.put(px, floor, "K")
+    if not hide_legs:
+        for x, out, kick in ((7, -1, False), (11, -1, False), (20, 1, False), (24, 1, paddle)):
+            x += round(sway * 0.5)
+            for y in range(floor - 6, floor):
+                if cv.get(x, y) is None:
+                    cv.put(x, y, "K")
+            for px in (x, x + out) + ((x + 2 * out,) if kick else ()):
+                if cv.get(px, floor) is None:
+                    cv.put(px, floor, "K")
     # The face, sunk into the front of the fleece, wool down to her eyes. Stretching,
     # it comes out of the wool on a neck: face-coloured throat rows from the fleece's
     # front to the back of her jaw, drawn only into the open air in front of her.
@@ -494,7 +497,7 @@ def extreme_pose(swell, sway, paddle, reach=0, drop=0, expression="happy", lean=
 
 
 BUILDERS = [sheared, mid, full, extra_full, extreme]
-EXTRA_BUILDERS = [stretch]
+EXTRA_BUILDERS = [stretch, waddle]
 
 
 def shipped_colours():
@@ -529,8 +532,9 @@ def build(looks):
                     sheet.putpixel((f * W + PAD + x, row * H + y), pal[c] + (255,))
             cell = sheet.crop((f * W, row * H, (f + 1) * W, (row + 1) * H))
             box = cell.getbbox()
-            # She stands on the cell's floor in every frame, never floating off her square.
-            assert box[3] == H, (look["name"], name, f, box)
+            # Idle and reach feet stay on the floor. The waddle row is body-only;
+            # SheepGait supplies its ground contacts separately.
+            assert name == "waddle" or box[3] == H, (look["name"], name, f, box)
             # Nothing is cut off by the cell's edge: only an outline or a hoof touches it.
             edge = [(x, y) for x in range(W) for y in range(H) if x in (0, W - 1) or y == 0]
             assert all(cell.getpixel(p)[3] == 0 or cell.getpixel(p)[:3] in edges for p in edge), \
@@ -685,10 +689,13 @@ def main():
             name: {
                 "first_row": len(ROWS) * len(names) + i * len(names),
                 "row_of": "first_row + look index",
-                "frames": ["reach", "stretch", "strain", "smug"],
-                "note": "the extreme coat's neck stretch toward grass she cannot reach: the head pokes "
-                        "out of the wool, the neck at full stretch, the same straining (shake between "
-                        "the two), then home again looking smug. Fleece and hooves never move.",
+                "frames": (["reach", "stretch", "lick", "smug"] if name == "stretch"
+                           else ["body", "body", "body", "body"]),
+                "note": ("A happy reach at mouth height, eyes open and tongue toward the grass, "
+                         "then home looking smug. Fleece and hooves stay planted."
+                         if name == "stretch" else
+                         "Body only, with no painted hooves. SheepGait draws exactly four legs "
+                         "from travel distance, holding stance hooves fixed against the ground."),
             } for i, name in enumerate(EXTRA_ROWS)
         },
         # sheep_gags.png: the stuck sheep's ground and her heart, as [x, y, w, h].

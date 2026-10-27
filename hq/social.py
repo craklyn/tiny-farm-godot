@@ -272,41 +272,53 @@ def _source(record):
     return result
 
 
-def _detail(record, *, sources=True):
-    result = copy.deepcopy(record)
-    cuts = _cuts(record)
-    result["cuts"] = cuts
-    current = cuts[-1] if cuts else None
-    result["current_cut"] = current
-    publication = record.get("publication")
-    result["published"] = bool(publication)
-    result["approved"] = bool(current and any(a["sha256"] == current["sha256"] and a["version"] == current["version"] and not a.get("invalidated_at") for a in record["approvals"]))
-    if publication:
-        fixed = next((c for c in cuts if c["version"] == publication["version"]
-                      and publication.get("sha256") and c["sha256"] == publication["sha256"]), None)
-        result["published_cut"] = fixed
-        result["status"] = "Published"
-        result["next_action"] = "Read audience responses"
-    elif current:
-        open_notes = _open_notes(record, current)
-        result["status"] = "Approved cut" if result["approved"] and not open_notes else "Ready for your review"
-        result["next_action"] = "Prepare the post" if result["status"] == "Approved cut" else "Review " + current["version"]
-        last_request = next((r for r in reversed(record["requests"]) if r.get("work_id")), None)
-        if last_request and last_request["snapshot"].get("cut") and not result["approved"]:
-            sent_cut = last_request["snapshot"]["cut"]
-            if sent_cut["sha256"] == current["sha256"] and sent_cut["version"] == current["version"]:
-                result["status"] = "Revision requested"
-                result["next_action"] = "View production request"
-        if open_notes and result["status"] != "Revision requested":
-            result["next_action"] = f'{len(open_notes)} open review note' + ("s" if len(open_notes) != 1 else "")
-    else:
-        result["status"] = "Production requested" if any(r.get("work_id") for r in record["requests"]) else "Request not filed" if record["requests"] else "Idea"
-        result["next_action"] = "Open production request" if any(r.get("work_id") for r in record["requests"]) else "Retry the saved request" if record["requests"] else "Develop the brief"
-    result["output_path"] = f'video/{record["folder"]}/renders/{record["render_prefix"]}_vN.mp4'
-    if sources:
-        result["source_documents"] = _source(record)
-    # A filing receipt is historical; the linked card's current owner and state
-    # are read live so later routing cannot leave a stale "actual owner" claim.
+def _recording_script(record):
+    """Read current narration without changing the user's brief or saved records."""
+    text = record.get("brief", {}).get("script", "")
+    origin = "saved" if text.strip() else None
+    if not origin:
+        seed = next((p for p in _catalog()["projects"] if p["id"] == record["id"]), {})
+        rel = seed.get("recording_script_source")
+        if rel:
+            try:
+                source = _inside(Path(HOST.HQ_DIR).parent, rel)
+                if source.is_file() and source.stat().st_size <= 256_000:
+                    text = source.read_text()
+                    # The supplied recording script has one non-spoken title line.
+                    lines = text.splitlines()
+                    if lines and lines[0].startswith("# "):
+                        text = "\n".join(lines[1:])
+                    if text.strip():
+                        origin = "source"
+            except (OSError, SocialError, UnicodeError):
+                pass
+    paragraphs = re.split(r"\n[ \t]*\n", text.strip()) if origin else []
+    return {"origin": origin, "paragraphs": paragraphs}
+
+
+def _production_snapshot(record, cut):
+    return {"project_id": record["id"], "brief": copy.deepcopy(record["brief"]), "cut": cut,
+            "notes": copy.deepcopy(record["notes"]), "sources": record.get("sources", []),
+            "folder": f'video/{record["folder"]}/',
+            "output_path": f'video/{record["folder"]}/renders/{record["render_prefix"]}_vN.mp4',
+            "source_project": record.get("source_project", ""), "editing_source": record.get("editing_source"),
+            "workflow": "video/README.md; video-editing skill"}
+
+
+def _snapshot_key(snapshot):
+    canonical = copy.deepcopy(snapshot)
+    canonical["brief"] = {key: snapshot["brief"].get(key, "") for key in FIELDS}
+    if snapshot.get("cut"):
+        canonical["cut"] = {key: snapshot["cut"][key] for key in ("version", "sha256")}
+    return json.dumps(canonical, sort_keys=True)
+
+
+def _newer_than_request(cut, request):
+    previous = request["snapshot"].get("cut")
+    return bool(cut and (not previous or cut["number"] > int(VERSION.fullmatch(previous["version"])[1])))
+
+
+def _work_receipts(result):
     people = {e["id"]: e for e in HOST.load_org().get("employees", [])}
     for request in result["requests"]:
         if request.get("work_id"):
@@ -317,7 +329,86 @@ def _detail(record, *, sources=True):
                                work_owner_name=("Chief of Staff" if owner == "claude" else people.get(owner, {}).get("name", owner)))
             except (OSError, ValueError, KeyError):
                 request["work_available"] = False
-    # Return full production snapshots only in detail; these are the durable brief receipt.
+
+
+def _production_state(record, result, current):
+    request = result["requests"][-1] if result["requests"] else None
+    state = {"mode": "review" if current else "compose", "can_request": True,
+             "title": "Shape the next video", "message": "Write the promise, opening and script. Save the brief before sending it for production."}
+    if not request:
+        return state
+    state.update(request_id=request["request_id"], work_id=request.get("work_id"),
+                 owner=request.get("work_owner"), owner_name=request.get("work_owner_name"),
+                 can_request=_snapshot_key(request["snapshot"]) != _snapshot_key(_production_snapshot(record, current)))
+    if not request.get("work_id"):
+        state.update(mode="retry", title="Request not filed", action="Retry saved request",
+                     message="Intake has not confirmed a work card. Retry the saved request.", can_request=False)
+    elif _newer_than_request(current, request):
+        state.update(mode="returned", title="New cut ready for your review", action="Review " + current["version"], can_request=True,
+                     message="Compare this cut with the submitted direction.")
+    elif not request.get("work_available"):
+        state.update(mode="missing", title="Production request unavailable", action="Review saved request",
+                     message="The linked work card is unavailable. Review the saved submission; revise and save the brief to file another request.")
+    elif request["work_state"] == "dropped":
+        state.update(mode="dropped", title="Production request cancelled", action="Review cancelled request",
+                     message="The linked work card was cancelled. Revise and save the brief if you want to request another production pass.")
+    elif request["work_state"] in ("accepted", "landed", "done"):
+        state.update(mode="completed", title="Request closed without a new cut", action="Review closed request",
+                     message="The linked work card is closed. No newer cut is available here. Open the card to review its result.")
+    else:
+        owner = request.get("work_owner_name") or "an unrecorded owner"
+        title = "Request assigned to " + owner
+        action = "Open production request"
+        message = owner + " owns the linked work card."
+        if request["work_state"] == "needs_approval":
+            title, action = "Production work needs your decision", "Open work decision"
+        elif request["work_state"] == "for_review":
+            title, action = "Production work is ready for review", "Review work request"
+        elif request["work_state"] == "waiting_session":
+            title = "Waiting for a production session"
+        state.update(mode="active", title=title, message=message, action=action)
+    return state
+
+
+def _detail(record, *, sources=True):
+    result = copy.deepcopy(record)
+    cuts = _cuts(record)
+    result["cuts"] = cuts
+    current = cuts[-1] if cuts else None
+    result["current_cut"] = current
+    publication = record.get("publication")
+    result["published"] = bool(publication)
+    result["approved"] = bool(current and any(a["sha256"] == current["sha256"] and a["version"] == current["version"] and not a.get("invalidated_at") for a in record["approvals"]))
+    _work_receipts(result)
+    result["production"] = _production_state(record, result, current)
+    if publication:
+        fixed = next((c for c in cuts if c["version"] == publication["version"]
+                      and publication.get("sha256") and c["sha256"] == publication["sha256"]), None)
+        result["published_cut"] = fixed
+        posting = copy.deepcopy(publication)
+        for event in record["posting_details"]:
+            for key in ("url", "date"):
+                if event.get(key):
+                    posting[key] = event[key]
+        result["posting_record"] = posting
+        result["status"] = "Published"
+        result["next_action"] = "Read audience responses"
+    elif result["approved"] and not _open_notes(record, current):
+        result["status"], result["next_action"] = "Approved cut", "Prepare the post"
+    elif result["production"]["mode"] not in ("review", "compose"):
+        result["status"] = result["production"]["title"]
+        result["next_action"] = result["production"]["action"]
+    elif current:
+        open_notes = _open_notes(record, current)
+        result["status"], result["next_action"] = "Ready for your review", "Review " + current["version"]
+        if open_notes:
+            result["next_action"] = f'{len(open_notes)} open review note' + ("s" if len(open_notes) != 1 else "")
+    else:
+        result["status"], result["next_action"] = "Idea", "Develop the brief"
+    result["output_path"] = f'video/{record["folder"]}/renders/{record["render_prefix"]}_vN.mp4'
+    if sources:
+        result["source_documents"] = _source(record)
+        result["recording_script"] = _recording_script(record)
     result["preview"] = os.environ.get("HQ_SOCIAL_PREVIEW") == "1"
     return result
 
@@ -385,15 +476,11 @@ def _request(record, payload):
     else:
         _check_revision(record, payload)
         cut = _selected(record, payload, optional=True)
-        snapshot = {"project_id": record["id"], "brief": copy.deepcopy(record["brief"]), "cut": cut,
-                    "notes": copy.deepcopy(record["notes"]), "sources": record.get("sources", []),
-                    "folder": f'video/{record["folder"]}/',
-                    "output_path": f'video/{record["folder"]}/renders/{record["render_prefix"]}_vN.mp4',
-                    "source_project": record.get("source_project", ""), "editing_source": record.get("editing_source"), "workflow": "video/README.md; video-editing skill"}
-        digest = hashlib.sha256(json.dumps(snapshot, sort_keys=True).encode()).hexdigest()
+        snapshot = _production_snapshot(record, cut)
+        digest = hashlib.sha256(_snapshot_key(snapshot).encode()).hexdigest()
         ident = "social-" + record["id"][:40] + "-" + digest[:32]
         # Same content snapshot deduplicates even if a user double-click creates another key.
-        same = next((r for r in record["requests"] if r["request_id"] == ident), None)
+        same = next((r for r in record["requests"] if r["request_id"] == ident or _snapshot_key(r["snapshot"]) == _snapshot_key(snapshot)), None)
         if same:
             if same.get("work_id"):
                 return _detail(record)
@@ -407,6 +494,7 @@ def _request(record, payload):
                      f'Cut to revise: {cut["version"] + " SHA-256 " + cut["sha256"] if cut else "No cut yet"}.\n'
                      'Read video/README.md and the video-editing skill. Read the COMPLETE saved snapshot before working: '
                      'it contains the brief, script direction, all review notes and exact source paths. '
+                     'Use absolute or repository-root helper paths for nested video folders. '
                      'Retain earlier renders, document new inputs, and return a numerically versioned cut for Daniel to review. '
                      'Do not change game design or publish externally. Use the recorded editing branch and inputs where supplied; rebuild its generated intermediates before rendering.')
             if len(words) > 4000:
@@ -476,24 +564,42 @@ def mutate(command, payload):
                     if approval["version"] == cut["version"] and approval["sha256"] == cut["sha256"]:
                         approval["invalidated_at"] = _now()
         elif command == "resolve":
-            note = next((n for n in record["notes"] if n["id"] == payload.get("note_id")), None)
-            if not note:
-                raise SocialError("No such note.", 404)
             disposition = payload.get("disposition")
+            note = next((n for n in record["notes"] if n["id"] == payload.get("note_id")), None)
             if disposition is not None:
                 if disposition not in ("addressed", "carry_forward"):
                     raise SocialError("Unknown review decision.")
                 cut = _selected(record, payload, latest=True)
-                if note.get("sha256") == cut["sha256"] and note.get("version") == cut["version"]:
-                    raise SocialError("This note already belongs to the selected cut.")
-                events = record.setdefault("review_transfers", [])
-                if any(e["source_note_id"] == note["id"] and e["sha256"] == cut["sha256"] and e["version"] == cut["version"] for e in events):
-                    raise SocialError("This note already has a review decision for this cut.", 409)
-                event = {"source_note_id": note["id"], "source_version": note.get("version"), "source_sha256": note.get("sha256"),
-                         "version": cut["version"], "sha256": cut["sha256"], "disposition": disposition, "created_at": _now()}
+                requested_id = payload.get("request_id")
+                request = next((r for r in reversed(record["requests"]) if r.get("work_id")
+                                and (r["request_id"] == requested_id if requested_id else note and any(n["id"] == note["id"] for n in r["snapshot"]["notes"]))), None)
+                if not request or not _newer_than_request(cut, request):
+                    raise SocialError("Review decisions require a newer, latest cut after this request.", 409)
+                if note:
+                    if not any(n["id"] == note["id"] and not n.get("resolved_at") for n in request["snapshot"]["notes"]):
+                        raise SocialError("This note was not open in the submitted request.", 409)
+                    if note.get("sha256") == cut["sha256"] and note.get("version") == cut["version"]:
+                        raise SocialError("This note already belongs to the selected cut.")
+                    events = record.setdefault("review_transfers", [])
+                    if any(e["source_note_id"] == note["id"] and e["sha256"] == cut["sha256"] and e["version"] == cut["version"] for e in events):
+                        raise SocialError("This note already has a review decision for this cut.", 409)
+                    event = {"source_note_id": note["id"], "source_version": note.get("version"), "source_sha256": note.get("sha256"),
+                             "request_id": request["request_id"], "version": cut["version"], "sha256": cut["sha256"], "disposition": disposition, "created_at": _now()}
+                    text, origin = note["text"], {"carried_from": note["id"]}
+                else:
+                    if payload.get("note_id") or not requested_id:
+                        raise SocialError("No such note or submitted request.", 404)
+                    events = record.setdefault("request_reviews", [])
+                    if any(e["request_id"] == request["request_id"] and e["sha256"] == cut["sha256"] and e["version"] == cut["version"] for e in events):
+                        raise SocialError("This request already has a review decision for this cut.", 409)
+                    event = {"request_id": request["request_id"], "source_version": request["snapshot"].get("cut", {}).get("version") if request["snapshot"].get("cut") else None,
+                             "source_sha256": request["snapshot"]["cut"]["sha256"] if request["snapshot"].get("cut") else None,
+                             "version": cut["version"], "sha256": cut["sha256"], "disposition": disposition, "created_at": _now()}
+                    text = "Carry forward the submitted production brief: " + request["snapshot"]["brief"]["title"] + ". The linked request retains the full script, shots and direction."
+                    origin = {"carried_request_id": request["request_id"]}
                 if disposition == "carry_forward":
-                    carried = {"id": "n" + uuid.uuid4().hex[:16], "text": note["text"], "version": cut["version"],
-                               "sha256": cut["sha256"], "seconds": None, "created_at": _now(), "carried_from": note["id"]}
+                    carried = {"id": "n" + uuid.uuid4().hex[:16], "text": text, "version": cut["version"],
+                               "sha256": cut["sha256"], "seconds": None, "created_at": _now(), **origin}
                     record["notes"].append(carried)
                     event["carried_note_id"] = carried["id"]
                     for approval in record["approvals"]:
@@ -501,6 +607,8 @@ def mutate(command, payload):
                             approval["invalidated_at"] = _now()
                 events.append(event)
             else:
+                if not note:
+                    raise SocialError("No such note.", 404)
                 if note.get("sha256"):
                     if note["version"] != payload.get("version") or note["sha256"] != payload.get("sha256"):
                         raise SocialError("Select the cut this note belongs to.", 409)

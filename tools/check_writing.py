@@ -97,7 +97,7 @@ CALL_TIMEOUT = 180
 # "every item in this list". Adding a field is how a new surface joins the check.
 DATA_SOURCES = [
     ("hq/data/social_catalog.json", ["projects[].brief.title", "projects[].brief.promise", "projects[].brief.hook",
-                                       "projects[].brief.ask", "projects[].production_note"], "social video"),
+                                       "projects[].brief.ask", "projects[].production_note", "projects[].posting_notes[]"], "social video"),
     ("hq/data/work/*.json", ["title"], "work card"),
     ("hq/data/goals/*.json", ["goals[].statement", "goals[].statement_short",
                               "goals[].why_it_matters",
