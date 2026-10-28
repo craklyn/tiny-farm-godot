@@ -1,0 +1,95 @@
+# v6: later usable deliveries, with unique lines from 0045. Sources unchanged.
+version: 6
+fps: 30000/1001
+sections:
+- title: opening
+  segments:
+  - clip: footage/raw/DJI_20000413212641_0047_D.MP4
+    in: 3.54
+    out: 6.44
+    says: What's up TikTok? It's your boy Buddyo Vlogs
+- title: project
+  segments:
+  - clip: footage/raw/DJI_20000413212641_0047_D.MP4
+    in: 10.86
+    out: 15.45
+    says: We're building a game and we're adding one idea at a time until the game
+      is not bad
+- title: question
+  segments:
+  - clip: footage/raw/DJI_20000413212336_0046_D.MP4
+    in: 19.84
+    out: 24.04
+    says: You asked are there sheep? The answer is yes Now there are
+- title: wool
+  segments:
+  - clip: footage/raw/DJI_20000413212641_0047_D.MP4
+    in: 34.74
+    out: 36.96
+    says: Every night their wool grows
+- title: full
+  segments:
+  - clip: footage/raw/DJI_20000413212641_0047_D.MP4
+    in: 40.54
+    out: 41.29
+    says: Full coat
+- title: extra
+  segments:
+  - clip: footage/raw/DJI_20000413212641_0047_D.MP4
+    in: 41.36
+    out: 42.52
+    says: Extra full coat
+- title: door
+  segments:
+  - clip: footage/raw/DJI_20000413212641_0047_D.MP4
+    in: 43.03
+    out: 47.08
+    says: At extra full they squeeze through doors at quarter speed
+- title: stuck
+  segments:
+  - clip: footage/raw/DJI_20000413212641_0047_D.MP4
+    in: 97.96
+    out: 101.15
+    says: And by the time they reach extremely full they can't walk anymore
+- title: content
+  segments:
+  - clip: footage/raw/DJI_20000413204152_0045_D.MP4
+    in: 37.07
+    out: 38.24
+    says: And she loves it
+- title: problem
+  segments:
+  - clip: footage/raw/DJI_20000413204152_0045_D.MP4
+    in: 41.56
+    out: 44.86
+    says: It felt like there wasn't much for them to do when they got to that point
+- title: solution
+  segments:
+  - clip: footage/raw/DJI_20000413204152_0045_D.MP4
+    in: 46.914
+    out: 48.47
+    says: So I gave them things to do
+- title: grass
+  segments:
+  - clip: footage/raw/DJI_20000413212641_0047_D.MP4
+    in: 111.1
+    out: 113.6
+    says: They're going to eat the grass in a circle around them
+- title: bird-start
+  segments:
+  - clip: footage/raw/DJI_20000413212641_0047_D.MP4
+    in: 113.66
+    out: 114.96
+    says: and they can have a
+- title: bird
+  segments:
+  - clip: footage/raw/DJI_20000413212641_0047_D.MP4
+    in: 115.61
+    out: 117.1
+    says: friendly bird land on them
+- title: ask
+  segments:
+  - clip: footage/raw/DJI_20000413204152_0045_D.MP4
+    in: 57.0
+    out: 58.44
+    says: What should I build next?
