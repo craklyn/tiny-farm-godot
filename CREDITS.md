@@ -834,6 +834,17 @@ before the first public build ships.*
 - `assets/audio/music/bgm.wav` — unreferenced and provenance-unknown; deleted
   2026-08-26 (remains in git history only).
 
+## Chicken-family review art (2026-10-31)
+
+- `entities/poultry_art.gd`: original procedural 16-pixel dispenser and feed-bag
+  drawings made for Tiny Farm, using the coop's wood and straw colors. Source is
+  included in the repository; no external image or generation service was used.
+- Chick appearance reuses the shipped chicken silhouettes with a yellow palette
+  and smaller display size. Its source and usage rights are those of the chicken
+  asset credited above.
+- The chicken buyer reuses the shipped neighbor sprite, including its existing
+  source and usage rights. Carried chickens are drawn from the chicken/chick art.
+
 ## Fonts
 - The game: none bundled (engine default).
 - Video tools only (`video/fonts/`, not shipped in the game), downloaded 2026-10-06 from the

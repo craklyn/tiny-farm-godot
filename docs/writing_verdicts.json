@@ -2206,6 +2206,12 @@
    "verdict": "decode",
    "why": "'A frame she would feel' is unclear; 'she' is unintroduced and refers to the player."
   },
+  "35e1360524182eec1f73": {
+   "instead": "Clarify how the game saves chicken families and restores them",
+   "quote": "Clarify chicken saves and family recovery",
+   "verdict": "decode",
+   "why": "A cold reader cannot tell whether this means saving game data, saving chickens, or how a chicken family is restored."
+  },
   "35e8895d46d062a408d0": {
    "instead": "make and farm its own patch",
    "quote": "make its own practice ground",
@@ -6125,6 +6131,9 @@
   "97c68196fa26b45a43db": {
    "verdict": "ok"
   },
+  "97cb6743aa0f79bd3510": {
+   "verdict": "ok"
+  },
   "97d5087aa12e60d50fda": {
    "verdict": "ok"
   },
@@ -8788,6 +8797,12 @@
   "daea025f3fdade217396": {
    "verdict": "ok"
   },
+  "daec1e2b77fc051b7f7a": {
+   "instead": "Family review photos now show each chicken entering its coop",
+   "quote": "Family review pictures follow chickens through their actual doors",
+   "verdict": "decode",
+   "why": "The sentence makes the reader work out what the pictures show and what “family review” means."
+  },
   "db1b7b9750686bc44f58": {
    "verdict": "ok"
   },
@@ -9113,6 +9128,9 @@
   "e2b366c261d53529e945": {
    "verdict": "ok"
   },
+  "e2c17c100568dad86e24": {
+   "verdict": "ok"
+  },
   "e30c41ce46292d52a699": {
    "instead": "Work no longer waits for hours in “waiting to start” after changes are made outside the queue or after Daniel approves a change while the main branch advances.",
    "quote": "after Daniel approves a change that main has since moved around",
@@ -9295,6 +9313,9 @@
    "verdict": "decode",
    "why": "“Claimed” is internal status language and does not tell the reader what is actually known."
   },
+  "e74a02ffa272b7096124": {
+   "verdict": "ok"
+  },
   "e7564dfde6bb73f60d97": {
    "verdict": "ok"
   },
@@ -9462,6 +9483,9 @@
   "ed7cc3235c9e834d2919": {
    "verdict": "ok"
   },
+  "ed90a24b0fde6f2e5c54": {
+   "verdict": "ok"
+  },
   "edbb805c6cc7bd8de78f": {
    "verdict": "ok"
   },
@@ -9484,6 +9508,9 @@
    "verdict": "ok"
   },
   "ee07ce06baf3f9a0ee6e": {
+   "verdict": "ok"
+  },
+  "ee0ba9ec9268767b4d9d": {
    "verdict": "ok"
   },
   "ee42de5f79b750da18ce": {
@@ -9637,6 +9664,9 @@
    "quote": "Clarify replay corpus vintage after pouch change",
    "verdict": "decode",
    "why": "“Replay corpus vintage” and “pouch change” are unexplained internal terms, so the reader cannot tell which replay data or change this refers to."
+  },
+  "f2321a77aeb3e4ca3347": {
+   "verdict": "ok"
   },
   "f23f65de868c8329acc8": {
    "verdict": "ok"

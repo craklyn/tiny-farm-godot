@@ -123,3 +123,6 @@ video/**/edit/auto-*
 
 # Private social-video briefs, review decisions and publications (HQ store).
 /hq/data/social/
+
+# Generated chicken-family pictures; reviewed copies live in docs/design/mockups.
+tools/chicken_family_shots/

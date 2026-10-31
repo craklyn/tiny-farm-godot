@@ -163,7 +163,7 @@ At end of seventh daily care update, release mother, mark chick independent, and
 
 Feed advancement requires hen attendance at the adopted nest (same area, on or adjacent to it, reachable fitting interaction). If food is unavailable OR attendance is interrupted, do not consume food; retreat progress by1 per day, with the same zero-release rule. The hen continues seeking the nest while committed, but a blocked path cannot yield invisible incubation. This is an agent-selected default for review.
 
-Feed economy default for review: one shop feed unit costs2g; dispenser20g; existing nest-box price unchanged. Adult sale30g, independent chick15g, dependent pair45g. Keep these constants centralized; no phenotype premiums. If current shop conventions conflict, reviewer reports before build. Existing egg price unchanged. All prices are agent-selected under overnight authorization, not Daniel's settled taste.
+Feed economy default for review: one shop feed unit costs2g; dispenser30g; existing nest-box price unchanged. Adult sale30g, independent chick15g, dependent pair45g. Keep these constants centralized; no phenotype premiums. Existing egg price unchanged. All prices are agent-selected under overnight authorization, not Daniel's settled taste. The initial20g dispenser proposal was raised to30g during integration to preserve the settled25g coop as the cheapest building and first shelf item.
 
 Familiarity greeting+0.1 with at most one accepted greeting per individual per game day (prevents tap farming/held input). Use preexisting interaction audio where possible. Optional treat can use the same greeting without consuming an unspecified crop; do not invent a second resource or feeding bonus.
 
@@ -181,3 +181,59 @@ Explicitly classify `greet_chicken`, sale request/cancel, buyer collection/depar
 4. **Integration and independent review.** Root cherry-picks workers into feature worktree, resolving overlap through workers. A read-only reviewer checks high-risk sim/save/actions and design fidelity; workers fix findings. Root runs actual full unit/integration/robot/benchmark/gateway after combination, reviews PNGs, and records results/limitations. No merge to main/deploy. Open PR and attach it, leave reviewable branch and evidence.
 
 Workers read AGENTS supplied in this chat, docs/WRITING, this plan, and named source files only. Confirm base includes plan and current main. Other shared checkout work/media stay untouched. Git metadata is outside sandbox; use approved escalated git commands where necessary, never resets/stash/clean. Every report lists files, actual suite results/counts, decisions/deviations, worktree, branch, commit, and evidence paths in under300 words. Do not loosen assertions to pass.
+
+## Review build — 2026-10-31
+
+Implementation is complete for review on `codex/chicken-families`. It has not been
+merged to main, deployed, installed on the tablet, or published as a release.
+The working review checkout is `/tmp/tiny-farm-chicken-final`; the shared checkout
+and its video work were preserved. [Pictures from the running game](mockups/chicken_families/README.md)
+show inventory, feeding, incubation, the named family, and the visiting farmer.
+
+### Completion details to review
+
+- Dispenser 30g, bought feed 2g per day, adult 30g, independent chick 15g,
+  dependent pair 45g. The dispenser was raised from the first 20g proposal to
+  preserve the existing 25g coop as the cheapest structure. Nest and egg prices
+  remain unchanged. These prices are provisional choices, not earlier rulings.
+- Incubation and maternal age advance at game-day rollover, not while the game
+  is closed or merely left running. Progress uses half-day units and exact feed
+  refunds; a partly consumed ingredient can return as a saved half-day portion.
+- Greetings are accepted once per chicken per game day, add 0.1 familiarity,
+  and never increase work/pest pressure. Familiarity stays after absence and
+  biases at most one in five idle wander choices toward the player.
+- Same-area reunion completes within two tiles. A blocked route safely waits
+  and retries. Feed does not advance incubation while its hen cannot attend.
+- Selling a sitting hen resets her egg intact and reserves her against another
+  incubation. Pickup is local and atomic; both dependent birds must be present.
+  Confirmed participants and price are validated, and collection pays once.
+- No inherited traits, trait display, ancestry interface, father, compulsory
+  animal-care task, feed-dependent chick growth, or practical friendship bonus.
+
+### Verification on the combined implementation
+
+| Check | Result |
+|---|---|
+| Full unit suite | 3915 passed, 0 failed |
+| Full integration suite | 1454 passed, 0 failed |
+| End-to-end robot session | Passed; replay matches autosave over 689 entries and 4823 ticks |
+| Gateway check | Passed |
+| Simulation benchmark | Passed; 19,617 ticks/sec against minimum 5,000, 192 microseconds/tick against maximum 441 |
+| Graphical family walkthrough | 29 passed, 0 failed; eight real-game pictures reviewed |
+| Offline writing verification | Passed; existing baseline suggestions outside this feature remain |
+
+Independent simulation review found and verified fixes for refused actions
+changing saved state, families failing to leave the coop, and older chicks
+foraging while their mother settled. Regression tests cover these cases.
+Historical playtest classifications were not changed. A refusal fixture that
+depended on eggs being placed remotely was replaced with a deterministic
+blocked-door refusal, retaining the exact replay assertion.
+
+The first combined unit run also caught the dispenser undercutting the coop's
+settled shelf role. Its price was corrected and the full unit suite rerun.
+Visual review caught a camera framing the wrong room; the capture now follows
+the subjects' actual area and asserts real renderers are visible and unobstructed.
+
+The headless suites still print resource-leak diagnostics seen in the baseline;
+the required checks above exit successfully. No animal biology claims are made:
+the timing, inheritance exclusions, and perpetual-chick limit are game rules.

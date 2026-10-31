@@ -48,7 +48,6 @@ func _ready() -> void:
 		GameState.machines[item] = 1
 		_check(main.farm.apply_action({"verb": "place", "actor": "player", "target": nest if item == "nest_box" else dispenser, "item": item}, GameState).get("ok", false), "%s goes on the coop floor" % item)
 	var hen := Poultry.chicken_ids(world)[0]
-	world.set_actor_pos(hen, nest + Vector2i(1, 0))
 	world.set_actor_pos("player", origin + Vector2i(2, 3))
 	main.player.init_position(origin.x + 2, origin.y + 3)
 	main.note_page_change()
@@ -75,9 +74,10 @@ func _ready() -> void:
 	_check(int(Poultry.dispenser_info(world, dispenser).get("feed", 0)) == 14, "seven wheat fill seven incubation days")
 	await _shot("02_full_dispenser")
 	main.menus.close_menu()
-	for i in 100:
+	for i in 2400:
 		main.farm.advance_sim(1, GameState)
-	_check(Poultry.incubating_id(world) == hen, "the hen adopts and attends the nested egg")
+		if Poultry.incubating_id(world) == hen and Poultry.attending(world, hen, nest): break
+	_check(Poultry.incubating_id(world) == hen and Poultry.attending(world, hen, nest), "the hen walks through the coop door and attends the nested egg")
 	for day in 2:
 		main.farm.apply_action({"verb": "sleep", "actor": "player"}, GameState)
 		main.farm.advance_sim(40, GameState)
@@ -95,13 +95,15 @@ func _ready() -> void:
 	main.farm.sync_actors()
 	if chick != "":
 		_check(main.farm.actor_nodes.has(chick), "the chick receives a real renderer")
-		# Separate in the same room/yard, then let the real brains choose reunion.
-		world.set_actor_pos(hen, hut + Vector2i(1, 2))
-		world.set_actor_pos(chick, hut + Vector2i(2, 2))
-		world.set_actor_pos("player", hut + Vector2i(0, 3))
-		main.player.init_position(hut.x, hut.y + 3)
-		main.note_page_change()
-		main.farm.advance_sim(20, GameState)
+		# Observe the real family wherever their brains take them after hatching.
+		# In rain they may settle indoors; in sun they may use the door to forage.
+		# Never relocate the family or leave an old navigation route under a warp.
+		for i in 2400:
+			main.farm.advance_sim(1, GameState)
+			var together := world.space_of(world.actor_pos(hen)) == world.space_of(world.actor_pos(chick))
+			var gap := Vector2(world.actor_pos(hen) - world.actor_pos(chick)).length()
+			if together and gap > 0.1 and gap <= 3.0: break
+		_check(world.space_of(world.actor_pos(hen)) == world.space_of(world.actor_pos(chick)), "the family shares an area after natural care and door navigation")
 		await _shot("05_mother_and_chick", [hen, chick])
 		main.menus.open_poultry_menu(world.actor_pos(hen), hen)
 		var before := float(world.actor(hen)["extra"].get("familiarity", 0))
@@ -155,6 +157,14 @@ func _shot(label: String, focus_ids: Array[String] = []) -> void:
 	# actual actor renderers catch up after the walkthrough's fast-forward.
 	var was_processing: bool = main.is_processing()
 	main.set_process(false)
+	if not focus_ids.is_empty():
+		# Farm rendering culls by the player's actual area, independently of the
+		# camera. Move only the observer, then snap its view before focusing.
+		var observed := _observer_tile(focus_ids)
+		main.farm.sim.set_actor_pos("player", observed)
+		main.player.init_position(observed.x, observed.y)
+		main._door_glide = {}
+		main._refresh_camera_limits(true)
 	main.hud.visible = false
 	main.hud.toast_timer = 0
 	main.hud.toast_panel.visible = false
@@ -200,6 +210,18 @@ func _shot(label: String, focus_ids: Array[String] = []) -> void:
 			await get_tree().process_frame
 	main.farm.queue_redraw()
 	await RenderingServer.frame_post_draw
+	for id in focus_ids:
+		var actor_sprite: Node2D = main.farm.actor_nodes.get(id)
+		var same_area: bool = main.farm.sim.space_of(main.farm.sim.actor_pos(id)) == main.farm.sim.space_of(main.player.get_tile_pos())
+		var on_screen := false
+		var unobstructed := false
+		if is_instance_valid(actor_sprite):
+			var rendered_bounds: Rect2 = main.farm.get_global_transform_with_canvas() * Rect2(actor_sprite.position, Vector2(16, 16))
+			on_screen = get_viewport().get_visible_rect().encloses(rendered_bounds)
+			var observer_bounds: Rect2 = main.farm.get_global_transform_with_canvas() * Rect2(main.player.position + Vector2(-24, -32), Vector2(48, 48))
+			unobstructed = not rendered_bounds.intersects(observer_bounds)
+		_check(main.farm.sim.has_actor(id) and is_instance_valid(actor_sprite) and actor_sprite.is_visible_in_tree() and same_area and on_screen and unobstructed,
+			"%s: %s has a visible, unobstructed real renderer in the observer's area and viewport" % [label, id])
 	var error := get_viewport().get_texture().get_image().save_png(OUTPUT.path_join(label + ".png"))
 	_check(error == OK, "captured %s" % label)
 	camera.position = old_position
@@ -212,6 +234,26 @@ func _shot(label: String, focus_ids: Array[String] = []) -> void:
 	camera.reset_smoothing()
 	camera.force_update_scroll()
 	main.set_process(was_processing)
+
+func _observer_tile(ids: Array[String]) -> Vector2i:
+	var world: SimWorld = main.farm.sim
+	var subject := world.actor_pos(ids[0])
+	var area := world.space_of(subject)
+	var best := subject
+	var best_gap := -1.0
+	# Keep the observer in the rendered area but out of the family picture.
+	# This changes only the camera's observer, never an animal or its route.
+	for dy in range(-5, 6):
+		for dx in range(-5, 6):
+			var tile := subject + Vector2i(dx, dy)
+			if not world.is_walkable(tile.x, tile.y) or world.space_of(tile) != area: continue
+			var gap := INF
+			for id in ids:
+				gap = minf(gap, Vector2(tile - world.actor_pos(id)).length_squared())
+			if gap > best_gap:
+				best_gap = gap
+				best = tile
+	return best
 
 func _check(ok: bool, label: String) -> void:
 	if ok:

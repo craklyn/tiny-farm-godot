@@ -1172,7 +1172,7 @@ being deleted; the designer said "I like these options", not "remove them".
 ### P-20. Chicken-family prices and daily progress are review-build defaults
 
 **Provisional, 2026-10-31.** Under Daniel's authorization to finish the design and implement
-while he sleeps, the review build chooses a 20g dispenser, 2g feed portions, 30g adult sales,
+while he sleeps, the review build chooses a 30g dispenser, 2g feed portions, 30g adult sales,
 and 15g independent-chick sales. Existing nest and egg prices remain unchanged. A full
 dispenser holds seven days of supply; one wheat or bought portion supplies one day.
 Incubation advances at day rollover in half-day units, with exact unused supply recovered
