@@ -53,3 +53,5 @@ leave together; the neighbor physically collects them and carries them away.
 ![A named mother-and-chick sale confirmation](07_neighbor_confirmation.png)
 
 ![The visiting farmer carrying both birds](08_neighbor_carrying_family.png)
+
+[The separate shop inside the coop](coop_shop/README.md) shows the change Daniel requested after tablet play.
