@@ -1,6 +1,6 @@
 # Chicken families — design for Daniel's review
 
-Status: implementation authorized by Daniel on 2026-10-30 while he sleeps; not a public release approval. His earlier complete-design approval hold was expressly replaced by the request to complete the design and implement for review tomorrow. Do not deploy, tag, install, or merge this feature as part of the review build.
+Status: Daniel authorized implementation on 2026-10-30 and requested tablet deployment. The review build was installed on his tablet on 2026-10-31 at 1:29pm Pacific. After playing it he requested the separate in-coop store described below. That store update is awaiting verification and a tablet refresh. No public release is authorized.
 
 ## The experience
 
@@ -19,6 +19,21 @@ The farm's chicken can become a mother. The player deliberately makes this possi
 - At zero progress she releases her commitment and the farm's incubation slot, resumes normal laying, and leaves the egg usable in the nest. Positive feed permits an available hen to try again.
 - Eggs never spoil, lose value, or become impossible to sell. Removing a nested egg resets progress immediately, frees the slot, and releases its hen. The egg returns to inventory and can be sold normally through the mailbox or nested again.
 - One active incubation across the farm. No new incubation while any chick is present, including an independent chick whose adulthood is blocked. Other eggs remain collectable and sellable.
+
+### Buying coop fittings
+
+Daniel ruled after tablet play on 2026-10-31 that nest boxes and dispensers are bought
+inside the coop, from their own store. The outdoor shop no longer offers these two
+items. A small shelf on the coop's north wall pictures both goods; tapping it from
+inside opens the same wordless cards used by the outdoor shop. Each costs 30g and
+enters inventory for ordinary floor placement. Bought feed remains in the outdoor shop.
+
+The wall shelf takes no floor space and is derived from every coop's room geometry.
+Existing saved coops gain access without moving their fittings or changing the save.
+Purchasing either fitting still uses `buy_machine`, with an explicit coop-shop context
+that the gateway checks against the buyer's current room. Older uncontextualized
+outdoor purchase actions keep their historical meaning so existing sessions replay.
+Opening the shelf changes no simulation state and records no action.
 
 ### Feed and cozy gathering
 
@@ -184,8 +199,10 @@ Workers read AGENTS supplied in this chat, docs/WRITING, this plan, and named so
 
 ## Review build — 2026-10-31
 
-Implementation is complete for review on `codex/chicken-families`. It has not been
-merged to main, deployed, installed on the tablet, or published as a release.
+Implementation is complete for review on `codex/chicken-families`. Commit `7350a2aa`
+was installed on Daniel's tablet on 2026-10-31 at 1:29pm Pacific. It has not been
+merged to main or published as a release. The separate in-coop store requested after
+that play-through is awaiting its verification and tablet refresh.
 The working review checkout is `/tmp/tiny-farm-chicken-final`; the shared checkout
 and its video work were preserved. [Pictures from the running game](mockups/chicken_families/README.md)
 show inventory, feeding, incubation, the named family, and the visiting farmer.

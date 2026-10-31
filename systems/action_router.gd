@@ -245,6 +245,14 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 			return check_result.call({"action": "open_poultry", "tool_idx": 0,
 				"target_t": tap_t, "walk_to": true, "seed_type": ""})
 
+	# The north-wall shelf belongs to this coop. It never occupies a floor
+	# cell or asks her to walk through furnishings to reach a menu.
+	if not is_drag and teach_world != null:
+		var coop_store := CoopShop.room_at(teach_world, tap_t)
+		if coop_store != "" and CoopShop.current_room(teach_world) == coop_store:
+			return check_result.call({"action": "open_coop_shop", "tool_idx": 0,
+				"target_t": tap_t, "walk_to": false, "seed_type": ""})
+
 	# 1. Special objects
 	var obj: String = farm.get_object(tx, ty)
 	if obj != "" and SPECIAL_OBJECTS.has(obj):

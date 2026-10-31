@@ -126,3 +126,6 @@ video/**/edit/auto-*
 
 # Generated chicken-family pictures; reviewed copies live in docs/design/mockups.
 tools/chicken_family_shots/
+
+# Rebuild with tools/capture_coop_shop.tscn.
+tools/coop_shop_shots/

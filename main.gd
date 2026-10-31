@@ -1198,11 +1198,16 @@ func trigger_machine_menu_for(id: String) -> void:
 	menus.open_machine_menu_for(id)
 
 
-## Open the panel a building gets (P-18, 2026-09-15) — go in, or pick it up.
+## Open the shelf inside the coop the player is visiting.
+func trigger_coop_shop(at: Vector2i) -> void:
+	menus.open_coop_shop(at)
+
+
 func trigger_poultry_menu(at: Vector2i, chicken_id: String = "") -> void:
 	menus.open_poultry_menu(at, chicken_id)
 
 
+## Open the panel a building gets (P-18, 2026-09-15) — go in, or pick it up.
 func trigger_structure_menu(at: Vector2i) -> void:
 	menus.open_structure_menu(at)
 

@@ -3474,6 +3474,13 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 		"buy_machine":
 			if gs == null: return _fail("no_state")
 			var bought_key := String(action.get("item", ""))
+			# New shelf purchases identify their coop. Old uncontextualized
+			# buy_machine entries keep their historical replay meaning.
+			var shop: Dictionary = action.get("params", {})
+			if String(shop.get("shop", "")) == "coop":
+				var buyer_room := CoopShop.current_room(self, String(action.get("actor", "player")))
+				if bought_key not in CoopShop.ITEMS or buyer_room == "" or buyer_room != String(shop.get("room", "")):
+					return _fail("coop_shop_only")
 			# **The shelf and the till ask the same question** (S-12). The card is
 			# already dark and its button already disabled when a rung is not
 			# earned, so this refusal is for everything that does not go through a

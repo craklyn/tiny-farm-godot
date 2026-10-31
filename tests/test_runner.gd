@@ -184,6 +184,7 @@ func _init() -> void:
 	poultry.test_poultry_routes_and_replays()
 	poultry.test_family_leaves_nest_and_returns()
 	poultry.test_poultry_refusals_leave_no_trace()
+	poultry.test_coop_shop()
 
 	var areas: Array = [poultry, core, persistence, homestead, actor, presentation, automation, interior, barn, sheep, sheep_gags]
 	var pass_count := 0

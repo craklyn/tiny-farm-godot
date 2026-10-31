@@ -341,3 +341,58 @@ func test_poultry_refusals_leave_no_trace() -> void:
 		ChickenBrain.new().step(world,child,tick,GameState)
 		rested = rested and String(world.actor(child)["extra"].get("poultry_activity","")) == "settling"
 	_assert(rested,"older chick always settles beside resting mother, independent of copying probability")
+
+
+func test_coop_shop() -> void:
+	print("\n--- Coop shop: location, existing rooms, and purchase replay ---")
+	var world := _world()
+	var shelf := CoopShop.shelf_rect(world, room)
+	_assert(shelf.size == Vector2i(2, 1) and world.room_of_cell(shelf.position) == room,
+		"every coop derives a two-cell shelf on its existing wall")
+	var before := JSON.stringify(SaveGame.capture(world, GameState))
+	_assert(CoopShop.room_at(world, shelf.position) == room and CoopShop.room_at(world, shelf.position + Vector2i.RIGHT) == room,
+		"both pictured goods on the wall answer the same shop")
+	_assert(CoopShop.room_at(world, nest) == "", "the shelf does not hijack a player-placed floor fitting")
+	_assert(before == JSON.stringify(SaveGame.capture(world, GameState)), "looking up the shop does not change a room or save")
+	var gold := int(GameState.gold)
+	for item in CoopShop.ITEMS:
+		var refused: Dictionary = world.apply_action({"actor": "player", "verb": "buy_machine", "item": item,
+			"params": {"shop": "coop", "room": room}}, GameState)
+		_assert(not refused.get("ok", false) and String(refused.get("reason", "")) == "coop_shop_only",
+			"%s cannot be bought from outdoors" % item)
+	_assert(int(GameState.gold) == gold, "outdoor purchase attempts spend no gold")
+	# No shelf key existed in old rooms; the same ordinary save shape restores
+	# the shelf without inserting an object or relocating the owner's fittings.
+	var saved = JSON.parse_string(JSON.stringify(SaveGame.capture(world, GameState)))
+	var restored := SimWorld.new()
+	var state = load("res://systems/game_state.gd").new()
+	_assert(SaveGame.restore(saved, restored, state), "a saved coop from before its shop has access on load")
+	_assert(CoopShop.shelf_rect(restored, room) == shelf and restored.get_object(nest.x, nest.y) == "nest_box"
+		and restored.get_object(dispenser.x, dispenser.y) == Poultry.DISPENSER_ITEM,
+		"the derived shop preserves existing nest and dispenser positions")
+	state.free()
+	var anchor: Vector2i = world.rooms[room]["anchor"]
+	world.set_actor_pos("player", world.room_exit_for(world.rooms[room]))
+	var log := ReplayLog.new()
+	log.start_from_save(SaveGame.capture(world, GameState), world.gen_seed)
+	_replay_do(world, log, {"actor": "player", "verb": "use_door", "target": anchor})
+	_assert(CoopShop.current_room(world) == room, "the real coop door gives the buyer access to its shelf")
+	for item in CoopShop.ITEMS:
+		_replay_do(world, log, {"actor": "player", "verb": "buy_machine", "item": item,
+			"params": {"shop": "coop", "room": room}})
+		_assert(int(GameState.machines.get(item, 0)) == 1, "%s enters inventory through the purchase gateway" % item)
+	_assert(int(GameState.gold) == gold - 60, "the two fittings retain their thirty-gold prices")
+	var report := SaveGame.replay_report(log, SaveGame.capture(world, GameState))
+	_assert(bool(report.get("matched", false)), "entering the coop and buying both fittings replays to the same save")
+
+	# Farms recorded before the separate shop bought these from outdoors.
+	# Their old action shape must remain replayable after the UI moves indoors.
+	world = _world()
+	log = ReplayLog.new()
+	log.start_from_save(SaveGame.capture(world, GameState), world.gen_seed)
+	for item in CoopShop.ITEMS:
+		_replay_do(world, log, {"actor": "player", "verb": "buy_machine", "item": item})
+	var legacy_report := SaveGame.replay_report(log, SaveGame.capture(world, GameState))
+	_assert(int(GameState.machines.get("nest_box", 0)) == 1 and int(GameState.machines.get("chicken_dispenser", 0)) == 1,
+		"historical outdoor purchases retain their original inventory effect")
+	_assert(bool(legacy_report.get("matched", false)), "a historical outdoor-fitting purchase log still replays exactly")

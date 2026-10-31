@@ -839,6 +839,9 @@ before the first public build ships.*
 - `entities/poultry_art.gd`: original procedural 16-pixel dispenser and feed-bag
   drawings made for Tiny Farm, using the coop's wood and straw colors. Source is
   included in the repository; no external image or generation service was used.
+- The coop shop's wall shelf in `entities/poultry_art.gd` is a local pixel composition
+  of the credited nest-box and procedural dispenser pictures on a wooden shelf. No
+  external asset or generation service was used.
 - Chick appearance reuses the shipped chicken silhouettes with a yellow palette
   and smaller display size. Its source and usage rights are those of the chicken
   asset credited above.

@@ -68,3 +68,26 @@ static func portrait(chick: bool = false) -> AtlasTexture:
 	icon.atlas = chick_texture() if chick else HEN
 	icon.region = Rect2(0, 0, 16, 16)
 	return icon
+
+
+static var _coop_shop: Texture2D
+
+static func coop_shop_texture() -> Texture2D:
+	if _coop_shop == null:
+		var image := Image.create(32, 16, false, Image.FORMAT_RGBA8)
+		image.fill(Color.TRANSPARENT)
+		image.fill_rect(Rect2i(0, 0, 32, 15), Color("5e3929"))
+		image.fill_rect(Rect2i(1, 1, 30, 12), Color("9d6b42"))
+		var nest := (load("res://assets/sprites/generated/nest_box.png") as Texture2D).get_image().get_region(Rect2i(0, 0, 16, 16))
+		nest.resize(12, 12, Image.INTERPOLATE_NEAREST)
+		var feed := dispenser_texture().get_image()
+		feed.resize(12, 12, Image.INTERPOLATE_NEAREST)
+		image.blit_rect(nest, Rect2i(0, 0, 12, 12), Vector2i(2, 1))
+		image.blit_rect(feed, Rect2i(0, 0, 12, 12), Vector2i(18, 1))
+		image.fill_rect(Rect2i(0, 13, 32, 2), Color("c49a65"))
+		image.fill_rect(Rect2i(1, 15, 30, 1), Color("5e3929"))
+		# A little coin between the two goods echoes the existing shop cards.
+		image.fill_rect(Rect2i(14, 6, 3, 4), Color("e4bc67"))
+		image.set_pixel(15, 6, Color("fae0a0"))
+		_coop_shop = ImageTexture.create_from_image(image)
+	return _coop_shop

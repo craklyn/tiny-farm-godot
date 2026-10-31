@@ -885,6 +885,9 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 	if action == "sleep":
 		get_tree().get_first_node_in_group("Main").call_deferred("trigger_action", "sleep")
 		return
+	if action == "open_coop_shop":
+		get_tree().get_first_node_in_group("Main").call_deferred("trigger_coop_shop", target_t)
+		return
 	if action == "open_shop":
 		get_tree().get_first_node_in_group("Main").call_deferred("trigger_action", "open_shop")
 		return

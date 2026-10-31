@@ -7,7 +7,7 @@ the capture moves the observer and camera to show them. The walkthrough passes
 
 The [design and review notes](../../16-chicken-families.md) distinguish Daniel's
 decisions from the prices and other completion details chosen for this build.
-This feature has not been deployed.
+The review build was installed on Daniel’s tablet on 2026-10-31 at 1:29pm Pacific. The separate coop store update is awaiting a tablet refresh. No public release is authorized.
 
 ## Putting an egg into a nest
 

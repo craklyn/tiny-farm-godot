@@ -8384,6 +8384,26 @@ func _scenario_bc_a_nest_box_goes_down_by_tap() -> void:
 	if room_id == "":
 		return
 
+	# Coop fittings moved to their own indoor shelf (Daniel, 2026-10-31).
+	var shop_gold_before := int(GameState.gold)
+	var old_nests := int(GameState.machines.get("nest_box", 0))
+	var old_dispensers := int(GameState.machines.get("chicken_dispenser", 0))
+	GameState.machines["nest_box"] = 0
+	GameState.machines["chicken_dispenser"] = 0
+	GameState.gold = 1000
+	farm.sim.set_actor_pos("player", hut + Vector2i.DOWN)
+	player.init_position(hut.x, hut.y + 1)
+	menus.open_menu("shop")
+	var outside_keys: Array = menus.shop_items.map(func(item): return String(item.seed_type))
+	_assert(not outside_keys.has("nest_box") and not outside_keys.has("chicken_dispenser"),
+		"the outdoor shop offers neither coop fitting")
+	_assert(outside_keys.has("coop") and outside_keys.has("chicken_feed") and outside_keys.has("rug"),
+		"the coop, bought feed and other outdoor stock remain on their shelf")
+	menus.close_menu()
+	var shelf := CoopShop.shelf_rect(farm.sim, room_id)
+	menus.open_coop_shop(shelf.position)
+	_assert(menus.active_menu == "", "the indoor shelf cannot open from outdoors")
+
 	# --- in, by the tap and the panel (Scenario AX's path) ---------------------------
 	farm.sim.set_actor_pos("player", hut + Vector2i(0, 1))
 	player.init_position(hut.x, hut.y + 1)
@@ -8399,6 +8419,29 @@ func _scenario_bc_a_nest_box_goes_down_by_tap() -> void:
 	var inside := await _wait_until(
 		func(): return farm.sim.room_of_cell(player.get_tile_pos()) == room_id, 200)
 	_assert(inside, "and she goes in (%s)" % player.get_tile_pos())
+
+	var bought_mark: int = farm.replay.entries.size()
+	var before_shelf_gold := int(GameState.gold)
+	InputManager.click_tile = shelf.position
+	InputManager.has_click = true
+	var shelf_open := await _wait_until(func(): return menus.active_menu == "coop_shop", 200)
+	_assert(shelf_open, "a touch on the built-in wall shelf opens the coop's own shop")
+	_assert(menus.shop_items.size() == 2 and menus.shop_items.map(func(item): return String(item.seed_type)) == CoopShop.ITEMS,
+		"the indoor shop contains exactly the nest and dispenser")
+	_assert(int(GameState.gold) == before_shelf_gold, "opening the shelf buys nothing")
+	for item in CoopShop.ITEMS:
+		for i in menus.shop_items.size():
+			if String(menus.shop_items[i].seed_type) == item:
+				_press_row(menus.options_container, i)
+				break
+		var bought := await _wait_until(func(): return int(GameState.machines.get(item, 0)) == 1, 180)
+		_assert(bought, "the indoor card buys one %s into inventory" % item)
+	_assert(int(GameState.gold) == before_shelf_gold - 60, "both purchases cost exactly thirty gold each")
+	var purchases := 0
+	for entry in farm.replay.entries.slice(bought_mark):
+		if String(entry.get("verb", "")) == "buy_machine" and String(entry.get("item", "")) in CoopShop.ITEMS: purchases += 1
+	_assert(purchases == 2, "one press per card records exactly two gateway purchases")
+	menus.close_menu()
 
 	# --- holding a nest box, a tap on the floor sets it down ----------------------
 	var doorway: Vector2i = farm.sim.rooms[room_id]["door"]
@@ -8438,6 +8481,32 @@ func _scenario_bc_a_nest_box_goes_down_by_tap() -> void:
 	_assert(up, "the nest's pick-up control returns it to the crate")
 	_assert(int(GameState.machines.get("nest_box", 0)) == 1, "back into the crate")
 
+	# The bought dispenser follows the same inventory-to-floor touch path.
+	var feed_spot := spot + Vector2i.RIGHT
+	player.init_position(spot.x, spot.y)
+	farm.sim.set_actor_pos("player", spot)
+	GameState.selected_seed_type = "chicken_dispenser"
+	InputManager.click_tile = feed_spot
+	InputManager.has_click = true
+	var dispenser_down := await _wait_until(func(): return farm.get_object(feed_spot.x, feed_spot.y) == "chicken_dispenser", 240)
+	_assert(dispenser_down and int(GameState.machines.get("chicken_dispenser", 0)) == 0,
+		"the dispenser bought indoors is placed on the floor by touch")
+	InputManager.click_tile = feed_spot
+	InputManager.has_click = true
+	await _wait_until(func(): return menus.active_menu == "poultry", 240)
+	for i in menus.poultry_options.size():
+		if String(menus.poultry_options[i].get("verb", "")) == "collect":
+			menus.selected_option = i
+			menus._select_current_option()
+			break
+	_assert(farm.get_object(feed_spot.x, feed_spot.y) == "", "the bought dispenser can be picked up normally")
+	# Floor props never occupy the wall shelf or turn it into a blocked walk.
+	farm.sim.set_object(feed_spot.x, feed_spot.y, "chicken_dispenser")
+	var shelf_intent: Dictionary = ActionRouter.resolve(farm, GameState, shelf.position, player.get_tile_pos())
+	_assert(String(shelf_intent.get("action", "")) == "open_coop_shop" and not bool(shelf_intent.get("walk_to", true)),
+		"the wall shelf stays usable even with floor furnishings beside it")
+	farm.sim.set_object(feed_spot.x, feed_spot.y, "")
+
 	# --- out again, and the farm as it was ----------------------------------------
 	player.path.clear()
 	player.pending_action = {}
@@ -8449,7 +8518,9 @@ func _scenario_bc_a_nest_box_goes_down_by_tap() -> void:
 	if placed_here:
 		farm.apply_action({ "verb": "collect", "target": hut, "actor": "player" }, GameState)
 		GameState.machines.erase("coop")
-	GameState.machines.erase("nest_box")
+	GameState.machines["nest_box"] = old_nests
+	GameState.machines["chicken_dispenser"] = old_dispensers
+	GameState.gold = shop_gold_before
 	GameState.selected_seed_type = held_before
 	_restore_session_paths(real_paths)
 
@@ -11468,6 +11539,10 @@ func _scenario_sg_a_stuck_sheep_grazes_a_ring_and_is_perched_on() -> void:
 	var back := await _wait_until(func(): return node != null and int(node.stretch_frame) == -1, 120)
 	_assert(licked and smug and back, "her sprite reaches and licks for it, settles back smug, and goes back to her wiggle")
 	SheepGags.cue(id, "bird", farm.sim.clock.tick)
+	# Observe the new cue before testing its landing; the previous idle bird may
+	# already be perched with an expired heart in the renderer this same tick.
+	var flying := await _wait_until(func(): return node != null and not node.bird.is_empty() and bool(node.bird.flying), 30)
+	_assert(flying, "the new bird cue starts a flight before checking its landing")
 	var landed := await _wait_until(func(): return node != null and not node.bird.is_empty() and not bool(node.bird.flying), 120)
 	_assert(landed and float(node.bird.heart) >= 0.0, "a bird flies in and sits on her, and her heart shows")
 	await get_tree().process_frame

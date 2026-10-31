@@ -2147,6 +2147,7 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 	if y0 == 0:
 		_draw_sheep_rings(canvas)
 	_draw_barn_rooms(canvas, y0, y1)
+	_queue_coop_shop(render_queue, canvas, y0, y1)
 	_queue_edge_room_walls(render_queue, canvas)
 
 	if _profiling:
@@ -2841,3 +2842,17 @@ func _bake_ripe_glow_texture() -> Texture2D:
 					a += CropPresentation.BLOOM_RING_A
 			img.set_pixel(x, y, Color(1.0, 1.0, 1.0, a))
 	return ImageTexture.create_from_image(img)
+
+
+# A built-in wall shelf, not another fitting taking a floor square. Deriving it
+# here gives existing saved coops the same shop without touching their contents.
+func _queue_coop_shop(queue: Array[Dictionary], canvas: CanvasItem, y0: int, y1: int) -> void:
+	var viewer = player_node()
+	if viewer == null: return
+	var room := sim.room_of_cell(viewer.get_tile_pos())
+	var shelf := CoopShop.shelf_rect(sim, room)
+	if shelf.size == Vector2i.ZERO or not _rows_hold(shelf.position.y * TILE_SIZE, y0, y1): return
+	var at := Vector2(shelf.position) * TILE_SIZE
+	var art := PoultryArt.coop_shop_texture()
+	queue.append({"y": at.y, "draw": func():
+		canvas.draw_texture_rect(art, Rect2(at, Vector2(32, 16)), false)})

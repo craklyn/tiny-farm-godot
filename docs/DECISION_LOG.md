@@ -885,6 +885,16 @@ Daniel authorized implementation for review on 2026-10-30; that authorization do
 authorize deployment. The initial inherited-habits and ancestry-display proposals were
 explicitly deferred (D-18).
 
+### S-49. Nest boxes and dispensers are bought inside the coop
+
+**Ruled by Daniel, 2026-10-31, after tablet play.** A separate store inside each coop
+sells nest boxes and feed dispensers. Remove those two items from the outdoor shop.
+Existing owned fittings stay where they are. Bought feed and every other outdoor
+shop item remain available as before. The shop's north-wall shelf takes no floor
+space and is available in existing coops without rebuilding them. Prices stay at
+30g per fitting; purchases enter inventory for ordinary placement. See
+[Chicken families](design/16-chicken-families.md#buying-coop-fittings).
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported

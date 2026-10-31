@@ -127,6 +127,7 @@ var _card_drag_exceeded: bool = false
 # 2026-09-10). Counting rows instead of children is true however they are nested.
 var next_option: int = 0
 var shop_items: Array[Dictionary] = []
+var coop_shop_room := ""
 
 # The inventory picker's own cards (Q-119/S-23) — everything she can make
 # active by tapping its picture, in the order the grid drew them, so a tap's
@@ -279,6 +280,14 @@ func _ready() -> void:
 	window_view = WindowView.new()
 	window_view.closed.connect(close_menu)
 	add_child(window_view)
+
+
+func open_coop_shop(at: Vector2i) -> void:
+	if farm == null: return
+	var room := CoopShop.room_at(farm.sim, at)
+	if room == "" or CoopShop.current_room(farm.sim) != room: return
+	coop_shop_room = room
+	open_menu("coop_shop")
 
 
 func open_menu(menu_name: String) -> void:
@@ -525,7 +534,7 @@ func _rebuild_options() -> void:
 					not LookLab.changed_axes().is_empty())
 			menu_panel.size = Vector2(_fit_panel_width(300.0), _fit_panel_height())
 
-		"shop":
+		"shop", "coop_shop":
 			# T-12 (Q-35): **the shop is the one screen in phase 1 that required
 			# reading**, and guiding a pre-reader into a screen she cannot read is
 			# worse than not guiding her at all. So: a seed-packet header instead
@@ -533,6 +542,7 @@ func _rebuild_options() -> void:
 			# icons instead of names, and an ✕ instead of "Close". Numerals stay —
 			# S-7 forbids required *reading*, not digits.
 			title_label.text = ""
+			shop_title_icon.texture = PoultryArt.coop_shop_texture() if active_menu == "coop_shop" else seed_box_icon()
 			shop_title_icon.visible = true
 			gold_icon.visible = true
 			gold_display.visible = true
@@ -1591,7 +1601,7 @@ func _select_current_option() -> void:
 				close_menu()
 				menu_action.emit("look_lab")
 
-		"shop":
+		"shop", "coop_shop":
 			if selected_option < shop_items.size():
 				var item: Dictionary = shop_items[selected_option]
 				# Transactions are sim Actions too (P-9 guardrail). Two verbs, one
@@ -1608,6 +1618,8 @@ func _select_current_option() -> void:
 				elif String(item.kind) == "machine":
 					purchase["verb"] = "buy_machine"
 					purchase["item"] = item.seed_type
+					if active_menu == "coop_shop":
+						purchase["params"] = {"shop": "coop", "room": coop_shop_room}
 				else:
 					purchase["verb"] = "buy_seed"
 					purchase["seed_type"] = item.seed_type
@@ -1773,6 +1785,16 @@ func _select_current_option() -> void:
 # `MachineDefs.ORDER`; nothing in this file has to learn its name.
 func _build_shop_items() -> void:
 	shop_items.clear()
+	if active_menu == "coop_shop":
+		if farm == null or CoopShop.current_room(farm.sim) != coop_shop_room: return
+		for key in CoopShop.ITEMS:
+			var row: Dictionary = MachineDefs.TYPES[key]
+			var unlocked: bool = farm.sim.offers(key, GameState)
+			shop_items.append({"kind": "machine", "seed_type": key,
+				"item_name": row.name, "price": int(row.price), "unlocked": unlocked,
+				"affordable": unlocked and GameState.gold >= int(row.price),
+				"icon": MachineDefs.icon_of(key), "owned": GameState.machines.get(key, 0)})
+		return
 	for crop_name in CropDefs.ORDER:
 		var def: Dictionary = CropDefs.TYPES[crop_name]
 		# **No card for a crop she already has** (S-18/S-19/S-20). Wheat is the crop the
@@ -1803,6 +1825,7 @@ func _build_shop_items() -> void:
 		"affordable": GameState.gold >= Poultry.FEED_PRICE, "icon": PoultryArt.feed_texture(),
 		"owned": int(GameState.items.get("chicken_feed", 0))})
 	for machine_key in MachineDefs.ORDER:
+		if machine_key in CoopShop.ITEMS: continue
 		var mdef: Dictionary = MachineDefs.TYPES[machine_key]
 		# **The sim answers what is for sale** (S-12). Two of these rows are rungs
 		# of the robot ladder — the bench and the Mark III — and what has been
