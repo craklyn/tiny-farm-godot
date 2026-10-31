@@ -47,8 +47,10 @@ func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
 		for i in carried.size():
 			var bird: Dictionary = carried[i]
 			var chick := String(bird.get("stage", "adult")) == "chick"
-			var size := 8.0 if chick else 13.0
-			var at := position + Vector2(1 + i * 7, -1 - i * 3)
+			var size := 6.0 if chick else 10.0
+			# The person occupies only 13x22 pixels of the 48px cell. Keep
+			# birds beside the lower torso, clear of their face and feet.
+			var at := position + (Vector2(9, 7) if chick else Vector2(-3, 5))
 			canvas.draw_texture_rect_region(PoultryArt.chick_texture() if chick else PoultryArt.HEN,
 				Rect2(at, Vector2(size, size)), Rect2(0, 0, 16, 16))
 	})

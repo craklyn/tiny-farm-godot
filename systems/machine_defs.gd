@@ -130,7 +130,7 @@ static var TYPES: Dictionary = {
 			"region": Rect2(0, 0, 16, 16) },
 	},
 	"chicken_dispenser": {
-		"name": "Chicken Feed Dispenser", "price": 20, "species": "",
+		"name": "Chicken Feed Dispenser", "price": 30, "species": "",
 		"program": "", "configs": [], "default_config": "",
 		"unlock_requirement": null, "object": "chicken_dispenser",
 		"rooms": ["coop"], "outdoors": false,

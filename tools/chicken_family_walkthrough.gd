@@ -102,7 +102,7 @@ func _ready() -> void:
 		main.player.init_position(hut.x, hut.y + 3)
 		main.note_page_change()
 		main.farm.advance_sim(20, GameState)
-		await _shot("05_mother_and_chick")
+		await _shot("05_mother_and_chick", [hen, chick])
 		main.menus.open_poultry_menu(world.actor_pos(hen), hen)
 		var before := float(world.actor(hen)["extra"].get("familiarity", 0))
 		_choose("greet_chicken")
@@ -124,11 +124,15 @@ func _ready() -> void:
 		_check(carrying, "the neighbor physically collects the pair")
 		if carrying:
 			var collector: String = world.actors_of_species("chicken_collector")[0]
-			world.set_actor_pos("player", world.actor_pos(collector) + Vector2i(0, 2))
-			main.player.init_position(world.actor_pos("player").x, world.actor_pos("player").y)
-			main.note_page_change()
+			# Show an actual departing stride, preferably in profile so the
+			# neighbor remains recognizable behind the birds in their arms.
+			for tick in 400:
+				main.farm.advance_sim(1, GameState)
+				if not world.has_actor(collector): break
+				var clear_of_roof := Vector2(world.actor_pos(collector) - hut).length() >= 4.0
+				if clear_of_roof and String(world.actor(collector).get("facing", "")) in ["left", "right"]: break
 			main.farm.sync_actors()
-			await _shot("08_neighbor_carrying_family")
+			await _shot("08_neighbor_carrying_family", [collector])
 		for i in 2400:
 			main.farm.advance_sim(1, GameState)
 			if world.actors_of_species("chicken_collector").is_empty(): break
@@ -144,13 +148,70 @@ func _choose(verb: String, item: String = "") -> void:
 			return
 	_check(false, "control exists: %s" % verb)
 
-func _shot(label: String) -> void:
+func _shot(label: String, focus_ids: Array[String] = []) -> void:
 	if not capture: return
 	DirAccess.make_dir_recursive_absolute(ProjectSettings.globalize_path(OUTPUT))
-	for i in 20: await get_tree().process_frame
+	# Captures are snapshots of real sim states. Hold Main's tick pump while the
+	# actual actor renderers catch up after the walkthrough's fast-forward.
+	var was_processing: bool = main.is_processing()
+	main.set_process(false)
+	main.hud.visible = false
+	main.hud.toast_timer = 0
+	main.hud.toast_panel.visible = false
+	main.hud.watering_inset.visible = false
+	main.player.path.clear()
+	main.player.pending_action = {}
+	main.player.tap_indicator = {}
+	var stamp := get_tree().root.get_node_or_null("BuildOverlay")
+	if stamp != null: stamp.visible = false
+	var camera: Camera2D = main.camera
+	var old_position := camera.position
+	var old_zoom := camera.zoom
+	var old_smoothing := camera.position_smoothing_enabled
+	var old_limits := [camera.limit_left, camera.limit_top, camera.limit_right, camera.limit_bottom]
+	if not focus_ids.is_empty():
+		camera.position_smoothing_enabled = false
+		camera.limit_left = -100000
+		camera.limit_top = -100000
+		camera.limit_right = 100000
+		camera.limit_bottom = 100000
+		camera.zoom = Vector2(5, 5)
+		for frame in 900:
+			var centre := Vector2.ZERO
+			var count := 0
+			var caught_up := true
+			for id in focus_ids:
+				var sprite: Node2D = main.farm.actor_nodes.get(id)
+				if sprite == null: continue
+				centre += sprite.global_position + Vector2(8, 8)
+				count += 1
+				var goal := Vector2(main.farm.sim.actor_pos(id)) * 16.0
+				caught_up = caught_up and sprite.position.distance_to(goal) < 1.0
+			if count > 0:
+				camera.global_position = centre / count
+				camera.reset_smoothing()
+				camera.force_update_scroll()
+			main.farm.queue_redraw()
+			await get_tree().process_frame
+			if caught_up and frame >= 20: break
+	else:
+		for i in 20:
+			main.farm.queue_redraw()
+			await get_tree().process_frame
+	main.farm.queue_redraw()
 	await RenderingServer.frame_post_draw
 	var error := get_viewport().get_texture().get_image().save_png(OUTPUT.path_join(label + ".png"))
 	_check(error == OK, "captured %s" % label)
+	camera.position = old_position
+	camera.zoom = old_zoom
+	camera.position_smoothing_enabled = old_smoothing
+	camera.limit_left = old_limits[0]
+	camera.limit_top = old_limits[1]
+	camera.limit_right = old_limits[2]
+	camera.limit_bottom = old_limits[3]
+	camera.reset_smoothing()
+	camera.force_update_scroll()
+	main.set_process(was_processing)
 
 func _check(ok: bool, label: String) -> void:
 	if ok:
