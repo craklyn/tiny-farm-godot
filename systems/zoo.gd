@@ -143,6 +143,7 @@ const ICON_CELL := {
 	# neighbour.png / bot.png are 4x4 sheets of 48px cells laid out
 	# [down, up, left, right] x [idle, walk, walk, walk]; cell (0,0) is standing.
 	SpeciesDefs.NEIGHBOUR: Rect2(0, 0, 48, 48),
+	"chicken_collector": Rect2(0, 0, 48, 48),
 	SpeciesDefs.BOT: Rect2(0, 0, 48, 48),
 	# Every other species has its own one-row sheet (split 2026-09-06), so the
 	# standing-still cell is the first — except the mole, whose first cell is a

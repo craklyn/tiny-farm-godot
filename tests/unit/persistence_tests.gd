@@ -394,17 +394,14 @@ func test_generated_games() -> void:
 		"a replay that draws one number more than the game did fails the check (%s)"
 			% extra_draw["failure"])
 
-	# Found by this check on its first run: a hen whose `use_door` the gateway
-	# refuses, in play and again on replay, used to read as a hen that changed her
-	# mind. On seed 1192673136 she is refused a nest square that was already taken.
-	var hen: Dictionary = GeneratedGames.play(1192673136)
-	var refused := 0
-	for k in hen["counts"]:
-		if String(k).begins_with("brain refused chicken"):
-			refused += int(hen["counts"][k])
-	_assert(refused > 0 and hen["ok"],
-		"a hen refused by the gateway replays as the same hen (%d refusals; %s)"
-			% [refused, hen["failure"]])
+	# Laying now happens on the hen's own square, so the old generated seed
+	# no longer guarantees a refusal. Exercise a genuine stale doorway intent:
+	# the hen has decided to enter, but its far side is blocked before she acts.
+	var hen: Dictionary = _blocked_hen_door_replay()
+	_assert(int(hen["refused"]) > 0 and hen["reason"] == "door_is_blocked"
+			and hen["matched"] and hen["divergence"] == "",
+		"a hen's blocked-door refusal is recomputed and replays exactly (%d refusals; %s)"
+			% [int(hen["refused"]), String(hen["divergence"])])
 
 	# ...and a Mark III with two kinds of seed tied in her box sows the same one on a
 	# farm loaded from its save as on the farm she never left.
@@ -417,3 +414,39 @@ func test_generated_games() -> void:
 		"a tie in the seed box goes the shop's way whatever order the box was read in (%s, %s)"
 			% [as_played, BotBrain._best_seed(gs)])
 	gs.free()
+
+
+# Deliberately arrange the interval between planning a door and using it. This
+# pins refusal replay without depending on a random egg landing on an object.
+func _blocked_hen_door_replay() -> Dictionary:
+	var session := LiveSession.new(1192673136)
+	var door: Dictionary = {}
+	for pair in WorldLayout.doors(session.world.layout):
+		if session.world.space_of(pair["at"]) == "farm":
+			door = pair
+			break
+	if door.is_empty():
+		session.done()
+		return {"refused": 0, "reason": "no_fixture_door", "matched": false, "divergence": "no fixture door"}
+	var at: Vector2i = door["at"]
+	var destination: Vector2i = door["to"]
+	var bird := SimWorld.ACTOR_CHICKEN
+	session.world.set_actor_pos(bird, at + Vector2i.DOWN)
+	session.world.actor(bird)["extra"]["door_wanted"] = [at.x, at.y]
+	session.world.set_tile_state(destination.x, destination.y, WorldLayout.FENCE_BUILT)
+	session.world.schedule_all_brains()
+	session.rebase()
+	session.log.record_decisions = true
+	var refused := 0
+	var reason := ""
+	for decision in session.tick(1):
+		if decision.get("actor", "") == bird and not decision["action"].is_empty() 				and not bool(decision["result"].get("ok", false)):
+			refused += 1
+			reason = String(decision["result"].get("reason", ""))
+	var snapshot: Dictionary = JSON.parse_string(JSON.stringify(SaveGame.capture(session.world, session.gs)))
+	var replay := ReplayLog.from_json(session.log.to_json())
+	var report := SaveGame.replay_report(replay, snapshot)
+	var result := {"refused": refused, "reason": reason,
+		"matched": bool(report["matched"]), "divergence": String(report["divergence"])}
+	session.done()
+	return result

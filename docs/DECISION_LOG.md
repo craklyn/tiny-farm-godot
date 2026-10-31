@@ -857,6 +857,44 @@ How fast the coat grows, the speed-up after a gap and how often a sheep rests in
 were not ruled; they are a strawman with tunable numbers in
 [design/18](design/18-sheep.md).
 
+### S-48. A hen can hatch one nested egg and raise a chick without daily player care
+
+**Ruled by Daniel, 2026-10-27–30.** The player puts an egg into a coop nest and fills
+a dispenser with wheat or bought feed. Either available hen may adopt it. Five fed game
+days hatch one chick; she stops laying during incubation and seven days of maternal care.
+Without feed, incubation retreats at half speed, eventually freeing the hen to lay again.
+The egg remains usable and worth its normal sale price. Taking it out resets progress.
+
+The mother demonstrates foraging and raises her chick without supplied food. They return
+to a reachable coop at night or safely settle outside. Beyond six tiles of Euclidean
+separation, or in separate areas, each independently waits 2–30 seconds before seeking the
+other through doors. If both seek, mother retrieves while chick waits. At seven days care
+ends and laying resumes. The farm allows two adults and one chick; a mature chick remains
+small while both adult places are occupied. It is already independent. No other incubation
+starts while that chick remains, and only one incubation can run at a time.
+
+Names are automatic and lasting. Direct greetings build lasting familiarity, expressed
+only by a modest idle-wandering preference toward the player. Dispenser visitors consume
+no feed; only incubation does. Selling uses named confirmation and brings a neighbor to
+collect the selected birds wherever they are, then physically carry them away. A dependent
+mother and chick leave together. Moving a coop resets incubation, recovers unused feed and
+intact eggs, and leaves living birds outside safely.
+
+The full rules and acceptance cases are in [Chicken families](design/16-chicken-families.md).
+Daniel authorized implementation for review on 2026-10-30; that authorization does not
+authorize deployment. The initial inherited-habits and ancestry-display proposals were
+explicitly deferred (D-18).
+
+### S-49. Nest boxes and dispensers are bought inside the coop
+
+**Ruled by Daniel, 2026-10-31, after tablet play.** A separate store inside each coop
+sells nest boxes and feed dispensers. Remove those two items from the outdoor shop.
+Existing owned fittings stay where they are. Bought feed and every other outdoor
+shop item remain available as before. The shop's north-wall shelf takes no floor
+space and is available in existing coops without rebuilding them. Prices stay at
+30g per fitting; purchases enter inventory for ordinary placement. See
+[Chicken families](design/16-chicken-families.md#buying-coop-fittings).
+
 ## Tier 2 — Provisional (working answer + adjustment conditions)
 
 ### P-1. Touch-first, desktop always supported
@@ -1140,6 +1178,20 @@ legibly. Where richer behaviour already exists in code, it moves up a tier rathe
 being deleted; the designer said "I like these options", not "remove them".
 
 ---
+
+### P-20. Chicken-family prices and daily progress are review-build defaults
+
+**Provisional, 2026-10-31.** Under Daniel's authorization to finish the design and implement
+while he sleeps, the review build chooses a 30g dispenser, 2g feed portions, 30g adult sales,
+and 15g independent-chick sales. Existing nest and egg prices remain unchanged. A full
+dispenser holds seven days of supply; one wheat or bought portion supplies one day.
+Incubation advances at day rollover in half-day units, with exact unused supply recovered
+when moving fittings. Names, inspection, feeding and selling use the existing touch flows.
+
+These completion details are proposals for his review, not separate settled rulings.
+**Adjust if:** his play-through finds the preparation too costly, the sales too rewarding,
+or the day-by-day progress hard to read. Record any implementation differences in the
+design's review appendix before presenting the build.
 
 ## Tier 3 — Deferred (with triggers)
 
@@ -1797,6 +1849,19 @@ next pass over the game's touch controls, whichever comes first. The likely fix 
 rows (a doorway for going in, a lifting hand for picking up) applied to every building at once.
 
 ---
+
+### D-18. Inherited chicken habits and family-history displays wait for deeper gameplay
+
+**Deferred by Daniel, 2026-10-30.** Maternal inheritance, small phenotype shifts, selecting
+birds to keep or sell, and named/illustrated ancestry were explored. Daniel then deferred
+the system: its effects would be too hard to understand, and extra displays have no value
+without deeper gameplay integration. This version keeps names and maternal care, without
+inherited traits, trait icons/ratings, ancestry menus, or lasting family bonds.
+
+**Trigger:** revisit when specific chicken behavior creates meaningful gameplay choices
+that a player can observe and use. Possible practical tradeoffs are future design space,
+not an invitation to quietly add breeding advantages to this version. The two-adult limit
+and perpetual independent chick may be revisited with that later design or story work.
 
 ## Awaiting designer input (the M0 exit gate)
 

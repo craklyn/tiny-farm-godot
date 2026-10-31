@@ -150,6 +150,8 @@ func _capture_machine_tap(tile: Vector2i) -> void:
 	if get_tree().get_first_node_in_group("Main") == self \
 			and farm != null and farm.sim != null:
 		InputManager.click_actor_id = farm.sim.machine_at(tile)
+		if InputManager.click_actor_id == "":
+			InputManager.click_actor_id = Poultry.chicken_at(farm.sim, tile)
 
 
 func _ready() -> void:
@@ -1194,6 +1196,15 @@ func trigger_machine_menu(at: Vector2i) -> void:
 # which machine it just put down.
 func trigger_machine_menu_for(id: String) -> void:
 	menus.open_machine_menu_for(id)
+
+
+## Open the shelf inside the coop the player is visiting.
+func trigger_coop_shop(at: Vector2i) -> void:
+	menus.open_coop_shop(at)
+
+
+func trigger_poultry_menu(at: Vector2i, chicken_id: String = "") -> void:
+	menus.open_poultry_menu(at, chicken_id)
 
 
 ## Open the panel a building gets (P-18, 2026-09-15) — go in, or pick it up.

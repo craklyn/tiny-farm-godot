@@ -311,7 +311,7 @@ func _actors_signature(world: SimWorld) -> String:
 	ids.sort()
 	var parts: PackedStringArray = []
 	for id in ids:
-		parts.append("%s=%s" % [id, world.actors[id]])
+		parts.append("%s=%s" % [id, JSON.stringify(world.actors[id])])
 	return "; ".join(parts)
 
 

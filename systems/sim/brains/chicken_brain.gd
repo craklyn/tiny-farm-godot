@@ -38,6 +38,10 @@ func step(world: SimWorld, actor_id: String, tick: int, gs = null) -> Dictionary
 	if e.is_empty():
 		return {}
 	var extra: Dictionary = e["extra"]
+	Poultry.ensure_chicken(world, actor_id)
+	var family := _family_step(world, actor_id, extra, tick, gs)
+	if bool(family.get("handled", false)):
+		return family.get("action", {})
 
 	# The morning's coin flip, taken the first time she thinks after a day turns.
 	# Deliberately *not* taken inside advance_day(): a replay re-applies the sleep
@@ -49,6 +53,9 @@ func step(world: SimWorld, actor_id: String, tick: int, gs = null) -> Dictionary
 	# tick rather than returned from deep inside the wander, so that every Action
 	# this brain produces leaves from one place — `step` — which is what makes it
 	# readable and what keeps the replay's entries in an order a human can follow.
+	if bool(extra.get("lay_pending", false)) and world.get_object(world.actor_pos(actor_id).x, world.actor_pos(actor_id).y) == "":
+		extra["lay_pending"] = false
+		return {"verb": "lay_egg", "target": world.actor_pos(actor_id), "actor": actor_id}
 	if extra.has("door_wanted"):
 		var want: Array = extra["door_wanted"]
 		extra.erase("door_wanted")
@@ -58,7 +65,10 @@ func step(world: SimWorld, actor_id: String, tick: int, gs = null) -> Dictionary
 	if bool(extra.get("lay_due", false)):
 		extra["lay_due"] = false
 		if SimRng.randf() > EGG_CHANCE:
-			var nest := _random_reachable(world, world.actor_pos(actor_id))
+			var nest := world.actor_pos(actor_id)
+			if world.get_object(nest.x, nest.y) != "":
+				extra["lay_pending"] = true
+				nest = Vector2i(-1, -1)
 			if nest.x >= 0:
 				# She lays and carries on; the morning does not interrupt her
 				# walk, exactly as `on_new_day()` never did.
@@ -77,7 +87,8 @@ func step(world: SimWorld, actor_id: String, tick: int, gs = null) -> Dictionary
 func on_new_day(world: SimWorld, actor_id: String) -> void:
 	var e: Dictionary = world.actor(actor_id)
 	if not e.is_empty():
-		e["extra"]["lay_due"] = true
+		var extra: Dictionary = e["extra"]
+		extra["lay_due"] = String(extra.get("stage", "adult")) == "adult" and extra.get("nest", []).is_empty() and String(extra.get("chick_id", "")) == ""
 
 
 # --- the wander ---------------------------------------------------------------
@@ -124,6 +135,8 @@ func _think(world: SimWorld, actor_id: String, _e: Dictionary, extra: Dictionary
 		# the dark under the farm from being somewhere to walk.
 		if _head_for_the_door(world, actor_id, extra, tick, here):
 			return
+	if goal.x < 0:
+		goal = _friendly_goal(world, actor_id, extra, here)
 	if goal.x < 0:
 		goal = _random_reachable(world, here)
 	# Her route comes from the movement engine now (M2.5 WI-4), which reads the
@@ -330,3 +343,223 @@ func _random_room_wander(world: SimWorld, from: Vector2i) -> Vector2i:
 	if reachable.is_empty():
 		return Vector2i(-1, -1)
 	return reachable[SimRng.randi() % reachable.size()]
+
+
+# Lifecycle intent is separate from movement.state, which doors reset.
+func _family_step(world: SimWorld, id: String, extra: Dictionary, tick: int, gs) -> Dictionary:
+	var here := world.actor_pos(id)
+	var nest: Array = extra.get("nest", [])
+	if nest.size() == 2:
+		extra["lay_due"] = false; extra["lay_pending"] = false
+		var target := Vector2i(int(nest[0]), int(nest[1]))
+		if Poultry.feed_available(world, world.room_of_cell(target)) > 0:
+			extra["poultry_activity"] = "incubating" if Poultry.attending(world, id, target) else "going_to_nest"
+			if Poultry.attending(world, id, target):
+				PoultryNavigation.clear(world, id); extra["wake"] = tick + SimClock.RATE
+				return {"handled": true}
+			return {"handled": true, "action": PoultryNavigation.toward(world, id, target, tick)}
+		extra["poultry_activity"] = "foraging"
+		return _forage(world, id, extra, tick)
+	var counterpart := String(extra.get("mother_id", "")) if String(extra.get("stage", "adult")) == "chick" else String(extra.get("chick_id", ""))
+	if counterpart != "" and world.has_actor(counterpart):
+		extra["lay_due"] = false; extra["lay_pending"] = false
+		return _care(world, id, counterpart, extra, tick, gs)
+	if String(extra.get("stage", "adult")) == "chick":
+		extra["lay_due"] = false; extra["lay_pending"] = false
+		extra["poultry_activity"] = "foraging"
+		return {} # independent small chick uses ordinary wander, never lays
+	if String(extra.get("sale_id", "")) == "":
+		var candidate := _candidate_nest(world, id)
+		if candidate.x >= 0:
+			extra["poultry_activity"] = "going_to_nest"
+			if Poultry.attending(world, id, candidate):
+				return {"handled": true, "action": {"verb": "start_incubation", "actor": id, "target": candidate}}
+			return {"handled": true, "action": PoultryNavigation.toward(world, id, candidate, tick)}
+	if _has_feed(world) and tick >= int(extra.get("gather_until", -1)) and not Movement.has_route(world, id) and tick >= int(extra.get("gather_check", -1)):
+		extra["gather_check"] = tick + ticks(10.0)
+		if SimRng.randf() < 0.3:
+			for room in world.room_ids():
+				if Poultry.feed_available(world, String(room)) > 0:
+					var dispensers: Dictionary = world.rooms[room].get("poultry", {}).get("dispensers", {})
+					var keys := dispensers.keys(); keys.sort()
+					if not keys.is_empty():
+						var parts := String(keys[0]).split(",")
+						var target := Vector2i(int(parts[0]), int(parts[1]))
+						if PoultryNavigation.reachable(world, id, target):
+							extra["gather_target"] = [target.x, target.y]; extra["gather_until"] = tick + ticks(20.0)
+							break
+	if tick < int(extra.get("gather_until", -1)):
+		var raw: Array = extra.get("gather_target", [])
+		if raw.size() == 2:
+			var target := Vector2i(int(raw[0]), int(raw[1]))
+			if Poultry.feed_available(world, world.room_of_cell(target)) > 0:
+				extra["poultry_activity"] = "pecking" if world.space_of(here) == world.space_of(target) and Vector2(here-target).length() <= 2.0 else "gathering"
+				if String(extra["poultry_activity"]) == "pecking":
+					PoultryNavigation.clear(world, id); extra["wake"] = tick + SimClock.RATE
+					return {"handled": true}
+				return {"handled": true, "action": PoultryNavigation.toward(world, id, target, tick)}
+	if extra.has("poultry_activity"): extra["poultry_activity"] = "wandering"
+	return {}
+
+
+func _candidate_nest(world: SimWorld, id: String) -> Vector2i:
+	if Poultry.chick_id(world) != "" or Poultry.incubating_id(world) != "": return Vector2i(-1, -1)
+	for room in world.room_ids():
+		if Poultry.feed_available(world, String(room)) == 0: continue
+		var nests: Dictionary = world.rooms[room].get("poultry", {}).get("nests", {})
+		var keys := nests.keys(); keys.sort()
+		for key in keys:
+			if not bool(nests[key].get("egg", false)): continue
+			var parts := String(key).split(",")
+			var target := Vector2i(int(parts[0]), int(parts[1]))
+			var best := ""; var best_distance := INF
+			for who in Poultry.chicken_ids(world):
+				var e: Dictionary = world.actor(who)["extra"]
+				if String(e.get("stage", "adult")) != "adult" or String(e.get("chick_id", "")) != "" or String(e.get("sale_id", "")) != "": continue
+				if not PoultryNavigation.reachable(world, who, target): continue
+				var d := world.world_pos_of_cell(world.actor_pos(who)).distance_squared_to(world.world_pos_of_cell(target))
+				if d < best_distance:
+					best_distance = d; best = who
+			if best != "": return target if best == id else Vector2i(-1, -1)
+	return Vector2i(-1, -1)
+
+
+func _care(world: SimWorld, id: String, other: String, extra: Dictionary, tick: int, gs) -> Dictionary:
+	var here := world.actor_pos(id)
+	var there := world.actor_pos(other)
+	var same := world.space_of(here) == world.space_of(there)
+	var distance := Vector2(here - there).length() if same else INF
+	var is_chick := String(extra.get("stage", "adult")) == "chick"
+	if distance <= 2.0:
+		extra["seek_due_tick"] = -1; extra["seeking"] = false
+	elif distance > 6.0 and int(extra.get("seek_due_tick", -1)) < 0:
+		extra["seek_due_tick"] = tick + ticks(SimRng.randf_range(2.0, 30.0))
+	if int(extra.get("seek_due_tick", -1)) >= 0 and tick >= int(extra["seek_due_tick"]): extra["seeking"] = true
+	if bool(extra.get("seeking", false)):
+		var other_seeking := bool(world.actor(other)["extra"].get("seeking", false))
+		if is_chick and other_seeking:
+			extra["poultry_activity"] = "peeping"
+			PoultryNavigation.clear(world, id); extra["wake"] = tick + SimClock.RATE
+			# If mother cannot reach us, periodically let the chick try the reverse
+			# route. No remote rescue or silent warp can cross a blocked doorway.
+			if tick % (10 * SimClock.RATE) != 0 or not PoultryNavigation.reachable(world, id, there): return {"handled": true}
+		extra["poultry_activity"] = "seeking_mother" if is_chick else "seeking_chick"
+		return {"handled": true, "action": PoultryNavigation.toward(world, id, there, tick)}
+	var late := gs != null and (int(gs.energy) <= 60 or String(gs.weather) == "rainy")
+	if not is_chick and late:
+		var shelter := _family_shelter(world, id)
+		if shelter.x < 0 or (world.room_of_cell(here) != "" and String(world.rooms.get(world.room_of_cell(here), {}).get("item", "")) == "coop"):
+			extra["poultry_activity"] = "settling"
+			PoultryNavigation.clear(world, id); extra["wake"] = tick + SimClock.RATE
+			return {"handled": true}
+		extra["poultry_activity"] = "going_home"
+		return {"handled": true, "action": PoultryNavigation.toward(world, id, shelter, tick)}
+	if not is_chick and not late and world.room_of_cell(here) != "":
+		# Hatching happens indoors. Daytime foraging is an outing, not seven
+		# days of pacing the nest: mother exits first, then calls her chick.
+		var current: Dictionary = world.rooms.get(world.room_of_cell(here), {})
+		var outside: Vector2i = world.room_exit_for(current)
+		if outside.x >= 0:
+			extra["poultry_activity"] = "foraging"
+			return {"handled": true, "action": PoultryNavigation.toward(world, id, outside, tick)}
+	if is_chick and same and String(world.actor(other)["extra"].get("poultry_activity", "")) == "settling" and distance <= 6.0:
+		# Settling is care, never a random lesson outcome. Even an older chick
+		# comes to rest beside mother before optional independent foraging.
+		extra["poultry_activity"] = "settling"
+		if distance > 1.5: return {"handled": true, "action": PoultryNavigation.toward(world, id, there, tick)}
+		PoultryNavigation.clear(world, id); extra["wake"] = tick + SimClock.RATE
+		return {"handled": true}
+	if is_chick and int(extra.get("seek_due_tick", -1)) >= 0:
+		# Beyond the separation threshold, ordinary following gives way to the
+		# independently drawn response delay; do not secretly seek early.
+		extra["poultry_activity"] = "foraging"
+		return _forage(world, id, extra, tick)
+	if is_chick:
+		var days := int(extra.get("care_days", 0))
+		if not same or distance > 2.0 + float(days) / 3.0:
+			extra["poultry_activity"] = "following"
+			return {"handled": true, "action": PoultryNavigation.toward(world, id, there, tick)}
+		var mother_activity := String(world.actor(other)["extra"].get("poultry_activity", ""))
+		if mother_activity in ["settling", "calling", "demonstrating"] and (mother_activity == "settling" or days < 3 or SimRng.randf() > float(days) / 10.0):
+			extra["poultry_activity"] = "settling" if mother_activity == "settling" else "copying"
+			if distance > 1.5: return {"handled": true, "action": PoultryNavigation.toward(world, id, there, tick)}
+			PoultryNavigation.clear(world, id); extra["wake"] = tick + SimClock.RATE
+			return {"handled": true}
+		extra["poultry_activity"] = "foraging"
+		return _forage(world, id, extra, tick)
+	if not same or distance > 3.0:
+		extra["poultry_activity"] = "calling"
+		PoultryNavigation.clear(world, id); extra["wake"] = tick + SimClock.RATE
+		return {"handled": true}
+	if tick < int(extra.get("demonstrate_until", -1)):
+		extra["poultry_activity"] = "demonstrating"
+		PoultryNavigation.clear(world, id); extra["wake"] = tick + SimClock.RATE
+		return {"handled": true}
+	if not Movement.has_route(world, id) and tick >= int(extra.get("demonstrate_next", -1)):
+		extra["demonstrate_until"] = tick + ticks(3.0)
+		extra["demonstrate_next"] = tick + ticks(8.0)
+		extra["poultry_activity"] = "demonstrating"; extra["wake"] = tick + SimClock.RATE
+		return {"handled": true}
+	extra["poultry_activity"] = "foraging"
+	return _forage(world, id, extra, tick)
+
+
+func _forage(world: SimWorld, id: String, extra: Dictionary, tick: int) -> Dictionary:
+	if Movement.has_route(world, id):
+		_walk(world, id, world.actor(id), extra, tick)
+	else:
+		var here := world.actor_pos(id)
+		# An unfed incubator leaves the coop through its real door to forage.
+		if not extra.get("nest", []).is_empty() and world.room_of_cell(here) != "":
+			return {"handled": true, "action": PoultryNavigation.toward(world, id, _nearest_doorstep(world, here), tick)}
+		var goal := here + Vector2i(SimRng.randi_range(-3, 3), SimRng.randi_range(-3, 3))
+		if world.space_of(goal) == world.space_of(here) and world.is_walkable(goal.x, goal.y) and Movement.plan(world, id, goal):
+			extra["wake"] = tick + Movement.ticks_per_tile(world.species_of(id)); extra["state"] = "moving"
+		else: extra["wake"] = tick + SimClock.RATE
+	return {"handled": true}
+
+
+func _friendly_goal(world: SimWorld, id: String, extra: Dictionary, here: Vector2i) -> Vector2i:
+	var invalid := Vector2i(-1, -1)
+	var player := world.actor_pos(SimWorld.ACTOR_PLAYER)
+	if String(extra.get("sale_id", "")) == "" and float(extra.get("familiarity", 0.0)) > 0.0 and world.space_of(player) == world.space_of(here) and Vector2(player - here).length() > 2.0 and SimRng.randf() < 0.2 * float(extra.get("familiarity", 0.0)):
+		var steps: Array[Vector2i] = [Vector2i.UP, Vector2i.LEFT, Vector2i.RIGHT, Vector2i.DOWN]
+		steps.sort_custom(func(a, b): return Vector2(here + a - player).length_squared() < Vector2(here + b - player).length_squared())
+		for d in steps:
+			if Vector2(here + d - player).length_squared() < Vector2(here - player).length_squared() and world.space_of(here+d) == world.space_of(here) and world.is_walkable(here.x + d.x, here.y + d.y): return here + d
+	# Gathering is an idle preference, not measured feeding or friendship.
+	if _has_feed(world) and SimRng.randf() < 0.3:
+		for room in world.room_ids():
+			if Poultry.feed_available(world, String(room)) <= 0: continue
+			if world.room_of_cell(here) == room:
+				var dispensers: Dictionary = world.rooms[room].get("poultry", {}).get("dispensers", {})
+				var keys := dispensers.keys(); keys.sort()
+				if not keys.is_empty():
+					var parts := String(keys[0]).split(",")
+					var at := Vector2i(int(parts[0]), int(parts[1]))
+					for d in [Vector2i.DOWN, Vector2i.LEFT, Vector2i.RIGHT, Vector2i.UP]:
+						if world.is_walkable(at.x + d.x, at.y + d.y): return at + d
+			else:
+				# Cross-area travel returns an Action, so it is handled in family_step.
+				pass
+	return invalid
+
+
+func _has_feed(world: SimWorld) -> bool:
+	for room in world.room_ids():
+		if Poultry.feed_available(world, String(room)) > 0: return true
+	return false
+
+
+func _family_shelter(world: SimWorld, id: String) -> Vector2i:
+	var best := Vector2i(-1, -1)
+	var distance := INF
+	var here := world.actor_pos(id)
+	for room_id in world.room_ids():
+		var room: Dictionary = world.rooms[room_id]
+		if String(room.get("item", "")) != "coop": continue
+		var target: Vector2i = room["door"]
+		if not PoultryNavigation.reachable(world, id, target): continue
+		var d := world.world_pos_of_cell(here).distance_squared_to(world.world_pos_of_cell(target))
+		if d < distance: best = target; distance = d
+	return best

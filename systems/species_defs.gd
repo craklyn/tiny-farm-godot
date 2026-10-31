@@ -46,6 +46,7 @@ const MODES: Array[String] = [GROUND, FLY, BURROW, HOP, STATIC]
 const PLAYER := "player"
 const NEIGHBOUR := "neighbour"
 const CHICKEN := "chicken"
+const CHICKEN_BUYER := "chicken_collector"
 const CROW := "crow"
 const SPRINKLER := "sprinkler"
 # The bestiary's first pair (M2.5 WI-8a/8b, `design/04` §1). Two species because
@@ -158,7 +159,7 @@ const PLAYER_VERBS: Array[String] = [
 #     `give_milk`: the gateway refuses her it.
 const ENTITY_VERBS: Array[String] = ["eat_crop", "eat_acorn", "lay_egg", "crow_scared",
 		"open_gate", "use_door", "gain_milk", "reserve_milk_stall", "enter_milk_stall", "give_milk",
-		"leave_milk_stall", "grow_wool"]
+		"leave_milk_stall", "grow_wool", "start_incubation", "collect_chicken_sale", "depart_chicken_sale"]
 
 static var ROWS: Dictionary = {
 	# The farmer. Her brain is the ActionRouter — a person, not a policy — and it
@@ -197,13 +198,20 @@ static var ROWS: Dictionary = {
 
 	# The toy, not a chore (design/13 §4a). Wanders, and lays an egg on a coin
 	# flip at the day turn.
+	CHICKEN_BUYER: {
+		"name": "Neighbor", "brain": "chicken_buyer",
+		"verbs": ["use_door", "collect_chicken_sale", "depart_chicken_sale"],
+		"speed": 0.1625,
+		"movement": {"mode": GROUND, "body_len": 1, "tile_exclusive": false},
+		"senses": {}, "persistent": true,
+	},
 	CHICKEN: {
 		"name": "Chicken",
 		"brain": "chicken_wander",
 		# ...and the door of her own coop (P-18, 2026-09-15). The same verb the
 		# farmer uses, which is what S-3 means read from the other side: nothing
 		# gets a private one.
-		"verbs": ["lay_egg", "use_door"],
+		"verbs": ["lay_egg", "use_door", "start_incubation"],
 		# 20 px/s (chicken.gd SPEED).
 		"speed": 0.125,
 		"movement": { "mode": GROUND, "body_len": 1, "tile_exclusive": false },

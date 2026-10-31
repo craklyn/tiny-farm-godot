@@ -99,12 +99,29 @@ func _process(delta: float) -> void:
 	ty = at.y
 
 func queue_render(canvas: CanvasItem, render_queue: Array) -> void:
+	var extra: Dictionary = farm.sim.actor(actor_id).get("extra", {})
+	var small := String(extra.get("stage", "adult")) == "chick"
+	var age := clampf(float(extra.get("care_days", 0)) / 7.0, 0.0, 1.0)
+	var activity := String(extra.get("poultry_activity", ""))
+	var sitting := activity in ["incubating", "sitting", "settling", "sleeping"]
+	var teaching := activity in ["teaching", "demonstrating", "calling"]
+	var pecking := activity in ["foraging", "pecking", "copying", "teaching", "demonstrating"]
+	var waiting := activity in ["waiting", "peeping"]
+	var phase := int(farm.sim.clock.tick / 4) % 4
+	var size := lerpf(8.0, 12.0, age) if small else 16.0
+	var height := size * (0.72 if sitting else 0.8 if pecking and phase < 2 else 1.0)
+	var draw_pos := position + Vector2((16 - size) / 2.0, 16 - height)
+	var texture := PoultryArt.chick_texture() if small else SPRITES
+	var cell: int = walk_frame + (WALK_FRAMES if facing_left else 0)
 	render_queue.append({
 		"y": position.y,
 		"draw": func():
-			var cell: int = walk_frame + (WALK_FRAMES if facing_left else 0)
-			canvas.draw_texture_rect_region(
-				SPRITES,
-				Rect2(position.x, position.y, TILE_SIZE, TILE_SIZE),
-				Rect2(cell * 16, 0, 16, 16))
+			canvas.draw_texture_rect_region(texture,
+				Rect2(draw_pos, Vector2(size, height)), Rect2(cell * 16, 0, 16, 16))
+			# Brief calling/peeping strokes give the family a readable exchange.
+			if (teaching or waiting) and phase == 0:
+				var head := draw_pos + Vector2(-1 if facing_left else size, 1)
+				var out := -1.0 if facing_left else 1.0
+				canvas.draw_line(head + Vector2(out * 2, -2), head + Vector2(out * 4, -3), Color("fae0a0"), 1)
+				canvas.draw_line(head + Vector2(out * 2, 1), head + Vector2(out * 5, 1), Color("fae0a0"), 1)
 	})

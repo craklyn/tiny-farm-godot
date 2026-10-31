@@ -266,6 +266,7 @@ func _ready() -> void:
 const ACTOR_RENDERERS := {
 	SpeciesDefs.NEIGHBOUR: "res://entities/neighbour.gd",
 	SpeciesDefs.CHICKEN: "res://entities/chicken.gd",
+	"chicken_collector": "res://entities/chicken_collector.gd",
 	SpeciesDefs.CROW: "res://entities/crow.gd",
 	SpeciesDefs.SPRINKLER: "res://entities/sprinkler.gd",
 	# Both ants, one script: they differ by which sheet they draw and how fast
@@ -622,6 +623,7 @@ func _load_textures() -> void:
 	# the same picture as their shop card.
 	object_regions[WorldLayout.NEST_BOX] = [
 		load("res://assets/sprites/generated/nest_box.png"), Rect2(0, 0, 16, 16)]
+	object_regions["chicken_dispenser"] = [PoultryArt.dispenser_texture(), Rect2(0, 0, 16, 16)]
 	object_regions[WorldLayout.RUG] = [
 		load("res://assets/sprites/generated/rug.png"), Rect2(0, 0, 16, 16)]
 
@@ -2113,6 +2115,19 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 					"draw": func():
 						canvas.draw_texture_rect_region(small_tex, egg_rect, small_reg)
 				})
+			elif obj == "chicken_dispenser":
+				var feed_info := Poultry.dispenser_info(sim, Vector2i(tx, ty))
+				var supply := int(feed_info.get("feed", 0))
+				var dispenser_tex := PoultryArt.dispenser_texture(0 if supply == 0 else 2 if supply >= 14 else 1)
+				render_queue.append({"y": py, "draw": func():
+					canvas.draw_texture_rect(dispenser_tex, Rect2(px, py, 16, 16), false)})
+			elif obj == WorldLayout.NEST_BOX:
+				var nest_tex: Texture2D = object_regions[WorldLayout.NEST_BOX][0]
+				var nested := bool(Poultry.nest_info(sim, Vector2i(tx, ty)).get("egg", false))
+				render_queue.append({"y": py, "draw": func():
+					canvas.draw_texture_rect(nest_tex, Rect2(px, py, 16, 16), false)
+					if nested:
+						canvas.draw_texture_rect(PoultryArt.egg_texture(), Rect2(px + 4, py + 3, 8, 8), false)})
 			elif obj != "":
 				var obj_data = object_regions.get(obj)
 				if obj_data:
@@ -2132,6 +2147,7 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 	if y0 == 0:
 		_draw_sheep_rings(canvas)
 	_draw_barn_rooms(canvas, y0, y1)
+	_queue_coop_shop(render_queue, canvas, y0, y1)
 	_queue_edge_room_walls(render_queue, canvas)
 
 	if _profiling:
@@ -2826,3 +2842,17 @@ func _bake_ripe_glow_texture() -> Texture2D:
 					a += CropPresentation.BLOOM_RING_A
 			img.set_pixel(x, y, Color(1.0, 1.0, 1.0, a))
 	return ImageTexture.create_from_image(img)
+
+
+# A built-in wall shelf, not another fitting taking a floor square. Deriving it
+# here gives existing saved coops the same shop without touching their contents.
+func _queue_coop_shop(queue: Array[Dictionary], canvas: CanvasItem, y0: int, y1: int) -> void:
+	var viewer = player_node()
+	if viewer == null: return
+	var room := sim.room_of_cell(viewer.get_tile_pos())
+	var shelf := CoopShop.shelf_rect(sim, room)
+	if shelf.size == Vector2i.ZERO or not _rows_hold(shelf.position.y * TILE_SIZE, y0, y1): return
+	var at := Vector2(shelf.position) * TILE_SIZE
+	var art := PoultryArt.coop_shop_texture()
+	queue.append({"y": at.y, "draw": func():
+		canvas.draw_texture_rect(art, Rect2(at, Vector2(32, 16)), false)})
