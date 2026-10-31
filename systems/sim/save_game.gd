@@ -67,6 +67,7 @@ static func capture(world: SimWorld, gs) -> Dictionary:
 			# interiors, which is every farm before this release.
 			"rooms": _capture_rooms(world),
 			"barns": world.barns.duplicate(true),
+			"poultry": world.poultry.duplicate(true),
 			# Sim time (M2.5 WI-1). Additive, same pattern as actor_energy above:
 			# a save written before the clock existed simply has no tick, which
 			# reads as 0 — true of every build that wrote one.
@@ -320,6 +321,7 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 	# one held `1`. Every number in a barn record is a whole count or tick, so whole
 	# floats come back as ints; anything else stays a float and is refused below.
 	world.barns = _whole_ints(w.get("barns", {}))
+	world.poultry = _whole_ints(w.get("poultry", {"next_id": 1, "next_name": 0, "last_day": -1}))
 	if _holds_float(world.barns) or not _valid_barns(world):
 		return false
 	# A farm saved before the home joined the registry has no entry for it, and a
@@ -395,6 +397,8 @@ static func restore(data: Dictionary, world: SimWorld, gs) -> bool:
 				world.set_actor_energy(id, int(legacy_energy[id]))
 	else:
 		world.actors = _restore_actors(saved_actors)
+	for poultry_id in Poultry.chicken_ids(world):
+		Poultry.ensure_chicken(world, poultry_id)
 	if not _valid_barn_ownership(world):
 		return false
 	# ...and a barn's line kept in the crate (2026-10-13) is checked the same way, so a
@@ -797,6 +801,7 @@ static func _capture_rooms(world: SimWorld) -> Dictionary:
 		out[id] = {
 			"item": String(r.get("item", "")),
 			"pitch": float(r.get("pitch", 2)),
+			"poultry": r.get("poultry", {}).duplicate(true),
 			"edge_walls": bool(r.get("edge_walls", false)),
 			"slot": int(r.get("slot", 0)),
 			"anchor": _pair(r.get("anchor", Vector2i.ZERO)),
@@ -844,6 +849,7 @@ static func _restore_rooms(world: SimWorld, saved) -> void:
 		world.rooms[String(id)] = {
 			"item": String(r.get("item", "")),
 			"pitch": float(r.get("pitch", 2)),
+			"poultry": _whole_ints(r.get("poultry", {})),
 			"edge_walls": bool(r.get("edge_walls", false)),
 			"slot": int(r.get("slot", 0)),
 			"anchor": _unpair(r.get("anchor", [])),
@@ -1267,7 +1273,14 @@ static func _restore_actors(raw: Dictionary) -> Dictionary:
 		# A cow's milk and stall are whole numbers the barn checks by type, and
 		# JSON hands them back as floats; put them back as the ints she held.
 		# (Other scratch fields keep JSON's shape, as every actor's always has.)
-		if species == SpeciesDefs.COW:
+		if species == SpeciesDefs.CHICKEN:
+			# Normalize new poultry fields only. Legacy path/step scratch retains
+			# its recorded numeric representation for pre-v5 fingerprints.
+			for key in ["care_days", "seek_due_tick", "last_greet_day", "nest", "demonstrate_until", "demonstrate_next", "gather_check", "gather_target", "gather_until", "poultry_retry", "poultry_route"]:
+				if restored_extra.has(key): restored_extra[key] = _whole_ints(restored_extra[key])
+		elif species == SpeciesDefs.CHICKEN_BUYER:
+			restored_extra = _whole_ints(restored_extra)
+		elif species == SpeciesDefs.COW:
 			for key in ["milk_milliunits", "stall_index"]:
 				if restored_extra.has(key):
 					restored_extra[key] = _whole_ints(restored_extra[key])

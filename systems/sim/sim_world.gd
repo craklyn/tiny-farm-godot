@@ -2120,7 +2120,7 @@ const MILESTONE_VERBS := { "harvest": true, "collect": true, "sell": true, "slee
 # Verbs that do not advance the day's clock: sleep ends it, and the shop and bin
 # are errands rather than farm work. Everything else the player successfully does
 # is one tick of the action clock T-20 schedules crows against.
-const NON_WORK_VERBS := { "sleep": true, "sell": true, "withdraw_seed": true,
+const NON_WORK_VERBS := { "greet_chicken": true, "request_chicken_sale": true, "cancel_chicken_sale": true, "collect_chicken_sale": true, "depart_chicken_sale": true, "buy_chicken_feed": true, "poultry_day": true, "start_incubation": true, "sleep": true, "sell": true, "withdraw_seed": true,
 		"buy_seed": true, "refill": true,
 		# The machine counter is the seed counter (2026-09-03), and turning a dial
 		# on a machine she already owns is a setting, not a stroke of work — it
@@ -2222,6 +2222,8 @@ const ACTOR_MAX_ENERGY := Tools.DAY_UNITS  # [Playtest]
 # are by id, and a renderer that needs a stable draw order must sort on
 # something real, like position.
 var actors: Dictionary = {}
+# Persistent poultry allocator/day guard; independent of any particular hen.
+var poultry: Dictionary = {"next_id": 1, "next_name": 0, "last_day": -1}
 
 # The ids the registry knows by name. Actor ids are still species names in
 # phase 1 — there is one hen and she is called "chicken", one crow and it is
@@ -2297,6 +2299,8 @@ func spawn_actor(actor_id: String, species: String, at: Vector2i, extra: Diction
 		"extra": actor_extra,
 	}
 	actors[actor_id] = entry
+	if species == SpeciesDefs.CHICKEN:
+		Poultry.ensure_chicken(self, actor_id)
 	# A newly arrived actor starts thinking on the next tick. Nothing happens
 	# until something advances the clock, so this is free in a headless
 	# fast-forward that never does.
@@ -3035,6 +3039,7 @@ func spend_actor_energy(actor_id: String, cost: int) -> void:
 # `SimRng.stateless()` was invented for. So a legacy load places her by rule.
 func spawn_default_actors(from_stream: bool = false) -> void:
 	actors.clear()
+	poultry = {"next_id": 1, "next_name": 0, "last_day": -1}
 	_brain_events.clear()
 	var start := _start_tile()
 	spawn_actor(ACTOR_PLAYER, SpeciesDefs.PLAYER, start)
@@ -3370,6 +3375,9 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 	var verb: String = action.get("verb", "")
 	var target: Vector2i = action.get("target", Vector2i(-1, -1))
 
+	if verb in Poultry.VERBS:
+		return Poultry.apply(self, action, gs)
+
 	match verb:
 		"gain_milk":
 			var cow_id := String(action.get("actor", ""))
@@ -3546,6 +3554,8 @@ func _apply(action: Dictionary, gs) -> Dictionary:
 			# else. Free, like the scarecrow — rearranging a room is not work.
 			var fitting := MachineDefs.fitting_of_object(obj)
 			if fitting != "":
+				for returned in Poultry.before_fitting_removed(self, target, gs):
+					if String(returned.get("item", "")) == "egg": gs.items["egg"] = int(gs.items.get("egg", 0)) + 1
 				set_object(target.x, target.y, "")
 				gs.machines[fitting] = int(gs.machines.get(fitting, 0)) + 1
 				return { "ok": true, "collected": fitting }
@@ -4841,6 +4851,7 @@ func _empty_rooms(buildings: Array, gs) -> Array:
 		var id := room_of_anchor(b["anchor"])
 		if id == "":
 			continue
+		out.append_array(Poultry.before_room_removed(self, id, gs))
 		var r: Dictionary = rooms[id]
 		var o: Vector2i = r.get("origin", Vector2i.ZERO)
 		var sz: Vector2i = r.get("size", Vector2i.ZERO)
@@ -5581,6 +5592,8 @@ func advance_day(weather: String, gs = null) -> void:
 	# a replay re-applies the `sleep` that turned this day, and this runs inside it.
 	# Empty on every farm in the game today — nothing places a machine (Q-15).
 	if gs != null:
+		for action in Poultry.day_actions(self, gs):
+			apply_action(action, gs)
 		for action in Brains.day_actions(self, gs):
 			apply_action(action, gs)
 

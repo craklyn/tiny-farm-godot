@@ -27,6 +27,7 @@ static func _table() -> Dictionary:
 			"player_input": PlayerBrain.new(),
 			"cold_open": ColdOpenBrain.new(),
 			"chicken_wander": ChickenBrain.new(),
+			"chicken_buyer": ChickenBuyerBrain.new(),
 			"crow_visit": CrowBrain.new(),
 			"sprinkler_day": SprinklerBrain.new(),
 			# The bestiary's first pair (M2.5 WI-8a/8b). Two brains because they

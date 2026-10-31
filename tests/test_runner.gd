@@ -1,6 +1,7 @@
 # test_runner.gd — Headless automated test suite for Godot
 extends SceneTree
 
+const PoultryTests := preload("res://tests/unit/poultry_tests.gd")
 const CoreTests := preload("res://tests/unit/core_tests.gd")
 const PersistenceTests := preload("res://tests/unit/persistence_tests.gd")
 const HomesteadTests := preload("res://tests/unit/homestead_tests.gd")
@@ -14,6 +15,7 @@ const SheepGagTests := preload("res://tests/unit/sheep_gag_tests.gd")
 
 
 func _init() -> void:
+	var poultry = PoultryTests.new()
 	var core = CoreTests.new()
 	var persistence = PersistenceTests.new()
 	var homestead = HomesteadTests.new()
@@ -178,7 +180,12 @@ func _init() -> void:
 	core.test_farm_page_draw_order_merge()
 	barn.test_room_edge_styles()
 
-	var areas: Array = [core, persistence, homestead, actor, presentation, automation, interior, barn, sheep, sheep_gags]
+	poultry.test_poultry()
+	poultry.test_poultry_routes_and_replays()
+	poultry.test_family_leaves_nest_and_returns()
+	poultry.test_poultry_refusals_leave_no_trace()
+
+	var areas: Array = [poultry, core, persistence, homestead, actor, presentation, automation, interior, barn, sheep, sheep_gags]
 	var pass_count := 0
 	var fail_count := 0
 	var fail_log: Array[String] = []
