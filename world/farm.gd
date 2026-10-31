@@ -266,6 +266,7 @@ func _ready() -> void:
 const ACTOR_RENDERERS := {
 	SpeciesDefs.NEIGHBOUR: "res://entities/neighbour.gd",
 	SpeciesDefs.CHICKEN: "res://entities/chicken.gd",
+	"chicken_collector": "res://entities/chicken_collector.gd",
 	SpeciesDefs.CROW: "res://entities/crow.gd",
 	SpeciesDefs.SPRINKLER: "res://entities/sprinkler.gd",
 	# Both ants, one script: they differ by which sheet they draw and how fast
@@ -622,6 +623,7 @@ func _load_textures() -> void:
 	# the same picture as their shop card.
 	object_regions[WorldLayout.NEST_BOX] = [
 		load("res://assets/sprites/generated/nest_box.png"), Rect2(0, 0, 16, 16)]
+	object_regions["chicken_dispenser"] = [PoultryArt.dispenser_texture(), Rect2(0, 0, 16, 16)]
 	object_regions[WorldLayout.RUG] = [
 		load("res://assets/sprites/generated/rug.png"), Rect2(0, 0, 16, 16)]
 
@@ -2113,6 +2115,19 @@ func _draw_pages(canvas: CanvasItem, y0: int, y1: int) -> void:
 					"draw": func():
 						canvas.draw_texture_rect_region(small_tex, egg_rect, small_reg)
 				})
+			elif obj == "chicken_dispenser":
+				var feed_info := Poultry.dispenser_info(sim, Vector2i(tx, ty))
+				var supply := int(feed_info.get("feed", 0))
+				var dispenser_tex := PoultryArt.dispenser_texture(0 if supply == 0 else 2 if supply >= 14 else 1)
+				render_queue.append({"y": py, "draw": func():
+					canvas.draw_texture_rect(dispenser_tex, Rect2(px, py, 16, 16), false)})
+			elif obj == WorldLayout.NEST_BOX:
+				var nest_tex: Texture2D = object_regions[WorldLayout.NEST_BOX][0]
+				var nested := bool(Poultry.nest_info(sim, Vector2i(tx, ty)).get("egg", false))
+				render_queue.append({"y": py, "draw": func():
+					canvas.draw_texture_rect(nest_tex, Rect2(px, py, 16, 16), false)
+					if nested:
+						canvas.draw_texture_rect(PoultryArt.egg_texture(), Rect2(px + 4, py + 3, 8, 8), false)})
 			elif obj != "":
 				var obj_data = object_regions.get(obj)
 				if obj_data:

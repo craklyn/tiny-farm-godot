@@ -714,6 +714,9 @@ func _rebuild_options() -> void:
 				SCORECARD_PANEL_W if MachineDefs.program_of(mkey) == "policy" else 320.0,
 				_fit_panel_height())
 
+		"poultry", "poultry_sale":
+			_build_poultry_options()
+
 		"structure":
 			# Two rows and a close. Words, knowingly, for the machine panel's
 			# reason — there is no icon vocabulary for "go inside" yet, and the
@@ -1390,6 +1393,9 @@ func _build_inventory_items() -> void:
 			"icon": crop_icon(int(def.icon_col)),
 			"count": count,
 		})
+	if GameState.held_count("egg") > 0:
+		inventory_items.append({"key": "egg", "icon": PoultryArt.egg_texture(),
+			"count": GameState.held_count("egg")})
 	for machine_key in MachineDefs.ORDER:
 		var count: int = int(GameState.machines.get(machine_key, 0))
 		if count <= 0:
@@ -1538,6 +1544,8 @@ func _focus_current() -> void:
 
 func _select_current_option() -> void:
 	match active_menu:
+		"poultry", "poultry_sale":
+			_select_poultry_option()
 		"bin":
 			if selected_option >= bin_options.size():
 				return
@@ -1590,7 +1598,10 @@ func _select_current_option() -> void:
 				# per catalogue — see `SimWorld`'s `buy_machine` for why the seed
 				# verb was not generalised to cover both.
 				var purchase := { "actor": "player" }
-				if String(item.kind) == "cow":
+				if String(item.kind) == "chicken_feed":
+					purchase["verb"] = "buy_chicken_feed"
+					purchase["params"] = {"count": 1}
+				elif String(item.kind) == "cow":
 					purchase["verb"] = "buy_cow"
 				elif String(item.kind) == "sheep":
 					purchase["verb"] = "buy_sheep"
@@ -1787,6 +1798,10 @@ func _build_shop_items() -> void:
 			"icon": crop_icon(int(def.icon_col)),
 			"owned": GameState.held_count(crop_name)
 		})
+	shop_items.append({"kind": "chicken_feed", "seed_type": "chicken_feed",
+		"item_name": "Chicken feed", "price": Poultry.FEED_PRICE, "unlocked": true,
+		"affordable": GameState.gold >= Poultry.FEED_PRICE, "icon": PoultryArt.feed_texture(),
+		"owned": int(GameState.items.get("chicken_feed", 0))})
 	for machine_key in MachineDefs.ORDER:
 		var mdef: Dictionary = MachineDefs.TYPES[machine_key]
 		# **The sim answers what is for sale** (S-12). Two of these rows are rungs
@@ -1833,3 +1848,196 @@ func _build_shop_items() -> void:
 			"affordable": GameState.gold >= SimWorld.SHEEP_PRICE and herd_room,
 			"icon": sheep_card_icon(), "owned": farm.sim.sheep_count()
 		})
+
+
+# Chicken inspection and coop fittings share the existing paused touch menu.
+# These controls only issue actions; poultry truth stays in the simulation.
+var poultry_tile := Vector2i(-1, -1)
+var poultry_chicken_id := ""
+var poultry_options: Array[Dictionary] = []
+var poultry_quote_ids: Array[String] = []
+var poultry_quote_price := 0
+var poultry_feedback := ""
+
+func open_poultry_menu(at: Vector2i, id: String = "") -> void:
+	if farm == null:
+		return
+	poultry_tile = at
+	poultry_chicken_id = id
+	poultry_feedback = ""
+	open_menu("poultry")
+
+func _poultry_row(label: String, verb: String, enabled: bool = true,
+		params: Dictionary = {}, picture: Texture2D = null) -> void:
+	poultry_options.append({"verb": verb, "params": params})
+	_add_option(label, enabled, 0, picture)
+
+func _poultry_note(text: String, picture: Texture2D = null) -> void:
+	var row := HBoxContainer.new()
+	row.alignment = BoxContainer.ALIGNMENT_CENTER
+	row.custom_minimum_size.y = 46
+	if picture != null:
+		var icon := TextureRect.new()
+		icon.texture = picture
+		icon.custom_minimum_size = Vector2(48, 48)
+		icon.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
+		icon.stretch_mode = TextureRect.STRETCH_KEEP_ASPECT_CENTERED
+		row.add_child(icon)
+	var label := Label.new()
+	label.text = text
+	label.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	label.custom_minimum_size.x = 230
+	label.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	label.horizontal_alignment = HORIZONTAL_ALIGNMENT_CENTER
+	row.add_child(label)
+	options_container.add_child(row)
+
+func _build_poultry_options() -> void:
+	gold_display.visible = false
+	shop_title_icon.visible = false
+	gold_icon.visible = false
+	poultry_options.clear()
+	var world: SimWorld = farm.sim
+	if poultry_chicken_id != "":
+		var entry: Dictionary = world.actor(poultry_chicken_id)
+		if entry.is_empty():
+			title_label.text = "Chicken"
+			_poultry_note("This chicken has left for another farm.")
+		else:
+			var extra: Dictionary = entry.get("extra", {})
+			var small := String(extra.get("stage", "adult")) == "chick"
+			title_label.text = String(extra.get("name", "Chicken"))
+			if active_menu == "poultry_sale":
+				_poultry_note("Moving to a neighbor's farm", PoultryArt.portrait(small))
+				var names := PackedStringArray()
+				for id in poultry_quote_ids:
+					var member: Dictionary = world.actor(id).get("extra", {})
+					names.append(String(member.get("name", "Chicken")))
+				_poultry_note("%s · %d gold\nA neighbor will come and collect them." % [" & ".join(names), poultry_quote_price])
+				if poultry_quote_ids.size() > 1:
+					_poultry_note("Mother and chick leave together.", PoultryArt.portrait(true))
+				_poultry_row("Invite the neighbor", "request_chicken_sale", true,
+					{"chicken_id": poultry_chicken_id, "expected_ids": poultry_quote_ids.duplicate(), "expected_price": poultry_quote_price})
+				_poultry_row("Keep them here", "back")
+			else:
+				var activity := _poultry_activity_label(extra)
+				if small and int(extra.get("care_days", 0)) >= 7:
+					activity = "Independent chick"
+				_poultry_note(activity, PoultryArt.portrait(small))
+				if String(extra.get("sale_id", "")) != "":
+					_poultry_note("A neighbor is coming to collect this chicken.")
+					_poultry_row("Cancel collection", "cancel_chicken_sale", true, {"chicken_id": poultry_chicken_id})
+				else:
+					var greeted := int(extra.get("last_greet_day", -1)) == GameState.day
+					_poultry_row("Greeted today" if greeted else "Say hello", "greet_chicken", not greeted,
+						{"chicken_id": poultry_chicken_id}, PoultryArt.portrait(small))
+					_poultry_row("Sell to another farmer…", "quote")
+	else:
+		var obj: String = world.get_object(poultry_tile.x, poultry_tile.y)
+		if obj == "nest_box":
+			title_label.text = "Nest"
+			var nest: Dictionary = Poultry.nest_info(world, poultry_tile)
+			if bool(nest.get("egg", false)):
+				var days := float(nest.get("progress", 0)) / 2.0
+				_poultry_note("%.1f / 5 days incubated" % days, PoultryArt.egg_texture())
+				_poultry_note(_nest_status(nest))
+				_poultry_row("Take egg · resets incubation", "take_nest_egg", true, {}, PoultryArt.egg_texture())
+			else:
+				_poultry_note("An egg and feed invite a hen to sit.", PoultryArt.egg_texture())
+				_poultry_row("Place an egg (%d)" % GameState.held_count("egg"), "nest_egg",
+					GameState.held_count("egg") > 0, {}, PoultryArt.egg_texture())
+			_poultry_row("Pick up nest", "collect")
+		elif obj == "chicken_dispenser":
+			title_label.text = "Chicken feed"
+			var dispenser: Dictionary = Poultry.dispenser_info(world, poultry_tile)
+			var feed := int(dispenser.get("feed", 0))
+			_poultry_note("%.1f / 7 days of feed" % (float(feed) / 2.0), PoultryArt.dispenser_texture(0 if feed == 0 else 2 if feed >= 14 else 1))
+			for item in ["wheat", "chicken_feed", "saved_chicken_feed"]:
+				var units := 1 if item == "saved_chicken_feed" else 2
+				var count := GameState.held_count(item)
+				var label := "Add wheat" if item == "wheat" else "Add feed" if item == "chicken_feed" else "Add saved ½-day portion"
+				_poultry_row("%s (%d)" % [label, count], "fill_chicken_feed", count > 0 and feed + units <= 14,
+					{"item": item, "count": 1}, crop_icon(0) if item == "wheat" else PoultryArt.feed_texture())
+			_poultry_row("Pick up dispenser", "collect")
+		else:
+			title_label.text = "Coop"
+			_poultry_note("This fitting has been moved.")
+	if poultry_feedback != "":
+		_poultry_note(poultry_feedback)
+	_poultry_row("×", "close")
+	menu_panel.size = Vector2(minf(370, get_viewport().get_visible_rect().size.x - 24), _fit_panel_height())
+
+func _nest_status(nest: Dictionary) -> String:
+	match String(nest.get("status", "")):
+		"waiting_for_chick_slot": return "A chick already lives here. This egg can wait."
+		"waiting_for_incubation_slot": return "Another egg is being incubated."
+		"waiting_for_feed": return "Add feed to invite a hen to sit."
+		"waiting_for_hen": return "Waiting for an available hen."
+		"retreating": return "No feed · progress retreats ½ day each night."
+		"inaccessible": return "The hen is away · progress retreats ½ day each night."
+		"advancing": return "The hen is sitting · progress grows one day each night."
+	return "Waiting for feed and an available hen."
+
+func _poultry_activity_label(extra: Dictionary) -> String:
+	var activity := String(extra.get("poultry_activity", ""))
+	match activity:
+		"incubating", "sitting": return "Keeping the egg warm"
+		"seeking", "seek_chick", "seeking_chick": return "Looking for her chick"
+		"seek_mother", "seeking_mother": return "Looking for mother"
+		"teaching", "demonstrating", "calling": return "Showing her chick where to peck"
+		"copying": return "Learning to forage"
+		"settling", "sleeping": return "Settling down"
+		"waiting", "peeping": return "Waiting and peeping"
+		"foraging", "pecking": return "Foraging"
+	if bool(extra.get("seeking", false)):
+		return "Looking for family"
+	if not (extra.get("nest", []) as Array).is_empty():
+		return "Tending her egg"
+	if String(extra.get("chick_id", "")) != "":
+		return "Raising her chick"
+	return "Chick" if String(extra.get("stage", "adult")) == "chick" else "Pottering about"
+
+func _select_poultry_option() -> void:
+	if selected_option < 0 or selected_option >= poultry_options.size():
+		return
+	var choice := poultry_options[selected_option]
+	var verb := String(choice.verb)
+	if verb == "close":
+		close_menu()
+		menu_action.emit("resume")
+		return
+	if verb == "back":
+		open_menu("poultry")
+		return
+	if verb == "quote":
+		poultry_quote_ids = Poultry.sale_group(farm.sim, poultry_chicken_id)
+		poultry_quote_price = Poultry.sale_price(farm.sim, poultry_chicken_id)
+		open_menu("poultry_sale")
+		return
+	var target: Vector2i = farm.sim.actor_pos(poultry_chicken_id) if poultry_chicken_id != "" else poultry_tile
+	var result: Dictionary = farm.apply_action({"actor": "player", "verb": verb,
+		"target": target, "params": choice.get("params", {})}, GameState)
+	if not bool(result.get("ok", false)):
+		AudioManager.play_sfx("nope")
+		poultry_feedback = _poultry_refusal(String(result.get("reason", "")))
+		_rebuild_options()
+		return
+	AudioManager.play_sfx("click" if verb == "greet_chicken" else "harvest")
+	farm.sync_actors()
+	farm.queue_redraw()
+	poultry_feedback = "Hello, %s!" % String(farm.sim.actor(poultry_chicken_id).get("extra", {}).get("name", "little chicken")) if verb == "greet_chicken" else ""
+	if verb in ["request_chicken_sale", "collect"]:
+		close_menu()
+		menu_action.emit("resume")
+	else:
+		_rebuild_options()
+
+func _poultry_refusal(reason: String) -> String:
+	match reason:
+		"too_far", "wrong_area": return "Walk closer and try again."
+		"already_greeted": return "You have already said hello today."
+		"feed_full", "dispenser_full", "full": return "The dispenser is full."
+		"no_feed", "no_item", "not_enough_items": return "You need that food in your inventory."
+		"sale_changed", "quote_changed": return "The family has changed. Check the sale again."
+		"no_chick_space", "chick_present": return "A chick already lives on the farm."
+	return "That cannot happen just now."

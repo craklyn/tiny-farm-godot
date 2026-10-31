@@ -321,6 +321,9 @@ func cycle_seed_type() -> void:
 			# reaching one here means it is holdable; no stock test to fail.
 			selected_seed_type = seed_type
 			return
+		if seed_type == "egg" and held_count(seed_type) > 0:
+			selected_seed_type = seed_type
+			return
 		if not CropDefs.is_plantable(seed_type) \
 				or not CropDefs.is_seed_unlocked(seed_type, harvest_counts):
 			continue
@@ -346,6 +349,9 @@ func cycle_seed_type() -> void:
 # UI navigation, never an Action (P-9 guardrail): the sim gateway is never
 # called, so nothing here lands in a replay.
 func select_held_item(key: String) -> void:
+	if key == "egg" and held_count(key) > 0:
+		selected_seed_type = key
+		return
 	if MachineDefs.has(key):
 		if machines.get(key, 0) <= 0:
 			return

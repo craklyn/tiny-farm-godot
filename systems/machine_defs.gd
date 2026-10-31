@@ -129,6 +129,13 @@ static var TYPES: Dictionary = {
 		"icon": { "sheet": "res://assets/sprites/generated/nest_box.png",
 			"region": Rect2(0, 0, 16, 16) },
 	},
+	"chicken_dispenser": {
+		"name": "Chicken Feed Dispenser", "price": 20, "species": "",
+		"program": "", "configs": [], "default_config": "",
+		"unlock_requirement": null, "object": "chicken_dispenser",
+		"rooms": ["coop"], "outdoors": false,
+		"icon": {"sheet": "", "region": Rect2(0, 0, 16, 16)},
+	},
 	"rug": {
 		"name": "Rug",
 		"price": 30,
@@ -461,7 +468,7 @@ static var TYPES: Dictionary = {
 # with a verb, a state, a refund and 23 passing assertions, and no way to get any.
 # Fencing leads: it is the cheapest thing on the shelf and the only one that is
 # not a machine.
-static var ORDER: Array[String] = ["coop", "nest_box", "rug", "fence", "spiral_tower", "industrial_barn", "sprinkler",
+static var ORDER: Array[String] = ["coop", "nest_box", "chicken_dispenser", "rug", "fence", "spiral_tower", "industrial_barn", "sprinkler",
 		"stall", "bot_mk1", "bot_mk2", "bot_mk3", "workbench"]
 
 # The farmhouse's room kind (S-22). A coop's room is known by the row it was built
@@ -654,7 +661,7 @@ static func icon_of(key: String) -> AtlasTexture:
 	var icon: Dictionary = TYPES.get(key, {}).get("icon", {})
 	if icon.is_empty():
 		return null
-	var tex: Texture2D = load(String(icon.sheet))
+	var tex: Texture2D = PoultryArt.dispenser_texture() if key == "chicken_dispenser" else load(String(icon.sheet))
 	if tex == null:
 		return null
 	var atlas := AtlasTexture.new()

@@ -102,7 +102,8 @@ const SPECIAL_OBJECTS := {
 	# The room fittings (S-22). A tap on one picks it up, as a tap on her own
 	# scarecrow does: it goes back in the crate, to be set down somewhere else.
 	# Rearranging a room is pick-up-and-put-down, with no panel in between.
-	"nest_box":     "collect",
+	"nest_box":     "open_poultry",
+	"chicken_dispenser": "open_poultry",
 	"rug":          "collect",
 }
 
@@ -225,11 +226,24 @@ func resolve(farm: Node2D, gs: Node, tap_t: Vector2i, player_t = null, is_drag: 
 	if not is_drag and tapped_machine_id != "" and teach_world != null \
 			and teach_world.has_actor(tapped_machine_id):
 		var machine_tile: Vector2i = teach_world.actor_pos(tapped_machine_id)
+		if teach_world.species_of(tapped_machine_id) == SpeciesDefs.CHICKEN:
+			return check_result.call({"action": "open_poultry", "tool_idx": 0,
+				"target_t": machine_tile, "walk_to": false, "seed_type": "", "chicken_id": tapped_machine_id})
 		if teach_world.machine_at(machine_tile) == tapped_machine_id:
 			return check_result.call({
 				"action": "open_machine", "tool_idx": 0, "target_t": machine_tile,
 				"walk_to": false, "seed_type": "", "machine": tapped_machine_id,
 			})
+
+	if not is_drag and teach_world != null:
+		var fitting_obj: String = farm.get_object(tx, ty)
+		if fitting_obj == "nest_box" and gs.selected_seed_type == "egg" \
+				and gs.held_count("egg") > 0 and not bool(Poultry.nest_info(teach_world, tap_t).get("egg", false)):
+			return check_result.call({"action": "nest_egg", "tool_idx": 0,
+				"target_t": tap_t, "walk_to": true, "seed_type": ""})
+		if fitting_obj in ["nest_box", "chicken_dispenser"]:
+			return check_result.call({"action": "open_poultry", "tool_idx": 0,
+				"target_t": tap_t, "walk_to": true, "seed_type": ""})
 
 	# 1. Special objects
 	var obj: String = farm.get_object(tx, ty)

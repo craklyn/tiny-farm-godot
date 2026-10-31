@@ -896,6 +896,10 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 	# the gateway: opening a panel changes nothing in the world, so nothing about
 	# it belongs in a replay. What the panel then does — reconfigure, pick up —
 	# goes through `apply_action` like everything else.
+	if action == "open_poultry":
+		get_tree().get_first_node_in_group("Main").call_deferred(
+			"trigger_poultry_menu", target_t, String(pa.get("chicken_id", "")))
+		return
 	if action == "open_machine":
 		# Resolved to an id here, at the tap, rather than deferred as a tile: a
 		# machine that walks could be one step away by the time the deferred call
@@ -994,6 +998,8 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 	}
 	# Added only when it means something, so every other verb's recorded entry —
 	# and therefore its replay signature — is byte-for-byte what it always was.
+	if pa.has("params"):
+		act["params"] = pa["params"]
 	if String(pa.get("item", "")) != "":
 		act["item"] = pa["item"]
 	if String(pa.get("barn_id", "")) != "":
@@ -1014,6 +1020,9 @@ func _execute_resolved_action(pa: Dictionary) -> void:
 		return
 
 	if action == "sell" or action == "refill":
+		return
+	if action in ["nest_egg", "take_nest_egg", "fill_chicken_feed"]:
+		AudioManager.play_sfx("harvest")
 		return
 	if action == "collect":
 		AudioManager.play_sfx("harvest")

@@ -1211,6 +1211,9 @@ func _update_hud() -> void:
 		var machine_tex := MachineDefs.icon_of(seed_name)
 		seed_pill_icon.texture = machine_tex
 		seed_pill_icon.visible = machine_tex != null
+	elif seed_name == "egg":
+		seed_pill_icon.texture = PoultryArt.egg_texture()
+		seed_pill_icon.visible = true
 	elif seed_def.has("icon_col"):
 		seed_pill_icon.texture = _crop_icon(int(seed_def.icon_col))
 		seed_pill_icon.visible = true

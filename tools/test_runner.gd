@@ -8426,9 +8426,16 @@ func _scenario_bc_a_nest_box_goes_down_by_tap() -> void:
 	await get_tree().process_frame
 	InputManager.click_tile = spot
 	InputManager.has_click = true
+	var inspected := await _wait_until(func(): return menus.active_menu == "poultry", 240)
+	_assert(inspected, "a tap on the nest opens its egg and pick-up controls")
+	for option in menus.poultry_options.size():
+		if String(menus.poultry_options[option].get("verb", "")) == "collect":
+			menus.selected_option = option
+			menus._select_current_option()
+			break
 	var up := await _wait_until(
 		func(): return farm.get_object(spot.x, spot.y) == "", 240)
-	_assert(up, "a tap on the nest box picks it up again")
+	_assert(up, "the nest's pick-up control returns it to the crate")
 	_assert(int(GameState.machines.get("nest_box", 0)) == 1, "back into the crate")
 
 	# --- out again, and the farm as it was ----------------------------------------

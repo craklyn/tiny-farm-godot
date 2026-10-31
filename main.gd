@@ -150,6 +150,8 @@ func _capture_machine_tap(tile: Vector2i) -> void:
 	if get_tree().get_first_node_in_group("Main") == self \
 			and farm != null and farm.sim != null:
 		InputManager.click_actor_id = farm.sim.machine_at(tile)
+		if InputManager.click_actor_id == "":
+			InputManager.click_actor_id = Poultry.chicken_at(farm.sim, tile)
 
 
 func _ready() -> void:
@@ -1197,6 +1199,10 @@ func trigger_machine_menu_for(id: String) -> void:
 
 
 ## Open the panel a building gets (P-18, 2026-09-15) — go in, or pick it up.
+func trigger_poultry_menu(at: Vector2i, chicken_id: String = "") -> void:
+	menus.open_poultry_menu(at, chicken_id)
+
+
 func trigger_structure_menu(at: Vector2i) -> void:
 	menus.open_structure_menu(at)
 
